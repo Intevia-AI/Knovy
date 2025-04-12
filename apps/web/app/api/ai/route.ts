@@ -13,17 +13,10 @@ interface MediaFile {
   mimeType: string;
 }
 
-interface Memory {
-  content: string;
-  timestamp?: string;
-  source?: string;
-}
-
 interface AIRequestBody {
   audio?: MediaFile;
   video?: MediaFile;
   screenshots?: MediaFile[];
-  memories?: Memory[];
   query?: string;
 }
 
@@ -111,7 +104,7 @@ export async function POST(req: Request) {
       } else {
         // Regular text messages (assistant or other user messages)
         formattedMessages.push({
-          role: msg.role,
+          role: msg.role as "user" | "assistant",
           content: typeof msg.content === "string" ? msg.content : "",
         });
       }

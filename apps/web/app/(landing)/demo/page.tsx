@@ -32,12 +32,6 @@ type Screenshot = {
   description?: string;
 };
 
-type AudioTranscript = {
-  content: string;
-  timestamp: number;
-  source?: string;
-};
-
 type CaptureMode = "camera" | "screen";
 
 type MediaChunk = {
@@ -50,16 +44,13 @@ type AIContextData = {
   audio?: { data: string; mimeType: string };
   video?: { data: string; mimeType: string }; // For screen recordings
   screenshots?: { data: string; mimeType: string }[];
-  transcripts?: { content: string; timestamp: string; source: string }[];
 };
 
 // --- Constants ---
 const SCREENSHOT_INTERVAL_MS = 5000; // 5 seconds
-const TRANSCRIPT_INTERVAL_MS = 8000; // 8 seconds (Simulated)
 const REALTIME_ANALYSIS_INTERVAL_MS = 15000; // 15 seconds
 const AUDIO_CHUNK_TIMESLICE_MS = 3000; // 3 second chunks
 const MAX_SCREENSHOTS = 5;
-const MAX_TRANSCRIPTS = 10; // Simulated
 const MAX_AUDIO_BYTES_FOR_AI = 5 * 1024 * 1024; // 5MB limit for AI audio
 const MAX_AUDIO_DURATION_SEC = 60 * 5; // 5 minutes max audio recording
 
@@ -77,7 +68,6 @@ export default function Page() {
   const audioRecorderRef = useRef<MediaRecorder | null>(null);
   const screenRecorderRef = useRef<MediaRecorder | null>(null);
 
-  const transcriptIntervalRef = useRef<NodeJS.Timeout | null>(null); // For simulated transcripts
   const realTimeIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const audioTimerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -92,7 +82,6 @@ export default function Page() {
   const [audioChunks, setAudioChunks] = useState<MediaChunk[]>([]);
   const [screenChunks, setScreenChunks] = useState<MediaChunk[]>([]);
   const [screenshots, setScreenshots] = useState<Screenshot[]>([]); // Screenshot state remains
-  const [transcripts, setTranscripts] = useState<AudioTranscript[]>([]); // Simulated transcripts
   const [aiMessages, setAiMessages] = useState<Message[]>([]);
 
   // State for the final audio blob URL (only set after stopping)
@@ -132,11 +121,8 @@ export default function Page() {
   };
 
   const cleanupIntervals = useCallback(() => {
-    if (transcriptIntervalRef.current)
-      clearInterval(transcriptIntervalRef.current);
     if (realTimeIntervalRef.current) clearInterval(realTimeIntervalRef.current);
     if (audioTimerRef.current) clearInterval(audioTimerRef.current);
-    transcriptIntervalRef.current = null;
     realTimeIntervalRef.current = null;
     audioTimerRef.current = null;
   }, []);
@@ -497,67 +483,6 @@ export default function Page() {
     [getSupportedMimeType, stopRecording, isRecording, captureMode]
   );
 
-  const addTranscript = useCallback(() => {
-    const demoSources = ["Alice", "Bob", "Charlie", "System"];
-    const demoContent = [
-      "How's the refactor going?",
-      "Almost done, just need to test the screenshot part.",
-      "Did we address the dependency issue?",
-      "Yes, using a dedicated effect now.",
-      "Looks much cleaner.",
-      "Agreed, the interval logic is simpler.",
-      "Real-time analysis seems okay?",
-      "Let's check the logs after this run.",
-    ];
-    const timestamp = Date.now();
-    const newTranscript: AudioTranscript = {
-      timestamp: timestamp,
-      source:
-        demoSources[
-          Math.floor(timestamp / (TRANSCRIPT_INTERVAL_MS * 1.5)) %
-            demoSources.length
-        ],
-      content:
-        demoContent[
-          Math.floor(timestamp / TRANSCRIPT_INTERVAL_MS) % demoContent.length
-        ],
-    };
-    setTranscripts((prev) => [...prev, newTranscript].slice(-MAX_TRANSCRIPTS));
-  }, []);
-
-  useEffect(() => {
-    if (isRecording) {
-      console.log("Starting simulated transcript interval.");
-      const initialTimeout = setTimeout(() => {
-        if (isRecording) addTranscript();
-      }, 1500);
-      transcriptIntervalRef.current = setInterval(() => {
-        if (isRecording) {
-          addTranscript();
-        } else {
-          if (transcriptIntervalRef.current) {
-            clearInterval(transcriptIntervalRef.current);
-            transcriptIntervalRef.current = null;
-          }
-        }
-      }, TRANSCRIPT_INTERVAL_MS);
-
-      return () => {
-        clearTimeout(initialTimeout);
-        if (transcriptIntervalRef.current) {
-          clearInterval(transcriptIntervalRef.current);
-          transcriptIntervalRef.current = null;
-          console.log("Cleared simulated transcript interval.");
-        }
-      };
-    } else {
-      if (transcriptIntervalRef.current) {
-        clearInterval(transcriptIntervalRef.current);
-        transcriptIntervalRef.current = null;
-      }
-    }
-  }, [isRecording, addTranscript]);
-
   const startRecording = useCallback(async () => {
     if (isRecording || isLoading) return;
     console.log("Initiating start recording sequence...");
@@ -566,7 +491,6 @@ export default function Page() {
     setAudioChunks([]);
     setScreenChunks([]);
     setScreenshots([]);
-    setTranscripts([]);
     if (finalAudioUrl) URL.revokeObjectURL(finalAudioUrl);
     setFinalAudioUrl(null);
     setRecordingDuration(0);
@@ -617,7 +541,7 @@ export default function Page() {
 
       if (relevantAudioChunks.length > 0) {
         const mime =
-          relevantAudioChunks[0].blob.type || getSupportedMimeType("audio");
+          relevantAudioChunks[0]?.blob.type || getSupportedMimeType("audio");
         let tempAudioBlob = new Blob(
           relevantAudioChunks.map((c) => c.blob),
           { type: mime }
@@ -642,7 +566,7 @@ export default function Page() {
 
         if (relevantScreenChunks.length > 0) {
           const mime =
-            relevantScreenChunks[0].blob.type || getSupportedMimeType("video");
+            relevantScreenChunks[0]?.blob.type || getSupportedMimeType("video");
           screenBlob = new Blob(
             relevantScreenChunks.map((c) => c.blob),
             { type: mime }
@@ -656,15 +580,7 @@ export default function Page() {
       const numScreenshots = type === "real-time" ? 1 : 3;
       const currentScreenshots = screenshots.slice(0, numScreenshots);
 
-      const numTranscripts = type === "real-time" ? 3 : 10;
-      const currentTranscripts = transcripts.slice(-numTranscripts);
-
-      if (
-        !audioBlob &&
-        !screenBlob &&
-        currentScreenshots.length === 0 &&
-        currentTranscripts.length === 0
-      ) {
+      if (!audioBlob && !screenBlob && currentScreenshots.length === 0) {
         console.warn("No context data found to send to AI.");
         return null;
       }
@@ -675,7 +591,7 @@ export default function Page() {
           const base64 = await blobToBase64(audioBlob);
           if (base64)
             context.audio = {
-              data: base64.split(",")[1],
+              data: base64.split(",")[1] || "",
               mimeType: audioBlob.type,
             };
         }
@@ -683,21 +599,14 @@ export default function Page() {
           const base64 = await blobToBase64(screenBlob);
           if (base64)
             context.video = {
-              data: base64.split(",")[1],
+              data: base64.split(",")[1] || "",
               mimeType: screenBlob.type,
             };
         }
         if (currentScreenshots.length > 0) {
           context.screenshots = currentScreenshots.map((ss) => ({
-            data: ss.data.split(",")[1],
+            data: ss.data.split(",")[1] || "",
             mimeType: ss.mimeType,
-          }));
-        }
-        if (currentTranscripts.length > 0) {
-          context.transcripts = currentTranscripts.map((t) => ({
-            content: t.content,
-            timestamp: new Date(t.timestamp).toISOString(),
-            source: t.source || "Unknown",
           }));
         }
       } catch (error) {
@@ -709,18 +618,10 @@ export default function Page() {
         audio: !!context.audio,
         video: !!context.video,
         screenshots: context.screenshots?.length ?? 0,
-        transcripts: context.transcripts?.length ?? 0,
       });
       return context;
     },
-    [
-      audioChunks,
-      screenChunks,
-      screenshots,
-      transcripts,
-      captureMode,
-      getSupportedMimeType,
-    ]
+    [audioChunks, screenChunks, screenshots, captureMode, getSupportedMimeType]
   );
 
   const sendContextToAI = useCallback(
@@ -741,7 +642,7 @@ export default function Page() {
           {
             id: `err-noctx-${Date.now()}`,
             role: "assistant",
-            content: `[Cannot perform AI action '${actionType}': No context data available (audio, video, screenshots, or transcripts). Try recording for longer.]`,
+            content: `[Cannot perform AI action '${actionType}': No context data available (audio, video, screenshots). Try recording for longer.]`,
           },
         ]);
         setIsLoading(false);
@@ -750,16 +651,16 @@ export default function Page() {
 
       const queryMap = {
         answer:
-          "Based on the recent context (audio, screen recording, screenshots, transcripts), please answer the likely implicit question or address the last point made by a participant.",
+          "Based on the recent context (audio, screen recording, screenshots), please answer the likely implicit question or address the last point made by a participant.",
         summary:
-          "Provide a concise bullet-point summary of the key topics, decisions, or action items discussed or shown recently based on the provided context (audio, screen recording, screenshots, transcripts).",
+          "Provide a concise bullet-point summary of the key topics, decisions, or action items discussed or shown recently based on the provided context (audio, screen recording, screenshots).",
         search:
-          "Identify key entities, technical terms, or questions raised in the recent context (audio, screen recording, screenshots, transcripts). Suggest relevant information or search queries related to them.",
+          "Identify key entities, technical terms, or questions raised in the recent context (audio, screen recording, screenshots). Suggest relevant information or search queries related to them.",
         "real-time":
-          "Analyze the latest context (last ~15s of audio, screen, latest screenshot, recent transcripts). Briefly identify any noteworthy keywords, topic shifts, action items, or potential issues. Be concise.",
+          "Analyze the latest context (last ~15s of audio, screen, latest screenshot). Briefly identify any noteworthy keywords, topic shifts, action items, or potential issues. Be concise.",
         custom:
           customQuery ||
-          "Please analyze the provided context (audio, screen recording, screenshots, transcripts) according to the user's request.",
+          "Please analyze the provided context (audio, screen recording, screenshots) according to the user's request.",
       };
       const query = queryMap[actionType];
 
@@ -1202,40 +1103,6 @@ export default function Page() {
                   </div>
                 )}
               </div>
-            </div>
-          </div>
-
-          <div className="md:col-span-2 space-y-2">
-            <h3 className="font-medium text-sm">
-              Simulated Transcripts ({transcripts.length}/{MAX_TRANSCRIPTS})
-            </h3>
-            <div className="bg-slate-100 dark:bg-slate-800 p-3 rounded-lg max-h-48 overflow-y-auto border border-slate-200 dark:border-slate-700 scrollbar-thin">
-              {transcripts.length > 0 ? (
-                <ul className="space-y-1.5">
-                  {transcripts.map((t) => (
-                    <li key={t.timestamp} className="text-xs">
-                      <span className="font-semibold text-sky-600 dark:text-sky-400 mr-1">
-                        {t.source || "System"} (
-                        {new Date(t.timestamp).toLocaleTimeString([], {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                          second: "2-digit",
-                        })}
-                        ):
-                      </span>
-                      <span className="text-slate-700 dark:text-slate-300">
-                        {t.content}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-center text-xs text-slate-500 py-3">
-                  {isRecording
-                    ? "Waiting for transcripts..."
-                    : "No transcripts recorded."}
-                </p>
-              )}
             </div>
           </div>
         </CardContent>
