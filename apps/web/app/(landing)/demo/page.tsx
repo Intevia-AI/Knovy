@@ -199,9 +199,10 @@ export default function Page() {
       return blob;
     }
     console.warn(
-      `Audio size (${(blob.size / 1024).toFixed(1)} KB) > limit (${(MAX_AUDIO_BYTES_FOR_AI / 1024).toFixed(1)} KB). Trimming (simple slice).`
+      `Audio size (${(blob.size / 1024).toFixed(1)} KB) > limit (${(MAX_AUDIO_BYTES_FOR_AI / 1024).toFixed(1)} KB). Trimming to keep the most recent audio.`
     );
-    return blob.slice(0, MAX_AUDIO_BYTES_FOR_AI, blob.type);
+    // Keep the last MAX_AUDIO_BYTES_FOR_AI bytes
+    return blob.slice(blob.size - MAX_AUDIO_BYTES_FOR_AI, blob.size, blob.type);
   };
 
   const takeScreenshot = useCallback(() => {
