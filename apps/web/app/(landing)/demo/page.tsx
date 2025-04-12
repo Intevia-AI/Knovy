@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { Message } from "ai";
 import { Input } from "@workspace/ui/components/input";
+import { Markdown } from "./markdown";
 
 // --- Types ---
 type Screenshot = {
@@ -1390,12 +1391,12 @@ export default function Page() {
                       : "bg-blue-50 dark:bg-blue-900/30 border-blue-500 text-blue-800 dark:text-blue-300"
                   }`}
                 >
-                  <p className="whitespace-pre-wrap break-words">
+                  <Markdown>
                     {msg.content.replace(
                       /^(?:\[.*?\]\s*)/,
                       (match) => `**${match.trim()}** `
                     )}
-                  </p>
+                  </Markdown>
                 </div>
               ))}
               {isLoading && aiMessages.length > 0 && (
