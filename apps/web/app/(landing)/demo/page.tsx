@@ -14,7 +14,6 @@ import {
   PlayIcon,
   Loader2Icon,
   SwitchCameraIcon,
-  // RefreshCwIcon, // Not used currently, removed for cleanup
   ListCollapseIcon,
   SearchIcon,
   SendIcon,
@@ -78,7 +77,6 @@ export default function Page() {
   const audioRecorderRef = useRef<MediaRecorder | null>(null);
   const screenRecorderRef = useRef<MediaRecorder | null>(null);
 
-  // Removed screenshotIntervalRef - managed by useEffect now
   const transcriptIntervalRef = useRef<NodeJS.Timeout | null>(null); // For simulated transcripts
   const realTimeIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const audioTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -134,7 +132,6 @@ export default function Page() {
   };
 
   const cleanupIntervals = useCallback(() => {
-    // Note: Screenshot interval is managed by its dedicated useEffect
     if (transcriptIntervalRef.current)
       clearInterval(transcriptIntervalRef.current);
     if (realTimeIntervalRef.current) clearInterval(realTimeIntervalRef.current);
@@ -142,7 +139,6 @@ export default function Page() {
     transcriptIntervalRef.current = null;
     realTimeIntervalRef.current = null;
     audioTimerRef.current = null;
-    // console.log("Cleaned up Transcript, Realtime, AudioTimer intervals"); // Debug log
   }, []);
 
   const getSupportedMimeType = useCallback(
@@ -192,7 +188,6 @@ export default function Page() {
     return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
-  // Simple audio compression (trimming to size limit) - consider more advanced later if needed
   const compressAudioIfNeeded = async (blob: Blob): Promise<Blob> => {
     if (!blob || blob.size <= MAX_AUDIO_BYTES_FOR_AI) {
       return blob;
@@ -200,14 +195,10 @@ export default function Page() {
     console.warn(
       `Audio size (${(blob.size / 1024).toFixed(1)} KB) > limit (${(MAX_AUDIO_BYTES_FOR_AI / 1024).toFixed(1)} KB). Trimming (simple slice).`
     );
-    // Simplistic approach: just take the first MAX_AUDIO_BYTES_FOR_AI bytes
     return blob.slice(0, MAX_AUDIO_BYTES_FOR_AI, blob.type);
   };
 
-  // --- NEW Screenshot Implementation ---
-
   const takeScreenshot = useCallback(() => {
-    // No need to check isRecording/screenshotsEnabled here, the interval controls that.
     const videoElement =
       captureMode === "camera" ? videoRef.current : screenVideoRef.current;
 
@@ -234,45 +225,39 @@ export default function Page() {
 
     try {
       ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
-      const dataUrl = canvas.toDataURL("image/jpeg", 0.8); // Use JPEG for smaller size
+      const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
       const description = `${captureMode} view at ${new Date().toLocaleTimeString()}`;
-      console.log("Taking screenshot..."); // Debug log
+      console.log("Taking screenshot...");
 
-      setScreenshots(
-        (prev) =>
-          [
-            {
-              data: dataUrl,
-              mimeType: "image/jpeg",
-              timestamp: Date.now(),
-              description,
-            },
-            ...prev,
-          ].slice(0, MAX_SCREENSHOTS) // Add to start and limit count
+      setScreenshots((prev) =>
+        [
+          {
+            data: dataUrl,
+            mimeType: "image/jpeg",
+            timestamp: Date.now(),
+            description,
+          },
+          ...prev,
+        ].slice(0, MAX_SCREENSHOTS)
       );
     } catch (e) {
       console.error("Screenshot failed during draw/conversion:", e);
     }
-    // Dependencies: captureMode ensures the correct video element is selected.
-    // setScreenshots is stable. Refs don't need to be dependencies.
   }, [captureMode, setScreenshots]);
 
-  // --- Effect to manage Screenshot Interval ---
   useEffect(() => {
     let intervalId: NodeJS.Timeout | null = null;
     let initialTimeoutId: NodeJS.Timeout | null = null;
 
     if (isRecording && screenshotsEnabled) {
-      const startDelay = 2500; // Wait a bit for video stream to stabilize
+      const startDelay = 2500;
       console.log(
         `Screenshots enabled & recording. Setting ${startDelay}ms initial timeout.`
       );
 
       initialTimeoutId = setTimeout(() => {
-        // Double-check conditions inside timeout, state might have changed
         if (isRecording && screenshotsEnabled) {
-          takeScreenshot(); // Take the first one
-          // Then set the repeating interval
+          takeScreenshot();
           intervalId = setInterval(takeScreenshot, SCREENSHOT_INTERVAL_MS);
           console.log(
             `Screenshot interval started (every ${SCREENSHOT_INTERVAL_MS}ms).`
@@ -282,16 +267,14 @@ export default function Page() {
             "Conditions changed during initial screenshot delay, not starting interval."
           );
         }
-        initialTimeoutId = null; // Clear timeout ref once it runs
+        initialTimeoutId = null;
       }, startDelay);
     } else {
       console.log(
         `Screenshot interval conditions not met (isRecording: ${isRecording}, screenshotsEnabled: ${screenshotsEnabled}).`
       );
-      // No interval needed if conditions aren't met initially
     }
 
-    // Cleanup function: Clears interval AND initial timeout if effect re-runs or unmounts
     return () => {
       if (initialTimeoutId) {
         clearTimeout(initialTimeoutId);
@@ -302,11 +285,7 @@ export default function Page() {
         console.log("Cleared screenshot interval.");
       }
     };
-    // Dependencies: This effect runs when recording starts/stops, or when screenshots are toggled.
-    // takeScreenshot is included because its definition depends on captureMode.
   }, [isRecording, screenshotsEnabled, takeScreenshot]);
-
-  // --- Recording Logic ---
 
   const startAudioRecording = useCallback(async () => {
     console.log("Starting audio recording...");
@@ -344,19 +323,17 @@ export default function Page() {
           } else {
             setFinalAudioUrl(null);
           }
-          return []; // Clear chunks after stopping and processing
+          return [];
         });
-        // Clear timer when recorder stops explicitly or by limit
         if (audioTimerRef.current) {
           clearInterval(audioTimerRef.current);
           audioTimerRef.current = null;
         }
-        setRecordingDuration(0); // Reset duration display
+        setRecordingDuration(0);
       };
 
-      setRecordingDuration(0); // Reset duration state
+      setRecordingDuration(0);
 
-      // Timer for duration tracking and max limit enforcement
       audioTimerRef.current = setInterval(() => {
         setRecordingDuration((prev) => {
           const newDuration = prev + 1;
@@ -368,12 +345,10 @@ export default function Page() {
               clearInterval(audioTimerRef.current);
               audioTimerRef.current = null;
             }
-            // Stop only the audio recorder, not the whole session
             if (audioRecorderRef.current?.state === "recording") {
               audioRecorderRef.current.stop();
-              // Don't cleanup audio stream here, stopRecording handles full cleanup
             }
-            return MAX_AUDIO_DURATION_SEC; // Cap display
+            return MAX_AUDIO_DURATION_SEC;
           }
           return newDuration;
         });
@@ -394,60 +369,46 @@ export default function Page() {
           }]`,
         },
       ]);
-      cleanupStream(audioStreamRef); // Clean up if failed
+      cleanupStream(audioStreamRef);
       return false;
     }
-  }, [getSupportedMimeType]); // Dependencies
+  }, [getSupportedMimeType]);
 
-  // stopRecording is now a dependency of startVideoOrScreenRecording (for screen share stop)
-  // Need to define it before startVideoOrScreenRecording, or wrap one/both in useCallback correctly.
-  // Let's define stopRecording first.
   const stopRecordingInternal = useCallback(() => {
     if (!isRecording && !isLoading) {
-      // Allow stop even if loading briefly during stop sequence
       console.log("Stop recording called but not recording.");
       return;
     }
     console.log("Initiating stop recording sequence...");
-    setIsLoading(true); // Prevent actions during stop
+    setIsLoading(true);
 
-    // Set isRecording to false *first*. The useEffects will see this change and clean up their intervals.
     setIsRecording(false);
     console.log(
       "Recording state set to false. Effects should handle interval cleanup."
     );
 
-    // Explicitly clear other intervals here as a safeguard
     cleanupIntervals();
 
-    // Stop recorders (this triggers onstop handlers which process final data / clear chunks)
     cleanupRecorder(audioRecorderRef);
     cleanupRecorder(screenRecorderRef);
 
-    // Stop and cleanup streams
     cleanupStream(audioStreamRef);
     cleanupStream(videoStreamRef);
     cleanupStream(screenStreamRef);
 
-    // Clear video previews
     if (videoRef.current) videoRef.current.srcObject = null;
     if (screenVideoRef.current) screenVideoRef.current.srcObject = null;
 
-    setRealTimeAnalysisEnabled(false); // Turn off real-time analysis on stop
-    setRecordingDuration(0); // Reset timer display
+    setRealTimeAnalysisEnabled(false);
+    setRecordingDuration(0);
 
-    // Reset relevant state - keep screenshots/transcripts for review? User choice. Let's keep them.
-    // setScreenshots([]); // Optional: clear screenshots on stop
-    // setTranscripts([]); // Optional: clear transcripts on stop
-    setAudioChunks([]); // Chunks are processed into finalAudioUrl or discarded
-    setScreenChunks([]); // Chunks are discarded
+    setAudioChunks([]);
+    setScreenChunks([]);
 
     console.log("Recording stopped.");
-    setIsLoading(false); // Re-enable UI
-  }, [isRecording, isLoading, cleanupIntervals]); // Dependencies for stop
+    setIsLoading(false);
+  }, [isRecording, isLoading, cleanupIntervals]);
 
-  // Re-assign stopRecording after defining stopRecordingInternal
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   const stopRecording = useCallback(stopRecordingInternal, [
     stopRecordingInternal,
   ]);
@@ -464,28 +425,24 @@ export default function Page() {
         if (mode === "camera") {
           stream = await navigator.mediaDevices.getUserMedia({ video: true });
         } else {
-          // screen
           stream = await navigator.mediaDevices.getDisplayMedia({
             video: { frameRate: 10 },
-            audio: false, // Keep screen audio separate for simplicity
+            audio: false,
           });
 
-          // Handle user stopping screen share via browser UI
           const videoTrack = stream.getVideoTracks()[0];
           if (videoTrack) {
             videoTrack.onended = () => {
               console.log("Screen share stopped by user via browser UI.");
-              // Check if we are still in screen recording mode before stopping everything
               if (isRecording && captureMode === "screen") {
                 console.log(
                   "Stopping recording session because screen share ended."
                 );
-                stopRecording(); // Stop the entire session
+                stopRecording();
               }
             };
           }
 
-          // Setup screen recorder *only* in screen mode
           const screenMimeType = getSupportedMimeType("video");
           const screenRecorder = new MediaRecorder(stream, {
             mimeType: screenMimeType,
@@ -504,16 +461,15 @@ export default function Page() {
             console.error("Screen recorder error:", e);
           screenRecorder.onstop = () => {
             console.log("Screen recorder stopped.");
-            setScreenChunks([]); // Clear chunks on stop
+            setScreenChunks([]);
           };
-          screenRecorder.start(AUDIO_CHUNK_TIMESLICE_MS * 2); // Record screen in chunks
+          screenRecorder.start(AUDIO_CHUNK_TIMESLICE_MS * 2);
           console.log("Screen recorder started.");
         }
 
-        streamRef.current = stream; // Assign stream to the correct ref
+        streamRef.current = stream;
         if (videoElement) {
           videoElement.srcObject = stream;
-          // Ensure playback starts
           await videoElement
             .play()
             .catch((e) => console.warn(`${mode} preview play warning:`, e));
@@ -533,15 +489,14 @@ export default function Page() {
             }]`,
           },
         ]);
-        cleanupStream(streamRef); // Cleanup the specific stream that failed
-        if (mode === "screen") cleanupRecorder(screenRecorderRef); // Cleanup recorder if screen failed
+        cleanupStream(streamRef);
+        if (mode === "screen") cleanupRecorder(screenRecorderRef);
         return false;
       }
     },
-    [getSupportedMimeType, stopRecording, isRecording, captureMode] // Added dependencies
+    [getSupportedMimeType, stopRecording, isRecording, captureMode]
   );
 
-  // --- SIMULATED Transcript Logic ---
   const addTranscript = useCallback(() => {
     const demoSources = ["Alice", "Bob", "Charlie", "System"];
     const demoContent = [
@@ -568,22 +523,18 @@ export default function Page() {
         ],
     };
     setTranscripts((prev) => [...prev, newTranscript].slice(-MAX_TRANSCRIPTS));
-  }, []); // No external dependencies
+  }, []);
 
-  // --- Effect for SIMULATED Transcripts ---
   useEffect(() => {
     if (isRecording) {
       console.log("Starting simulated transcript interval.");
-      // Initial transcript after a short delay
       const initialTimeout = setTimeout(() => {
         if (isRecording) addTranscript();
       }, 1500);
       transcriptIntervalRef.current = setInterval(() => {
         if (isRecording) {
-          // Check inside interval
           addTranscript();
         } else {
-          // If recording stopped, clear interval from inside
           if (transcriptIntervalRef.current) {
             clearInterval(transcriptIntervalRef.current);
             transcriptIntervalRef.current = null;
@@ -600,15 +551,12 @@ export default function Page() {
         }
       };
     } else {
-      // Ensure cleanup if isRecording becomes false
       if (transcriptIntervalRef.current) {
         clearInterval(transcriptIntervalRef.current);
         transcriptIntervalRef.current = null;
       }
     }
   }, [isRecording, addTranscript]);
-
-  // --- Main Start/Stop ---
 
   const startRecording = useCallback(async () => {
     if (isRecording || isLoading) return;
@@ -617,18 +565,17 @@ export default function Page() {
     setAiMessages([]);
     setAudioChunks([]);
     setScreenChunks([]);
-    setScreenshots([]); // Clear previous screenshots
-    setTranscripts([]); // Clear previous transcripts
+    setScreenshots([]);
+    setTranscripts([]);
     if (finalAudioUrl) URL.revokeObjectURL(finalAudioUrl);
     setFinalAudioUrl(null);
     setRecordingDuration(0);
 
     const audioStarted = await startAudioRecording();
-    // Use the *current* captureMode state when starting
     const videoStarted = await startVideoOrScreenRecording(captureMode);
 
     if (audioStarted || videoStarted) {
-      setIsRecording(true); // This will trigger the screenshot and transcript useEffects
+      setIsRecording(true);
       console.log(
         "Recording state set to true. Effects will handle intervals."
       );
@@ -639,7 +586,7 @@ export default function Page() {
       cleanupStream(videoStreamRef);
       cleanupStream(screenStreamRef);
       cleanupRecorder(screenRecorderRef);
-      cleanupIntervals(); // Clear any timers/intervals potentially set
+      cleanupIntervals();
       setIsRecording(false);
     }
     setIsLoading(false);
@@ -650,10 +597,8 @@ export default function Page() {
     startAudioRecording,
     startVideoOrScreenRecording,
     finalAudioUrl,
-    cleanupIntervals, // Add cleanupIntervals
+    cleanupIntervals,
   ]);
-
-  // --- AI Interaction ---
 
   const gatherCurrentContext = useCallback(
     async (type: "real-time" | "manual"): Promise<AIContextData | null> => {
@@ -662,15 +607,13 @@ export default function Page() {
       let audioBlob: Blob | null = null;
       let screenBlob: Blob | null = null;
       const now = Date.now();
-      const realtimeWindowMs = REALTIME_ANALYSIS_INTERVAL_MS * 1.2; // Look back slightly more than interval
+      const realtimeWindowMs = REALTIME_ANALYSIS_INTERVAL_MS * 1.2;
 
-      // 1. Audio Context (Use recent chunks, compress if needed)
       const relevantAudioChunks = (
         type === "real-time"
           ? audioChunks.filter((c) => now - c.timestamp < realtimeWindowMs)
           : audioChunks
-      ) // Use all collected chunks for manual actions
-        .slice(-20); // Limit to last ~60s of chunks max anyway
+      ).slice(-20);
 
       if (relevantAudioChunks.length > 0) {
         const mime =
@@ -682,7 +625,7 @@ export default function Page() {
         console.log(
           `Using ${relevantAudioChunks.length} audio chunks. Original size: ${(tempAudioBlob.size / 1024).toFixed(1)} KB`
         );
-        audioBlob = await compressAudioIfNeeded(tempAudioBlob); // Compress if necessary
+        audioBlob = await compressAudioIfNeeded(tempAudioBlob);
         if (audioBlob.size !== tempAudioBlob.size) {
           console.log(
             `Compressed audio size: ${(audioBlob.size / 1024).toFixed(1)} KB`
@@ -690,13 +633,12 @@ export default function Page() {
         }
       }
 
-      // 2. Video Context (Screen recording chunks, if active)
       if (captureMode === "screen") {
         const relevantScreenChunks = (
           type === "real-time"
             ? screenChunks.filter((c) => now - c.timestamp < realtimeWindowMs)
             : screenChunks
-        ).slice(-10); // Limit screen chunks too
+        ).slice(-10);
 
         if (relevantScreenChunks.length > 0) {
           const mime =
@@ -708,20 +650,15 @@ export default function Page() {
           console.log(
             `Using ${relevantScreenChunks.length} screen chunks. Blob size: ${(screenBlob.size / 1024).toFixed(1)} KB`
           );
-          // Note: No video compression here yet
         }
       }
 
-      // 3. Visual Context (Screenshots - use the latest ones)
-      // Use *more* screenshots for manual actions, *fewer* for real-time
       const numScreenshots = type === "real-time" ? 1 : 3;
-      const currentScreenshots = screenshots.slice(0, numScreenshots); // Get the N most recent
+      const currentScreenshots = screenshots.slice(0, numScreenshots);
 
-      // 4. Text Context (Transcripts - use the latest ones)
       const numTranscripts = type === "real-time" ? 3 : 10;
-      const currentTranscripts = transcripts.slice(-numTranscripts); // Get the N most recent
+      const currentTranscripts = transcripts.slice(-numTranscripts);
 
-      // 5. Check if any context exists
       if (
         !audioBlob &&
         !screenBlob &&
@@ -732,7 +669,6 @@ export default function Page() {
         return null;
       }
 
-      // 6. Format for AI (including Base64 conversion)
       const context: AIContextData = {};
       try {
         if (audioBlob) {
@@ -752,7 +688,6 @@ export default function Page() {
             };
         }
         if (currentScreenshots.length > 0) {
-          // Send only base64 data and type for screenshots
           context.screenshots = currentScreenshots.map((ss) => ({
             data: ss.data.split(",")[1],
             mimeType: ss.mimeType,
@@ -767,8 +702,6 @@ export default function Page() {
         }
       } catch (error) {
         console.error("Error converting blob to base64:", error);
-        // Decide how to handle: maybe send partial context or return null?
-        // Let's return null if conversion fails, as data is corrupted/missing.
         return null;
       }
 
@@ -787,7 +720,7 @@ export default function Page() {
       transcripts,
       captureMode,
       getSupportedMimeType,
-    ] // Dependencies
+    ]
   );
 
   const sendContextToAI = useCallback(
@@ -795,7 +728,7 @@ export default function Page() {
       actionType: "real-time" | "answer" | "summary" | "search" | "custom",
       customQuery?: string
     ) => {
-      if (isLoading) return; // Prevent concurrent requests
+      if (isLoading) return;
       console.log(`AI Action Triggered: ${actionType}`);
       setIsLoading(true);
 
@@ -830,28 +763,33 @@ export default function Page() {
       };
       const query = queryMap[actionType];
 
-      // Add user message for non-real-time actions, or the custom prompt
-      const userMessageContent = actionType === "custom" ? customQuery : query;
+      const userMessageContent = actionType === "custom" ? customPrompt : query;
       const userMessage: Message = {
         id: `user-${Date.now()}`,
         role: "user",
-        // Use content: [{ type: 'text', text: userMessageContent }] structure if API expects it
-        content: userMessageContent || "Analyze context.", // Ensure content is not empty
+        content: userMessageContent || "Analyze context.",
       };
 
-      // Display user query in chat for manual actions
       if (actionType !== "real-time") {
         setAiMessages((prev) => [...prev, userMessage]);
       }
 
       try {
         console.log("Sending context to /api/ai...");
-        // Adjust payload based on API expectations
+
+        const messageHistory =
+          actionType === "real-time"
+            ? [userMessage]
+            : [...aiMessages, userMessage];
+
         const payload = {
-          messages: [userMessage], // Send history if needed: [...aiMessages, userMessage]
-          data: contextData, // Send collected context under 'data' key
+          messages: messageHistory,
+          data: contextData,
         };
-        // console.log("Payload:", JSON.stringify(payload, null, 2)); // Debug: Check payload size/structure
+
+        console.log(
+          `Sending ${messageHistory.length} messages to AI (${actionType})`
+        );
 
         const response = await fetch("/api/ai", {
           method: "POST",
@@ -866,18 +804,15 @@ export default function Page() {
           );
         }
 
-        // Assuming the API returns a standard Vercel AI SDK Message object or similar { id, role, content }
         const result: Message = await response.json();
         console.log("AI Response received:", result);
 
         if (result && result.content) {
-          // Prepend [Real-time] for clarity if it was a real-time analysis trigger
           const prefix =
             actionType === "real-time" ? "[Real-time Analysis] " : "";
           setAiMessages((prev) => [
             ...prev,
             {
-              // Use ID from response if available, otherwise generate one
               id: result.id || `ai-${Date.now()}`,
               role: "assistant",
               content: `${prefix}${result.content}`,
@@ -911,10 +846,8 @@ export default function Page() {
         setIsLoading(false);
       }
     },
-    [isLoading, gatherCurrentContext /* aiMessages */] // Be cautious adding aiMessages here due to potential loops if API needs history
+    [isLoading, gatherCurrentContext, aiMessages, customPrompt]
   );
-
-  // --- Event Handlers ---
 
   const handleAIAction = (actionType: "answer" | "summary" | "search") => {
     if (!isRecording) {
@@ -932,40 +865,33 @@ export default function Page() {
   };
 
   const handleToggleCaptureMode = useCallback(async () => {
-    if (!isRecording || isLoading) return; // Only switch while recording
+    if (!isRecording || isLoading) return;
     setIsLoading(true);
     const newMode = captureMode === "camera" ? "screen" : "camera";
     console.log(`Switching capture mode to ${newMode}`);
 
-    // Stop current video/screen stream and recorder (if applicable)
     const streamToStopRef =
       captureMode === "camera" ? videoStreamRef : screenStreamRef;
     cleanupStream(streamToStopRef);
     if (captureMode === "screen") {
-      cleanupRecorder(screenRecorderRef); // Stop screen recorder specifically
-      setScreenChunks([]); // Clear screen chunks on mode switch
+      cleanupRecorder(screenRecorderRef);
+      setScreenChunks([]);
     }
 
-    // Clear the corresponding video preview element
     const videoElementToClear =
       captureMode === "camera" ? videoRef.current : screenVideoRef.current;
     if (videoElementToClear) videoElementToClear.srcObject = null;
 
-    // Update state *before* starting the new stream
     setCaptureMode(newMode);
 
-    // Start the new video/screen recording (will update the other video element)
     const success = await startVideoOrScreenRecording(newMode);
 
     if (!success) {
       console.error(
         "Failed to start recording after mode switch. Stopping session."
       );
-      // Attempt to stop everything cleanly if the switch failed
-      stopRecording(); // Use the main stop function
+      stopRecording();
     } else {
-      // If successful, the screenshot effect will re-run due to captureMode dependency change
-      // and use the new takeScreenshot function bound to the correct mode.
       console.log("Capture mode switched successfully.");
     }
 
@@ -979,13 +905,12 @@ export default function Page() {
   ]);
 
   const handleToggleRealTime = () => {
-    if (isLoading || !isRecording) return; // Can only toggle while recording
+    if (isLoading || !isRecording) return;
     setRealTimeAnalysisEnabled((prev) => !prev);
   };
 
-  // Simplified handler - just toggle state. Effect handles interval logic.
   const handleToggleScreenshots = () => {
-    if (isLoading) return; // Prevent toggle during loading states
+    if (isLoading) return;
     setScreenshotsEnabled((prev) => !prev);
     console.log(`Screenshots toggled ${!screenshotsEnabled ? "ON" : "OFF"}`);
   };
@@ -1007,31 +932,27 @@ export default function Page() {
     }
 
     sendContextToAI("custom", customPrompt);
-    setCustomPrompt(""); // Clear input after submission
+    setCustomPrompt("");
   };
 
-  // --- Real-time Analysis Effect ---
   useEffect(() => {
     let intervalId: NodeJS.Timeout | null = null;
     let initialTimeoutId: NodeJS.Timeout | null = null;
 
     if (isRecording && realTimeAnalysisEnabled && !isLoading) {
       console.log("Starting real-time analysis interval.");
-      const initialDelay = 4000; // Delay initial run slightly more
+      const initialDelay = 4000;
       initialTimeoutId = setTimeout(() => {
         if (isRecording && realTimeAnalysisEnabled && !isLoading) {
-          // Re-check state
           sendContextToAI("real-time");
         }
         initialTimeoutId = null;
       }, initialDelay);
 
       intervalId = setInterval(() => {
-        // Check conditions *inside* interval callback
         if (isRecording && realTimeAnalysisEnabled && !isLoading) {
           sendContextToAI("real-time");
         } else {
-          // If conditions fail, clear the interval from within
           if (intervalId) {
             clearInterval(intervalId);
             intervalId = null;
@@ -1042,7 +963,6 @@ export default function Page() {
         }
       }, REALTIME_ANALYSIS_INTERVAL_MS);
 
-      // Cleanup for this effect instance
       return () => {
         if (initialTimeoutId) clearTimeout(initialTimeoutId);
         if (intervalId) {
@@ -1051,32 +971,24 @@ export default function Page() {
         }
       };
     } else {
-      // Ensure interval is cleared if conditions are not met initially or change
       console.log(
         `Real-time analysis conditions not met (isRecording: ${isRecording}, enabled: ${realTimeAnalysisEnabled}, loading: ${isLoading}).`
       );
-      return () => {}; // No active interval to clear
+      return () => {};
     }
-    // Rerun when recording status, toggle, loading state changes, or the AI function ref changes
   }, [isRecording, realTimeAnalysisEnabled, isLoading, sendContextToAI]);
 
-  // --- Unmount Cleanup Effect ---
   useEffect(() => {
-    // This runs only once when the component mounts and returns a cleanup function for unmount
     return () => {
       console.log("Component unmounting: Performing final cleanup...");
-      // Ensure all streams, recorders, and intervals are stopped/cleared
       cleanupStream(audioStreamRef);
       cleanupStream(videoStreamRef);
       cleanupStream(screenStreamRef);
       cleanupRecorder(audioRecorderRef);
       cleanupRecorder(screenRecorderRef);
-      cleanupIntervals(); // Cleans up transcript, realtime, audio timer intervals
-      // Explicitly clear real-time and screenshot intervals refs if they exist (belt-and-suspenders)
+      cleanupIntervals();
       if (realTimeIntervalRef.current)
         clearInterval(realTimeIntervalRef.current);
-      // Screenshot interval is managed by its own effect's cleanup, but check just in case
-      // No ref to check anymore - relies on effect cleanup.
 
       if (finalAudioUrl) {
         try {
@@ -1086,24 +998,20 @@ export default function Page() {
           console.warn("Could not revoke final audio URL:", e);
         }
       }
-      // Set state to reflect stopped status, although component is unmounting
       setIsRecording(false);
       setIsLoading(false);
     };
-  }, [finalAudioUrl, cleanupIntervals]); // Include dependencies used in cleanup
+  }, [finalAudioUrl, cleanupIntervals]);
 
-  // --- Render ---
   return (
     <div className="container mx-auto max-w-4xl py-8 px-4">
       <h1 className="text-3xl font-bold mb-6 text-center">
         AI Meeting Assistant (Refactored)
       </h1>
 
-      {/* Controls Card */}
       <Card className="mb-6">
         <CardHeader>
           <CardTitle className="flex flex-wrap items-center justify-between gap-4">
-            {/* Status Indicator */}
             <div className="flex items-center gap-3 flex-wrap">
               <span className="flex items-center gap-2">
                 <span
@@ -1126,7 +1034,6 @@ export default function Page() {
                 </span>
               </span>
 
-              {/* Audio Recording Timer */}
               {isRecording && (
                 <span className="flex items-center text-sm text-slate-600 dark:text-slate-400">
                   <ClockIcon className="h-4 w-4 mr-1" />
@@ -1139,13 +1046,12 @@ export default function Page() {
               )}
             </div>
 
-            {/* Action Buttons */}
             <div className="flex flex-wrap gap-2">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={handleToggleScreenshots}
-                disabled={isLoading} // Disable if any loading action is happening
+                disabled={isLoading}
                 className={`${screenshotsEnabled ? "border-green-500 text-green-700 dark:text-green-400 dark:border-green-600 hover:bg-green-50 dark:hover:bg-green-900/20" : ""} ${isLoading ? "opacity-50 cursor-not-allowed" : ""}`}
                 title={`${screenshotsEnabled ? "Disable" : "Enable"} Screenshots`}
               >
@@ -1162,7 +1068,7 @@ export default function Page() {
                   variant="outline"
                   size="sm"
                   onClick={handleToggleCaptureMode}
-                  disabled={isLoading || captureMode === "screen"} // Disable if already sharing screen or loading
+                  disabled={isLoading || captureMode === "screen"}
                   title={
                     captureMode === "screen"
                       ? "Stop screen share to switch"
@@ -1178,7 +1084,7 @@ export default function Page() {
                   variant="destructive"
                   size="sm"
                   onClick={stopRecording}
-                  disabled={isLoading && !isRecording} // Allow stopping even if briefly loading during stop
+                  disabled={isLoading && !isRecording}
                   title="Stop Recording"
                 >
                   <PauseIcon className="h-4 w-4 mr-2" /> Stop
@@ -1204,30 +1110,25 @@ export default function Page() {
         </CardHeader>
       </Card>
 
-      {/* Media Previews and Data Card */}
       <Card className="mb-6">
         <CardContent className="p-4 md:p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Video Preview Area */}
           <div className="space-y-2">
             <h3 className="font-medium text-sm">
               {captureMode === "camera" ? "Camera Feed" : "Screen Preview"}
             </h3>
             <div className="aspect-video bg-slate-800 rounded border border-slate-700 relative overflow-hidden">
-              {/* Camera Video */}
               <video
                 ref={videoRef}
                 muted
                 playsInline
                 className={`w-full h-full object-cover absolute inset-0 transition-opacity duration-300 ${captureMode === "camera" && isRecording ? "opacity-100 z-10" : "opacity-0 z-0"}`}
               />
-              {/* Screen Video */}
               <video
                 ref={screenVideoRef}
                 muted
                 playsInline
                 className={`w-full h-full object-contain absolute inset-0 transition-opacity duration-300 ${captureMode === "screen" && isRecording ? "opacity-100 z-10" : "opacity-0 z-0"}`}
               />
-              {/* Placeholder */}
               {(!isRecording || isLoading) && (
                 <div className="absolute inset-0 flex items-center justify-center text-slate-500 text-sm z-0">
                   {isLoading ? "Starting..." : "Preview Area"}
@@ -1236,9 +1137,7 @@ export default function Page() {
             </div>
           </div>
 
-          {/* Audio & Screenshots */}
           <div className="space-y-4">
-            {/* Audio Player */}
             <div className="space-y-2">
               <h3 className="font-medium text-sm">
                 Audio Playback (Available After Stop)
@@ -1248,7 +1147,6 @@ export default function Page() {
                 controls
                 src={finalAudioUrl ?? undefined}
                 className={`w-full ${!finalAudioUrl ? "opacity-50 cursor-not-allowed" : ""}`}
-                // Disable interaction if no URL
                 style={{ pointerEvents: finalAudioUrl ? "auto" : "none" }}
               />
               {!finalAudioUrl && !isRecording && (
@@ -1262,7 +1160,6 @@ export default function Page() {
                 </p>
               )}
             </div>
-            {/* Screenshots Display */}
             <div className="space-y-2">
               <h3 className="font-medium text-sm flex items-center justify-between">
                 <span>
@@ -1308,7 +1205,6 @@ export default function Page() {
             </div>
           </div>
 
-          {/* Simulated Transcripts */}
           <div className="md:col-span-2 space-y-2">
             <h3 className="font-medium text-sm">
               Simulated Transcripts ({transcripts.length}/{MAX_TRANSCRIPTS})
@@ -1345,7 +1241,6 @@ export default function Page() {
         </CardContent>
       </Card>
 
-      {/* AI Card */}
       <Card>
         <CardHeader>
           <CardTitle className="flex flex-wrap items-center justify-between gap-4">
@@ -1356,7 +1251,7 @@ export default function Page() {
                 variant={realTimeAnalysisEnabled ? "default" : "outline"}
                 size="sm"
                 onClick={handleToggleRealTime}
-                disabled={isLoading || !isRecording} // Must be recording to enable
+                disabled={isLoading || !isRecording}
                 title={
                   isRecording
                     ? `Turn ${realTimeAnalysisEnabled ? "Off" : "On"}`
@@ -1370,7 +1265,6 @@ export default function Page() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {/* AI Action Buttons */}
           <div className="flex flex-wrap gap-3 mb-4 pb-4 border-b border-slate-200 dark:border-slate-700">
             {[
               {
@@ -1412,7 +1306,6 @@ export default function Page() {
             ))}
           </div>
 
-          {/* Custom Prompt Input */}
           <form onSubmit={handleCustomPromptSubmit} className="flex gap-2 mb-4">
             <Input
               placeholder="Enter custom prompt (e.g., 'What were the action items?')"
@@ -1437,17 +1330,15 @@ export default function Page() {
             </Button>
           </form>
 
-          {/* AI Output Area */}
           <div className="space-y-3 min-h-[100px]">
             <h3 className="font-semibold text-sm">Output:</h3>
-            {isLoading &&
-              aiMessages.length === 0 && ( // Show loading only if no messages yet
-                <div className="flex items-center text-sm text-slate-500">
-                  {" "}
-                  <Loader2Icon className="h-4 w-4 mr-2 animate-spin" /> Waiting
-                  for first AI response...{" "}
-                </div>
-              )}
+            {isLoading && aiMessages.length === 0 && (
+              <div className="flex items-center text-sm text-slate-500">
+                {" "}
+                <Loader2Icon className="h-4 w-4 mr-2 animate-spin" /> Waiting
+                for first AI response...{" "}
+              </div>
+            )}
             {aiMessages.length === 0 && !isLoading && (
               <div className="text-center text-sm text-slate-400 py-4">
                 AI responses will appear here. Start recording and use AI
@@ -1462,18 +1353,17 @@ export default function Page() {
                     msg.role === "assistant"
                       ? msg.content.startsWith("[Error") ||
                         msg.content.startsWith("[Cannot perform")
-                        ? "bg-red-50 dark:bg-red-900/30 border-red-500 text-red-700 dark:text-red-300" // Error
+                        ? "bg-red-50 dark:bg-red-900/30 border-red-500 text-red-700 dark:text-red-300"
                         : msg.content.startsWith("[Warn") ||
                             msg.content.includes("no text response")
-                          ? "bg-yellow-50 dark:bg-yellow-900/30 border-yellow-500 text-yellow-700 dark:text-yellow-300" // Warning
+                          ? "bg-yellow-50 dark:bg-yellow-900/30 border-yellow-500 text-yellow-700 dark:text-yellow-300"
                           : msg.content.startsWith("[Real-time")
-                            ? "bg-purple-50 dark:bg-purple-900/30 border-purple-500 text-purple-800 dark:text-purple-300" // Real-time specific style
-                            : "bg-slate-100 dark:bg-slate-800/60 border-slate-400 dark:border-slate-600 text-slate-800 dark:text-slate-200" // Default AI
-                      : "bg-blue-50 dark:bg-blue-900/30 border-blue-500 text-blue-800 dark:text-blue-300" // User prompt
+                            ? "bg-purple-50 dark:bg-purple-900/30 border-purple-500 text-purple-800 dark:text-purple-300"
+                            : "bg-slate-100 dark:bg-slate-800/60 border-slate-400 dark:border-slate-600 text-slate-800 dark:text-slate-200"
+                      : "bg-blue-50 dark:bg-blue-900/30 border-blue-500 text-blue-800 dark:text-blue-300"
                   }`}
                 >
                   <p className="whitespace-pre-wrap break-words">
-                    {/* Simple Markdown-like bolding for prefixes */}
                     {msg.content.replace(
                       /^(?:\[.*?\]\s*)/,
                       (match) => `**${match.trim()}** `
@@ -1481,7 +1371,6 @@ export default function Page() {
                   </p>
                 </div>
               ))}
-              {/* Loading indicator at the bottom when waiting for a response *after* previous messages exist */}
               {isLoading && aiMessages.length > 0 && (
                 <div className="flex items-center text-sm text-slate-500 pt-2">
                   <Loader2Icon className="h-4 w-4 mr-2 animate-spin" /> Waiting
