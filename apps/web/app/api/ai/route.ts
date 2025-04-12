@@ -78,6 +78,8 @@ export async function POST(req: Request) {
       model: google("gemini-2.0-flash-001", {
         useSearchGrounding: true,
       }),
+      system:
+        "You are a helpful assistant. You can answer questions and provide information based on the input and context you receive. Be concise and clear. If nothing should be done, say 'Nothing to do'.",
       messages: [{ role: "user", content: parts }],
     });
 
