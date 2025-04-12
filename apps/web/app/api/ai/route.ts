@@ -55,9 +55,9 @@ export async function POST(req: Request) {
     //     mimeType: body.video.mimeType,
     //   });
     // }
-    // body.screenshots?.forEach((img) =>
-    //   parts.push({ type: "image", image: img.data, mimeType: img.mimeType })
-    // );
+    body.screenshots?.forEach((img) =>
+      parts.push({ type: "image", image: img.data, mimeType: img.mimeType })
+    );
     if (body.query) parts.push({ type: "text", text: `Query: ${body.query}` });
 
     if (!parts.length) {

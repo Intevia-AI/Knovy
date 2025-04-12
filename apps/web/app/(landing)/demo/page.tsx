@@ -17,8 +17,10 @@ import {
   RefreshCwIcon,
   ListCollapseIcon,
   SearchIcon,
+  SendIcon,
 } from "lucide-react";
 import { Message } from "ai";
+import { Input } from "@workspace/ui/components/input";
 
 // --- Types ---
 type Screenshot = {
@@ -90,6 +92,9 @@ export default function Page() {
 
   // State for the final audio blob URL (only set after stopping)
   const [finalAudioUrl, setFinalAudioUrl] = useState<string | null>(null);
+
+  // Add new state for custom prompt
+  const [customPrompt, setCustomPrompt] = useState("");
 
   // --- Utility Functions ---
 
@@ -612,7 +617,10 @@ export default function Page() {
   );
 
   const sendContextToAI = useCallback(
-    async (actionType: "real-time" | "answer" | "summary" | "search") => {
+    async (
+      actionType: "real-time" | "answer" | "summary" | "search" | "custom",
+      customQuery?: string
+    ) => {
       if (isLoading) return;
       console.log(`AI Action Triggered: ${actionType}`);
       setIsLoading(true);
@@ -644,6 +652,7 @@ export default function Page() {
           "Identify key topics or entities from the recent context (audio, video, screenshots, transcripts) and suggest relevant information or search queries.",
         "real-time":
           "Analyze the latest context (audio, video, screenshots, transcripts) for noteworthy events, keywords, or changes. Provide a brief update or insight.",
+        custom: customQuery || "Please analyze the provided context.",
       };
       const query = queryMap[actionType];
 
@@ -764,6 +773,27 @@ export default function Page() {
   const handleToggleRealTime = () => {
     if (isLoading) return;
     setRealTimeAnalysisEnabled((prev) => !prev);
+  };
+
+  // Add handler for submitting custom prompts
+  const handleCustomPromptSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!customPrompt.trim()) return;
+
+    if (!isRecording) {
+      setAiMessages((prev) => [
+        ...prev,
+        {
+          id: `warn-rec-${Date.now()}`,
+          role: "assistant",
+          content: "[Please start recording before using AI actions.]",
+        },
+      ]);
+      return;
+    }
+
+    sendContextToAI("custom", customPrompt);
+    setCustomPrompt(""); // Clear the input after submission
   };
 
   // --- Real-time Analysis Effect ---
@@ -1070,8 +1100,28 @@ export default function Page() {
             >
               <SearchIcon className="h-4 w-4 mr-2" /> AI Search
             </Button>
-            {/* Maybe add manual 'Process Now' button back later if needed */}
           </div>
+
+          {/* Custom Prompt Input */}
+          <form onSubmit={handleCustomPromptSubmit} className="flex gap-2 mb-4">
+            <Input
+              placeholder="Enter your custom prompt..."
+              value={customPrompt}
+              onChange={(e) => setCustomPrompt(e.target.value)}
+              disabled={isLoading || !isRecording}
+              className="flex-grow"
+            />
+            <Button
+              type="submit"
+              variant="default"
+              disabled={isLoading || !isRecording || !customPrompt.trim()}
+              title={
+                !isRecording ? "Start recording first" : "Send custom prompt"
+              }
+            >
+              <SendIcon className="h-4 w-4" />
+            </Button>
+          </form>
 
           {/* AI Output Area */}
           <div className="space-y-3 min-h-[100px]">
