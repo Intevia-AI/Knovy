@@ -52,7 +52,8 @@ const REALTIME_ANALYSIS_INTERVAL_MS = 15000; // 15 seconds
 const AUDIO_CHUNK_TIMESLICE_MS = 3000; // 3 second chunks
 const MAX_SCREENSHOTS = 5;
 const MAX_AUDIO_BYTES_FOR_AI = 5 * 1024 * 1024; // 5MB limit for AI audio
-const MAX_AUDIO_DURATION_SEC = 60 * 5; // 5 minutes max audio recording
+// const MAX_AUDIO_DURATION_SEC = 60 * 5; // 5 minutes max audio recording - REMOVED
+const AI_AUDIO_CONTEXT_DURATION_SEC = 30; // Send last 30s to AI
 
 // --- Full Code ---
 export default function Page() {
@@ -76,7 +77,7 @@ export default function Page() {
   const [captureMode, setCaptureMode] = useState<CaptureMode>("camera");
   const [isLoading, setIsLoading] = useState(false); // Unified loading state
   const [realTimeAnalysisEnabled, setRealTimeAnalysisEnabled] = useState(false);
-  const [screenshotsEnabled, setScreenshotsEnabled] = useState(true); // State for screenshot toggle
+  const [screenshotsEnabled, setScreenshotsEnabled] = useState(false); // State for screenshot toggle
 
   // Collected data
   const [audioChunks, setAudioChunks] = useState<MediaChunk[]>([]);
@@ -122,7 +123,7 @@ export default function Page() {
 
   const cleanupIntervals = useCallback(() => {
     if (realTimeIntervalRef.current) clearInterval(realTimeIntervalRef.current);
-    if (audioTimerRef.current) clearInterval(audioTimerRef.current);
+    if (audioTimerRef.current) clearInterval(audioTimerRef.current); // Make sure this is cleared
     realTimeIntervalRef.current = null;
     audioTimerRef.current = null;
   }, []);
@@ -215,7 +216,7 @@ export default function Page() {
       const description = `${captureMode} view at ${new Date().toLocaleTimeString()}`;
       console.log("Taking screenshot...");
 
-      setScreenshots((prev) =>
+      setScreenshots((prev: Screenshot[]) =>
         [
           {
             data: dataUrl,
@@ -286,7 +287,7 @@ export default function Page() {
 
       recorder.ondataavailable = (event: BlobEvent) => {
         if (event.data.size > 0) {
-          setAudioChunks((prev) => [
+          setAudioChunks((prev: MediaChunk[]) => [
             ...prev,
             { blob: event.data, timestamp: Date.now() },
           ]);
@@ -295,7 +296,7 @@ export default function Page() {
       recorder.onerror = (e) => console.error("Audio recorder error:", e);
       recorder.onstop = () => {
         console.log("Audio recorder stopped. Processing final blob.");
-        setAudioChunks((prevChunks) => {
+        setAudioChunks((prevChunks: MediaChunk[]) => {
           if (prevChunks.length > 0) {
             const finalBlob = new Blob(
               prevChunks.map((c) => c.blob),
@@ -321,23 +322,7 @@ export default function Page() {
       setRecordingDuration(0);
 
       audioTimerRef.current = setInterval(() => {
-        setRecordingDuration((prev) => {
-          const newDuration = prev + 1;
-          if (newDuration >= MAX_AUDIO_DURATION_SEC) {
-            console.log(
-              "Maximum audio duration reached, stopping audio recording..."
-            );
-            if (audioTimerRef.current) {
-              clearInterval(audioTimerRef.current);
-              audioTimerRef.current = null;
-            }
-            if (audioRecorderRef.current?.state === "recording") {
-              audioRecorderRef.current.stop();
-            }
-            return MAX_AUDIO_DURATION_SEC;
-          }
-          return newDuration;
-        });
+        setRecordingDuration((prev: number) => prev + 1);
       }, 1000);
 
       recorder.start(AUDIO_CHUNK_TIMESLICE_MS);
@@ -345,7 +330,7 @@ export default function Page() {
       return true;
     } catch (error) {
       console.error("Failed to start audio recording:", error);
-      setAiMessages((prev) => [
+      setAiMessages((prev: Message[]) => [
         ...prev,
         {
           id: `err-audio-${Date.now()}`,
@@ -356,6 +341,10 @@ export default function Page() {
         },
       ]);
       cleanupStream(audioStreamRef);
+      if (audioTimerRef.current) {
+        clearInterval(audioTimerRef.current);
+        audioTimerRef.current = null;
+      }
       return false;
     }
   }, [getSupportedMimeType]);
@@ -437,7 +426,7 @@ export default function Page() {
 
           screenRecorder.ondataavailable = (event: BlobEvent) => {
             if (event.data.size > 0) {
-              setScreenChunks((prev) => [
+              setScreenChunks((prev: MediaChunk[]) => [
                 ...prev,
                 { blob: event.data, timestamp: Date.now() },
               ]);
@@ -458,14 +447,16 @@ export default function Page() {
           videoElement.srcObject = stream;
           await videoElement
             .play()
-            .catch((e) => console.warn(`${mode} preview play warning:`, e));
+            .catch((e: Error) =>
+              console.warn(`${mode} preview play warning:`, e)
+            );
         }
 
         console.log(`${mode} recording started successfully.`);
         return true;
       } catch (error) {
         console.error(`Failed to start ${mode} recording:`, error);
-        setAiMessages((prev) => [
+        setAiMessages((prev: Message[]) => [
           ...prev,
           {
             id: `err-video-${Date.now()}`,
@@ -529,15 +520,15 @@ export default function Page() {
       console.log(`Gathering context for ${type} AI action...`);
 
       let audioBlob: Blob | null = null;
-      let screenBlob: Blob | null = null;
-      const now = Date.now();
-      const realtimeWindowMs = REALTIME_ANALYSIS_INTERVAL_MS * 1.2;
+      let screenBlob: Blob | null = null; // Screen logic remains similar for now
 
-      const relevantAudioChunks = (
-        type === "real-time"
-          ? audioChunks.filter((c) => now - c.timestamp < realtimeWindowMs)
-          : audioChunks
-      ).slice(-20);
+      // --- Audio Processing ---
+      // Calculate how many chunks roughly correspond to the desired duration
+      const audioChunksNeeded = Math.ceil(
+        AI_AUDIO_CONTEXT_DURATION_SEC / (AUDIO_CHUNK_TIMESLICE_MS / 1000)
+      );
+      // Get the latest chunks up to the calculated number
+      const relevantAudioChunks = audioChunks.slice(-audioChunksNeeded);
 
       if (relevantAudioChunks.length > 0) {
         const mime =
@@ -547,22 +538,24 @@ export default function Page() {
           { type: mime }
         );
         console.log(
-          `Using ${relevantAudioChunks.length} audio chunks. Original size: ${(tempAudioBlob.size / 1024).toFixed(1)} KB`
+          `Using last ${relevantAudioChunks.length} audio chunks (~${AI_AUDIO_CONTEXT_DURATION_SEC}s). Original size: ${(tempAudioBlob.size / 1024).toFixed(1)} KB`
         );
+        // Still compress/trim if the 30s slice exceeds the byte limit
         audioBlob = await compressAudioIfNeeded(tempAudioBlob);
         if (audioBlob.size !== tempAudioBlob.size) {
           console.log(
-            `Compressed audio size: ${(audioBlob.size / 1024).toFixed(1)} KB`
+            `Compressed/Trimmed audio size: ${(audioBlob.size / 1024).toFixed(1)} KB`
           );
         }
       }
 
+      // --- Screen Processing (Example: Keep similar logic, maybe adjust window) ---
       if (captureMode === "screen") {
-        const relevantScreenChunks = (
-          type === "real-time"
-            ? screenChunks.filter((c) => now - c.timestamp < realtimeWindowMs)
-            : screenChunks
-        ).slice(-10);
+        const screenContextDurationSec = 30; // Example: Use last 30s of screen too
+        const screenChunksNeeded = Math.ceil(
+          screenContextDurationSec / ((AUDIO_CHUNK_TIMESLICE_MS * 2) / 1000) // Adjust based on screen chunk interval
+        );
+        const relevantScreenChunks = screenChunks.slice(-screenChunksNeeded);
 
         if (relevantScreenChunks.length > 0) {
           const mime =
@@ -572,14 +565,16 @@ export default function Page() {
             { type: mime }
           );
           console.log(
-            `Using ${relevantScreenChunks.length} screen chunks. Blob size: ${(screenBlob.size / 1024).toFixed(1)} KB`
+            `Using last ${relevantScreenChunks.length} screen chunks. Blob size: ${(screenBlob.size / 1024).toFixed(1)} KB`
           );
         }
       }
 
+      // --- Screenshot Processing (Keep existing logic) ---
       const numScreenshots = type === "real-time" ? 1 : 3;
       const currentScreenshots = screenshots.slice(0, numScreenshots);
 
+      // --- Final Check & Conversion ---
       if (!audioBlob && !screenBlob && currentScreenshots.length === 0) {
         console.warn("No context data found to send to AI.");
         return null;
@@ -595,6 +590,7 @@ export default function Page() {
               mimeType: audioBlob.type,
             };
         }
+        // ... (screenBlob and screenshot conversion remains the same) ...
         if (screenBlob) {
           const base64 = await blobToBase64(screenBlob);
           if (base64)
@@ -611,7 +607,7 @@ export default function Page() {
         }
       } catch (error) {
         console.error("Error converting blob to base64:", error);
-        return null;
+        return null; // Handle conversion error
       }
 
       console.log("Context gathered:", {
@@ -621,7 +617,15 @@ export default function Page() {
       });
       return context;
     },
-    [audioChunks, screenChunks, screenshots, captureMode, getSupportedMimeType]
+    [
+      audioChunks,
+      screenChunks,
+      screenshots,
+      captureMode,
+      getSupportedMimeType,
+      compressAudioIfNeeded,
+      blobToBase64,
+    ] // Added dependencies
   );
 
   const sendContextToAI = useCallback(
@@ -938,11 +942,8 @@ export default function Page() {
               {isRecording && (
                 <span className="flex items-center text-sm text-slate-600 dark:text-slate-400">
                   <ClockIcon className="h-4 w-4 mr-1" />
-                  Audio: {formatTime(recordingDuration)} /{" "}
-                  {formatTime(MAX_AUDIO_DURATION_SEC)}
-                  {recordingDuration >= MAX_AUDIO_DURATION_SEC && (
-                    <span className="text-red-500 ml-1">(Limit)</span>
-                  )}
+                  {/* Removed max duration display */}
+                  Audio: {formatTime(recordingDuration)}
                 </span>
               )}
             </div>
