@@ -14,10 +14,11 @@ interface MediaFile {
 }
 
 interface AIRequestBody {
-  audio?: MediaFile;
+  micAudio?: MediaFile; // Renamed from audio
+  systemAudio?: MediaFile; // Added
   video?: MediaFile;
   screenshots?: MediaFile[];
-  query?: string;
+  query?: string; // Keep query if needed, or rely on message content
 }
 
 interface CompleteRequest {
@@ -47,28 +48,52 @@ export async function POST(req: Request) {
     // Create parts for the current user message content
     const parts: UserContent = [];
 
-    if (data.audio) {
+    // Add text prefix for clarity if both audio sources are present
+    const addAudioPrefix = !!(data.micAudio && data.systemAudio);
+
+    if (data.micAudio) {
+      if (addAudioPrefix)
+        parts.push({ type: "text", text: "Microphone Audio:" });
       parts.push({
         type: "file",
-        data: data.audio.data,
-        mimeType: data.audio.mimeType,
+        data: data.micAudio.data,
+        mimeType: data.micAudio.mimeType,
       });
     }
-    // if (data.video) {
+    if (data.systemAudio) {
+      if (addAudioPrefix) parts.push({ type: "text", text: "System Audio:" });
+      parts.push({
+        type: "file",
+        data: data.systemAudio.data,
+        mimeType: data.systemAudio.mimeType,
+      });
+    }
+    // if (data.video) { // Keep video handling as is
+    //   parts.push({ type: "text", text: "Screen Recording:" }); // Optional prefix
     //   parts.push({
     //     type: "file",
     //     data: data.video.data,
     //     mimeType: data.video.mimeType,
     //   });
     // }
-    data.screenshots?.forEach((img) =>
-      parts.push({ type: "image", image: img.data, mimeType: img.mimeType })
-    );
-    if (data.query) parts.push({ type: "text", text: `Query: ${data.query}` });
+    if (data.screenshots && data.screenshots.length > 0) {
+      parts.push({ type: "text", text: "Screenshots:" }); // Optional prefix
+      data.screenshots.forEach((img) =>
+        parts.push({ type: "image", image: img.data, mimeType: img.mimeType })
+      );
+    }
+    // The main query/instruction should ideally be the text content of the last user message
+    // if (data.query) parts.push({ type: "text", text: `Query: ${data.query}` });
 
-    if (!parts.length && (!messages || messages.length === 0)) {
+    // Check if there's any content to process (either media parts or message text)
+    const lastUserMessageContent = messages[messages.length - 1]?.content;
+    const hasTextMessage =
+      typeof lastUserMessageContent === "string" &&
+      lastUserMessageContent.trim() !== "";
+
+    if (!parts.length && !hasTextMessage) {
       return NextResponse.json(
-        { error: "No valid input provided" },
+        { error: "No valid input provided (no media or text message)" },
         {
           status: 400,
           headers: {
@@ -95,27 +120,55 @@ export async function POST(req: Request) {
 
     // Process the message history
     messages.forEach((msg, index) => {
-      // For the last user message in history, append the media parts
-      if (index === lastUserMessageIndex && parts.length > 0) {
-        formattedMessages.push({
-          role: "user",
-          content: [...parts, { type: "text", text: msg.content || "" }],
-        });
+      const messageText = typeof msg.content === "string" ? msg.content : "";
+      // For the last user message in history, combine its text with the media parts
+      if (index === lastUserMessageIndex) {
+        const contentParts: UserContent = [];
+        // Add media parts first
+        contentParts.push(...parts);
+        // Add the text part of the user message
+        if (messageText.trim()) {
+          contentParts.push({ type: "text", text: messageText });
+        }
+        // Only add the message if it has content (either text or media)
+        if (contentParts.length > 0) {
+          formattedMessages.push({
+            role: "user",
+            content: contentParts,
+          });
+        }
       } else {
-        // Regular text messages (assistant or other user messages)
-        formattedMessages.push({
-          role: msg.role as "user" | "assistant",
-          content: typeof msg.content === "string" ? msg.content : "",
-        });
+        // Regular text messages (assistant or previous user messages)
+        if (messageText.trim()) {
+          formattedMessages.push({
+            role: msg.role as "user" | "assistant",
+            content: messageText,
+          });
+        }
       }
     });
 
-    // If no user message was found in history but we have parts, create a new user message
+    // If no user message was found in history but we have media parts, create a new user message
+    // This case might be less likely now that the frontend always sends a user message
     if (lastUserMessageIndex === -1 && parts.length > 0) {
       formattedMessages.push({
         role: "user",
         content: parts,
       });
+    }
+
+    // Check if we actually have messages to send
+    if (formattedMessages.length === 0) {
+      console.warn("No formatted messages to send to AI.");
+      return NextResponse.json(
+        { error: "No content to process after formatting." },
+        {
+          status: 400,
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
     }
 
     console.log(

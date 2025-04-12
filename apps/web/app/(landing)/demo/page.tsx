@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { Message } from "ai";
 import { Input } from "@workspace/ui/components/input";
+import { Markdown } from "./markdown";
 
 // --- Types ---
 type Screenshot = {
@@ -39,9 +40,12 @@ type MediaChunk = {
   timestamp: number;
 };
 
+type AudioSource = "mic" | "system";
+
 // Context structure for AI
 type AIContextData = {
-  audio?: { data: string; mimeType: string };
+  micAudio?: { data: string; mimeType: string };
+  systemAudio?: { data: string; mimeType: string };
   video?: { data: string; mimeType: string }; // For screen recordings
   screenshots?: { data: string; mimeType: string }[];
 };
@@ -49,50 +53,60 @@ type AIContextData = {
 // --- Constants ---
 const SCREENSHOT_INTERVAL_MS = 5000; // 5 seconds
 const REALTIME_ANALYSIS_INTERVAL_MS = 15000; // 15 seconds
-const AUDIO_CHUNK_TIMESLICE_MS = 3000; // 3 second chunks
+const AUDIO_CHUNK_TIMESLICE_MS = 5000; // 3 second chunks
 const MAX_SCREENSHOTS = 5;
 const MAX_AUDIO_BYTES_FOR_AI = 5 * 1024 * 1024; // 5MB limit for AI audio
-// const MAX_AUDIO_DURATION_SEC = 60 * 5; // 5 minutes max audio recording - REMOVED
-const AI_AUDIO_CONTEXT_DURATION_SEC = 30; // Send last 30s to AI
 
 // --- Full Code ---
 export default function Page() {
   // --- Refs ---
   const videoRef = useRef<HTMLVideoElement>(null);
   const screenVideoRef = useRef<HTMLVideoElement>(null);
-  const audioPlayerRef = useRef<HTMLAudioElement>(null); // Ref for player
+  const audioPlayerRef = useRef<HTMLAudioElement>(null); // Ref for player (plays mic audio)
 
-  const audioStreamRef = useRef<MediaStream | null>(null);
+  const micAudioStreamRef = useRef<MediaStream | null>(null);
+  const systemAudioStreamRef = useRef<MediaStream | null>(null);
   const videoStreamRef = useRef<MediaStream | null>(null); // Camera stream
-  const screenStreamRef = useRef<MediaStream | null>(null); // Display stream
+  const screenStreamRef = useRef<MediaStream | null>(null); // Display stream (video part)
 
-  const audioRecorderRef = useRef<MediaRecorder | null>(null);
-  const screenRecorderRef = useRef<MediaRecorder | null>(null);
+  const micAudioRecorderRef = useRef<MediaRecorder | null>(null);
+  const systemAudioRecorderRef = useRef<MediaRecorder | null>(null);
+  const screenRecorderRef = useRef<MediaRecorder | null>(null); // For screen video
 
   const realTimeIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const audioTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const audioTimerRef = useRef<NodeJS.Timeout | null>(null); // Tracks mic recording duration
+  const sendContextToAIRef = useRef(
+    async (
+      _actionType: "real-time" | "answer" | "summary" | "search" | "custom",
+      _customQuery?: string
+    ) => {}
+  ); // Ref for sendContextToAI
 
   // --- State ---
   const [isRecording, setIsRecording] = useState(false);
-  const [captureMode, setCaptureMode] = useState<CaptureMode>("camera");
+  const [captureMode, setCaptureMode] = useState<CaptureMode>("screen");
   const [isLoading, setIsLoading] = useState(false); // Unified loading state
   const [realTimeAnalysisEnabled, setRealTimeAnalysisEnabled] = useState(false);
   const [screenshotsEnabled, setScreenshotsEnabled] = useState(false); // State for screenshot toggle
+  const [activeAudioSources, setActiveAudioSources] = useState<AudioSource[]>(
+    []
+  ); // Track active audio sources
 
   // Collected data
-  const [audioChunks, setAudioChunks] = useState<MediaChunk[]>([]);
+  const [micAudioChunks, setMicAudioChunks] = useState<MediaChunk[]>([]);
+  const [systemAudioChunks, setSystemAudioChunks] = useState<MediaChunk[]>([]);
   const [screenChunks, setScreenChunks] = useState<MediaChunk[]>([]);
   const [screenshots, setScreenshots] = useState<Screenshot[]>([]); // Screenshot state remains
   const [aiMessages, setAiMessages] = useState<Message[]>([]);
 
   // State for the final audio blob URL (only set after stopping)
-  const [finalAudioUrl, setFinalAudioUrl] = useState<string | null>(null);
+  const [finalMicAudioUrl, setFinalMicAudioUrl] = useState<string | null>(null);
 
   // State for custom prompt
   const [customPrompt, setCustomPrompt] = useState("");
 
   // State for tracking audio recording time
-  const [recordingDuration, setRecordingDuration] = useState(0);
+  const [micRecordingDuration, setMicRecordingDuration] = useState(0);
 
   // --- Utility Functions ---
 
@@ -111,11 +125,16 @@ export default function Page() {
   const cleanupRecorder = (
     recorderRef: React.MutableRefObject<MediaRecorder | null>
   ) => {
-    if (recorderRef.current && recorderRef.current.state !== "inactive") {
-      try {
-        recorderRef.current.stop();
-      } catch (e) {
-        console.warn("Error stopping recorder (may already be stopped):", e);
+    if (recorderRef.current) {
+      console.log(
+        `Cleanup: Recorder state before stop: ${recorderRef.current.state}`
+      ); // Log state before stopping
+      if (recorderRef.current.state !== "inactive") {
+        try {
+          recorderRef.current.stop();
+        } catch (e) {
+          console.warn("Error stopping recorder (may already be stopped):", e);
+        }
       }
     }
     recorderRef.current = null; // Ensure it's null
@@ -274,80 +293,216 @@ export default function Page() {
     };
   }, [isRecording, screenshotsEnabled, takeScreenshot]);
 
-  const startAudioRecording = useCallback(async () => {
-    console.log("Starting audio recording...");
+  const setupAudioRecorder = useCallback(
+    (
+      stream: MediaStream,
+      source: AudioSource,
+      setChunks: React.Dispatch<React.SetStateAction<MediaChunk[]>>,
+      recorderRef: React.MutableRefObject<MediaRecorder | null>,
+      streamRef: React.MutableRefObject<MediaStream | null>,
+      onStopCallback?: () => void
+    ): boolean => {
+      console.log(`Setting up ${source} audio recorder...`);
+      try {
+        cleanupRecorder(recorderRef);
+
+        streamRef.current = stream;
+        const mimeType = getSupportedMimeType("audio");
+        console.log(`Using ${source} audio mimeType: ${mimeType}`);
+        const recorder = new MediaRecorder(stream, { mimeType });
+        recorderRef.current = recorder;
+
+        // Log track states within the stream being recorded
+        stream.getTracks().forEach((track) => {
+          console.log(
+            `  ${source} Track (${track.kind} - ${track.id}): readyState=${track.readyState}, enabled=${track.enabled}, muted=${track.muted}`
+          );
+          track.onended = () =>
+            console.warn(
+              ` >> ${source} Track (${track.kind} - ${track.id}) ended unexpectedly!`
+            );
+          track.onmute = () =>
+            console.log(
+              ` >> ${source} Track (${track.kind} - ${track.id}) muted.`
+            );
+          track.onunmute = () =>
+            console.log(
+              ` >> ${source} Track (${track.kind} - ${track.id}) unmuted.`
+            );
+        });
+
+        recorder.ondataavailable = (event: BlobEvent) => {
+          if (event.data.size > 0) {
+            console.log(
+              `${source} chunk received: ${(event.data.size / 1024).toFixed(1)} KB`
+            );
+            setChunks((prev: MediaChunk[]) => [
+              ...prev,
+              { blob: event.data, timestamp: Date.now() },
+            ]);
+          }
+        };
+        recorder.onerror = (e) => console.error(`${source} recorder error:`, e);
+        recorder.onstop = () => {
+          console.log(`${source} recorder stopped.`);
+          setActiveAudioSources((prev) => prev.filter((s) => s !== source));
+          if (onStopCallback) {
+            onStopCallback();
+          }
+        };
+
+        console.log(
+          `Starting ${source} recorder. Current state: ${recorder.state}`
+        );
+        recorder.start(AUDIO_CHUNK_TIMESLICE_MS);
+        setActiveAudioSources((prev) => [...new Set([...prev, source])]);
+        console.log(
+          `${source} recorder started successfully. New state: ${recorder.state}`
+        );
+        return true;
+      } catch (error) {
+        console.error(`Failed to setup ${source} audio recorder:`, error);
+        setAiMessages((prev: Message[]) => [
+          ...prev,
+          {
+            id: `err-setup-${source}-${Date.now()}`,
+            role: "assistant",
+            content: `[Error setting up ${source} audio: ${
+              error instanceof Error ? error.message : "Unknown error"
+            }]`,
+          },
+        ]);
+        cleanupStream(streamRef);
+        cleanupRecorder(recorderRef);
+        setActiveAudioSources((prev) => prev.filter((s) => s !== source));
+        return false;
+      }
+    },
+    [getSupportedMimeType]
+  );
+
+  const startMicRecording = useCallback(async (): Promise<boolean> => {
+    console.log("Attempting to start microphone recording...");
+    if (activeAudioSources.includes("mic")) {
+      console.log("Microphone recording already active.");
+      return true;
+    }
     try {
+      cleanupStream(micAudioStreamRef);
+      console.log("Requesting microphone access...");
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: { echoCancellation: true, noiseSuppression: true },
       });
-      audioStreamRef.current = stream;
-      const mimeType = getSupportedMimeType("audio");
-      const recorder = new MediaRecorder(stream, { mimeType });
-      audioRecorderRef.current = recorder;
+      console.log("Microphone stream acquired:", stream.id);
+      stream.getAudioTracks().forEach((track) => {
+        console.log(
+          `  Mic Track (${track.id}): readyState=${track.readyState}, enabled=${track.enabled}`
+        );
+        track.onended = () =>
+          console.warn(` >> Mic Track (${track.id}) ended!`); // Add onended here too
+      });
 
-      recorder.ondataavailable = (event: BlobEvent) => {
-        if (event.data.size > 0) {
-          setAudioChunks((prev: MediaChunk[]) => [
-            ...prev,
-            { blob: event.data, timestamp: Date.now() },
-          ]);
-        }
-      };
-      recorder.onerror = (e) => console.error("Audio recorder error:", e);
-      recorder.onstop = () => {
-        console.log("Audio recorder stopped. Processing final blob.");
-        setAudioChunks((prevChunks: MediaChunk[]) => {
-          if (prevChunks.length > 0) {
-            const finalBlob = new Blob(
-              prevChunks.map((c) => c.blob),
-              { type: mimeType }
-            );
-            console.log(
-              `Final audio blob size: ${(finalBlob.size / 1024).toFixed(1)} KB`
-            );
-            const url = URL.createObjectURL(finalBlob);
-            setFinalAudioUrl(url);
-          } else {
-            setFinalAudioUrl(null);
+      const success = setupAudioRecorder(
+        stream,
+        "mic",
+        setMicAudioChunks,
+        micAudioRecorderRef,
+        micAudioStreamRef,
+        () => {
+          console.log("Processing final mic blob.");
+          setMicAudioChunks((prevChunks: MediaChunk[]) => {
+            if (prevChunks.length > 0) {
+              const mimeType =
+                prevChunks[0]?.blob.type || getSupportedMimeType("audio");
+              const finalBlob = new Blob(
+                prevChunks.map((c) => c.blob),
+                { type: mimeType }
+              );
+              console.log(
+                `Final mic audio blob size: ${(finalBlob.size / 1024).toFixed(1)} KB`
+              );
+              const url = URL.createObjectURL(finalBlob);
+              setFinalMicAudioUrl(url);
+            } else {
+              setFinalMicAudioUrl(null);
+            }
+            return [];
+          });
+          if (audioTimerRef.current) {
+            clearInterval(audioTimerRef.current);
+            audioTimerRef.current = null;
           }
-          return [];
-        });
-        if (audioTimerRef.current) {
-          clearInterval(audioTimerRef.current);
-          audioTimerRef.current = null;
+          setMicRecordingDuration(0);
         }
-        setRecordingDuration(0);
-      };
+      );
 
-      setRecordingDuration(0);
-
-      audioTimerRef.current = setInterval(() => {
-        setRecordingDuration((prev: number) => prev + 1);
-      }, 1000);
-
-      recorder.start(AUDIO_CHUNK_TIMESLICE_MS);
-      console.log("Audio recorder started successfully.");
-      return true;
+      if (success) {
+        setMicRecordingDuration(0);
+        if (audioTimerRef.current) clearInterval(audioTimerRef.current);
+        audioTimerRef.current = setInterval(() => {
+          setMicRecordingDuration((prev: number) => prev + 1);
+        }, 1000);
+      }
+      console.log(`Microphone recording setup result: ${success}`);
+      return success;
     } catch (error) {
-      console.error("Failed to start audio recording:", error);
+      console.error("Failed to get microphone stream:", error);
       setAiMessages((prev: Message[]) => [
         ...prev,
         {
-          id: `err-audio-${Date.now()}`,
+          id: `err-mic-getUserMedia-${Date.now()}`,
           role: "assistant",
-          content: `[Error starting mic: ${
+          content: `[Error getting microphone: ${
             error instanceof Error ? error.message : "Permission denied?"
           }]`,
         },
       ]);
-      cleanupStream(audioStreamRef);
-      if (audioTimerRef.current) {
-        clearInterval(audioTimerRef.current);
-        audioTimerRef.current = null;
-      }
+      setActiveAudioSources((prev) => prev.filter((s) => s !== "mic"));
       return false;
     }
-  }, [getSupportedMimeType]);
+  }, [setupAudioRecorder, activeAudioSources, getSupportedMimeType]);
+
+  const startSystemAudioRecording = useCallback(
+    async (streamWithAudio: MediaStream): Promise<boolean> => {
+      console.log("Attempting to start system audio recording...");
+      if (activeAudioSources.includes("system")) {
+        console.log("System audio recording already active.");
+        return true;
+      }
+
+      const audioTracks = streamWithAudio.getAudioTracks();
+      if (audioTracks.length === 0) {
+        console.log("No audio tracks found in the provided stream.");
+        return false;
+      }
+      console.log(`Found ${audioTracks.length} system audio track(s).`);
+      audioTracks.forEach((track) => {
+        console.log(
+          `  System Audio Track (${track.id}): readyState=${track.readyState}, enabled=${track.enabled}`
+        );
+        track.onended = () =>
+          console.warn(` >> System Audio Track (${track.id}) ended!`); // Add onended here too
+      });
+
+      const audioOnlyStream = new MediaStream(audioTracks);
+      cleanupStream(systemAudioStreamRef);
+
+      const success = setupAudioRecorder(
+        audioOnlyStream,
+        "system",
+        setSystemAudioChunks,
+        systemAudioRecorderRef,
+        systemAudioStreamRef,
+        () => {
+          console.log("Clearing system audio chunks.");
+          setSystemAudioChunks([]);
+        }
+      );
+      console.log(`System audio recording setup result: ${success}`);
+      return success;
+    },
+    [setupAudioRecorder, activeAudioSources]
+  );
 
   const stopRecordingInternal = useCallback(() => {
     if (!isRecording && !isLoading) {
@@ -364,10 +519,14 @@ export default function Page() {
 
     cleanupIntervals();
 
-    cleanupRecorder(audioRecorderRef);
+    console.log("Stopping recorders...");
+    cleanupRecorder(micAudioRecorderRef);
+    cleanupRecorder(systemAudioRecorderRef);
     cleanupRecorder(screenRecorderRef);
 
-    cleanupStream(audioStreamRef);
+    console.log("Cleaning up streams...");
+    cleanupStream(micAudioStreamRef);
+    cleanupStream(systemAudioStreamRef);
     cleanupStream(videoStreamRef);
     cleanupStream(screenStreamRef);
 
@@ -375,12 +534,13 @@ export default function Page() {
     if (screenVideoRef.current) screenVideoRef.current.srcObject = null;
 
     setRealTimeAnalysisEnabled(false);
-    setRecordingDuration(0);
+    setActiveAudioSources([]);
 
-    setAudioChunks([]);
+    setMicAudioChunks([]);
+    setSystemAudioChunks([]);
     setScreenChunks([]);
 
-    console.log("Recording stopped.");
+    console.log("Recording stopped and resources cleaned up.");
     setIsLoading(false);
   }, [isRecording, isLoading, cleanupIntervals]);
 
@@ -389,89 +549,183 @@ export default function Page() {
   ]);
 
   const startVideoOrScreenRecording = useCallback(
-    async (mode: CaptureMode) => {
-      console.log(`Starting ${mode} recording...`);
-      let stream: MediaStream | null = null;
+    async (
+      mode: CaptureMode
+    ): Promise<{ videoStarted: boolean; audioSources: AudioSource[] }> => {
+      console.log(`Starting ${mode} recording setup...`);
+      let videoStream: MediaStream | null = null;
       const videoElement =
         mode === "camera" ? videoRef.current : screenVideoRef.current;
-      const streamRef = mode === "camera" ? videoStreamRef : screenStreamRef;
+      const videoStreamRefToUse =
+        mode === "camera" ? videoStreamRef : screenStreamRef;
+      let videoStarted = false;
+      const startedAudioSources: AudioSource[] = [];
 
       try {
         if (mode === "camera") {
-          stream = await navigator.mediaDevices.getUserMedia({ video: true });
+          console.log("Requesting camera access...");
+          videoStream = await navigator.mediaDevices.getUserMedia({
+            video: true,
+          });
+          console.log("Camera stream acquired:", videoStream.id);
+          videoStream.getVideoTracks().forEach((track) => {
+            console.log(
+              `  Camera Video Track (${track.id}): readyState=${track.readyState}, enabled=${track.enabled}`
+            );
+            track.onended = () =>
+              console.warn(` >> Camera Video Track (${track.id}) ended!`);
+          });
+          const micStarted = await startMicRecording();
+          if (micStarted) startedAudioSources.push("mic");
         } else {
-          stream = await navigator.mediaDevices.getDisplayMedia({
+          console.log("Requesting display media access...");
+          const displayStream = await navigator.mediaDevices.getDisplayMedia({
             video: { frameRate: 10 },
-            audio: false,
+            audio: true,
+          });
+          console.log("Display stream acquired:", displayStream.id);
+          videoStream = displayStream; // Keep the full stream
+
+          // Log initial state of all tracks in displayStream
+          displayStream.getTracks().forEach((track) => {
+            console.log(
+              `  Display Track (${track.kind} - ${track.id}): readyState=${track.readyState}, enabled=${track.enabled}, muted=${track.muted}`
+            );
+            // Add onended listener immediately
+            track.onended = () =>
+              console.warn(
+                ` >> Display Track (${track.kind} - ${track.id}) ended!`
+              );
           });
 
-          const videoTrack = stream.getVideoTracks()[0];
-          if (videoTrack) {
-            videoTrack.onended = () => {
-              console.log("Screen share stopped by user via browser UI.");
-              if (isRecording && captureMode === "screen") {
-                console.log(
-                  "Stopping recording session because screen share ended."
-                );
-                stopRecording();
-              }
-            };
+          // Attempt system audio recording
+          if (displayStream.getAudioTracks().length > 0) {
+            console.log("System audio track detected. Attempting setup...");
+            const systemStarted =
+              await startSystemAudioRecording(displayStream);
+            if (systemStarted) {
+              startedAudioSources.push("system");
+            } else {
+              console.warn(
+                "System audio track present but failed to start recorder. Stopping track(s)."
+              );
+              // Stop only the audio tracks if recorder failed
+              displayStream.getAudioTracks().forEach((track) => track.stop());
+            }
+          } else {
+            console.log(
+              "No system audio track captured or user denied permission."
+            );
           }
 
-          const screenMimeType = getSupportedMimeType("video");
-          const screenRecorder = new MediaRecorder(stream, {
-            mimeType: screenMimeType,
-          });
-          screenRecorderRef.current = screenRecorder;
+          // Attempt mic audio recording
+          const micStarted = await startMicRecording();
+          if (micStarted) startedAudioSources.push("mic");
 
-          screenRecorder.ondataavailable = (event: BlobEvent) => {
-            if (event.data.size > 0) {
-              setScreenChunks((prev: MediaChunk[]) => [
-                ...prev,
-                { blob: event.data, timestamp: Date.now() },
-              ]);
-            }
-          };
-          screenRecorder.onerror = (e) =>
-            console.error("Screen recorder error:", e);
-          screenRecorder.onstop = () => {
-            console.log("Screen recorder stopped.");
-            setScreenChunks([]);
-          };
-          screenRecorder.start(AUDIO_CHUNK_TIMESLICE_MS * 2);
-          console.log("Screen recorder started.");
+          // Note: The videoTrack.onended handler from the previous step is still here,
+          // but we added individual track logging above which might be more informative.
+          // const videoTrack = displayStream?.getVideoTracks()[0];
+          // if (videoTrack) {
+          //   videoTrack.onended = () => { ... }; // Keep this or rely on the loop above
+          // }
         }
 
-        streamRef.current = stream;
-        if (videoElement) {
-          videoElement.srcObject = stream;
-          await videoElement
-            .play()
-            .catch((e: Error) =>
-              console.warn(`${mode} preview play warning:`, e)
+        // --- Setup Video ---
+        const videoTracks = videoStream?.getVideoTracks() ?? [];
+        if (videoTracks.length > 0) {
+          console.log(`Setting up video element for ${mode}...`);
+          cleanupStream(videoStreamRefToUse);
+          videoStreamRefToUse.current = videoStream; // Assign the stream containing the video track
+          if (videoElement) {
+            videoElement.srcObject = videoStream;
+            console.log("Playing video element...");
+            await videoElement
+              .play()
+              .then(() => console.log("Video element playing."))
+              .catch((e: Error) =>
+                console.warn(`${mode} preview play warning:`, e)
+              );
+          }
+          videoStarted = true;
+          console.log(`${mode} video stream started successfully.`);
+
+          // --- Setup Screen Video Recorder (only for screen mode) ---
+          if (mode === "screen" && videoStream) {
+            // Ensure videoStream is not null
+            console.log("Setting up screen video recorder...");
+            cleanupRecorder(screenRecorderRef);
+            const screenMimeType = getSupportedMimeType("video");
+            console.log(`Using screen video mimeType: ${screenMimeType}`);
+            // Create a new stream with only the video track for the recorder
+            // to avoid potential issues with combined streams in MediaRecorder
+            const screenVideoStream = new MediaStream(
+              videoStream.getVideoTracks()
             );
+            const screenRecorder = new MediaRecorder(screenVideoStream, {
+              mimeType: screenMimeType,
+              // ignoreMutedMedia: true, // May not be needed if stream only has video
+            });
+            screenRecorderRef.current = screenRecorder;
+
+            screenRecorder.ondataavailable = (event: BlobEvent) => {
+              if (event.data.size > 0) {
+                setScreenChunks((prev: MediaChunk[]) => [
+                  ...prev,
+                  { blob: event.data, timestamp: Date.now() },
+                ]);
+              }
+            };
+            screenRecorder.onerror = (e) =>
+              console.error("Screen recorder error:", e);
+            screenRecorder.onstop = () => {
+              console.log("Screen recorder stopped.");
+              setScreenChunks([]);
+            };
+            console.log(
+              `Starting screen recorder. Current state: ${screenRecorder.state}`
+            );
+            screenRecorder.start(AUDIO_CHUNK_TIMESLICE_MS * 2);
+            console.log(
+              `Screen recorder started. New state: ${screenRecorder.state}`
+            );
+          }
+        } else if (startedAudioSources.length > 0) {
+          console.log(`${mode} started with audio only.`);
+        } else {
+          console.warn(`No video tracks found for ${mode} mode.`);
         }
 
-        console.log(`${mode} recording started successfully.`);
-        return true;
+        console.log(
+          `startVideoOrScreenRecording finished. videoStarted: ${videoStarted}, audioSources: [${startedAudioSources.join(", ")}]`
+        );
+        return { videoStarted, audioSources: startedAudioSources };
       } catch (error) {
         console.error(`Failed to start ${mode} recording:`, error);
         setAiMessages((prev: Message[]) => [
           ...prev,
           {
-            id: `err-video-${Date.now()}`,
+            id: `err-${mode}-${Date.now()}`,
             role: "assistant",
             content: `[Error starting ${mode}: ${
               error instanceof Error ? error.message : "Permission denied?"
             }]`,
           },
         ]);
-        cleanupStream(streamRef);
-        if (mode === "screen") cleanupRecorder(screenRecorderRef);
-        return false;
+        cleanupStream(videoStreamRefToUse);
+        cleanupRecorder(screenRecorderRef);
+        if (startedAudioSources.includes("mic")) {
+          cleanupRecorder(micAudioRecorderRef);
+          cleanupStream(micAudioStreamRef);
+        }
+        if (startedAudioSources.includes("system")) {
+          cleanupRecorder(systemAudioRecorderRef);
+          cleanupStream(systemAudioStreamRef);
+        }
+        setActiveAudioSources([]);
+        return { videoStarted: false, audioSources: [] };
       }
     },
-    [getSupportedMimeType, stopRecording, isRecording, captureMode]
+    [startMicRecording, startSystemAudioRecording, getSupportedMimeType]
   );
 
   const startRecording = useCallback(async () => {
@@ -479,81 +733,79 @@ export default function Page() {
     console.log("Initiating start recording sequence...");
     setIsLoading(true);
     setAiMessages([]);
-    setAudioChunks([]);
+    setMicAudioChunks([]);
+    setSystemAudioChunks([]);
     setScreenChunks([]);
     setScreenshots([]);
-    if (finalAudioUrl) URL.revokeObjectURL(finalAudioUrl);
-    setFinalAudioUrl(null);
-    setRecordingDuration(0);
+    if (finalMicAudioUrl) URL.revokeObjectURL(finalMicAudioUrl);
+    setFinalMicAudioUrl(null);
+    setMicRecordingDuration(0);
+    setActiveAudioSources([]);
 
-    const audioStarted = await startAudioRecording();
-    const videoStarted = await startVideoOrScreenRecording(captureMode);
+    const mediaStatus = await startVideoOrScreenRecording(captureMode);
 
-    if (audioStarted || videoStarted) {
+    const overallRecordingStarted =
+      mediaStatus.videoStarted || mediaStatus.audioSources.length > 0;
+
+    if (overallRecordingStarted) {
       setIsRecording(true);
       console.log(
-        "Recording state set to true. Effects will handle intervals."
+        `Recording state set to true. Video: ${mediaStatus.videoStarted}, Audio Sources: [${mediaStatus.audioSources.join(", ")}]`
       );
     } else {
       console.error("Failed to start any recording source. Cleaning up.");
-      cleanupStream(audioStreamRef);
-      cleanupRecorder(audioRecorderRef);
-      cleanupStream(videoStreamRef);
-      cleanupStream(screenStreamRef);
-      cleanupRecorder(screenRecorderRef);
-      cleanupIntervals();
+      stopRecordingInternal();
       setIsRecording(false);
+      setActiveAudioSources([]);
     }
     setIsLoading(false);
   }, [
     isRecording,
     isLoading,
     captureMode,
-    startAudioRecording,
     startVideoOrScreenRecording,
-    finalAudioUrl,
-    cleanupIntervals,
+    finalMicAudioUrl,
+    stopRecordingInternal,
   ]);
 
   const gatherCurrentContext = useCallback(
     async (type: "real-time" | "manual"): Promise<AIContextData | null> => {
       console.log(`Gathering context for ${type} AI action...`);
 
-      let audioBlob: Blob | null = null;
-      let screenBlob: Blob | null = null; // Screen logic remains similar for now
+      let micAudioBlob: Blob | null = null;
+      let systemAudioBlob: Blob | null = null;
+      let screenBlob: Blob | null = null;
 
-      // --- Audio Processing ---
-      // Calculate how many chunks roughly correspond to the desired duration
-      const audioChunksNeeded = Math.ceil(
-        AI_AUDIO_CONTEXT_DURATION_SEC / (AUDIO_CHUNK_TIMESLICE_MS / 1000)
-      );
-      // Get the latest chunks up to the calculated number
-      const relevantAudioChunks = audioChunks.slice(-audioChunksNeeded);
-
-      if (relevantAudioChunks.length > 0) {
+      if (micAudioChunks.length > 0) {
         const mime =
-          relevantAudioChunks[0]?.blob.type || getSupportedMimeType("audio");
-        let tempAudioBlob = new Blob(
-          relevantAudioChunks.map((c) => c.blob),
+          micAudioChunks[0]?.blob.type || getSupportedMimeType("audio");
+        let tempBlob = new Blob(
+          micAudioChunks.map((c) => c.blob),
           { type: mime }
         );
         console.log(
-          `Using last ${relevantAudioChunks.length} audio chunks (~${AI_AUDIO_CONTEXT_DURATION_SEC}s). Original size: ${(tempAudioBlob.size / 1024).toFixed(1)} KB`
+          `Using ${micAudioChunks.length} mic audio chunks. Size: ${(tempBlob.size / 1024).toFixed(1)} KB`
         );
-        // Still compress/trim if the 30s slice exceeds the byte limit
-        audioBlob = await compressAudioIfNeeded(tempAudioBlob);
-        if (audioBlob.size !== tempAudioBlob.size) {
-          console.log(
-            `Compressed/Trimmed audio size: ${(audioBlob.size / 1024).toFixed(1)} KB`
-          );
-        }
+        micAudioBlob = await compressAudioIfNeeded(tempBlob);
       }
 
-      // --- Screen Processing (Example: Keep similar logic, maybe adjust window) ---
-      if (captureMode === "screen") {
-        const screenContextDurationSec = 30; // Example: Use last 30s of screen too
+      if (systemAudioChunks.length > 0) {
+        const mime =
+          systemAudioChunks[0]?.blob.type || getSupportedMimeType("audio");
+        let tempBlob = new Blob(
+          systemAudioChunks.map((c) => c.blob),
+          { type: mime }
+        );
+        console.log(
+          `Using ${systemAudioChunks.length} system audio chunks. Size: ${(tempBlob.size / 1024).toFixed(1)} KB`
+        );
+        systemAudioBlob = await compressAudioIfNeeded(tempBlob);
+      }
+
+      if (captureMode === "screen" && screenChunks.length > 0) {
+        const screenContextDurationSec = 30;
         const screenChunksNeeded = Math.ceil(
-          screenContextDurationSec / ((AUDIO_CHUNK_TIMESLICE_MS * 2) / 1000) // Adjust based on screen chunk interval
+          screenContextDurationSec / ((AUDIO_CHUNK_TIMESLICE_MS * 2) / 1000)
         );
         const relevantScreenChunks = screenChunks.slice(-screenChunksNeeded);
 
@@ -565,32 +817,42 @@ export default function Page() {
             { type: mime }
           );
           console.log(
-            `Using last ${relevantScreenChunks.length} screen chunks. Blob size: ${(screenBlob.size / 1024).toFixed(1)} KB`
+            `Using last ${relevantScreenChunks.length} screen chunks (~${screenContextDurationSec}s). Blob size: ${(screenBlob.size / 1024).toFixed(1)} KB`
           );
         }
       }
 
-      // --- Screenshot Processing (Keep existing logic) ---
       const numScreenshots = type === "real-time" ? 1 : 3;
       const currentScreenshots = screenshots.slice(0, numScreenshots);
 
-      // --- Final Check & Conversion ---
-      if (!audioBlob && !screenBlob && currentScreenshots.length === 0) {
+      if (
+        !micAudioBlob &&
+        !systemAudioBlob &&
+        !screenBlob &&
+        currentScreenshots.length === 0
+      ) {
         console.warn("No context data found to send to AI.");
         return null;
       }
 
       const context: AIContextData = {};
       try {
-        if (audioBlob) {
-          const base64 = await blobToBase64(audioBlob);
+        if (micAudioBlob) {
+          const base64 = await blobToBase64(micAudioBlob);
           if (base64)
-            context.audio = {
+            context.micAudio = {
               data: base64.split(",")[1] || "",
-              mimeType: audioBlob.type,
+              mimeType: micAudioBlob.type,
             };
         }
-        // ... (screenBlob and screenshot conversion remains the same) ...
+        if (systemAudioBlob) {
+          const base64 = await blobToBase64(systemAudioBlob);
+          if (base64)
+            context.systemAudio = {
+              data: base64.split(",")[1] || "",
+              mimeType: systemAudioBlob.type,
+            };
+        }
         if (screenBlob) {
           const base64 = await blobToBase64(screenBlob);
           if (base64)
@@ -607,25 +869,27 @@ export default function Page() {
         }
       } catch (error) {
         console.error("Error converting blob to base64:", error);
-        return null; // Handle conversion error
+        return null;
       }
 
       console.log("Context gathered:", {
-        audio: !!context.audio,
+        micAudio: !!context.micAudio,
+        systemAudio: !!context.systemAudio,
         video: !!context.video,
         screenshots: context.screenshots?.length ?? 0,
       });
       return context;
     },
     [
-      audioChunks,
+      micAudioChunks,
+      systemAudioChunks,
       screenChunks,
       screenshots,
       captureMode,
       getSupportedMimeType,
       compressAudioIfNeeded,
       blobToBase64,
-    ] // Added dependencies
+    ]
   );
 
   const sendContextToAI = useCallback(
@@ -633,7 +897,10 @@ export default function Page() {
       actionType: "real-time" | "answer" | "summary" | "search" | "custom",
       customQuery?: string
     ) => {
-      if (isLoading) return;
+      if (isLoading) {
+        console.log(`AI Action (${actionType}) skipped: Already loading.`);
+        return;
+      }
       console.log(`AI Action Triggered: ${actionType}`);
       setIsLoading(true);
 
@@ -655,16 +922,16 @@ export default function Page() {
 
       const queryMap = {
         answer:
-          "Based on the recent context (audio, screen recording, screenshots), please answer the likely implicit question or address the last point made by a participant.",
+          "Based on the recent context (microphone audio, system audio, screen recording, screenshots), please answer the likely implicit question or address the last point made.",
         summary:
-          "Provide a concise bullet-point summary of the key topics, decisions, or action items discussed or shown recently based on the provided context (audio, screen recording, screenshots).",
+          "Provide a concise bullet-point summary of the key topics, decisions, or action items discussed or shown recently based on the provided context (microphone audio, system audio, screen recording, screenshots).",
         search:
-          "Identify key entities, technical terms, or questions raised in the recent context (audio, screen recording, screenshots). Suggest relevant information or search queries related to them.",
+          "Identify key entities, technical terms, or questions raised in the recent context (microphone audio, system audio, screen recording, screenshots). Suggest relevant information or search queries.",
         "real-time":
-          "Analyze the latest context (last ~15s of audio, screen, latest screenshot). Briefly identify any noteworthy keywords, topic shifts, action items, or potential issues. Be concise.",
+          "Analyze the latest context (recent audio, screen, latest screenshot). Briefly identify any noteworthy keywords, topic shifts, action items, or potential issues. Be concise.",
         custom:
           customQuery ||
-          "Please analyze the provided context (audio, screen recording, screenshots) according to the user's request.",
+          "Please analyze the provided context (microphone audio, system audio, screen recording, screenshots) according to the user's request.",
       };
       const query = queryMap[actionType];
 
@@ -754,6 +1021,10 @@ export default function Page() {
     [isLoading, gatherCurrentContext, aiMessages, customPrompt]
   );
 
+  useEffect(() => {
+    sendContextToAIRef.current = sendContextToAI;
+  }, [sendContextToAI]);
+
   const handleAIAction = (actionType: "answer" | "summary" | "search") => {
     if (!isRecording) {
       setAiMessages((prev) => [
@@ -772,32 +1043,48 @@ export default function Page() {
   const handleToggleCaptureMode = useCallback(async () => {
     if (!isRecording || isLoading) return;
     setIsLoading(true);
-    const newMode = captureMode === "camera" ? "screen" : "camera";
-    console.log(`Switching capture mode to ${newMode}`);
+    const oldMode = captureMode;
+    const newMode = oldMode === "camera" ? "screen" : "camera";
+    console.log(`Switching capture mode from ${oldMode} to ${newMode}`);
 
-    const streamToStopRef =
-      captureMode === "camera" ? videoStreamRef : screenStreamRef;
-    cleanupStream(streamToStopRef);
-    if (captureMode === "screen") {
-      cleanupRecorder(screenRecorderRef);
-      setScreenChunks([]);
-    }
+    console.log("Stopping existing recorders and streams before switch...");
+    cleanupRecorder(micAudioRecorderRef);
+    cleanupRecorder(systemAudioRecorderRef);
+    cleanupRecorder(screenRecorderRef);
 
-    const videoElementToClear =
-      captureMode === "camera" ? videoRef.current : screenVideoRef.current;
-    if (videoElementToClear) videoElementToClear.srcObject = null;
+    cleanupStream(micAudioStreamRef);
+    cleanupStream(systemAudioStreamRef);
+    cleanupStream(oldMode === "camera" ? videoStreamRef : screenStreamRef);
+
+    setMicAudioChunks([]);
+    setSystemAudioChunks([]);
+    setScreenChunks([]);
+    if (audioTimerRef.current) clearInterval(audioTimerRef.current);
+    setMicRecordingDuration(0);
+    setActiveAudioSources([]);
+    if (videoRef.current) videoRef.current.srcObject = null;
+    if (screenVideoRef.current) screenVideoRef.current.srcObject = null;
+    console.log("Cleanup complete.");
 
     setCaptureMode(newMode);
 
-    const success = await startVideoOrScreenRecording(newMode);
+    console.log(`Starting recording for new mode: ${newMode}`);
+    const mediaStatus = await startVideoOrScreenRecording(newMode);
 
-    if (!success) {
+    const overallRecordingStarted =
+      mediaStatus.videoStarted || mediaStatus.audioSources.length > 0;
+
+    if (!overallRecordingStarted) {
       console.error(
         "Failed to start recording after mode switch. Stopping session."
       );
-      stopRecording();
+      stopRecordingInternal();
+      setIsRecording(false);
     } else {
-      console.log("Capture mode switched successfully.");
+      console.log(
+        `Capture mode switched successfully to ${newMode}. Video: ${mediaStatus.videoStarted}, Audio: [${mediaStatus.audioSources.join(", ")}]`
+      );
+      setIsRecording(true);
     }
 
     setIsLoading(false);
@@ -806,7 +1093,7 @@ export default function Page() {
     isLoading,
     captureMode,
     startVideoOrScreenRecording,
-    stopRecording,
+    stopRecordingInternal,
   ]);
 
   const handleToggleRealTime = () => {
@@ -845,68 +1132,112 @@ export default function Page() {
     let initialTimeoutId: NodeJS.Timeout | null = null;
 
     if (isRecording && realTimeAnalysisEnabled && !isLoading) {
-      console.log("Starting real-time analysis interval.");
+      console.log("Real-time analysis conditions met. Setting up interval.");
+
       const initialDelay = 4000;
+      console.log(
+        `Setting initial ${initialDelay}ms timeout for real-time analysis.`
+      );
+
       initialTimeoutId = setTimeout(() => {
         if (isRecording && realTimeAnalysisEnabled && !isLoading) {
-          sendContextToAI("real-time");
+          console.log(
+            "Initial real-time analysis timeout fired. Sending context..."
+          );
+          sendContextToAIRef.current("real-time");
+        } else {
+          console.log(
+            "Conditions changed during initial delay, skipping first analysis."
+          );
         }
         initialTimeoutId = null;
-      }, initialDelay);
 
-      intervalId = setInterval(() => {
         if (isRecording && realTimeAnalysisEnabled && !isLoading) {
-          sendContextToAI("real-time");
-        } else {
-          if (intervalId) {
-            clearInterval(intervalId);
-            intervalId = null;
-            console.log(
-              "Real-time analysis interval cleared (conditions no longer met)."
-            );
-          }
+          console.log(
+            `Setting real-time analysis interval (${REALTIME_ANALYSIS_INTERVAL_MS}ms).`
+          );
+          intervalId = setInterval(() => {
+            if (isRecording && realTimeAnalysisEnabled && !isLoading) {
+              console.log(
+                "Real-time analysis interval triggered. Sending context..."
+              );
+              sendContextToAIRef.current("real-time");
+            } else {
+              console.log(
+                "Conditions changed, stopping real-time interval from within."
+              );
+              if (intervalId) {
+                clearInterval(intervalId);
+                intervalId = null;
+              }
+            }
+          }, REALTIME_ANALYSIS_INTERVAL_MS);
         }
-      }, REALTIME_ANALYSIS_INTERVAL_MS);
-
-      return () => {
-        if (initialTimeoutId) clearTimeout(initialTimeoutId);
-        if (intervalId) {
-          clearInterval(intervalId);
-          console.log("Cleared real-time analysis interval.");
-        }
-      };
+      }, initialDelay);
     } else {
       console.log(
-        `Real-time analysis conditions not met (isRecording: ${isRecording}, enabled: ${realTimeAnalysisEnabled}, loading: ${isLoading}).`
+        `Real-time analysis conditions not met initially (isRecording: ${isRecording}, enabled: ${realTimeAnalysisEnabled}, loading: ${isLoading}). Interval not started.`
       );
-      return () => {};
     }
-  }, [isRecording, realTimeAnalysisEnabled, isLoading, sendContextToAI]);
+
+    return () => {
+      console.log("Cleaning up real-time analysis effect.");
+      if (initialTimeoutId) {
+        clearTimeout(initialTimeoutId);
+        console.log("Cleared initial real-time timeout.");
+        initialTimeoutId = null;
+      }
+      if (intervalId) {
+        clearInterval(intervalId);
+        console.log("Cleared real-time interval.");
+        intervalId = null;
+      }
+    };
+  }, [isRecording, realTimeAnalysisEnabled, isLoading]);
 
   useEffect(() => {
+    // This effect now only handles component unmount cleanup.
     return () => {
       console.log("Component unmounting: Performing final cleanup...");
-      cleanupStream(audioStreamRef);
+
+      // Directly call cleanup functions instead of stopRecordingInternal
+      // to avoid issues with potentially stale state during StrictMode remounts.
+      cleanupIntervals();
+
+      console.log("Unmount Cleanup: Stopping recorders...");
+      cleanupRecorder(micAudioRecorderRef);
+      cleanupRecorder(systemAudioRecorderRef);
+      cleanupRecorder(screenRecorderRef);
+
+      console.log("Unmount Cleanup: Cleaning up streams...");
+      cleanupStream(micAudioStreamRef);
+      cleanupStream(systemAudioStreamRef);
       cleanupStream(videoStreamRef);
       cleanupStream(screenStreamRef);
-      cleanupRecorder(audioRecorderRef);
-      cleanupRecorder(screenRecorderRef);
-      cleanupIntervals();
-      if (realTimeIntervalRef.current)
-        clearInterval(realTimeIntervalRef.current);
 
-      if (finalAudioUrl) {
+      // Revoke URL if it exists
+      if (finalMicAudioUrl) {
         try {
-          URL.revokeObjectURL(finalAudioUrl);
-          console.log("Revoked final audio URL.");
+          URL.revokeObjectURL(finalMicAudioUrl);
+          console.log("Unmount Cleanup: Revoked final mic audio URL.");
         } catch (e) {
-          console.warn("Could not revoke final audio URL:", e);
+          console.warn(
+            "Unmount Cleanup: Could not revoke final mic audio URL:",
+            e
+          );
         }
       }
-      setIsRecording(false);
-      setIsLoading(false);
+
+      // Resetting state here might be less critical as the component is unmounting,
+      // but good practice to ensure clean state if it were somehow reused.
+      // setIsRecording(false); // State updates in unmount are generally discouraged
+      // setIsLoading(false);
+      // setActiveAudioSources([]);
+      console.log("Unmount Cleanup: Finished.");
     };
-  }, [finalAudioUrl, cleanupIntervals]);
+    // Add cleanupIntervals and finalMicAudioUrl as dependencies
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cleanupIntervals, finalMicAudioUrl]); // Removed stopRecordingInternal dependency
 
   return (
     <div className="container mx-auto max-w-4xl py-8 px-4">
@@ -942,8 +1273,13 @@ export default function Page() {
               {isRecording && (
                 <span className="flex items-center text-sm text-slate-600 dark:text-slate-400">
                   <ClockIcon className="h-4 w-4 mr-1" />
-                  {/* Removed max duration display */}
-                  Audio: {formatTime(recordingDuration)}
+                  Mic: {formatTime(micRecordingDuration)}
+                </span>
+              )}
+              {isRecording && activeAudioSources.length > 0 && (
+                <span className="ml-2 text-xs font-mono px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
+                  Audio:{" "}
+                  {activeAudioSources.map((s) => s.toUpperCase()).join(" + ")}
                 </span>
               )}
             </div>
@@ -970,15 +1306,17 @@ export default function Page() {
                   variant="outline"
                   size="sm"
                   onClick={handleToggleCaptureMode}
-                  disabled={isLoading || captureMode === "screen"}
+                  disabled={isLoading}
                   title={
                     captureMode === "screen"
-                      ? "Stop screen share to switch"
+                      ? "Switch to Camera"
                       : "Switch to Screen Share"
                   }
                 >
                   <SwitchCameraIcon className="h-4 w-4 mr-2" />
-                  {captureMode === "camera" ? "Share Screen" : "Using Screen"}
+                  {captureMode === "camera"
+                    ? "Switch to Screen"
+                    : "Switch to Camera"}
                 </Button>
               )}
               {isRecording ? (
@@ -1042,23 +1380,23 @@ export default function Page() {
           <div className="space-y-4">
             <div className="space-y-2">
               <h3 className="font-medium text-sm">
-                Audio Playback (Available After Stop)
+                Mic Audio Playback (Available After Stop)
               </h3>
               <audio
                 ref={audioPlayerRef}
                 controls
-                src={finalAudioUrl ?? undefined}
-                className={`w-full ${!finalAudioUrl ? "opacity-50 cursor-not-allowed" : ""}`}
-                style={{ pointerEvents: finalAudioUrl ? "auto" : "none" }}
+                src={finalMicAudioUrl ?? undefined}
+                className={`w-full ${!finalMicAudioUrl ? "opacity-50 cursor-not-allowed" : ""}`}
+                style={{ pointerEvents: finalMicAudioUrl ? "auto" : "none" }}
               />
-              {!finalAudioUrl && !isRecording && (
+              {!finalMicAudioUrl && !isRecording && (
                 <p className="text-xs text-slate-500">
-                  No audio recorded or recording stopped prematurely.
+                  No mic audio recorded or recording stopped prematurely.
                 </p>
               )}
               {isRecording && (
                 <p className="text-xs text-slate-500">
-                  Audio player will be active after recording stops.
+                  Mic audio player will be active after recording stops.
                 </p>
               )}
             </div>
@@ -1231,12 +1569,12 @@ export default function Page() {
                       : "bg-blue-50 dark:bg-blue-900/30 border-blue-500 text-blue-800 dark:text-blue-300"
                   }`}
                 >
-                  <p className="whitespace-pre-wrap break-words">
+                  <Markdown>
                     {msg.content.replace(
                       /^(?:\[.*?\]\s*)/,
                       (match) => `**${match.trim()}** `
                     )}
-                  </p>
+                  </Markdown>
                 </div>
               ))}
               {isLoading && aiMessages.length > 0 && (
