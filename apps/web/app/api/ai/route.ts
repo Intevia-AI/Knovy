@@ -5,7 +5,7 @@
 // =============================================================
 
 import { google } from "@ai-sdk/google";
-import { generateText, UserContent } from "ai";
+import { generateText, UserContent, Message } from "ai";
 import { NextResponse } from "next/server";
 
 interface MediaFile {
@@ -27,38 +27,52 @@ interface AIRequestBody {
   query?: string;
 }
 
-function extractRequestData(body: any): AIRequestBody {
+interface CompleteRequest {
+  messages?: Message[];
+  data?: AIRequestBody;
+}
+
+function extractRequestData(body: any): {
+  data: AIRequestBody;
+  messages?: Message[];
+} {
   if (Array.isArray(body.messages) && body.data) {
-    return body.data;
+    // Return both messages and data when they're present
+    return {
+      messages: body.messages,
+      data: body.data,
+    };
   }
-  return body;
+  // For backward compatibility with older requests
+  return { data: body };
 }
 
 export async function POST(req: Request) {
   try {
     const raw = await req.json();
-    const body = extractRequestData(raw) as AIRequestBody;
+    console.log(raw);
+    const { data, messages } = extractRequestData(raw);
 
     const parts: UserContent = [];
 
-    if (body.audio) {
+    if (data.audio) {
       parts.push({
         type: "file",
-        data: body.audio.data,
-        mimeType: body.audio.mimeType,
+        data: data.audio.data,
+        mimeType: data.audio.mimeType,
       });
     }
-    // if (body.video) {
+    // if (data.video) {
     //   parts.push({
     //     type: "file",
-    //     data: body.video.data,
-    //     mimeType: body.video.mimeType,
+    //     data: data.video.data,
+    //     mimeType: data.video.mimeType,
     //   });
     // }
-    body.screenshots?.forEach((img) =>
+    data.screenshots?.forEach((img) =>
       parts.push({ type: "image", image: img.data, mimeType: img.mimeType })
     );
-    if (body.query) parts.push({ type: "text", text: `Query: ${body.query}` });
+    if (data.query) parts.push({ type: "text", text: `Query: ${data.query}` });
 
     if (!parts.length) {
       return NextResponse.json(
@@ -72,7 +86,18 @@ export async function POST(req: Request) {
       );
     }
 
-    console.log("AI request:", parts);
+    // console.log("AI request:", parts);
+
+    // Use messages from the request if available
+    const userMessage =
+      messages && messages.length > 0
+        ? {
+            role: "user",
+            content: [...parts, { type: "text", text: messages[0]?.content }],
+          }
+        : { role: "user", content: parts };
+
+    console.log("User message:", userMessage);
 
     const { text } = await generateText({
       model: google("gemini-2.0-flash-001", {
@@ -80,7 +105,7 @@ export async function POST(req: Request) {
       }),
       system:
         "You are a helpful assistant. You can answer questions and provide information based on the input and context you receive. Be concise and clear. If nothing should be done, say 'Nothing to do'.",
-      messages: [{ role: "user", content: parts }],
+      messages: [userMessage],
     });
 
     console.log("AI response:", text);
