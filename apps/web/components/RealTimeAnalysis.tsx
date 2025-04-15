@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { Button } from "@workspace/ui/components/button";
-import { MicIcon, PauseIcon } from "lucide-react";
-import { GeminiWebSocket } from "../app/api/ai/geminiWebSocket";
+import { Mic, MicOff, Pause, Play } from "lucide-react";
+import { GeminiClient } from "../app/api/ai/proxy/geminiClient";
+import { toast } from "sonner";
 
 interface RealTimeAnalysisProps {
   onTextResponse?: (text: string) => void;
@@ -15,7 +16,7 @@ export default function RealTimeAnalysis({ onTextResponse, onKeywords }: RealTim
   const [isProcessing, setIsProcessing] = useState(false);
   const [audioLevel, setAudioLevel] = useState(0);
   const [isConnected, setIsConnected] = useState(false);
-  const geminiWsRef = useRef<GeminiWebSocket | null>(null);
+  const geminiClientRef = useRef<GeminiClient | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const audioWorkletNodeRef = useRef<AudioWorkletNode | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
@@ -23,8 +24,8 @@ export default function RealTimeAnalysis({ onTextResponse, onKeywords }: RealTim
   const textBufferRef = useRef("");
 
   useEffect(() => {
-    // Initialize GeminiWebSocket
-    geminiWsRef.current = new GeminiWebSocket(
+    // Initialize GeminiClient
+    geminiClientRef.current = new GeminiClient(
       (text) => {
         console.log("[RealTimeAnalysis] Received text:", text);
         // Add new text to buffer
@@ -57,6 +58,10 @@ export default function RealTimeAnalysis({ onTextResponse, onKeywords }: RealTim
         console.log("[RealTimeAnalysis] WebSocket connection established");
         setIsConnected(true);
         shouldSendAudioRef.current = true;
+        // Start sending audio data after connection is established
+        if (audioWorkletNodeRef.current) {
+          console.log("[RealTimeAnalysis] Starting to send audio data");
+        }
       },
       (isPlaying) => {
         console.log("[RealTimeAnalysis] Playing state changed:", isPlaying);
@@ -71,9 +76,9 @@ export default function RealTimeAnalysis({ onTextResponse, onKeywords }: RealTim
     // Cleanup function
     return () => {
       console.log("[RealTimeAnalysis] Cleaning up WebSocket...");
-      if (geminiWsRef.current) {
-        geminiWsRef.current.disconnect();
-        geminiWsRef.current = null;
+      if (geminiClientRef.current) {
+        geminiClientRef.current.disconnect();
+        geminiClientRef.current = null;
       }
       if (mediaStreamRef.current) {
         mediaStreamRef.current.getTracks().forEach(track => track.stop());
@@ -87,7 +92,7 @@ export default function RealTimeAnalysis({ onTextResponse, onKeywords }: RealTim
       shouldSendAudioRef.current = false;
       textBufferRef.current = ""; // Clear buffer on cleanup
     };
-  }, [onTextResponse, onKeywords]); // Add onKeywords to dependencies
+  }, [onTextResponse, onKeywords]);
 
   const startAudio = async () => {
     try {
@@ -96,13 +101,13 @@ export default function RealTimeAnalysis({ onTextResponse, onKeywords }: RealTim
 
       // Connect to WebSocket first
       console.log("[RealTimeAnalysis] Connecting to WebSocket...");
-      if (!geminiWsRef.current) {
-        console.error("[RealTimeAnalysis] GeminiWebSocket instance is null!");
+      if (!geminiClientRef.current) {
+        console.error("[RealTimeAnalysis] GeminiClient instance is null!");
         return;
       }
       
-      console.log("[RealTimeAnalysis] Calling connect() on GeminiWebSocket...");
-      geminiWsRef.current.connect();
+      console.log("[RealTimeAnalysis] Calling connect() on GeminiClient...");
+      geminiClientRef.current.connect();
 
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
@@ -135,10 +140,18 @@ export default function RealTimeAnalysis({ onTextResponse, onKeywords }: RealTim
       audioWorkletNode.port.onmessage = (event) => {
         const { pcmData, level } = event.data;
         setAudioLevel(level);
-        if (geminiWsRef.current && shouldSendAudioRef.current) {
-          console.log("[RealTimeAnalysis] Sending audio chunk to WebSocket");
-          const b64Data = btoa(String.fromCharCode(...new Uint8Array(pcmData)));
-          geminiWsRef.current.sendMediaChunk(b64Data, "audio/pcm");
+        if (geminiClientRef.current && shouldSendAudioRef.current) {
+          console.log("[RealTimeAnalysis] Preparing to send audio chunk...");
+          try {
+            const pcmArray = new Uint8Array(pcmData);
+            console.log("[RealTimeAnalysis] PCM data size:", pcmArray.length);
+            const b64Data = btoa(String.fromCharCode(...pcmArray));
+            console.log("[RealTimeAnalysis] Base64 data size:", b64Data.length);
+            geminiClientRef.current.sendMediaChunk(b64Data, "audio/pcm");
+            console.log("[RealTimeAnalysis] Audio chunk sent successfully");
+          } catch (error) {
+            console.error("[RealTimeAnalysis] Error sending audio chunk:", error);
+          }
         }
       };
 
@@ -147,7 +160,9 @@ export default function RealTimeAnalysis({ onTextResponse, onKeywords }: RealTim
       audioWorkletNode.connect(audioContextRef.current.destination);
       audioWorkletNodeRef.current = audioWorkletNode;
 
-      console.log("[RealTimeAnalysis] Audio setup complete");
+      // Set shouldSendAudioRef to true immediately after setup
+      shouldSendAudioRef.current = true;
+      console.log("[RealTimeAnalysis] Audio setup complete, shouldSendAudio:", shouldSendAudioRef.current);
       setIsActive(true);
     } catch (error) {
       console.error("[RealTimeAnalysis] Error starting audio:", error);
@@ -165,8 +180,8 @@ export default function RealTimeAnalysis({ onTextResponse, onKeywords }: RealTim
     if (audioContextRef.current) {
       audioContextRef.current.close();
     }
-    if (geminiWsRef.current) {
-      geminiWsRef.current.disconnect();
+    if (geminiClientRef.current) {
+      geminiClientRef.current.disconnect();
     }
     setIsActive(false);
     setIsConnected(false);
@@ -181,11 +196,11 @@ export default function RealTimeAnalysis({ onTextResponse, onKeywords }: RealTim
         className="flex items-center gap-2"
       >
         {isProcessing ? (
-          <PauseIcon className="h-4 w-4 animate-spin" />
+          <Pause className="h-4 w-4 animate-spin" />
         ) : isActive ? (
-          <MicIcon className="h-4 w-4" />
+          <MicOff className="h-4 w-4" />
         ) : (
-          <MicIcon className="h-4 w-4" />
+          <Mic className="h-4 w-4" />
         )}
         {isProcessing ? "Processing..." : isActive ? "Stop Analysis" : "Start Analysis"}
       </Button>

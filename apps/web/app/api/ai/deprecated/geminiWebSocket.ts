@@ -24,6 +24,9 @@ export class GeminiWebSocket {
   private onTranscriptionCallback: ((text: string) => void) | null = null;
   private transcriptionService: TranscriptionService;
   private accumulatedPcmData: string[] = [];
+  private reconnectAttempts: number = 0;
+  private maxReconnectAttempts: number = 5;
+  private reconnectDelay: number = 1000;
 
   constructor(
     onMessage: (text: string) => void, 
@@ -38,29 +41,23 @@ export class GeminiWebSocket {
     this.onPlayingStateChange = onPlayingStateChange;
     this.onAudioLevelChange = onAudioLevelChange;
     this.onTranscriptionCallback = onTranscription;
-    // Create AudioContext for playback
     this.audioContext = new AudioContext({
-      sampleRate: 24000  // Match the response audio rate
+      sampleRate: 24000
     });
     this.transcriptionService = new TranscriptionService();
   }
 
-  connect() {
-    console.log("[GeminiWebSocket] Attempting to connect to:", WS_URL);
-    if (this.ws?.readyState === WebSocket.OPEN) {
-      console.log("[GeminiWebSocket] WebSocket already connected");
-      return;
-    }
+  private createWebSocket(): WebSocket {
+    const ws = new WebSocket(WS_URL);
     
-    this.ws = new WebSocket(WS_URL);
-
-    this.ws.onopen = () => {
+    ws.onopen = () => {
       console.log("[GeminiWebSocket] WebSocket connection opened");
       this.isConnected = true;
+      this.reconnectAttempts = 0;
       this.sendInitialSetup();
     };
 
-    this.ws.onmessage = async (event) => {
+    ws.onmessage = async (event) => {
       try {
         console.log("[GeminiWebSocket] Received message");
         let messageText: string;
@@ -78,20 +75,32 @@ export class GeminiWebSocket {
       }
     };
 
-    this.ws.onerror = (error) => {
+    ws.onerror = (error) => {
       console.error("[GeminiWebSocket] WebSocket error:", error);
     };
 
-    this.ws.onclose = (event) => {
+    ws.onclose = (event) => {
       console.log("[GeminiWebSocket] WebSocket closed:", event.code, event.reason);
       this.isConnected = false;
       
-      // Only attempt to reconnect if we haven't explicitly called disconnect
-      if (!event.wasClean && this.isSetupComplete) {
-        console.log("[GeminiWebSocket] Attempting to reconnect...");
-        setTimeout(() => this.connect(), 1000);
+      if (!event.wasClean && this.isSetupComplete && this.reconnectAttempts < this.maxReconnectAttempts) {
+        this.reconnectAttempts++;
+        console.log(`[GeminiWebSocket] Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts})...`);
+        setTimeout(() => this.connect(), this.reconnectDelay * this.reconnectAttempts);
       }
     };
+
+    return ws;
+  }
+
+  connect() {
+    console.log("[GeminiWebSocket] Attempting to connect to:", WS_URL);
+    if (this.ws?.readyState === WebSocket.OPEN) {
+      console.log("[GeminiWebSocket] WebSocket already connected");
+      return;
+    }
+    
+    this.ws = this.createWebSocket();
   }
 
   private sendInitialSetup() {
@@ -106,7 +115,7 @@ export class GeminiWebSocket {
           parts: [{
             text: `You are a real-time transcription assistant. For each audio input, respond in the following format:
 
-TRANSCRIPTION: [transcribe the audio content to chinese here]
+TRANSCRIPTION: [transcribe the audio content here, please use chinese or english only]
 KEYWORDS: [list any technical terms, specialized vocabulary, or complex concepts that might be difficult for a general audience to understand, separated by commas. If none, leave empty]
 
 Example:
@@ -124,7 +133,10 @@ KEYWORDS:`
   }
 
   sendMediaChunk(b64Data: string, mimeType: string) {
-    if (!this.isConnected || !this.ws || !this.isSetupComplete) return;
+    if (!this.isConnected || !this.ws || !this.isSetupComplete) {
+      console.warn("[GeminiWebSocket] Cannot send media chunk: not connected or setup not complete");
+      return;
+    }
 
     const message = {
       realtime_input: {
@@ -140,6 +152,10 @@ KEYWORDS:`
       this.ws.send(JSON.stringify(message));
     } catch (error) {
       console.error("[WebSocket] Error sending media chunk:", error);
+      // Attempt to reconnect if the connection is lost
+      if (!this.isConnected) {
+        this.connect();
+      }
     }
   }
 
