@@ -14,6 +14,7 @@
   "dependencies": {
     "@ai-sdk/google": "^1.2.10",
     "@ai-sdk/react": "^1.2.8",
+    "@google/generative-ai": "^0.24.0",
     "@hookform/resolvers": "^5.0.1",
     "@workspace/ui": "workspace:*",
     "ai": "^4.3.5",
