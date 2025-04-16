@@ -19,12 +19,18 @@ interface ClientConnection {
   id: string;
   geminiWs: WebSocket | null;
   isSetupComplete: boolean;
+  lastActivity: number;
 }
 
 export class GeminiProxyServer {
   private wss: WebSocketServer;
   private clients: Map<string, ClientConnection> = new Map();
   private geminiConnections: Map<string, WebSocket> = new Map();
+  private reconnectAttempts: Map<string, number> = new Map();
+  private maxReconnectAttempts: number = 5;
+  private reconnectTimeout: number = 1000;
+  private healthCheckInterval: number = 30000; // 30 seconds
+  private healthCheckTimers: Map<string, NodeJS.Timeout> = new Map();
 
   constructor(port: number) {
     this.wss = new WebSocketServer({ port });
@@ -40,13 +46,18 @@ export class GeminiProxyServer {
         ws,
         id: clientId,
         geminiWs: null,
-        isSetupComplete: false
+        isSetupComplete: false,
+        lastActivity: Date.now()
       };
 
       this.clients.set(clientId, clientConnection);
 
+      // Set up health check for this client
+      this.setupHealthCheck(clientId);
+
       ws.on('message', async (message: string) => {
         try {
+          clientConnection.lastActivity = Date.now();
           const data = JSON.parse(message);
           await this.handleClientMessage(clientId, data);
         } catch (error) {
@@ -64,6 +75,47 @@ export class GeminiProxyServer {
         this.cleanupClient(clientId);
       });
     });
+  }
+
+  private setupHealthCheck(clientId: string) {
+    // Clear any existing health check timer
+    const existingTimer = this.healthCheckTimers.get(clientId);
+    if (existingTimer) {
+      clearInterval(existingTimer);
+    }
+
+    // Set up new health check timer
+    const timer = setInterval(() => {
+      const client = this.clients.get(clientId);
+      if (!client) {
+        clearInterval(timer);
+        this.healthCheckTimers.delete(clientId);
+        return;
+      }
+
+      const now = Date.now();
+      if (now - client.lastActivity > this.healthCheckInterval) {
+        console.log(`[Proxy] Client ${clientId} inactive for too long, sending ping`);
+        try {
+          client.ws.ping();
+        } catch (error) {
+          console.error(`[Proxy] Error sending ping to client ${clientId}:`, error);
+          this.cleanupClient(clientId);
+        }
+      }
+
+      // Check Gemini connection health
+      if (client.geminiWs && client.geminiWs.readyState === WebSocket.OPEN) {
+        try {
+          client.geminiWs.ping();
+        } catch (error) {
+          console.error(`[Proxy] Error sending ping to Gemini for client ${clientId}:`, error);
+          this.attemptReconnect(client);
+        }
+      }
+    }, this.healthCheckInterval);
+
+    this.healthCheckTimers.set(clientId, timer);
   }
 
   private generateClientId(): string {
@@ -92,6 +144,7 @@ export class GeminiProxyServer {
 
       geminiWs.on('open', () => {
         console.log(`[Proxy] Gemini connection opened for client ${client.id}`);
+        this.reconnectAttempts.set(client.id, 0); // Reset reconnect attempts
         this.sendInitialSetup(geminiWs);
       });
 
@@ -102,16 +155,28 @@ export class GeminiProxyServer {
       geminiWs.on('close', () => {
         console.log(`[Proxy] Gemini connection closed for client ${client.id}`);
         this.cleanupGeminiConnection(client.id);
+        this.attemptReconnect(client);
       });
 
       geminiWs.on('error', (error) => {
         console.error(`[Proxy] Gemini connection error for client ${client.id}:`, error);
         this.cleanupGeminiConnection(client.id);
+        this.attemptReconnect(client);
+      });
+
+      geminiWs.on('ping', () => {
+        geminiWs.pong();
+      });
+
+      geminiWs.on('pong', () => {
+        // Connection is healthy
+        client.lastActivity = Date.now();
       });
 
     } catch (error) {
       console.error(`[Proxy] Error connecting to Gemini for client ${client.id}:`, error);
       this.cleanupGeminiConnection(client.id);
+      this.attemptReconnect(client);
     }
   }
 
@@ -126,7 +191,7 @@ export class GeminiProxyServer {
           parts: [{
             text: `You are a real-time transcription assistant. For each audio input, respond in the following format:
 
-TRANSCRIPTION: [transcribe the audio content here, please use chinese or english only]
+TRANSCRIPTION: [transcribe the audio content here, the speaker will be speaking in chinese. Please respond in chinese.]
 KEYWORDS: [list any technical terms, specialized vocabulary, or complex concepts that might be difficult for a general audience to understand, separated by commas. If none, leave empty]
 
 Example:
@@ -175,9 +240,17 @@ KEYWORDS:`
   private cleanupClient(clientId: string) {
     const client = this.clients.get(clientId);
     if (client) {
+      // Clear health check timer
+      const healthCheckTimer = this.healthCheckTimers.get(clientId);
+      if (healthCheckTimer) {
+        clearInterval(healthCheckTimer);
+        this.healthCheckTimers.delete(clientId);
+      }
+
       this.cleanupGeminiConnection(clientId);
       client.ws.close();
       this.clients.delete(clientId);
+      this.reconnectAttempts.delete(clientId);
     }
   }
 
@@ -187,6 +260,19 @@ KEYWORDS:`
       client.geminiWs.close();
       client.geminiWs = null;
       client.isSetupComplete = false;
+    }
+  }
+
+  private attemptReconnect(client: ClientConnection) {
+    const attempts = this.reconnectAttempts.get(client.id) || 0;
+    if (attempts < this.maxReconnectAttempts) {
+      this.reconnectAttempts.set(client.id, attempts + 1);
+      const delay = this.reconnectTimeout * (attempts + 1);
+      console.log(`[Proxy] Attempting to reconnect to Gemini for client ${client.id} (${attempts + 1}/${this.maxReconnectAttempts}) in ${delay}ms`);
+      setTimeout(() => this.connectToGemini(client), delay);
+    } else {
+      console.log(`[Proxy] Max reconnection attempts reached for client ${client.id}`);
+      this.cleanupClient(client.id);
     }
   }
 } 
