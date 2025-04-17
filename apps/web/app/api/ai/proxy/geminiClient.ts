@@ -3,7 +3,9 @@ import dotenv from "dotenv";
 // Load environment variables
 dotenv.config();
 
-const PROXY_SERVER_URL = process.env.PROXY_SERVER_URL || `ws://${process.env.PROXY_HOST || 'localhost'}:${process.env.PROXY_PORT || '8080'}`;
+// const PROXY_SERVER_URL = process.env.PROXY_SERVER_URL || `ws://${process.env.PROXY_HOST || 'localhost'}:${process.env.PROXY_PORT || '4567'}`;
+const PROXY_SERVER_URL = "wss://intevia.adastra.tw"
+
 
 export class GeminiClient {
   private ws: WebSocket | null = null;
