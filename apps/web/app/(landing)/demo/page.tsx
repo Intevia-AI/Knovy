@@ -24,6 +24,7 @@ import {
 import { Message } from "ai";
 import { Input } from "@workspace/ui/components/input";
 import { Markdown } from "./markdown";
+import RealTimeAnalysis from "@/components/RealTimeAnalysis";
 
 // --- Types ---
 type Screenshot = {
@@ -107,6 +108,10 @@ export default function Page() {
 
   // State for tracking audio recording time
   const [micRecordingDuration, setMicRecordingDuration] = useState(0);
+
+  // State for keywords
+  const [keywords, setKeywords] = useState<string[]>([]);
+  const [selectedKeyword, setSelectedKeyword] = useState<string | null>(null);
 
   // --- Utility Functions ---
 
@@ -1098,8 +1103,7 @@ export default function Page() {
   ]);
 
   const handleToggleRealTime = () => {
-    if (isLoading || !isRecording) return;
-    setRealTimeAnalysisEnabled((prev) => !prev);
+    setRealTimeAnalysisEnabled(!realTimeAnalysisEnabled);
   };
 
   const handleToggleScreenshots = () => {
@@ -1239,6 +1243,85 @@ export default function Page() {
     // Add cleanupIntervals and finalMicAudioUrl as dependencies
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cleanupIntervals, finalMicAudioUrl]); // Removed stopRecordingInternal dependency
+
+  const handleTextResponse = useCallback((text: string) => {
+    setAiMessages((prev) => {
+      // Find the last real-time message or create a new one
+      const lastMessage = prev[prev.length - 1];
+      if (lastMessage?.content.startsWith("[Real-time Transcription]")) {
+        // Update the existing message
+        return [
+          ...prev.slice(0, -1),
+          {
+            ...lastMessage,
+            content: lastMessage.content + text
+          }
+        ];
+      } else {
+        // Create a new message
+        return [
+          ...prev,
+          {
+            id: `realtime-${Date.now()}`,
+            role: "assistant",
+            content: `[Real-time Transcription] ${text}`,
+          },
+        ];
+      }
+    });
+  }, []);
+
+  const handleKeywords = useCallback((newKeywords: string[]) => {
+    setKeywords(prev => {
+      // Add new keywords that aren't already in the list
+      const uniqueNewKeywords = newKeywords.filter(k => !prev.includes(k));
+      return [...prev, ...uniqueNewKeywords];
+    });
+  }, []);
+
+  const handleKeywordClick = useCallback(async (keyword: string) => {
+    setSelectedKeyword(keyword);
+    setIsLoading(true);
+    
+    try {
+      const response = await fetch("/api/ai", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          messages: [
+            {
+              role: "user",
+              content: `請用簡單易懂的方式解釋這個專業術語：${keyword}`
+            }
+          ],
+          data: {} // Empty data object as we don't need any context for keyword explanation
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to get explanation");
+      }
+
+      const data = await response.json();
+      const explanation = data.content;
+
+      setAiMessages(prev => [
+        ...prev,
+        {
+          id: `explanation-${Date.now()}`,
+          role: "assistant",
+          content: `[${keyword} 的解釋] ${explanation}`,
+        },
+      ]);
+    } catch (error) {
+      console.error("Error getting keyword explanation:", error);
+    } finally {
+      setIsLoading(false);
+      setSelectedKeyword(null);
+    }
+  }, []);
 
   return (
     <div className="container mx-auto max-w-4xl py-8 px-4">
@@ -1454,20 +1537,10 @@ export default function Page() {
             <span>AI Assistant</span>
             <div className="flex items-center gap-3">
               <span className="text-sm font-medium">Real-time Analysis:</span>
-              <Button
-                variant={realTimeAnalysisEnabled ? "default" : "outline"}
-                size="sm"
-                onClick={handleToggleRealTime}
-                disabled={isLoading || !isRecording}
-                title={
-                  isRecording
-                    ? `Turn ${realTimeAnalysisEnabled ? "Off" : "On"}`
-                    : "Start recording to enable"
-                }
-                className={`w-[60px] ${isLoading || !isRecording ? "opacity-50 cursor-not-allowed" : ""}`}
-              >
-                {realTimeAnalysisEnabled ? "ON" : "OFF"}
-              </Button>
+              <RealTimeAnalysis 
+                onTextResponse={handleTextResponse}
+                onKeywords={handleKeywords}
+              />
             </div>
           </CardTitle>
         </CardHeader>
@@ -1588,6 +1661,29 @@ export default function Page() {
           </div>
         </CardContent>
       </Card>
+
+      {keywords.length > 0 && (
+        <div className="p-4 bg-gray-50 rounded-lg">
+          <h2 className="text-lg font-semibold mb-2">Detected Keywords</h2>
+          <div className="flex flex-wrap gap-2">
+            {keywords.map((keyword, index) => (
+              <Button
+                key={index}
+                variant="outline"
+                size="sm"
+                onClick={() => handleKeywordClick(keyword)}
+                disabled={isLoading && selectedKeyword === keyword}
+                className="flex items-center gap-2"
+              >
+                {keyword}
+                {isLoading && selectedKeyword === keyword && (
+                  <Loader2Icon className="h-4 w-4 animate-spin" />
+                )}
+              </Button>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
