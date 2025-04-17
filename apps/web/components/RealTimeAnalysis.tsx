@@ -37,12 +37,12 @@ export default function RealTimeAnalysis({ onTextResponse, onKeywords }: RealTim
           const transcriptionMatch = textBufferRef.current.match(/TRANSCRIPTION: (.*?)(?:\n|$)KEYWORDS:/s);
           const keywordsMatch = textBufferRef.current.match(/KEYWORDS: (.*?)(?:\n|$)/s);
           
-          if (transcriptionMatch) {
+          if (transcriptionMatch && transcriptionMatch[1]?.trim()) {
             const transcription = transcriptionMatch[1].trim();
             onTextResponse?.(transcription);
           }
           
-          if (keywordsMatch) {
+          if (keywordsMatch && keywordsMatch[1]?.trim()) {
             const keywordsStr = keywordsMatch[1].trim();
             if (keywordsStr) {
               const keywords = keywordsStr.split(',').map(k => k.trim()).filter(k => k.length > 0);
