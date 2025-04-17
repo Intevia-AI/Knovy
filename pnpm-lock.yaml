@@ -24,6 +24,15 @@ importers:
         specifier: 5.7.3
         version: 5.7.3
 
+  apps/proxy:
+    dependencies:
+      dotenv:
+        specifier: ^16.0.0
+        version: 16.5.0
+      ws:
+        specifier: ^8.0.0
+        version: 8.18.1
+
   apps/web:
     dependencies:
       '@ai-sdk/google':
