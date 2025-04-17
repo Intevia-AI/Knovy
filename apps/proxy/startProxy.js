@@ -256,6 +256,6 @@ KEYWORDS:`
   }
 }
 
-const PORT = process.env.PROXY_PORT || 8080;
+const PORT = process.env.PROXY_PORT || 4567; // Changed default port
 const proxyServer = new GeminiProxyServer(PORT);
-console.log(`[Proxy] Server started on port ${PORT}`); 
+console.log(`[Proxy] Server started on port ${PORT}`); // Log the actual port used

@@ -14,13 +14,13 @@ RUN npm install
 # Bundle app source
 COPY . .
 
-# Make port 8080 available to the world outside this container (if PROXY_PORT is 8080)
+# Make port 4567 available to the world outside this container (if PROXY_PORT is 4567)
 # This is informational; the actual mapping happens in docker-compose.yml
-EXPOSE 8080
+EXPOSE 4567
 
 # Define environment variables (defaults, can be overridden by .env.local via docker-compose volume)
 ENV NODE_ENV=production
-ENV PROXY_PORT=8080
+ENV PROXY_PORT=4567
 
 # Run startProxy.js when the container launches
 CMD [ "node", "startProxy.js" ]
