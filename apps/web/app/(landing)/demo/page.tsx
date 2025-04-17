@@ -46,7 +46,6 @@ type AudioSource = "mic" | "system";
 // Context structure for AI
 type AIContextData = {
   micAudio?: { data: string; mimeType: string };
-  systemAudio?: { data: string; mimeType: string };
   video?: { data: string; mimeType: string }; // For screen recordings
   screenshots?: { data: string; mimeType: string }[];
 };
@@ -155,10 +154,8 @@ export default function Page() {
   const getSupportedMimeType = useCallback(
     (kind: "audio" | "video"): string => {
       const audioTypes = [
-        "audio/webm;codecs=opus",
-        "audio/ogg;codecs=opus",
-        "audio/wav",
-        "audio/webm",
+        "audio/ogg;codecs=opus", // first choice
+        "audio/wav", // universal fallback (large)
       ];
       const videoTypes = [
         "video/webm;codecs=vp9,opus",
@@ -172,7 +169,7 @@ export default function Page() {
         if (MediaRecorder.isTypeSupported(type)) return type;
       }
       console.warn(`No preferred ${kind} MIME type supported.`);
-      return kind === "audio" ? "audio/webm" : "video/webm"; // Default fallback
+      return kind === "audio" ? "audio/wav" : "video/webm";
     },
     []
   );
@@ -769,7 +766,7 @@ export default function Page() {
       let systemAudioBlob: Blob | null = null;
       let screenBlob: Blob | null = null;
 
-      const MAX_CHUNKS_FOR_AI = 2;
+      const MAX_CHUNKS_FOR_AI = 1;
 
       // Process Mic Audio Chunks
       if (micAudioChunks.length > 0) {
@@ -781,7 +778,7 @@ export default function Page() {
           { type: mime }
         );
         console.log(
-          `Using last ${relevantMicChunks.length} mic audio chunks. Size: ${(micAudioBlob.size / 1024).toFixed(1)} KB`
+          `Using last ${relevantMicChunks.length} mic audio chunk(s). Size: ${(micAudioBlob.size / 1024).toFixed(1)} KB, Type: ${mime}`
         );
       }
 
@@ -795,7 +792,7 @@ export default function Page() {
           { type: mime }
         );
         console.log(
-          `Using last ${relevantSystemChunks.length} system audio chunks. Size: ${(systemAudioBlob.size / 1024).toFixed(1)} KB`
+          `Using last ${relevantSystemChunks.length} system audio chunk(s). Size: ${(systemAudioBlob.size / 1024).toFixed(1)} KB, Type: ${mime}`
         );
       }
 
@@ -841,15 +838,17 @@ export default function Page() {
               data: base64.split(",")[1] || "",
               mimeType: micAudioBlob.type,
             };
-        }
-        if (systemAudioBlob) {
+          console.log("Selected Mic Audio for context.");
+        } else if (systemAudioBlob) {
           const base64 = await blobToBase64(systemAudioBlob);
           if (base64)
-            context.systemAudio = {
+            context.micAudio = {
               data: base64.split(",")[1] || "",
               mimeType: systemAudioBlob.type,
             };
+          console.log("Selected System Audio (as micAudio) for context.");
         }
+
         if (screenBlob) {
           const base64 = await blobToBase64(screenBlob);
           if (base64)
@@ -858,6 +857,7 @@ export default function Page() {
               mimeType: screenBlob.type,
             };
         }
+
         if (currentScreenshots.length > 0) {
           context.screenshots = currentScreenshots.map((ss) => ({
             data: ss.data.split(",")[1] || "",
@@ -870,8 +870,8 @@ export default function Page() {
       }
 
       console.log("Context gathered:", {
-        micAudio: !!context.micAudio,
-        systemAudio: !!context.systemAudio,
+        audioSource: context.micAudio ? (micAudioBlob ? "mic" : "system") : "none",
+        audioMimeType: context.micAudio?.mimeType,
         video: !!context.video,
         screenshots: context.screenshots?.length ?? 0,
       });

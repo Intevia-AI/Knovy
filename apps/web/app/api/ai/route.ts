@@ -14,11 +14,10 @@ interface MediaFile {
 }
 
 interface AIRequestBody {
-  micAudio?: MediaFile; // Renamed from audio
-  systemAudio?: MediaFile; // Added
+  micAudio?: MediaFile; // Represents the single audio source (could be mic or system)
   video?: MediaFile;
   screenshots?: MediaFile[];
-  query?: string; // Keep query if needed, or rely on message content
+  query?: string;
 }
 
 interface CompleteRequest {
@@ -39,6 +38,43 @@ function extractRequestData(body: any): {
   return { data, messages };
 }
 
+// Helper function to select and validate the single audio file
+function pickSingleAudio(data: AIRequestBody): MediaFile | undefined {
+  // The frontend now sends the single audio source in the micAudio field
+  const file = data.micAudio;
+  if (!file) return undefined; // No audio provided
+
+  // Validate MIME type against Gemini's allow-list
+  if (!/^audio\/(ogg|wav|mp3|aac|flac|aiff)/.test(file.mimeType)) {
+    console.error(`Unsupported audio mimeType received: ${file.mimeType}`);
+    throw new Error(
+      `Unsupported audio mimeType ${file.mimeType}. Record with OGG or WAV.`
+    );
+  }
+
+  // Estimate byte size from base64 and check against limit (e.g., 19MB)
+  const bytes = (file.data.length * 3) / 4;
+  const MAX_AUDIO_BYTES = 19 * 1024 * 1024; // ~19 MB limit for inline data
+
+  if (bytes > MAX_AUDIO_BYTES) {
+    console.error(
+      `Audio data size (${(bytes / (1024 * 1024)).toFixed(1)} MB) exceeds limit of ${
+        MAX_AUDIO_BYTES / (1024 * 1024)
+      } MB.`
+    );
+    throw new Error(
+      `Inline audio size exceeds ${
+        MAX_AUDIO_BYTES / (1024 * 1024)
+      } MB limit. Consider using the Files API for larger files.`
+    );
+  }
+
+  console.log(
+    `Validated audio: ${file.mimeType}, size: ${(bytes / 1024).toFixed(1)} KB`
+  );
+  return file; // Return the validated audio file
+}
+
 export async function POST(req: Request) {
   try {
     const raw = await req.json();
@@ -48,42 +84,34 @@ export async function POST(req: Request) {
     // Create parts for the current user message content
     const parts: UserContent = [];
 
-    // Add text prefix for clarity if both audio sources are present
-    const addAudioPrefix = !!(data.micAudio && data.systemAudio);
+    // --- Process Single Audio File ---
+    const audio = pickSingleAudio(data); // Use the helper function
+    if (audio) {
+      parts.push({ type: "text", text: "Audio Input:" }); // Generic prefix
+      parts.push({
+        type: "file",
+        data: audio.data,
+        mimeType: audio.mimeType,
+      });
+    }
 
-    if (data.micAudio) {
-      if (addAudioPrefix)
-        parts.push({ type: "text", text: "Microphone Audio:" });
+    // --- Process Video (Screen Recording) ---
+    if (data.video) {
+      parts.push({ type: "text", text: "Screen Recording:" });
       parts.push({
         type: "file",
-        data: data.micAudio.data,
-        mimeType: data.micAudio.mimeType,
+        data: data.video.data,
+        mimeType: data.video.mimeType,
       });
     }
-    if (data.systemAudio) {
-      if (addAudioPrefix) parts.push({ type: "text", text: "System Audio:" });
-      parts.push({
-        type: "file",
-        data: data.systemAudio.data,
-        mimeType: data.systemAudio.mimeType,
-      });
-    }
-    // if (data.video) { // Keep video handling as is
-    //   parts.push({ type: "text", text: "Screen Recording:" }); // Optional prefix
-    //   parts.push({
-    //     type: "file",
-    //     data: data.video.data,
-    //     mimeType: data.video.mimeType,
-    //   });
-    // }
+
+    // --- Process Screenshots ---
     if (data.screenshots && data.screenshots.length > 0) {
-      parts.push({ type: "text", text: "Screenshots:" }); // Optional prefix
+      parts.push({ type: "text", text: "Screenshots:" });
       data.screenshots.forEach((img) =>
         parts.push({ type: "image", image: img.data, mimeType: img.mimeType })
       );
     }
-    // The main query/instruction should ideally be the text content of the last user message
-    // if (data.query) parts.push({ type: "text", text: `Query: ${data.query}` });
 
     // Check if there's any content to process (either media parts or message text)
     const lastUserMessageContent = messages[messages.length - 1]?.content;
@@ -121,16 +149,12 @@ export async function POST(req: Request) {
     // Process the message history
     messages.forEach((msg, index) => {
       const messageText = typeof msg.content === "string" ? msg.content : "";
-      // For the last user message in history, combine its text with the media parts
       if (index === lastUserMessageIndex) {
         const contentParts: UserContent = [];
-        // Add media parts first
-        contentParts.push(...parts);
-        // Add the text part of the user message
+        contentParts.push(...parts); // Add validated media parts
         if (messageText.trim()) {
           contentParts.push({ type: "text", text: messageText });
         }
-        // Only add the message if it has content (either text or media)
         if (contentParts.length > 0) {
           formattedMessages.push({
             role: "user",
@@ -138,7 +162,6 @@ export async function POST(req: Request) {
           });
         }
       } else {
-        // Regular text messages (assistant or previous user messages)
         if (messageText.trim()) {
           formattedMessages.push({
             role: msg.role as "user" | "assistant",
@@ -148,8 +171,6 @@ export async function POST(req: Request) {
       }
     });
 
-    // If no user message was found in history but we have media parts, create a new user message
-    // This case might be less likely now that the frontend always sends a user message
     if (lastUserMessageIndex === -1 && parts.length > 0) {
       formattedMessages.push({
         role: "user",
@@ -157,7 +178,6 @@ export async function POST(req: Request) {
       });
     }
 
-    // Check if we actually have messages to send
     if (formattedMessages.length === 0) {
       console.warn("No formatted messages to send to AI.");
       return NextResponse.json(
@@ -185,7 +205,7 @@ export async function POST(req: Request) {
         useSearchGrounding: true,
       }),
       system:
-        "You are a helpful assistant. You can answer questions and provide information based on the input and context you receive. Be concise and clear. If nothing should be done, say 'Nothing to do'.",
+        "You are a helpful assistant. You can answer questions and provide information based on the input and context you receive (audio, screen recording, screenshots). Be concise and clear. If nothing should be done, say 'Nothing to do'.",
       messages: formattedMessages,
     });
 
@@ -194,7 +214,6 @@ export async function POST(req: Request) {
       text.substring(0, 100) + (text.length > 100 ? "..." : "")
     );
 
-    // Return a proper JSON response with the content field
     return NextResponse.json(
       { content: text },
       {
@@ -204,11 +223,17 @@ export async function POST(req: Request) {
       }
     );
   } catch (e: any) {
-    console.error("Error:", e);
+    console.error("Error in AI API route:", e);
+    const errorMessage = e instanceof Error ? e.message : "Internal Server Error";
+    const statusCode =
+      errorMessage.includes("Unsupported audio mimeType") ||
+      errorMessage.includes("exceeds limit")
+        ? 400
+        : 500;
     return NextResponse.json(
-      { error: e.message || "Internal Server Error" },
+      { error: errorMessage },
       {
-        status: 500,
+        status: statusCode,
         headers: {
           "Content-Type": "application/json",
         },
