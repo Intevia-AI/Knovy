@@ -54,9 +54,9 @@ type AIContextData = {
 // --- Constants ---
 const SCREENSHOT_INTERVAL_MS = 5000; // 5 seconds
 const REALTIME_ANALYSIS_INTERVAL_MS = 15000; // 15 seconds
-const AUDIO_CHUNK_TIMESLICE_MS = 30000; // 30 second chunks
+const AUDIO_CHUNK_TIMESLICE_MS = 5000; // 5 second chunks, changed from 3
 const MAX_SCREENSHOTS = 5;
-const MAX_AUDIO_BYTES_FOR_AI = 1 * 1024 * 1024; // 1MB limit for AI audio - Kept for reference, but not actively used for trimming now
+const MAX_AUDIO_BYTES_FOR_AI = 5 * 1024 * 1024; // 5MB limit for AI audio
 
 // --- Full Code ---
 export default function Page() {
@@ -199,6 +199,17 @@ export default function Page() {
     return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
+  const compressAudioIfNeeded = async (blob: Blob): Promise<Blob> => {
+    if (!blob || blob.size <= MAX_AUDIO_BYTES_FOR_AI) {
+      return blob;
+    }
+    console.warn(
+      `Audio size (${(blob.size / 1024).toFixed(1)} KB) > limit (${(MAX_AUDIO_BYTES_FOR_AI / 1024).toFixed(1)} KB). Trimming to keep the most recent audio.`
+    );
+    // Keep the last MAX_AUDIO_BYTES_FOR_AI bytes
+    return blob.slice(blob.size - MAX_AUDIO_BYTES_FOR_AI, blob.size, blob.type);
+  };
+
   const takeScreenshot = useCallback(() => {
     const videoElement =
       captureMode === "camera" ? videoRef.current : screenVideoRef.current;
@@ -331,8 +342,10 @@ export default function Page() {
             console.log(
               `${source} chunk received: ${(event.data.size / 1024).toFixed(1)} KB`
             );
-            const newChunk = { blob: event.data, timestamp: Date.now() };
-            setChunks((prev) => [...prev, newChunk]);
+            setChunks((prev: MediaChunk[]) => [
+              ...prev,
+              { blob: event.data, timestamp: Date.now() },
+            ]);
           }
         };
         recorder.onerror = (e) => console.error(`${source} recorder error:`, e);
@@ -769,41 +782,37 @@ export default function Page() {
       let systemAudioBlob: Blob | null = null;
       let screenBlob: Blob | null = null;
 
-      const MAX_CHUNKS_FOR_AI = 2;
-
-      // Process Mic Audio Chunks
       if (micAudioChunks.length > 0) {
-        const relevantMicChunks = micAudioChunks.slice(-MAX_CHUNKS_FOR_AI);
         const mime =
-          relevantMicChunks[0]?.blob.type || getSupportedMimeType("audio");
-        micAudioBlob = new Blob(
-          relevantMicChunks.map((c) => c.blob),
+          micAudioChunks[0]?.blob.type || getSupportedMimeType("audio");
+        let tempBlob = new Blob(
+          micAudioChunks.map((c) => c.blob),
           { type: mime }
         );
         console.log(
-          `Using last ${relevantMicChunks.length} mic audio chunks. Size: ${(micAudioBlob.size / 1024).toFixed(1)} KB`
+          `Using ${micAudioChunks.length} mic audio chunks. Size: ${(tempBlob.size / 1024).toFixed(1)} KB`
         );
+        micAudioBlob = await compressAudioIfNeeded(tempBlob); // Trim if needed
       }
 
-      // Process System Audio Chunks
       if (systemAudioChunks.length > 0) {
-        const relevantSystemChunks = systemAudioChunks.slice(-MAX_CHUNKS_FOR_AI);
         const mime =
-          relevantSystemChunks[0]?.blob.type || getSupportedMimeType("audio");
-        systemAudioBlob = new Blob(
-          relevantSystemChunks.map((c) => c.blob),
+          systemAudioChunks[0]?.blob.type || getSupportedMimeType("audio");
+        let tempBlob = new Blob(
+          systemAudioChunks.map((c) => c.blob),
           { type: mime }
         );
         console.log(
-          `Using last ${relevantSystemChunks.length} system audio chunks. Size: ${(systemAudioBlob.size / 1024).toFixed(1)} KB`
+          `Using ${systemAudioChunks.length} system audio chunks. Size: ${(tempBlob.size / 1024).toFixed(1)} KB`
         );
+        systemAudioBlob = await compressAudioIfNeeded(tempBlob); // Trim if needed
       }
 
-      // Screen video chunk handling (remains the same, might need adjustment later if needed)
       if (captureMode === "screen" && screenChunks.length > 0) {
-        const screenContextDurationSec = 30; // Example: Keep last 30s of screen recording
-        const screenChunkDurationSec = AUDIO_CHUNK_TIMESLICE_MS * 2 / 1000; // Duration of each screen chunk
-        const screenChunksNeeded = Math.ceil(screenContextDurationSec / screenChunkDurationSec);
+        const screenContextDurationSec = 30;
+        const screenChunksNeeded = Math.ceil(
+          screenContextDurationSec / ((AUDIO_CHUNK_TIMESLICE_MS * 2) / 1000)
+        );
         const relevantScreenChunks = screenChunks.slice(-screenChunksNeeded);
 
         if (relevantScreenChunks.length > 0) {
@@ -884,6 +893,7 @@ export default function Page() {
       screenshots,
       captureMode,
       getSupportedMimeType,
+      compressAudioIfNeeded, // Added dependency
       blobToBase64,
     ]
   );
