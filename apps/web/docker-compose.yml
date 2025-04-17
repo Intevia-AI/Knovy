@@ -8,28 +8,21 @@ services:
     container_name: intevia-proxy-server
     restart: unless-stopped
     ports:
-      # Map host port 8080 to container port 8080 (or the value of PROXY_PORT)
-      # Format: "HOST_PORT:CONTAINER_PORT"
-      - "${PROXY_PORT:-8080}:${PROXY_PORT:-8080}"
-    environment:
-      # Pass the API key securely. Best practice is to use environment variables
-      # on the host machine or a .env file read by docker-compose.
-      # Example using a .env file in the same directory as docker-compose.yml:
-      # Create a .env file with:
-      # GOOGLE_GENERATIVE_AI_API_KEY=your_api_key_here
-      # PROXY_PORT=8080
-      GOOGLE_GENERATIVE_AI_API_KEY: ${GOOGLE_GENERATIVE_AI_API_KEY}
-      PROXY_PORT: ${PROXY_PORT:-8080} # Default to 8080 if not set
-    # Optional: Add volume mounts if needed, e.g., for logs
-    # volumes:
-    #   - ./logs:/app/logs
+      # Map host port to container port. The container port is determined by PROXY_PORT in .env.local (default 8080)
+      # You might need to adjust the host port (left side) if needed.
+      # Example: Map host port 8080 to the container's PROXY_PORT
+      - "8080:8080" # Adjust the right side if your PROXY_PORT in .env.local is different
+    volumes:
+      # Mount the local .env.local file into the container's working directory
+      - ./.env.local:/app/.env.local:ro # Mount as read-only
+    # Environment variables are now loaded from the mounted .env.local by the startProxy.js script
 
-# Note: Create a .env file in this directory (/Users/yeyouming/Desktop/intevia-ai/apps/web/)
+# Note: Ensure you have a .env.local file in this directory (/Users/yeyouming/Desktop/intevia-ai/apps/web/)
 # with the following content:
 #
 # GOOGLE_GENERATIVE_AI_API_KEY=YOUR_ACTUAL_GOOGLE_API_KEY
-# PROXY_PORT=8080 # Or your desired port
+# PROXY_PORT=8080 # Or your desired port for the proxy server to listen on inside the container
 #
-# Make sure this .env file is NOT committed to version control if it contains secrets.
-# Alternatively, set these environment variables directly on your VPS host system.
+# This .env.local file will be mounted directly into the container.
+# Make sure this file is NOT committed to version control.
 
