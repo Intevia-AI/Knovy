@@ -54,7 +54,7 @@ type AIContextData = {
 // --- Constants ---
 const SCREENSHOT_INTERVAL_MS = 5000; // 5 seconds
 const REALTIME_ANALYSIS_INTERVAL_MS = 15000; // 15 seconds
-const AUDIO_CHUNK_TIMESLICE_MS = 5000; // 3 second chunks
+const AUDIO_CHUNK_TIMESLICE_MS = 5000; // 5 second chunks, changed from 3
 const MAX_SCREENSHOTS = 5;
 const MAX_AUDIO_BYTES_FOR_AI = 5 * 1024 * 1024; // 5MB limit for AI audio
 
@@ -792,7 +792,7 @@ export default function Page() {
         console.log(
           `Using ${micAudioChunks.length} mic audio chunks. Size: ${(tempBlob.size / 1024).toFixed(1)} KB`
         );
-        micAudioBlob = await compressAudioIfNeeded(tempBlob);
+        micAudioBlob = await compressAudioIfNeeded(tempBlob); // Trim if needed
       }
 
       if (systemAudioChunks.length > 0) {
@@ -805,7 +805,7 @@ export default function Page() {
         console.log(
           `Using ${systemAudioChunks.length} system audio chunks. Size: ${(tempBlob.size / 1024).toFixed(1)} KB`
         );
-        systemAudioBlob = await compressAudioIfNeeded(tempBlob);
+        systemAudioBlob = await compressAudioIfNeeded(tempBlob); // Trim if needed
       }
 
       if (captureMode === "screen" && screenChunks.length > 0) {
@@ -893,7 +893,7 @@ export default function Page() {
       screenshots,
       captureMode,
       getSupportedMimeType,
-      compressAudioIfNeeded,
+      compressAudioIfNeeded, // Added dependency
       blobToBase64,
     ]
   );
