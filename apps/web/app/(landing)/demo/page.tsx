@@ -31,12 +31,12 @@ interface MediaChunk {
 
 interface AIContextData {
   micAudio?: { data: string; mimeType: string };
-  systemAudio?: { data: string; mimeType: string };
+  systemAudio?: { data: string; mimeType: string }; // Keep name for API consistency
 }
 
 // --- Constants -----------------------------------------------
 const AUDIO_CHUNK_TIMESLICE_MS = 5000; // 5‑second chunks
-const MAX_AUDIO_BYTES_FOR_AI = 5 * 1024 * 1024; // 5 MB
+const MAX_AUDIO_BYTES_FOR_AI = 1 * 1024 * 1024; // 5 MB
 
 // Helper to choose a supported MIME type for MediaRecorder
 const getSupportedMimeType = (kind: "audio"): string => {
@@ -53,10 +53,11 @@ const getSupportedMimeType = (kind: "audio"): string => {
 export default function Page() {
   // --- Refs ----------------------------------------------------
   const micAudioStreamRef = useRef<MediaStream | null>(null);
-  const systemAudioStreamRef = useRef<MediaStream | null>(null);
+  const screenStreamRef = useRef<MediaStream | null>(null); // Renamed from systemAudioStreamRef
   const micRecorderRef = useRef<MediaRecorder | null>(null);
-  const systemRecorderRef = useRef<MediaRecorder | null>(null);
+  const screenAudioRecorderRef = useRef<MediaRecorder | null>(null); // Renamed from systemRecorderRef
   const audioPlayerRef = useRef<HTMLAudioElement>(null);
+  const screenPreviewRef = useRef<HTMLVideoElement>(null); // Added for video preview
   const realTimeIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const sendContextToAIRef = useRef<(
     action: "real-time" | "answer" | "summary" | "search" | "custom",
@@ -67,11 +68,12 @@ export default function Page() {
   const [isRecording, setIsRecording] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [micChunks, setMicChunks] = useState<MediaChunk[]>([]);
-  const [systemChunks, setSystemChunks] = useState<MediaChunk[]>([]);
+  const [screenAudioChunks, setScreenAudioChunks] = useState<MediaChunk[]>([]); // Renamed from systemChunks
   const [micDuration, setMicDuration] = useState(0); // in seconds
   const [finalMicUrl, setFinalMicUrl] = useState<string | null>(null);
   const [aiMessages, setAiMessages] = useState<Message[]>([]);
   const [customPrompt, setCustomPrompt] = useState("");
+  const [isScreenSharing, setIsScreenSharing] = useState(false); // Added state for screen share
 
   // --- Utils --------------------------------------------------
   const cleanupStream = (ref: React.MutableRefObject<MediaStream | null>) => {
@@ -110,7 +112,7 @@ export default function Page() {
     stream: MediaStream,
     destState: React.Dispatch<React.SetStateAction<MediaChunk[]>>,
     ref: React.MutableRefObject<MediaRecorder | null>,
-    label: "mic" | "system"
+    label: "mic" | "screen" // Updated label
   ) => {
     const mime = getSupportedMimeType("audio");
     const rec = new MediaRecorder(stream, { mimeType: mime });
@@ -136,27 +138,63 @@ export default function Page() {
     }
   };
 
-  const startSystemAudioRecording = async (): Promise<boolean> => {
-    if (systemRecorderRef.current) return true;
+  // Renamed from startSystemAudioRecording
+  const startScreenCapture = async (): Promise<boolean> => {
+    if (screenStreamRef.current) return true; // Check screenStreamRef
     try {
-      // NOTE: on most browsers this triggers the screen‑share dialog; user can choose "Chrome Tab" to capture tab audio.
-      const stream = await navigator.mediaDevices.getDisplayMedia({ video: false, audio: true });
-      if (stream.getAudioTracks().length === 0) return false;
-      const audioOnly = new MediaStream(stream.getAudioTracks());
-      systemAudioStreamRef.current = audioOnly;
-      setupRecorder(audioOnly, setSystemChunks, systemRecorderRef, "system");
-      return true;
+      // Request video and audio
+      const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+      screenStreamRef.current = stream; // Store the full stream
+
+      let audioStarted = false;
+      let videoStarted = false;
+
+      // Setup audio recording if audio track exists
+      if (stream.getAudioTracks().length > 0) {
+        const audioOnly = new MediaStream(stream.getAudioTracks());
+        // Use renamed state setter and ref
+        setupRecorder(audioOnly, setScreenAudioChunks, screenAudioRecorderRef, "screen");
+        audioStarted = true;
+      } else {
+        console.warn("No audio track captured from screen share.");
+      }
+
+      // Setup video preview if video track exists
+      if (stream.getVideoTracks().length > 0) {
+        if (screenPreviewRef.current) {
+          screenPreviewRef.current.srcObject = stream;
+          screenPreviewRef.current.muted = true; // Mute preview locally
+          screenPreviewRef.current.play().catch(e => console.error("Video play error:", e));
+          setIsScreenSharing(true); // Set screen sharing state
+          videoStarted = true;
+        }
+      } else {
+        console.warn("No video track captured from screen share.");
+        // Clean up stream if only audio was requested but failed, and no video either
+        if (!audioStarted) cleanupStream(screenStreamRef);
+      }
+
+      // Return true if either audio or video capture started
+      return audioStarted || videoStarted;
     } catch (e) {
-      console.warn("system audio capture unavailable", e);
+      console.warn("Screen capture failed or cancelled", e);
+      cleanupStream(screenStreamRef); // Ensure cleanup on error
       return false;
     }
   };
 
   const stopAllRecording = () => {
     cleanupRecorder(micRecorderRef);
-    cleanupRecorder(systemRecorderRef);
+    cleanupRecorder(screenAudioRecorderRef); // Use renamed ref
     cleanupStream(micAudioStreamRef);
-    cleanupStream(systemAudioStreamRef);
+    cleanupStream(screenStreamRef); // Use renamed ref
+
+    // Clear video preview
+    if (screenPreviewRef.current) {
+      screenPreviewRef.current.srcObject = null;
+    }
+    setIsScreenSharing(false); // Reset screen sharing state
+
     if (finalMicUrl) URL.revokeObjectURL(finalMicUrl);
     setIsRecording(false);
   };
@@ -167,10 +205,10 @@ export default function Page() {
     setIsLoading(true);
     setAiMessages([]);
     setMicChunks([]);
-    setSystemChunks([]);
+    setScreenAudioChunks([]); // Use renamed state setter
     const micOK = await startMicRecording();
-    const sysOK = await startSystemAudioRecording();
-    if (micOK || sysOK) {
+    const screenOK = await startScreenCapture(); // Call renamed function
+    if (micOK || screenOK) { // Check screenOK
       setIsRecording(true);
       // mic duration timer
       const timer = setInterval(() => setMicDuration(d => d + 1), 1000);
@@ -202,9 +240,12 @@ export default function Page() {
       const micBlob = buildLimitedBlob(micChunks, mime);
       if (micBlob) ctx.micAudio = { data: (await blobToBase64(micBlob)).split(",")[1]!, mimeType: micBlob.type };
     }
-    if (systemChunks.length) {
-      const mime = systemChunks[0]?.blob.type || getSupportedMimeType("audio");
-      const sysBlob = buildLimitedBlob(systemChunks, mime);
+    // Use renamed state
+    if (screenAudioChunks.length) {
+      const mime = screenAudioChunks[0]?.blob.type || getSupportedMimeType("audio");
+      // Use renamed state
+      const sysBlob = buildLimitedBlob(screenAudioChunks, mime);
+      // Keep systemAudio key for API consistency
       if (sysBlob) ctx.systemAudio = { data: (await blobToBase64(sysBlob)).split(",")[1]!, mimeType: sysBlob.type };
     }
 
@@ -248,7 +289,7 @@ export default function Page() {
     } finally {
       setIsLoading(false);
     }
-  }, [isLoading, micChunks, systemChunks, customPrompt]);
+  }, [isLoading, micChunks, screenAudioChunks, customPrompt]); // Use renamed state dependency
 
   // expose ref
   useEffect(() => { sendContextToAIRef.current = sendContextToAI; }, [sendContextToAI]);
@@ -256,14 +297,15 @@ export default function Page() {
   // --- UI -----------------------------------------------------
   return (
     <div className="container mx-auto max-w-3xl py-8 px-4">
-      <h1 className="text-3xl font-bold mb-6 text-center">AI Meeting Assistant – Audio Only</h1>
+      <h1 className="text-3xl font-bold mb-6 text-center">AI Meeting Assistant – Audio & Screen</h1>
 
       <Card className="mb-6">
         <CardHeader>
           <CardTitle className="flex flex-wrap items-center justify-between gap-4">
             <span className="flex items-center gap-2">
               <span className={`flex h-3 w-3 rounded-full ${isRecording ? (isLoading ? "bg-yellow-500" : "bg-red-500 animate-pulse") : "bg-slate-400"}`}></span>
-              Status: {isLoading ? "Processing…" : isRecording ? "Recording" : "Stopped"}
+              {/* Updated status text */}
+              Status: {isLoading ? "Processing…" : isRecording ? `Recording ${isScreenSharing ? " (Mic + Screen)" : "(Mic Only)"}` : "Stopped"}
             </span>
             {isRecording && (
               <span className="flex items-center text-sm text-slate-600 dark:text-slate-400">
@@ -279,6 +321,18 @@ export default function Page() {
           </CardTitle>
         </CardHeader>
       </Card>
+
+      {/* Added Card for Screen Preview */}
+      {isScreenSharing && (
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="text-lg">Screen Preview</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <video ref={screenPreviewRef} className="w-full aspect-video bg-black rounded" playsInline muted />
+          </CardContent>
+        </Card>
+      )}
 
       <Card className="mb-6">
         <CardContent className="space-y-4">
