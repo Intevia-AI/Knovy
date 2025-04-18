@@ -47,14 +47,15 @@ export async function POST(req: Request) {
 
     const { text } = await generateText({
       // Updated model potentially supporting grounding, ensure it's appropriate
-      model: google("gemini-1.5-flash-latest"), // Using 1.5 Flash as it's generally good with multimodal
+      model: google("gemini-2.0-flash-lite"), // Using 2.0 Flash as it's generally good with multimodal
       system: "You are a concise, helpful assistant analyzing meeting audio.", // Slightly more specific system prompt
       messages: formatted,
     });
 
     return NextResponse.json({ content: text });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error("AI API Error:", e); // Log the full error server-side
-    return NextResponse.json({ error: e.message || "Internal Server Error" }, { status: 500 });
+    const errorMessage = e instanceof Error ? e.message : "Internal Server Error";
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }

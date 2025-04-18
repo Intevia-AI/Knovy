@@ -29,17 +29,13 @@ interface MediaChunk {
   timestamp: number;
 }
 
-// Updated: Expect only one audio input for the API
+// Updated: Expect only one audio input for the AI API
 interface AIContextData {
   audioInput?: { data: string; mimeType: string };
 }
 
 // --- Constants -----------------------------------------------
 const AUDIO_CHUNK_TIMESLICE_MS = 5000; // 5‑second chunks
-const MAX_AUDIO_BYTES_FOR_AI = 1 * 1024 * 1024; // 1 MB
-
-// New: after trimming, only send this many seconds (latest)
-const MAX_TRIM_SECONDS = 30;
 
 // Helper to choose a supported MIME type for MediaRecorder
 const getSupportedMimeType = (kind: "audio"): string => {
@@ -51,38 +47,6 @@ const getSupportedMimeType = (kind: "audio"): string => {
   for (const type of audioTypes) if (MediaRecorder.isTypeSupported(type)) return type;
   return "audio/webm"; // fallback
 };
-
-// Trim an AudioBuffer between start/end (in seconds)
-function trimAudioBuffer(buffer: AudioBuffer, start: number, end: number): AudioBuffer {
-  const sr = buffer.sampleRate;
-  const startFrame = Math.floor(start * sr);
-  const endFrame = Math.min(buffer.length, Math.floor(end * sr));
-  const length = endFrame - startFrame;
-  const trimmed = new AudioContext().createBuffer(buffer.numberOfChannels, length, sr);
-  for (let ch = 0; ch < buffer.numberOfChannels; ch++) {
-    trimmed.getChannelData(ch).set(buffer.getChannelData(ch).subarray(startFrame, endFrame));
-  }
-  return trimmed;
-}
-
-// Re‑encode a trimmed AudioBuffer into a small WebM/Opus Blob
-async function encodeAudioBuffer(buffer: AudioBuffer): Promise<Blob> {
-  return new Promise(resolve => {
-    const ac = new AudioContext();
-    const src = ac.createBufferSource();
-    src.buffer = buffer;
-    const dest = ac.createMediaStreamDestination();
-    src.connect(dest);
-    src.start();
-    const mime = getSupportedMimeType("audio");
-    const rec = new MediaRecorder(dest.stream, { mimeType: mime });
-    const parts: Blob[] = [];
-    rec.ondataavailable = e => e.data.size && parts.push(e.data);
-    rec.onstop = () => resolve(new Blob(parts, { type: parts[0]?.type || mime }));
-    rec.start();
-    src.onended = () => rec.stop();
-  });
-}
 
 // =============================================================
 export default function Page() {
@@ -102,6 +66,7 @@ export default function Page() {
   // --- State --------------------------------------------------
   const [isRecording, setIsRecording] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isProcessingAudio, setIsProcessingAudio] = useState(false); // New state for audio processing
   const [micChunks, setMicChunks] = useState<MediaChunk[]>([]);
   const [screenAudioChunks, setScreenAudioChunks] = useState<MediaChunk[]>([]); // Renamed from systemChunks
   const [micDuration, setMicDuration] = useState(0); // in seconds
@@ -203,6 +168,13 @@ export default function Page() {
     }
   };
 
+  const stopScreenCapture = () => {
+    cleanupRecorder(screenAudioRecorderRef);
+    cleanupStream(screenStreamRef);
+    if (screenPreviewRef.current) screenPreviewRef.current.srcObject = null;
+    setIsScreenSharing(false);
+  };
+
   const stopAllRecording = () => {
     cleanupRecorder(micRecorderRef);
     cleanupRecorder(screenAudioRecorderRef); // Use renamed ref
@@ -219,9 +191,22 @@ export default function Page() {
     setIsRecording(false);
   };
 
+  const toggleScreenShare = async () => {
+    if (isLoading || isProcessingAudio) return;
+    if (isScreenSharing) {
+      stopScreenCapture();
+    } else {
+      if (!isRecording) {
+        await startRecording();
+      } else {
+        await startScreenCapture();
+      }
+    }
+  };
+
   // --- Start/Stop button handlers ----------------------------
   const startRecording = async () => {
-    if (isRecording || isLoading) return;
+    if (isRecording || isLoading || isProcessingAudio) return; // Check isProcessingAudio
     setIsLoading(true);
     setAiMessages([]);
     setMicChunks([]);
@@ -254,32 +239,57 @@ export default function Page() {
   // --- Context builder ---------------------------------------
   const gatherContext = async (): Promise<AIContextData | null> => {
     const ctx: AIContextData = {};
-    // 1) merge all raw chunks into one blob
+    // 1) Select raw chunks (mic preferred)
     const rawChunks = micChunks.length ? micChunks : screenAudioChunks;
     if (!rawChunks.length) return null;
-    const mime0 = rawChunks[0]?.blob.type;
-    const merged = new Blob(rawChunks.map(c => c.blob), { type: mime0 });
 
+    // 2) Merge into one blob
+    const originalMimeType = rawChunks[0]?.blob.type || getSupportedMimeType("audio");
+    const mergedBlob = new Blob(rawChunks.map(c => c.blob), { type: originalMimeType });
+    console.log("Merged raw blob size:", mergedBlob.size, "Type:", originalMimeType);
+
+    setIsProcessingAudio(true); // Set processing state
     try {
-      // 2) decode + trim
-      const arrayBuf = await merged.arrayBuffer();
-      const ac = new (window.AudioContext || window.webkitAudioContext)();
-      const decoded = await ac.decodeAudioData(arrayBuf);
-      // take the *last* MAX_TRIM_SECONDS of audio
-      const startSec = Math.max(decoded.duration - MAX_TRIM_SECONDS, 0);
-      const trimmed = trimAudioBuffer(decoded, startSec, decoded.duration);
+      // 3) Convert merged blob to base64
+      const base64Full = await blobToBase64(mergedBlob);
+      const base64Data = base64Full.split(",")[1]; // Extract data part
 
-      // 3) re‑encode
-      const smallBlob = await encodeAudioBuffer(trimmed);
-      console.log("Final trimmed blob size:", smallBlob.size);
+      if (!base64Data) {
+        throw new Error("Failed to convert blob to base64 data.");
+      }
 
-      // 4) base64 and send
-      const b64 = (await blobToBase64(smallBlob)).split(",")[1]!;
-      ctx.audioInput = { data: b64, mimeType: smallBlob.type };
+      // 4) Send to server for processing (trimming, encoding)
+      const processResponse = await fetch("/api/process-audio", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          audioData: base64Data,
+          originalMimeType: originalMimeType,
+        }),
+      });
+
+      if (!processResponse.ok) {
+        const errorBody = await processResponse.text();
+        throw new Error(`Audio processing API failed: ${processResponse.status} ${errorBody}`);
+      }
+
+      const { processedAudioData, processedMimeType } = await processResponse.json();
+
+      if (!processedAudioData || !processedMimeType) {
+        throw new Error("Invalid response from audio processing API.");
+      }
+
+      console.log("Received processed audio. MimeType:", processedMimeType);
+
+      // 5) Use processed data for AI context
+      ctx.audioInput = { data: processedAudioData, mimeType: processedMimeType };
       return ctx;
     } catch (err) {
       console.error("gatherContext audio processing failed:", err);
-      return null;
+      setAiMessages(p => [...p, { id: `err-proc-${Date.now()}`, role: "assistant", content: `[Audio Processing Error] ${err instanceof Error ? err.message : String(err)}` }]);
+      return null; // Indicate failure
+    } finally {
+      setIsProcessingAudio(false); // Clear processing state
     }
   };
 
@@ -288,14 +298,17 @@ export default function Page() {
     action: "real-time" | "answer" | "summary" | "search" | "custom",
     customQuery?: string
   ) => Promise<void>>(async (action, customQuery) => {
-    if (isLoading) return;
-    setIsLoading(true);
-    const ctx = await gatherContext();
+    if (isLoading || isProcessingAudio) return; // Check isProcessingAudio
+    setIsLoading(true); // Keep isLoading for the AI part
+
+    const ctx = await gatherContext(); // This now includes the API call and sets isProcessingAudio
+
     if (!ctx) {
-      setAiMessages(p => [...p, { id: `err-noctx-${Date.now()}`, role: "assistant", content: "[No audio context yet – record longer]" }]);
+      // Error message is now potentially set within gatherContext
       setIsLoading(false);
       return;
     }
+
     const promptMap: Record<typeof action, string> = {
       "real-time": "Analyze the latest audio context and highlight keywords or action items concisely.",
       answer: "Based on the recent audio, answer the user's implicit question.",
@@ -310,7 +323,7 @@ export default function Page() {
       const res = await fetch("/api/ai", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: [userMsg], data: ctx }),
+        body: JSON.stringify({ messages: [userMsg], data: ctx }), // Send the processed context
       });
       if (!res.ok) throw new Error(await res.text());
       const ai: Message = await res.json();
@@ -318,49 +331,69 @@ export default function Page() {
     } catch (e: any) {
       setAiMessages(p => [...p, { id: `err-ai-${Date.now()}`, role: "assistant", content: `[AI error] ${e.message || e}` }]);
     } finally {
-      setIsLoading(false);
+      setIsLoading(false); // Clear AI loading state
     }
-  }, [isLoading, micChunks, screenAudioChunks, customPrompt]); // Dependencies remain the same as they trigger context gathering
+  }, [isLoading, isProcessingAudio, micChunks, screenAudioChunks, customPrompt]); // Add isProcessingAudio dependency
 
   // expose ref
   useEffect(() => { sendContextToAIRef.current = sendContextToAI; }, [sendContextToAI]);
 
   // --- UI -----------------------------------------------------
   return (
-    <div className="container mx-auto max-w-3xl py-8 px-4">
-      <h1 className="text-3xl font-bold mb-6 text-center">AI Meeting Assistant – Audio & Screen</h1>
+    <div className="container mx-auto max-w-3xl py-8 px-4 space-y-6">
+      <h1 className="text-3xl font-bold text-center">AI Meeting Assistant – Audio & Screen</h1>
 
-      <Card className="mb-6">
-        <CardHeader>
+      <Card className="flex items-center justify-between gap-2">
+        {/* status & record button */}
+        <CardHeader className="flex-1">
           <CardTitle className="flex flex-wrap items-center justify-between gap-4">
             <span className="flex items-center gap-2">
-              <span className={`flex h-3 w-3 rounded-full ${isRecording ? (isLoading ? "bg-yellow-500" : "bg-red-500 animate-pulse") : "bg-slate-400"}`}></span>
-              {/* Updated status text */}
-              Status: {isLoading ? "Processing…" : isRecording ? `Recording ${isScreenSharing ? " (Mic + Screen)" : "(Mic Only)"}` : "Stopped"}
+              <span className={`flex h-3 w-3 rounded-full ${isRecording ? (isLoading || isProcessingAudio ? "bg-warning" : "bg-destructive animate-pulse") : "bg-muted"}`}></span>
+              Status: {isProcessingAudio ? "Processing Audio…" : isLoading ? "Calling AI…" : isRecording ? `Recording ${isScreenSharing ? " (Mic + Screen)" : "(Mic Only)"}` : "Stopped"}
             </span>
             {isRecording && (
               <span className="flex items-center text-sm text-slate-600 dark:text-slate-400">
                 <ClockIcon className="h-4 w-4 mr-1" /> {formatTime(micDuration)}
               </span>) }
-            <div className="flex gap-2">
-              {isRecording ? (
-                <Button variant="destructive" size="sm" disabled={isLoading} onClick={stopRecording}><PauseIcon className="h-4 w-4 mr-2"/>Stop</Button>
-              ) : (
-                <Button variant="default" size="sm" disabled={isLoading} onClick={startRecording}>{isLoading ? <Loader2Icon className="h-4 w-4 mr-2 animate-spin"/> : <PlayIcon className="h-4 w-4 mr-2"/>}Start</Button>
-              )}
-            </div>
           </CardTitle>
         </CardHeader>
+        <CardContent className="flex gap-2">
+          {/* existing Start/Stop */}
+          {isRecording ? (
+            <Button variant="destructive" size="sm" onClick={stopRecording} disabled={isLoading||isProcessingAudio}>
+              <PauseIcon /> Stop
+            </Button>
+          ) : (
+            <Button variant="default" size="sm" onClick={startRecording} disabled={isLoading||isProcessingAudio}>
+              <PlayIcon /> Start
+            </Button>
+          )}
+          {/* new Toggle Screen button */}
+          <Button
+            variant={isScreenSharing ? "destructive" : "outline"}
+            size="sm"
+            onClick={toggleScreenShare}
+            disabled={isRecording || isLoading || isProcessingAudio}
+          >
+            {isScreenSharing ? <PauseIcon /> : <PlayIcon />} {isScreenSharing ? "Stop Screen" : "Share Screen"}
+          </Button>
+        </CardContent>
       </Card>
 
-      {/* Added Card for Screen Preview */}
+      {/* move preview up so it’s always visible when sharing */}
       {isScreenSharing && (
-        <Card className="mb-6">
+        <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Screen Preview</CardTitle>
+            <CardTitle>Live Screen Preview</CardTitle>
           </CardHeader>
           <CardContent>
-            <video ref={screenPreviewRef} className="w-full aspect-video bg-black rounded" playsInline muted />
+            <video
+              ref={screenPreviewRef}
+              className="w-full aspect-video rounded border"
+              autoPlay
+              playsInline
+              muted
+            />
           </CardContent>
         </Card>
       )}
@@ -384,20 +417,20 @@ export default function Page() {
         <CardContent>
           <div className="flex flex-wrap gap-3 mb-4 pb-4 border-b border-slate-200 dark:border-slate-700">
             {[{action:"answer",label:"AI Answer",icon:MicIcon},{action:"summary",label:"AI Summary",icon:ListCollapseIcon},{action:"search",label:"AI Topics",icon:SearchIcon}].map(({action,label,icon:Icon})=> (
-              <Button key={action} variant="outline" size="sm" disabled={isLoading||!isRecording} onClick={()=>sendContextToAI(action as any)}><Icon className="h-4 w-4 mr-2"/>{label}</Button>
+              <Button key={action} variant="outline" size="sm" disabled={isLoading||isProcessingAudio||!isRecording} onClick={()=>sendContextToAI(action as any)}><Icon className="h-4 w-4 mr-2"/>{label}</Button>
             ))}
           </div>
 
           <form onSubmit={e=>{e.preventDefault(); if(!customPrompt.trim()) return; sendContextToAI("custom", customPrompt); setCustomPrompt("");}} className="flex gap-2 mb-4">
-            <Input value={customPrompt} onChange={e=>setCustomPrompt(e.target.value)} placeholder="Custom prompt…" className="flex-grow" disabled={isLoading||!isRecording}/>
-            <Button type="submit" variant="default" size="icon" disabled={isLoading||!isRecording||!customPrompt.trim()}><SendIcon className="h-4 w-4"/></Button>
+            <Input value={customPrompt} onChange={e=>setCustomPrompt(e.target.value)} placeholder="Custom prompt…" className="flex-grow" disabled={isLoading||isProcessingAudio||!isRecording}/>
+            <Button type="submit" variant="default" size="icon" disabled={isLoading||isProcessingAudio||!isRecording||!customPrompt.trim()}><SendIcon className="h-4 w-4"/></Button>
           </form>
 
-          <div className="space-y-2 max-h-[40vh] overflow-y-auto pr-2 border rounded p-2 bg-white dark:bg-black">
+          <div className="space-y-2 max-h-[40vh] overflow-y-auto pr-2 border border-border rounded p-2 bg-background">
             {aiMessages.map(m=> (
-              <div key={m.id} className="p-2 rounded text-sm border-l-4 bg-slate-100 dark:bg-slate-800 border-slate-400 dark:border-slate-600 text-slate-800 dark:text-slate-200"><Markdown>{m.content}</Markdown></div>
+              <div key={m.id} className="p-2 rounded text-sm border-l-4 border-border bg-muted text-foreground"><Markdown>{m.content}</Markdown></div>
             ))}
-            {isLoading && <div className="flex items-center text-sm text-slate-500"><Loader2Icon className="h-4 w-4 mr-2 animate-spin"/>Waiting…</div>}
+            {(isLoading || isProcessingAudio) && <div className="flex items-center text-sm text-muted-foreground"><Loader2Icon className="h-4 w-4 mr-2 animate-spin"/>{isProcessingAudio ? "Processing audio..." : "Waiting for AI..."}</div>}
           </div>
         </CardContent>
       </Card>
