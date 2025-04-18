@@ -29,14 +29,17 @@ interface MediaChunk {
   timestamp: number;
 }
 
+// Updated: Expect only one audio input for the API
 interface AIContextData {
-  micAudio?: { data: string; mimeType: string };
-  systemAudio?: { data: string; mimeType: string }; // Keep name for API consistency
+  audioInput?: { data: string; mimeType: string };
 }
 
 // --- Constants -----------------------------------------------
 const AUDIO_CHUNK_TIMESLICE_MS = 5000; // 5‑second chunks
-const MAX_AUDIO_BYTES_FOR_AI = 1 * 1024 * 1024; // 5 MB
+const MAX_AUDIO_BYTES_FOR_AI = 1 * 1024 * 1024; // 1 MB
+
+// New: after trimming, only send this many seconds (latest)
+const MAX_TRIM_SECONDS = 30;
 
 // Helper to choose a supported MIME type for MediaRecorder
 const getSupportedMimeType = (kind: "audio"): string => {
@@ -48,6 +51,38 @@ const getSupportedMimeType = (kind: "audio"): string => {
   for (const type of audioTypes) if (MediaRecorder.isTypeSupported(type)) return type;
   return "audio/webm"; // fallback
 };
+
+// Trim an AudioBuffer between start/end (in seconds)
+function trimAudioBuffer(buffer: AudioBuffer, start: number, end: number): AudioBuffer {
+  const sr = buffer.sampleRate;
+  const startFrame = Math.floor(start * sr);
+  const endFrame = Math.min(buffer.length, Math.floor(end * sr));
+  const length = endFrame - startFrame;
+  const trimmed = new AudioContext().createBuffer(buffer.numberOfChannels, length, sr);
+  for (let ch = 0; ch < buffer.numberOfChannels; ch++) {
+    trimmed.getChannelData(ch).set(buffer.getChannelData(ch).subarray(startFrame, endFrame));
+  }
+  return trimmed;
+}
+
+// Re‑encode a trimmed AudioBuffer into a small WebM/Opus Blob
+async function encodeAudioBuffer(buffer: AudioBuffer): Promise<Blob> {
+  return new Promise(resolve => {
+    const ac = new AudioContext();
+    const src = ac.createBufferSource();
+    src.buffer = buffer;
+    const dest = ac.createMediaStreamDestination();
+    src.connect(dest);
+    src.start();
+    const mime = getSupportedMimeType("audio");
+    const rec = new MediaRecorder(dest.stream, { mimeType: mime });
+    const parts: Blob[] = [];
+    rec.ondataavailable = e => e.data.size && parts.push(e.data);
+    rec.onstop = () => resolve(new Blob(parts, { type: parts[0]?.type || mime }));
+    rec.start();
+    src.onended = () => rec.stop();
+  });
+}
 
 // =============================================================
 export default function Page() {
@@ -91,21 +126,6 @@ export default function Page() {
     reader.readAsDataURL(b);
   });
   const formatTime = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, "0")}`;
-
-  // Collect the last valid chunks whose total size ≤ limit (avoid slicing raw bytes)
-  const buildLimitedBlob = (chunks: MediaChunk[], mime: string): Blob | null => {
-    if (!chunks.length) return null;
-    let size = 0;
-    const selected: Blob[] = [];
-    for (let i = chunks.length - 1; i >= 0; i--) {
-      const blob= chunks[i]?.blob
-      if (!blob) continue;
-      if (size + blob.size > MAX_AUDIO_BYTES_FOR_AI) break;
-      selected.unshift(blob);
-      size += blob.size;
-    }
-    return selected.length ? new Blob(selected, { type: mime }) : null;
-  };
 
   // --- Audio Recording ---------------------------------------
   const setupRecorder = (
@@ -234,22 +254,33 @@ export default function Page() {
   // --- Context builder ---------------------------------------
   const gatherContext = async (): Promise<AIContextData | null> => {
     const ctx: AIContextData = {};
+    // 1) merge all raw chunks into one blob
+    const rawChunks = micChunks.length ? micChunks : screenAudioChunks;
+    if (!rawChunks.length) return null;
+    const mime0 = rawChunks[0]?.blob.type;
+    const merged = new Blob(rawChunks.map(c => c.blob), { type: mime0 });
 
-    if (micChunks.length) {
-      const mime = micChunks[0]?.blob.type || getSupportedMimeType("audio");
-      const micBlob = buildLimitedBlob(micChunks, mime);
-      if (micBlob) ctx.micAudio = { data: (await blobToBase64(micBlob)).split(",")[1]!, mimeType: micBlob.type };
-    }
-    // Use renamed state
-    if (screenAudioChunks.length) {
-      const mime = screenAudioChunks[0]?.blob.type || getSupportedMimeType("audio");
-      // Use renamed state
-      const sysBlob = buildLimitedBlob(screenAudioChunks, mime);
-      // Keep systemAudio key for API consistency
-      if (sysBlob) ctx.systemAudio = { data: (await blobToBase64(sysBlob)).split(",")[1]!, mimeType: sysBlob.type };
-    }
+    try {
+      // 2) decode + trim
+      const arrayBuf = await merged.arrayBuffer();
+      const ac = new (window.AudioContext || window.webkitAudioContext)();
+      const decoded = await ac.decodeAudioData(arrayBuf);
+      // take the *last* MAX_TRIM_SECONDS of audio
+      const startSec = Math.max(decoded.duration - MAX_TRIM_SECONDS, 0);
+      const trimmed = trimAudioBuffer(decoded, startSec, decoded.duration);
 
-    return Object.keys(ctx).length ? ctx : null;
+      // 3) re‑encode
+      const smallBlob = await encodeAudioBuffer(trimmed);
+      console.log("Final trimmed blob size:", smallBlob.size);
+
+      // 4) base64 and send
+      const b64 = (await blobToBase64(smallBlob)).split(",")[1]!;
+      ctx.audioInput = { data: b64, mimeType: smallBlob.type };
+      return ctx;
+    } catch (err) {
+      console.error("gatherContext audio processing failed:", err);
+      return null;
+    }
   };
 
   // --- AI interaction ----------------------------------------
@@ -289,7 +320,7 @@ export default function Page() {
     } finally {
       setIsLoading(false);
     }
-  }, [isLoading, micChunks, screenAudioChunks, customPrompt]); // Use renamed state dependency
+  }, [isLoading, micChunks, screenAudioChunks, customPrompt]); // Dependencies remain the same as they trigger context gathering
 
   // expose ref
   useEffect(() => { sendContextToAIRef.current = sendContextToAI; }, [sendContextToAI]);
