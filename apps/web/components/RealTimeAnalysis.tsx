@@ -1,17 +1,21 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@workspace/ui/components/button";
-import { Mic, MicOff, Pause, Play } from "lucide-react";
+import { Mic, MicOff, Pause } from "lucide-react";
 import { GeminiClient } from "../app/api/ai/proxy/geminiClient";
-import { toast } from "sonner";
 
 interface RealTimeAnalysisProps {
   onTextResponse?: (text: string) => void;
   onKeywords?: (keywords: string[]) => void;
+  systemAudioStream?: MediaStream;
 }
 
-export default function RealTimeAnalysis({ onTextResponse, onKeywords }: RealTimeAnalysisProps) {
+export default function RealTimeAnalysis({
+  onTextResponse,
+  onKeywords,
+  systemAudioStream,
+}: RealTimeAnalysisProps) {
   const [isActive, setIsActive] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [audioLevel, setAudioLevel] = useState(0);
@@ -20,6 +24,7 @@ export default function RealTimeAnalysis({ onTextResponse, onKeywords }: RealTim
   const audioContextRef = useRef<AudioContext | null>(null);
   const audioWorkletNodeRef = useRef<AudioWorkletNode | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
+  const systemAudioSourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
   const shouldSendAudioRef = useRef(false);
   const textBufferRef = useRef("");
 
@@ -27,61 +32,65 @@ export default function RealTimeAnalysis({ onTextResponse, onKeywords }: RealTim
     // Initialize GeminiClient
     geminiClientRef.current = new GeminiClient(
       (text) => {
-        console.log("[RealTimeAnalysis] Received text:", text);
-        // Add new text to buffer
+        console.log("[RealTimeAnalysis] 收到文字:", text);
         textBufferRef.current += text;
-        
-        // Check if we have a complete response (contains both TRANSCRIPTION and KEYWORDS)
-        if (textBufferRef.current.includes("TRANSCRIPTION:") && textBufferRef.current.includes("KEYWORDS:")) {
-          // Parse the complete response
-          const transcriptionMatch = textBufferRef.current.match(/TRANSCRIPTION: (.*?)(?:\n|$)KEYWORDS:/s);
-          const keywordsMatch = textBufferRef.current.match(/KEYWORDS: (.*?)(?:\n|$)/s);
-          
-          if (transcriptionMatch && transcriptionMatch[1]?.trim()) {
+
+        if (
+          textBufferRef.current.includes("TRANSCRIPTION:") &&
+          textBufferRef.current.includes("KEYWORDS:")
+        ) {
+          const transcriptionMatch = textBufferRef.current.match(
+            /TRANSCRIPTION: (.*?)(?:\n|$)KEYWORDS:/s
+          );
+          const keywordsMatch = textBufferRef.current.match(
+            /KEYWORDS: (.*?)(?:\n|$)/s
+          );
+
+          if (transcriptionMatch && transcriptionMatch[1]) {
             const transcription = transcriptionMatch[1].trim();
-            onTextResponse?.(transcription);
+            // 過濾掉可能殘留的 "TRANSCRIPTION:" 字樣
+            const cleanTranscription = transcription
+              .replace(/^TRANSCRIPTION:\s*/i, "")
+              .trim();
+            onTextResponse?.(cleanTranscription);
           }
-          
-          if (keywordsMatch && keywordsMatch[1]?.trim()) {
+
+          if (keywordsMatch && keywordsMatch[1]) {
             const keywordsStr = keywordsMatch[1].trim();
             if (keywordsStr) {
-              const keywords = keywordsStr.split(',').map(k => k.trim()).filter(k => k.length > 0);
+              const keywords = keywordsStr
+                .split(",")
+                .map((k) => k.trim())
+                .filter((k) => k.length > 0);
               onKeywords?.(keywords);
             }
           }
-          
-          // Clear the buffer after processing
+
           textBufferRef.current = "";
         }
       },
       () => {
-        console.log("[RealTimeAnalysis] WebSocket connection established");
+        console.log("[RealTimeAnalysis] WebSocket 連線已建立");
         setIsConnected(true);
         shouldSendAudioRef.current = true;
-        // Start sending audio data after connection is established
-        if (audioWorkletNodeRef.current) {
-          console.log("[RealTimeAnalysis] Starting to send audio data");
-        }
       },
       (isPlaying) => {
-        console.log("[RealTimeAnalysis] Playing state changed:", isPlaying);
+        console.log("[RealTimeAnalysis] 播放狀態變更:", isPlaying);
       },
       (level) => {
-        console.log("[RealTimeAnalysis] Audio level:", level);
         setAudioLevel(level);
       },
-      () => {} // Empty callback for transcription
+      () => {}
     );
 
-    // Cleanup function
     return () => {
-      console.log("[RealTimeAnalysis] Cleaning up WebSocket...");
+      console.log("[RealTimeAnalysis] 清理 WebSocket...");
       if (geminiClientRef.current) {
         geminiClientRef.current.disconnect();
         geminiClientRef.current = null;
       }
       if (mediaStreamRef.current) {
-        mediaStreamRef.current.getTracks().forEach(track => track.stop());
+        mediaStreamRef.current.getTracks().forEach((track) => track.stop());
         mediaStreamRef.current = null;
       }
       if (audioContextRef.current) {
@@ -90,43 +99,69 @@ export default function RealTimeAnalysis({ onTextResponse, onKeywords }: RealTim
       }
       setIsConnected(false);
       shouldSendAudioRef.current = false;
-      textBufferRef.current = ""; // Clear buffer on cleanup
+      textBufferRef.current = "";
     };
   }, [onTextResponse, onKeywords]);
 
+  // 監聽 systemAudioStream 的變化
+  useEffect(() => {
+    if (isActive && systemAudioStream) {
+      console.log(
+        "[RealTimeAnalysis] 系統音訊流更新，設定新的來源"
+      );
+      setupSystemAudioSource(systemAudioStream);
+    }
+  }, [systemAudioStream, isActive]);
+
+  const setupSystemAudioSource = (stream: MediaStream) => {
+    if (!audioContextRef.current) {
+      console.error("[RealTimeAnalysis] AudioContext 未初始化");
+      return;
+    }
+
+    // 清理舊的系統音頻源
+    if (systemAudioSourceRef.current) {
+      systemAudioSourceRef.current.disconnect();
+      systemAudioSourceRef.current = null;
+    }
+
+    try {
+      const source = audioContextRef.current.createMediaStreamSource(stream);
+      source.connect(audioWorkletNodeRef.current!);
+      systemAudioSourceRef.current = source;
+      console.log("[RealTimeAnalysis] 系統音訊來源已連接");
+    } catch (error) {
+      console.error(
+        "[RealTimeAnalysis] 設定系統音訊來源時發生錯誤:",
+        error
+      );
+    }
+  };
+
   const startAudio = async () => {
     try {
-      console.log("[RealTimeAnalysis] Starting audio...");
+      console.log("[RealTimeAnalysis] 開始音訊...");
       setIsProcessing(true);
 
       // Connect to WebSocket first
-      console.log("[RealTimeAnalysis] Connecting to WebSocket...");
+      console.log("[RealTimeAnalysis] 連接 WebSocket...");
       if (!geminiClientRef.current) {
-        console.error("[RealTimeAnalysis] GeminiClient instance is null!");
+        console.error("[RealTimeAnalysis] GeminiClient 實例為空!");
         return;
       }
-      
-      console.log("[RealTimeAnalysis] Calling connect() on GeminiClient...");
+
+      console.log("[RealTimeAnalysis] 在 GeminiClient 上呼叫 connect()...");
       geminiClientRef.current.connect();
 
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          sampleRate: 16000,
-          channelCount: 1,
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-        },
-      });
-
-      console.log("[RealTimeAnalysis] Got media stream");
-      mediaStreamRef.current = stream;
+      // 初始化 AudioContext
       audioContextRef.current = new AudioContext({
         sampleRate: 16000,
       });
 
-      console.log("[RealTimeAnalysis] Loading audio worklet...");
-      await audioContextRef.current.audioWorklet.addModule("/worklets/audio-processor.js");
+      console.log("[RealTimeAnalysis] 載入 audio worklet...");
+      await audioContextRef.current.audioWorklet.addModule(
+        "/worklets/audio-processor.js"
+      );
       const audioWorkletNode = new AudioWorkletNode(
         audioContextRef.current,
         "audio-processor",
@@ -141,48 +176,77 @@ export default function RealTimeAnalysis({ onTextResponse, onKeywords }: RealTim
         const { pcmData, level } = event.data;
         setAudioLevel(level);
         if (geminiClientRef.current && shouldSendAudioRef.current) {
-          console.log("[RealTimeAnalysis] Preparing to send audio chunk...");
           try {
             const pcmArray = new Uint8Array(pcmData);
-            console.log("[RealTimeAnalysis] PCM data size:", pcmArray.length);
             const b64Data = btoa(String.fromCharCode(...pcmArray));
-            console.log("[RealTimeAnalysis] Base64 data size:", b64Data.length);
             geminiClientRef.current.sendMediaChunk(b64Data, "audio/pcm");
-            console.log("[RealTimeAnalysis] Audio chunk sent successfully");
           } catch (error) {
-            console.error("[RealTimeAnalysis] Error sending audio chunk:", error);
+            console.error(
+              "[RealTimeAnalysis] 發送音訊區塊時發生錯誤:",
+              error
+            );
           }
         }
       };
 
-      const source = audioContextRef.current.createMediaStreamSource(stream);
-      source.connect(audioWorkletNode);
-      audioWorkletNode.connect(audioContextRef.current.destination);
       audioWorkletNodeRef.current = audioWorkletNode;
 
-      // Set shouldSendAudioRef to true immediately after setup
+      // 設置麥克風音頻源
+      console.log("[RealTimeAnalysis] 取得麥克風音訊流");
+      const micStream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          sampleRate: 16000,
+          channelCount: 1,
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        },
+      });
+      mediaStreamRef.current = micStream;
+      const micSource =
+        audioContextRef.current.createMediaStreamSource(micStream);
+      micSource.connect(audioWorkletNode);
+
+      // 如果有系統音頻流，設置它
+      if (systemAudioStream) {
+        setupSystemAudioSource(systemAudioStream);
+      }
+
       shouldSendAudioRef.current = true;
-      console.log("[RealTimeAnalysis] Audio setup complete, shouldSendAudio:", shouldSendAudioRef.current);
+      console.log("[RealTimeAnalysis] 音訊設定完成");
       setIsActive(true);
     } catch (error) {
-      console.error("[RealTimeAnalysis] Error starting audio:", error);
+      console.error("[RealTimeAnalysis] 開始音訊時發生錯誤:", error);
     } finally {
       setIsProcessing(false);
     }
   };
 
   const stopAudio = () => {
-    console.log("[RealTimeAnalysis] Stopping audio...");
+    console.log("[RealTimeAnalysis] 停止音訊...");
     shouldSendAudioRef.current = false;
-    if (mediaStreamRef.current) {
-      mediaStreamRef.current.getTracks().forEach(track => track.stop());
+
+    // 清理系統音頻源
+    if (systemAudioSourceRef.current) {
+      systemAudioSourceRef.current.disconnect();
+      systemAudioSourceRef.current = null;
     }
+
+    // 清理麥克風音頻源
+    if (mediaStreamRef.current) {
+      mediaStreamRef.current.getTracks().forEach((track) => track.stop());
+      mediaStreamRef.current = null;
+    }
+
     if (audioContextRef.current) {
       audioContextRef.current.close();
+      audioContextRef.current = null;
     }
+
     if (geminiClientRef.current) {
       geminiClientRef.current.disconnect();
     }
+
     setIsActive(false);
     setIsConnected(false);
   };
@@ -202,7 +266,11 @@ export default function RealTimeAnalysis({ onTextResponse, onKeywords }: RealTim
         ) : (
           <Mic className="h-4 w-4" />
         )}
-        {isProcessing ? "Processing..." : isActive ? "Stop Analysis" : "Start Analysis"}
+        {isProcessing
+          ? "處理中..."
+          : isActive
+            ? "停止分析"
+            : "開始分析"}
       </Button>
 
       {isActive && (
@@ -215,4 +283,4 @@ export default function RealTimeAnalysis({ onTextResponse, onKeywords }: RealTim
       )}
     </div>
   );
-} 
+}
