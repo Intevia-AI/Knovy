@@ -4,7 +4,7 @@ import dotenv from "dotenv";
 dotenv.config();
 
 // const PROXY_SERVER_URL = process.env.PROXY_SERVER_URL || `ws://${process.env.PROXY_HOST || 'localhost'}:${process.env.PROXY_PORT || '4567'}`;
-const PROXY_SERVER_URL = "wss://intevia.adastra.tw"
+const PROXY_SERVER_URL = "wss://intevia-api.adastra.tw"
 
 
 export class GeminiClient {

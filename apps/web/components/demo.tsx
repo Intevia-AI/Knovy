@@ -1,5 +1,3 @@
-"use client";
-
 import { useEffect, useRef, useState, useCallback } from "react";
 import { Button } from "@workspace/ui/components/button";
 import {
@@ -35,7 +33,7 @@ interface AIContextData {
 const AUDIO_CHUNK_TIMESLICE_MS = 5000; // 5‑second chunks
 
 // Helper to choose a supported MIME type for MediaRecorder
-const getSupportedMimeType = (kind: "audio"): string => {
+const getSupportedMimeType = (): string => {
   const audioTypes = [
     "audio/webm;codecs=opus",
     "audio/ogg;codecs=opus",
@@ -47,7 +45,7 @@ const getSupportedMimeType = (kind: "audio"): string => {
 };
 
 // =============================================================
-export default function Page() {
+export function DemoComponent() {
   // --- Refs ----------------------------------------------------
   const micAudioStreamRef = useRef<MediaStream | null>(null);
   const screenStreamRef = useRef<MediaStream | null>(null);
@@ -118,7 +116,7 @@ export default function Page() {
     ref: React.MutableRefObject<MediaRecorder | null>,
     label: "mic" | "screen"
   ) => {
-    const mime = getSupportedMimeType("audio");
+    const mime = getSupportedMimeType();
     const rec = new MediaRecorder(stream, { mimeType: mime });
     rec.ondataavailable = (e) => {
       if (e.data.size > 0)
@@ -244,7 +242,7 @@ export default function Page() {
   const stopRecording = () => {
     stopAllRecording();
     if (micChunks.length) {
-      const mime = micChunks[0]?.blob.type || getSupportedMimeType("audio");
+      const mime = micChunks[0]?.blob.type || getSupportedMimeType();
       const blob = new Blob(
         micChunks.map((c) => c.blob),
         { type: mime }
@@ -261,7 +259,7 @@ export default function Page() {
     if (!rawChunks.length) return null;
 
     const originalMimeType =
-      rawChunks[0]?.blob.type || getSupportedMimeType("audio");
+      rawChunks[0]?.blob.type || getSupportedMimeType();
     const mergedBlob = new Blob(
       rawChunks.map((c) => c.blob),
       { type: originalMimeType }
@@ -370,20 +368,21 @@ export default function Page() {
             content: ai.content,
           },
         ]);
-      } catch (e: any) {
+      } catch (e: unknown) {
+        const errorMessage = e instanceof Error ? e.message : String(e);
         setAiMessages((p) => [
           ...p,
           {
             id: `err-ai-${Date.now()}`,
             role: "assistant",
-            content: `[AI 錯誤] ${e.message || e}`,
+            content: `[AI 錯誤] ${errorMessage}`,
           },
         ]);
       } finally {
         setIsLoading(false);
       }
     },
-    [isLoading, isProcessingAudio, micChunks, screenAudioChunks, customPrompt]
+    [isLoading, isProcessingAudio, micChunks, screenAudioChunks, customPrompt, gatherContext]
   );
 
   const handleTextResponse = useCallback((text: string) => {
@@ -480,238 +479,230 @@ export default function Page() {
   }, [isScreenSharing]);
 
   return (
-    <div className="flex flex-col h-screen bg-background text-foreground">
-      <header className="flex items-center justify-between h-12 px-4 border-b border-border bg-card shrink-0">
-        <span className="font-semibold text-card-foreground">
-          AI 會議助理
-        </span>
-      </header>
+    <div className="flex flex-1 overflow-hidden border rounded-lg shadow-lg bg-card max-h-[70vh]">
+      <main className="flex flex-col flex-1 overflow-hidden">
+        <div className="flex-1 p-4 space-y-4 overflow-y-auto bg-muted/30">
+          {aiMessages.map((m) => (
+            <div
+              key={m.id}
+              className={cn(
+                "p-3 rounded-lg text-sm border w-fit max-w-[85%]",
+                m.role === "user"
+                  ? "bg-primary ml-auto text-primary-foreground"
+                  : "bg-muted mr-auto text-foreground"
+              )}
+            >
+              <Markdown>{m.content}</Markdown>
+            </div>
+          ))}
+          {(isLoading || isProcessingAudio) && (
+            <div className="flex items-center justify-center text-sm text-muted-foreground p-2">
+              <Loader2Icon className="h-4 w-4 mr-2 animate-spin" />
+              {isProcessingAudio ? "處理音訊中..." : "等待 AI 回應..."}
+            </div>
+          )}
+          {aiMessages.length === 0 && !isLoading && !isProcessingAudio && (
+            <p className="text-sm text-center text-muted-foreground py-4">
+              點擊「開始錄製」或「分享螢幕」以啟動 AI 助理。
+            </p>
+          )}
+        </div>
 
-      <div className="flex flex-1 overflow-hidden">
-        <main className="flex flex-col flex-1 overflow-hidden">
-          <div className="flex-1 p-4 space-y-4 overflow-y-auto bg-muted/30">
-            {aiMessages.map((m) => (
-              <div
-                key={m.id}
-                className={cn(
-                  "p-3 rounded-lg text-sm border w-fit max-w-[85%]",
-                  m.role === "user"
-                    ? "bg-primary ml-auto text-primary-foreground"
-                    : "bg-muted mr-auto text-foreground"
-                )}
-              >
-                <Markdown>{m.content}</Markdown>
-              </div>
-            ))}
-            {(isLoading || isProcessingAudio) && (
-              <div className="flex items-center justify-center text-sm text-muted-foreground p-2">
-                <Loader2Icon className="h-4 w-4 mr-2 animate-spin" />
-                {isProcessingAudio ? "處理音訊中..." : "等待 AI 回應..."}
-              </div>
-            )}
-            {aiMessages.length === 0 && !isLoading && !isProcessingAudio && (
-              <p className="text-sm text-center text-muted-foreground py-4">
-                開始錄製或與 AI 互動，對話將顯示於此。
-              </p>
+        <div className="p-4 border-t bg-card border-border">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (!customPrompt.trim()) return;
+              sendContextToAI("custom", customPrompt);
+              setCustomPrompt("");
+            }}
+            className="flex gap-2"
+          >
+            <Input
+              value={customPrompt}
+              onChange={(e) => setCustomPrompt(e.target.value)}
+              placeholder="輸入自訂提示或問題…"
+              className="flex-grow"
+              disabled={
+                isLoading ||
+                isProcessingAudio ||
+                (!micChunks.length && !screenAudioChunks.length)
+              }
+            />
+            <Button
+              type="submit"
+              variant="default"
+              size="icon"
+              disabled={
+                isLoading ||
+                isProcessingAudio ||
+                (!micChunks.length && !screenAudioChunks.length) ||
+                !customPrompt.trim()
+              }
+              className="bg-primary hover:bg-primary/90 text-primary-foreground"
+            >
+              <SendIcon className="h-4 w-4" />
+            </Button>
+          </form>
+        </div>
+      </main>
+
+      <aside className="flex flex-col w-full max-w-sm border-l border-border bg-card overflow-y-auto shrink-0">
+        <div className="p-4 space-y-3 border-b border-border">
+          <div className="flex items-center justify-between gap-2">
+            <span className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+              <span
+                className={`flex h-3 w-3 rounded-full ${isRecording ? (isLoading || isProcessingAudio ? "bg-yellow-400" : "bg-destructive animate-pulse") : "bg-muted"}`}
+              ></span>
+              {isProcessingAudio
+                ? "處理中..."
+                : isLoading
+                  ? "呼叫 AI..."
+                  : isRecording
+                    ? "錄製中"
+                    : "已停止"}
+            </span>
+            {isRecording && (
+              <span className="text-sm font-semibold tabular-nums text-foreground">
+                <ClockIcon className="inline h-4 w-4 mr-1 align-[-2px]" />
+                {formatTime(micDuration)}
+              </span>
             )}
           </div>
-
-          <div className="p-4 border-t bg-card border-border">
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                if (!customPrompt.trim()) return;
-                sendContextToAI("custom", customPrompt);
-                setCustomPrompt("");
-              }}
-              className="flex gap-2"
+          <div className="flex gap-2">
+            {isRecording ? (
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={stopRecording}
+                disabled={isLoading || isProcessingAudio}
+                className="flex-1"
+              >
+                <PauseIcon className="h-4 w-4 mr-1" /> 停止
+              </Button>
+            ) : (
+              <Button
+                variant="default"
+                size="sm"
+                onClick={startRecording}
+                disabled={isLoading || isProcessingAudio}
+                className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground"
+              >
+                <PlayIcon className="h-4 w-4 mr-1" /> 開始錄製
+              </Button>
+            )}
+            <Button
+              variant={isScreenSharing ? "destructive" : "outline"}
+              size="sm"
+              onClick={toggleScreenShare}
+              disabled={
+                isLoading ||
+                isProcessingAudio ||
+                (!isRecording && isScreenSharing)
+              }
+              aria-pressed={isScreenSharing}
+              className="flex-1"
             >
-              <Input
-                value={customPrompt}
-                onChange={(e) => setCustomPrompt(e.target.value)}
-                placeholder="輸入自訂提示或問題…"
-                className="flex-grow"
+              {isScreenSharing ? (
+                <MonitorOffIcon className="h-4 w-4 mr-1" />
+              ) : (
+                <MonitorIcon className="h-4 w-4 mr-1" />
+              )}
+              {isScreenSharing ? "停止分享" : "分享螢幕"}
+            </Button>
+          </div>
+        </div>
+
+        <div className="p-4 space-y-3 border-b border-border">
+          <h3 className="text-base font-semibold text-card-foreground">
+            即時分析
+          </h3>
+          <RealTimeAnalysis
+            onTextResponse={handleTextResponse}
+            onKeywords={handleKeywords}
+          />
+          {keywords.length > 0 && (
+            <div className="pt-3 space-y-2">
+              <h4 className="text-sm font-medium text-muted-foreground">
+                偵測到的關鍵字
+              </h4>
+              <div className="flex flex-wrap gap-1.5">
+                {keywords.map((keyword, index) => (
+                  <Button
+                    key={index}
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => handleKeywordClick(keyword)}
+                    disabled={isLoading && selectedKeyword === keyword}
+                    className="flex items-center gap-1 text-xs"
+                  >
+                    {keyword}
+                    {isLoading && selectedKeyword === keyword && (
+                      <Loader2Icon className="h-3 w-3 animate-spin" />
+                    )}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="p-4 space-y-3 border-b border-border">
+          <h3 className="text-base font-semibold text-card-foreground">
+            AI 動作
+          </h3>
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              { action: "answer", label: "回答問題", icon: MicIcon },
+              { action: "summary", label: "產生摘要", icon: ListCollapseIcon },
+              { action: "search", label: "搜尋主題", icon: SearchIcon },
+            ].map(({ action, label, icon: Icon }) => (
+              <Button
+                key={action}
+                variant="outline"
+                size="sm"
                 disabled={
                   isLoading ||
                   isProcessingAudio ||
                   (!micChunks.length && !screenAudioChunks.length)
                 }
-              />
-              <Button
-                type="submit"
-                variant="default"
-                size="icon"
-                disabled={
-                  isLoading ||
-                  isProcessingAudio ||
-                  (!micChunks.length && !screenAudioChunks.length) ||
-                  !customPrompt.trim()
-                }
-                className="bg-primary hover:bg-primary/90 text-primary-foreground"
+                onClick={() => sendContextToAI(action as "answer" | "summary" | "search")}
+                className="flex items-center justify-start gap-2"
               >
-                <SendIcon className="h-4 w-4" />
+                <Icon className="h-4 w-4" />
+                <span>{label}</span>
               </Button>
-            </form>
+            ))}
           </div>
-        </main>
+        </div>
 
-        <aside className="flex flex-col w-full max-w-sm border-l border-border bg-card overflow-y-auto shrink-0">
-          <div className="p-4 space-y-3 border-b border-border">
-            <div className="flex items-center justify-between gap-2">
-              <span className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                <span
-                  className={`flex h-3 w-3 rounded-full ${isRecording ? (isLoading || isProcessingAudio ? "bg-yellow-400" : "bg-destructive animate-pulse") : "bg-muted"}`}
-                ></span>
-                {isProcessingAudio
-                  ? "處理中..."
-                  : isLoading
-                    ? "呼叫 AI..."
-                    : isRecording
-                      ? "錄製中"
-                      : "已停止"}
-              </span>
-              {isRecording && (
-                <span className="text-sm font-semibold tabular-nums text-foreground">
-                  <ClockIcon className="inline h-4 w-4 mr-1 align-[-2px]" />
-                  {formatTime(micDuration)}
-                </span>
-              )}
-            </div>
-            <div className="flex gap-2">
-              {isRecording ? (
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={stopRecording}
-                  disabled={isLoading || isProcessingAudio}
-                  className="flex-1"
-                >
-                  <PauseIcon className="h-4 w-4 mr-1" /> 停止
-                </Button>
-              ) : (
-                <Button
-                  variant="default"
-                  size="sm"
-                  onClick={startRecording}
-                  disabled={isLoading || isProcessingAudio}
-                  className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground"
-                >
-                  <PlayIcon className="h-4 w-4 mr-1" /> 開始錄製
-                </Button>
-              )}
-              <Button
-                variant={isScreenSharing ? "destructive" : "outline"}
-                size="sm"
-                onClick={toggleScreenShare}
-                disabled={
-                  isLoading ||
-                  isProcessingAudio ||
-                  (!isRecording && isScreenSharing)
-                }
-                aria-pressed={isScreenSharing}
-                className="flex-1"
-              >
-                {isScreenSharing ? (
-                  <MonitorOffIcon className="h-4 w-4 mr-1" />
-                ) : (
-                  <MonitorIcon className="h-4 w-4 mr-1" />
-                )}
-                {isScreenSharing ? "停止分享" : "分享螢幕"}
-              </Button>
-            </div>
-          </div>
-
-          <div className="p-4 space-y-3 border-b border-border">
+        {isScreenSharing && (
+          <div className="p-4 space-y-2 border-b border-border">
             <h3 className="text-base font-semibold text-card-foreground">
-              即時分析
+              螢幕預覽
             </h3>
-            <RealTimeAnalysis
-              onTextResponse={handleTextResponse}
-              onKeywords={handleKeywords}
+            <video
+              ref={screenPreviewRef}
+              className="w-full aspect-video rounded border border-border bg-muted"
+              autoPlay
+              playsInline
+              muted
             />
-            {keywords.length > 0 && (
-              <div className="pt-3 space-y-2">
-                <h4 className="text-sm font-medium text-muted-foreground">
-                  偵測到的關鍵字
-                </h4>
-                <div className="flex flex-wrap gap-1.5">
-                  {keywords.map((keyword, index) => (
-                    <Button
-                      key={index}
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => handleKeywordClick(keyword)}
-                      disabled={isLoading && selectedKeyword === keyword}
-                      className="flex items-center gap-1 text-xs"
-                    >
-                      {keyword}
-                      {isLoading && selectedKeyword === keyword && (
-                        <Loader2Icon className="h-3 w-3 animate-spin" />
-                      )}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
+        )}
 
-          <div className="p-4 space-y-3 border-b border-border">
-            <h3 className="text-base font-semibold text-card-foreground">
-              AI 動作
-            </h3>
-            <div className="grid grid-cols-2 gap-2">
-              {[
-                { action: "answer", label: "回答問題", icon: MicIcon },
-                { action: "summary", label: "產生摘要", icon: ListCollapseIcon },
-                { action: "search", label: "搜尋主題", icon: SearchIcon },
-              ].map(({ action, label, icon: Icon }) => (
-                <Button
-                  key={action}
-                  variant="outline"
-                  size="sm"
-                  disabled={
-                    isLoading ||
-                    isProcessingAudio ||
-                    (!micChunks.length && !screenAudioChunks.length)
-                  }
-                  onClick={() => sendContextToAI(action as any)}
-                  className="flex items-center justify-start gap-2"
-                >
-                  <Icon className="h-4 w-4" />
-                  <span>{label}</span>
-                </Button>
-              ))}
-            </div>
-          </div>
-
-          {isScreenSharing && (
-            <div className="p-4 space-y-2 border-b border-border">
-              <h3 className="text-base font-semibold text-card-foreground">
-                螢幕預覽
-              </h3>
-              <video
-                ref={screenPreviewRef}
-                className="w-full aspect-video rounded border border-border bg-muted"
-                autoPlay
-                playsInline
-                muted
-              />
-            </div>
-          )}
-
-          <div className="p-4 mt-auto space-y-2">
-            <h3 className="text-sm font-medium text-muted-foreground">
-              音訊播放 (停止後)
-            </h3>
-            <audio
-              ref={audioPlayerRef}
-              controls
-              src={finalMicUrl ?? undefined}
-              className={`w-full h-10 ${!finalMicUrl ? "opacity-50 cursor-not-allowed" : ""}`}
-            ></audio>
-          </div>
-        </aside>
-      </div>
+        <div className="p-4 mt-auto space-y-2">
+          <h3 className="text-sm font-medium text-muted-foreground">
+            音訊播放 (停止後)
+          </h3>
+          <audio
+            ref={audioPlayerRef}
+            controls
+            src={finalMicUrl ?? undefined}
+            className={`w-full h-10 ${!finalMicUrl ? "opacity-50 cursor-not-allowed" : ""}`}
+          ></audio>
+        </div>
+      </aside>
     </div>
   );
 }
