@@ -24,7 +24,7 @@ export function FeaturesSection() {
       <div className="mx-auto max-w-5xl space-y-8 px-6 md:space-y-16 lg:space-y-20 dark:[--color-border:color-mix(in_oklab,var(--color-white)_10%,transparent)]">
         {/* Pain Point Section */}
         <div className="relative z-10 mx-auto max-w-3xl space-y-6 text-center">
-          <h2 className="text-balance text-4xl font-semibold lg:text-5xl">
+          <h2 className="text-balance text-3xl font-semibold lg:text-4xl text-center">
             我們看到的痛點
           </h2>
           <p className="text-lg text-muted-foreground">
@@ -38,7 +38,7 @@ export function FeaturesSection() {
 
         {/* Solution Section */}
         <div className="relative z-10 mx-auto max-w-3xl space-y-6 text-center">
-          <h2 className="text-balance text-4xl font-semibold lg:text-5xl">
+          <h2 className="text-balance text-3xl font-semibold lg:text-4xl text-center">
             解方
           </h2>
           <p className="text-lg text-muted-foreground">
@@ -54,7 +54,7 @@ export function FeaturesSection() {
 
         {/* Key Features Section */}
         <div className="relative z-10 mx-auto max-w-4xl space-y-12">
-          <h2 className="text-balance text-center text-4xl font-semibold lg:text-5xl">
+          <h2 className="text-balance text-3xl font-semibold lg:text-4xl text-center">
             產品主要功能
           </h2>
           <div className="grid gap-12 md:grid-cols-3">

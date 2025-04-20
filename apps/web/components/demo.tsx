@@ -704,7 +704,7 @@ export function DemoComponent() {
         </div>
       </div>
 
-      <h2 className="text-3xl font-bold text-center">Demo 試用</h2>
+      <h2 className="text-balance text-3xl font-semibold lg:text-4xl text-center">Demo 試用</h2>
 
       <div className="flex flex-1 overflow-hidden border rounded-lg shadow-lg bg-card max-h-[70vh]">
         <main className="flex flex-col flex-1 overflow-hidden">
@@ -936,31 +936,6 @@ export function DemoComponent() {
           </div>
         </aside>
       </div>
-
-      {/* 注意事項 */}
-      <div className="max-w-3xl mx-auto text-left border rounded-lg p-6 bg-card">
-        <h3 className="text-xl font-semibold mb-4 text-center">注意事項</h3>
-        <ul className="list-disc list-inside space-y-2 text-muted-foreground mx-auto w-fit">
-          <li>如有功能故障，可以試試F5重新整理。</li>
-          <li>很多下方提到的產品功能，我們尚未完整釋出，日後也會將軟體做成可以在背景運作的App，而非另開網頁形式。</li>
-          <li>此僅為測試版，許多功能尚不完整，演算法和生成內容也都還粗糙，敬請見諒，也請您在下方提供寶貴的意見給我們改良。</li>
-        </ul>
-      </div>
-        {isScreenSharing && screenStreamRef.current?.getVideoTracks() && (
-          <div className="p-4 space-y-2 border-b border-border">
-            <h3 className="text-base font-semibold text-card-foreground">
-              螢幕預覽
-            </h3>
-            <video
-              ref={screenPreviewRef}
-              className="w-full aspect-video rounded border border-border bg-muted"
-              autoPlay
-              playsInline
-              muted
-            />
-          </div>
-        )}
-      </aside>
     </div>
   );
 }
