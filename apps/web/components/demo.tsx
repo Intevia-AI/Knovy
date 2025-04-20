@@ -14,12 +14,13 @@ import { Message } from "ai";
 import { Input } from "@workspace/ui/components/input";
 import { Markdown } from "./markdown";
 import RealTimeAnalysis from "@/components/RealTimeAnalysis";
+import AudioVisualizer from "./AudioVisualizer";
 import { cn } from "@workspace/ui/lib/utils";
-import { useSegmentRecorder } from "@/hooks/useSegmentRecorder";
+import { useSegmentRecorder, SEGMENT_MS } from "@/hooks/useSegmentRecorder";
 
 // --- Types ----------------------------------------------------
 interface AIContextData {
-  audioInputs?: { data: string; mimeType: string }[];
+  audioInputs?: { data: string; mimeType: string; label: string }[];
 }
 
 interface Segment {
@@ -33,6 +34,7 @@ export function DemoComponent() {
   const screenStreamRef = useRef<MediaStream | null>(null);
   const screenAudioRecorderRef = useRef<MediaRecorder | null>(null);
   const systemAudioChunksRef = useRef<Blob[]>([]);
+  const systemAudioTimerRef = useRef<NodeJS.Timeout | null>(null);
   const audioPlayerRef = useRef<HTMLAudioElement>(null);
   const screenPreviewRef = useRef<HTMLVideoElement>(null);
   const sendContextToAIRef = useRef<
@@ -41,6 +43,13 @@ export function DemoComponent() {
       customQuery?: string
     ) => Promise<void>
   >(async () => {});
+  const micAudioContextRef = useRef<AudioContext | null>(null);
+  const micSourceNodeRef = useRef<MediaStreamAudioSourceNode | null>(null);
+
+  // Add refs & state for system audio analyser
+  const systemAudioContextRef = useRef<AudioContext | null>(null);
+  const systemAudioSourceNodeRef = useRef<MediaStreamAudioSourceNode | null>(null);
+  const [systemAnalyserNode, setSystemAnalyserNode] = useState<AnalyserNode | null>(null);
 
   // --- State --------------------------------------------------
   const [isLoading, setIsLoading] = useState(false);
@@ -53,12 +62,14 @@ export function DemoComponent() {
   const [keywords, setKeywords] = useState<string[]>([]);
   const [selectedKeyword, setSelectedKeyword] = useState<string | null>(null);
   const [systemAudioMimeType, setSystemAudioMimeType] = useState<string>("");
+  const [micAnalyserNode, setMicAnalyserNode] = useState<AnalyserNode | null>(null);
 
   // --- Hook ---------------------------------------------------
   const {
     start: startMicRecording,
     stop: stopMicRecording,
     mimeType: micMimeType,
+    micStream,
   } = useSegmentRecorder();
 
   // --- Utils --------------------------------------------------
@@ -78,18 +89,23 @@ export function DemoComponent() {
     ref.current?.getTracks().forEach((t) => t.stop());
     ref.current = null;
   };
+
   const cleanupRecorder = (
     ref: React.MutableRefObject<MediaRecorder | null>
   ) => {
     if (ref.current && ref.current.state !== "inactive") {
+      ref.current.ondataavailable = null;
+      ref.current.onstop = null;
+      ref.current.onerror = null;
       try {
         ref.current.stop();
       } catch (e) {
-        console.warn("Error stopping recorder:", e);
+        console.warn("Error stopping recorder during cleanup:", e);
       }
     }
     ref.current = null;
   };
+
   const blobToBase64 = (b: Blob): Promise<string> =>
     new Promise((res, rej) => {
       const reader = new FileReader();
@@ -98,6 +114,7 @@ export function DemoComponent() {
       reader.onerror = rej;
       reader.readAsDataURL(b);
     });
+
   const formatTime = (s: number) =>
     `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, "0")}`;
 
@@ -216,6 +233,51 @@ export function DemoComponent() {
     }
   }, [isScreenSharing, screenStreamRef.current]);
 
+  useEffect(() => {
+    if (isScreenSharing && micStream && !micAudioContextRef.current) {
+      console.log("Setting up mic analyser...");
+      try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        micAudioContextRef.current = audioCtx;
+        const source = audioCtx.createMediaStreamSource(micStream);
+        micSourceNodeRef.current = source;
+        const analyser = audioCtx.createAnalyser();
+        analyser.smoothingTimeConstant = 0.3;
+        analyser.fftSize = 256;
+        source.connect(analyser);
+        setMicAnalyserNode(analyser);
+        console.log("Mic analyser setup complete.");
+      } catch (error) {
+        console.error("Error setting up mic analyser:", error);
+        micSourceNodeRef.current?.disconnect();
+        micSourceNodeRef.current = null;
+        micAudioContextRef.current?.close().catch(console.error);
+        micAudioContextRef.current = null;
+        setMicAnalyserNode(null);
+      }
+    } else if ((!isScreenSharing || !micStream) && micAudioContextRef.current) {
+      console.log("Cleaning up mic analyser...");
+      micSourceNodeRef.current?.disconnect();
+      micSourceNodeRef.current = null;
+      if (micAudioContextRef.current.state !== "closed") {
+        micAudioContextRef.current.close().catch(console.error);
+      }
+      micAudioContextRef.current = null;
+      setMicAnalyserNode(null);
+      console.log("Mic analyser cleaned up.");
+    }
+
+    return () => {
+      console.log("Unmount cleanup for mic analyser...");
+      if (micAudioContextRef.current && micAudioContextRef.current.state !== "closed") {
+        micSourceNodeRef.current?.disconnect();
+        micSourceNodeRef.current = null;
+        micAudioContextRef.current.close().catch(console.error);
+        micAudioContextRef.current = null;
+      }
+    };
+  }, [isScreenSharing, micStream]);
+
   // --- Context ------------------------------------------------
   const gatherContext = async (): Promise<AIContextData | null> => {
     const micSegment =
@@ -227,20 +289,28 @@ export function DemoComponent() {
 
     if (!micSegment && !systemSegment) return null;
 
-    const blobsToProcess: { blob: Blob; type: string }[] = [];
+    const blobsToProcess: { blob: Blob; type: string; label: string }[] = [];
     if (micSegment)
-      blobsToProcess.push({ blob: micSegment.blob, type: micMimeType });
+      blobsToProcess.push({
+        blob: micSegment.blob,
+        type: micMimeType,
+        label: "microphone",
+      });
     if (systemSegment)
-      blobsToProcess.push({ blob: systemSegment.blob, type: systemAudioMimeType });
+      blobsToProcess.push({
+        blob: systemSegment.blob,
+        type: systemAudioMimeType,
+        label: "system",
+      });
 
     if (!blobsToProcess.length) return null;
 
     const audioInputs = await Promise.all(
-      blobsToProcess.map(async ({ blob, type }) => {
+      blobsToProcess.map(async ({ blob, type, label }) => {
         try {
           const full = await blobToBase64(blob);
           const data = full.split(",")[1] || full;
-          return { data, mimeType: type };
+          return { data, mimeType: type, label };
         } catch (error) {
           console.error("Error converting blob to base64:", error);
           return null;
@@ -250,7 +320,7 @@ export function DemoComponent() {
 
     const validAudioInputs = audioInputs.filter(
       Boolean
-    ) as { data: string; mimeType: string }[];
+    ) as { data: string; mimeType: string; label: string }[];
 
     if (!validAudioInputs.length) return null;
 
@@ -345,85 +415,158 @@ export function DemoComponent() {
 
     if (isScreenSharing) {
       stopMicRecording();
+
+      if (systemAudioTimerRef.current) {
+        clearInterval(systemAudioTimerRef.current);
+        systemAudioTimerRef.current = null;
+      }
+
       cleanupRecorder(screenAudioRecorderRef);
       systemAudioChunksRef.current = [];
+
       cleanupStream(screenStreamRef);
 
       if (screenPreviewRef.current) screenPreviewRef.current.srcObject = null;
 
+      // Cleanup system audio analyser
+      systemAudioSourceNodeRef.current?.disconnect();
+      systemAudioSourceNodeRef.current = null;
+      if (systemAudioContextRef.current && systemAudioContextRef.current.state !== "closed") {
+        systemAudioContextRef.current.close().catch(console.error);
+      }
+      systemAudioContextRef.current = null;
+      setSystemAnalyserNode(null);
+
       setIsScreenSharing(false);
+      setRecordingDuration(0);
     } else {
       setSegments([]);
       setSystemAudioSegments([]);
       systemAudioChunksRef.current = [];
       setAiMessages([]);
       setKeywords([]);
+      setRecordingDuration(0);
+
+      let capturedMicStream: MediaStream | null = null;
+      let displayStream: MediaStream | null = null;
 
       try {
-        const stream = await navigator.mediaDevices.getDisplayMedia({
+        capturedMicStream = await startMicRecording();
+        if (!capturedMicStream) {
+          console.error("Failed to start microphone recording.");
+          alert("無法啟動麥克風錄音，請檢查權限。");
+          setIsScreenSharing(false);
+          return;
+        }
+
+        displayStream = await navigator.mediaDevices.getDisplayMedia({
           video: true,
           audio: true,
         });
-        screenStreamRef.current = stream;
+        screenStreamRef.current = displayStream;
 
-        let systemAudioSetup = false;
-        let videoSetup = false;
+        const systemAudioTracks = displayStream.getAudioTracks();
+        if (systemAudioTracks.length === 0) {
+          console.warn("System audio track not found in screen share stream.");
+          alert("無法擷取系統音訊，錄音將只包含麥克風。若要錄製系統音訊，請在分享畫面時確認已勾選分享音訊選項。");
+          throw new Error("System audio not available.");
+        }
 
-        if (stream.getAudioTracks().length > 0) {
-          const audioTracks = stream.getAudioTracks();
-          const audioOnlyStream = new MediaStream(audioTracks);
+        const systemAudioStream = new MediaStream(systemAudioTracks);
+        const combinedAudioStream = new MediaStream([
+          ...systemAudioStream.getAudioTracks(),
+          ...capturedMicStream.getAudioTracks(),
+        ]);
 
-          const availableSystemMime = MediaRecorder.isTypeSupported(
-            "audio/webm;codecs=opus"
-          )
-            ? "audio/webm;codecs=opus"
-            : MediaRecorder.isTypeSupported("audio/ogg;codecs=opus")
-            ? "audio/ogg;codecs=opus"
-            : "audio/mp4";
-          setSystemAudioMimeType(availableSystemMime);
+        const availableMime = MediaRecorder.isTypeSupported(
+          "audio/webm;codecs=opus"
+        )
+          ? "audio/webm;codecs=opus"
+          : "audio/ogg;codecs=opus";
+        setSystemAudioMimeType(availableMime);
 
-          screenAudioRecorderRef.current = new MediaRecorder(audioOnlyStream, {
-            mimeType: availableSystemMime,
-          });
+        cleanupRecorder(screenAudioRecorderRef);
+        const combinedRecorder = new MediaRecorder(combinedAudioStream, {
+          mimeType: availableMime,
+        });
+        screenAudioRecorderRef.current = combinedRecorder;
 
-          screenAudioRecorderRef.current.ondataavailable = (event) => {
-            if (event.data.size > 0) {
-              systemAudioChunksRef.current.push(event.data);
+        combinedRecorder.ondataavailable = (e) => {
+          if (e.data.size > 0) systemAudioChunksRef.current.push(e.data);
+        };
+
+        combinedRecorder.onstop = () => {
+          if (systemAudioChunksRef.current.length > 0) {
+            const blob = new Blob(systemAudioChunksRef.current, {
+              type: availableMime,
+            });
+            setSystemAudioSegments((p) => [
+              ...p,
+              { blob, timestamp: Date.now() },
+            ]);
+            systemAudioChunksRef.current = [];
+          }
+          if (screenAudioRecorderRef.current && screenAudioRecorderRef.current.state === 'inactive' && isScreenSharing) {
+            try {
+              screenAudioRecorderRef.current.start();
+            } catch (e) {
+              console.error("Error restarting combined recorder:", e);
             }
-          };
+          }
+        };
+        combinedRecorder.onerror = (e) => {
+          console.error("Combined Recorder Error:", e);
+        };
 
-          screenAudioRecorderRef.current.onstop = () => {
-            if (systemAudioChunksRef.current.length > 0) {
-              const blob = new Blob(systemAudioChunksRef.current, {
-                type: availableSystemMime,
-              });
-              setSystemAudioSegments((prev) => [
-                ...prev,
-                { blob, timestamp: Date.now() },
-              ]);
-            }
-          };
+        combinedRecorder.start();
+        if (systemAudioTimerRef.current) clearInterval(systemAudioTimerRef.current);
+        systemAudioTimerRef.current = setInterval(() => {
+          if (screenAudioRecorderRef.current && screenAudioRecorderRef.current.state === 'recording') {
+            screenAudioRecorderRef.current.stop();
+          }
+        }, SEGMENT_MS);
 
-          screenAudioRecorderRef.current.start(5000);
-          systemAudioSetup = true;
-        } else {
-          setSystemAudioMimeType("");
+        try {
+          const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+          systemAudioContextRef.current = audioCtx;
+          const source = audioCtx.createMediaStreamSource(systemAudioStream);
+          systemAudioSourceNodeRef.current = source;
+          const analyser = audioCtx.createAnalyser();
+          analyser.smoothingTimeConstant = 0.3;
+          analyser.fftSize = 256;
+          source.connect(analyser);
+          setSystemAnalyserNode(analyser);
+        } catch (error) {
+          console.error("Error setting up system audio analyser:", error);
+          systemAudioSourceNodeRef.current?.disconnect();
+          systemAudioSourceNodeRef.current = null;
+          systemAudioContextRef.current?.close().catch(console.error);
+          systemAudioContextRef.current = null;
+          setSystemAnalyserNode(null);
         }
 
-        if (stream.getVideoTracks().length > 0) {
-          videoSetup = true;
-        }
-
-        if (videoSetup || systemAudioSetup) {
-          await startMicRecording();
-          setIsScreenSharing(true);
-        } else {
-          cleanupStream(screenStreamRef);
-          cleanupRecorder(screenAudioRecorderRef);
-        }
+        setIsScreenSharing(true);
       } catch (e) {
+        console.error("Error starting screen share:", e);
+        alert(`啟動分享時發生錯誤: ${e instanceof Error ? e.message : String(e)}`);
+
+        stopMicRecording();
         cleanupStream(screenStreamRef);
         cleanupRecorder(screenAudioRecorderRef);
+        if (systemAudioTimerRef.current) {
+          clearInterval(systemAudioTimerRef.current);
+          systemAudioTimerRef.current = null;
+        }
+        systemAudioChunksRef.current = [];
+
+        systemAudioSourceNodeRef.current?.disconnect();
+        systemAudioSourceNodeRef.current = null;
+        if (systemAudioContextRef.current && systemAudioContextRef.current.state !== "closed") {
+          systemAudioContextRef.current.close().catch(console.error);
+        }
+        systemAudioContextRef.current = null;
+        setSystemAnalyserNode(null);
+
         setIsScreenSharing(false);
       }
     }
@@ -545,10 +688,12 @@ export function DemoComponent() {
           <h3 className="text-base font-semibold text-card-foreground">
             即時分析 (麥克風)
           </h3>
+          <div className="py-2 w-full">
+            <AudioVisualizer analyserNode={micAnalyserNode} height={40} />
+          </div>
           <RealTimeAnalysis
             onTextResponse={handleTextResponse}
             onKeywords={handleKeywords}
-            isRecordingActive={isScreenSharing}
           />
           {keywords.length > 0 && (
             <div className="pt-3 space-y-2">
@@ -574,6 +719,15 @@ export function DemoComponent() {
               </div>
             </div>
           )}
+        </div>
+
+        <div className="p-4 space-y-3 border-b border-border">
+          <h3 className="text-base font-semibold text-card-foreground">
+            即時分析 (系統音訊)
+          </h3>
+          <div className="py-2 w-full">
+            <AudioVisualizer analyserNode={systemAnalyserNode} height={40} />
+          </div>
         </div>
 
         <div className="p-4 space-y-3 border-b border-border">

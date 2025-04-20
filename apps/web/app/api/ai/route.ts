@@ -2,8 +2,8 @@ import { google } from "@ai-sdk/google";
 import { generateText, UserContent, Message, CoreMessage } from "ai";
 import { NextResponse } from "next/server";
 
-interface MediaFile { data: string; mimeType: string; }
-// Updated: Expect an array of audio inputs
+// Updated: Expect label in MediaFile
+interface MediaFile { data: string; mimeType: string; label: string; }
 interface AIRequestBody { audioInputs?: MediaFile[]; }
 interface CompleteRequest { messages: Message[]; data?: AIRequestBody; }
 
@@ -12,14 +12,23 @@ export async function POST(req: Request) {
     const raw: CompleteRequest = await req.json();
     const { messages = [], data = {} } = raw;
 
-    // Build user content parts
+    // Build user content parts with labels
     const parts: UserContent = [];
-    // Updated: Process array of audioInputs
     if (data.audioInputs && data.audioInputs.length > 0) {
-      parts.push({ type: "text", text: "Audio Inputs:" }); // Add context label
-      data.audioInputs.forEach(audioInput => {
-        parts.push({ type: "file", data: audioInput.data, mimeType: audioInput.mimeType });
-      });
+      // Group by label for clarity in the prompt
+      const groupedAudio = data.audioInputs.reduce((acc, audio) => {
+        acc[audio.label] = acc[audio.label] || [];
+        acc[audio.label].push(audio);
+        return acc;
+      }, {} as Record<string, MediaFile[]>);
+
+      // Add labeled audio parts
+      for (const label in groupedAudio) {
+        parts.push({ type: "text", text: `\n--- ${label.charAt(0).toUpperCase() + label.slice(1)} Audio ---` }); // e.g., --- Microphone Audio ---
+        groupedAudio[label].forEach(audioInput => {
+          parts.push({ type: "file", data: audioInput.data, mimeType: audioInput.mimeType });
+        });
+      }
     }
 
     // If no media, just forward text messages
@@ -33,8 +42,11 @@ export async function POST(req: Request) {
         // Ensure existing content is treated as text if it's not already an array
         const existingContent = Array.isArray(last.content)
           ? last.content
-          : [{ type: "text", text: String(last.content) }];
-        last.content = [...parts, ...existingContent]; // Prepend audio parts
+          : typeof last.content === 'string' && last.content.trim() !== '' // Handle empty string case
+            ? [{ type: "text", text: last.content }]
+            : []; // If content is null/undefined/empty, start fresh
+        // Prepend audio parts to existing text content
+        last.content = [...parts, ...existingContent];
       } else {
         // If no user message exists, create one with the audio
         formatted.push({ role: "user", content: parts });
@@ -43,15 +55,18 @@ export async function POST(req: Request) {
 
     // Ensure there's some content to send
     if (!formatted.some(m => m.content && (Array.isArray(m.content) ? m.content.length > 0 : String(m.content).trim() !== ''))) {
+        console.warn("AI API: No input content after formatting.");
         return NextResponse.json({ error: "No input content" }, { status: 400 });
     }
 
+    // console.log("Formatted messages sent to AI:", JSON.stringify(formatted, null, 2)); // DEBUG: Log formatted messages
 
     const { text } = await generateText({
-      // Updated model potentially supporting grounding, ensure it's appropriate
-      model: google("gemini-2.0-flash", {
-        useSearchGrounding: true,
-      }), // Using 2.0 Flash as it's generally good with multimodal
+      model: google("gemini-1.5-flash-latest"), // Using 1.5 Flash as it's good with multimodal
+      // Removed grounding as it might interfere with direct audio analysis
+      // model: google("gemini-2.0-flash", {
+      //   useSearchGrounding: true,
+      // }),
       messages: formatted,
     });
 
