@@ -1,12 +1,13 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 
 const SEGMENT_MS = 5_000; // segment length
 const CHUNK_MS   = 1_000;  // internal timeslice
 
 export function useSegmentRecorder() {
-  const streamRef = useRef<MediaStream>();
-  const recRef    = useRef<MediaRecorder>();
-  const timerRef  = useRef<NodeJS.Timeout>();
+
+  const streamRef = useRef<MediaStream>(null);
+  const recRef    = useRef<MediaRecorder>(null);
+  const timerRef  = useRef<NodeJS.Timeout>(null);
   const chunksRef = useRef<Blob[]>([]);
   const [recording, setRecording] = useState(false);
   const [mimeType,  setMime]      = useState('audio/webm;codecs=opus');
