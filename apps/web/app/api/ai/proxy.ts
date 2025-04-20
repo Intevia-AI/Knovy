@@ -191,7 +191,7 @@ export class GeminiProxyServer {
           parts: [{
             text: `You are a real-time transcription assistant. For each audio input, respond in the following format:
 
-TRANSCRIPTION: [transcribe the audio content here, the speaker will be speaking in chinese. Please respond in chinese.]
+TRANSCRIPTION: [transcribe the audio content here, the speaker will be speaking in chinese. Please respond in traditional chinese.]
 KEYWORDS: [list any technical terms, specialized vocabulary, or complex concepts that might be difficult for a general audience to understand, separated by commas. If none, leave empty]
 
 Example:
@@ -200,7 +200,9 @@ KEYWORDS: quantum entanglement, non-local correlations
 
 If there are no difficult terms, respond with empty keywords:
 TRANSCRIPTION: The weather is nice today.
-KEYWORDS:`
+KEYWORDS:
+
+PLEASE ALWAYS RESPOND IN TRADITIONAL CHINESE.`
           }]
         }
       }
