@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
 
-const SEGMENT_MS = 5_000; // segment length
+const SEGMENT_MS = 20_000; // segment length
 const CHUNK_MS   = 1_000;  // internal timeslice
 
 export function useSegmentRecorder() {
