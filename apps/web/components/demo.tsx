@@ -17,43 +17,25 @@ import { Input } from "@workspace/ui/components/input";
 import { Markdown } from "./markdown";
 import RealTimeAnalysis from "@/components/RealTimeAnalysis";
 import { cn } from "@workspace/ui/lib/utils";
+import { useSegmentRecorder } from "@/hooks/useSegmentRecorder";
 
 // --- Types ----------------------------------------------------
-interface MediaChunk {
-  blob: Blob;
-  timestamp: number;
-}
-
-// Updated: Expect raw audio input for the AI API
 interface AIContextData {
   audioInput?: { data: string; mimeType: string };
 }
 
-// --- Constants -----------------------------------------------
-const AUDIO_CHUNK_TIMESLICE_MS = 5000; // 5‑second chunks
-
-// Helper to choose a supported MIME type for MediaRecorder
-const getSupportedMimeType = (): string => {
-  const audioTypes = [
-    "audio/webm;codecs=opus",
-    "audio/ogg;codecs=opus",
-    "audio/webm",
-  ];
-  for (const type of audioTypes)
-    if (MediaRecorder.isTypeSupported(type)) return type;
-  return "audio/webm"; // fallback
-};
+interface Segment {
+  blob: Blob;
+  timestamp: number;
+}
 
 // =============================================================
 export function DemoComponent() {
   // --- Refs ----------------------------------------------------
-  const micAudioStreamRef = useRef<MediaStream | null>(null);
   const screenStreamRef = useRef<MediaStream | null>(null);
-  const micRecorderRef = useRef<MediaRecorder | null>(null);
   const screenAudioRecorderRef = useRef<MediaRecorder | null>(null);
   const audioPlayerRef = useRef<HTMLAudioElement>(null);
   const screenPreviewRef = useRef<HTMLVideoElement>(null);
-  const realTimeIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const sendContextToAIRef = useRef<
     (
       action: "real-time" | "answer" | "summary" | "search" | "custom",
@@ -62,17 +44,22 @@ export function DemoComponent() {
   >(async () => {});
 
   // --- State --------------------------------------------------
-  const [isRecording, setIsRecording] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [micChunks, setMicChunks] = useState<MediaChunk[]>([]);
-  const [screenAudioChunks, setScreenAudioChunks] = useState<MediaChunk[]>([]);
+  const [segments, setSegments] = useState<Segment[]>([]);
   const [micDuration, setMicDuration] = useState(0); // in seconds
-  const [finalMicUrl, setFinalMicUrl] = useState<string | null>(null);
   const [aiMessages, setAiMessages] = useState<Message[]>([]);
   const [customPrompt, setCustomPrompt] = useState("");
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [keywords, setKeywords] = useState<string[]>([]);
   const [selectedKeyword, setSelectedKeyword] = useState<string | null>(null);
+
+  // --- Hook ---------------------------------------------------
+  const {
+    recording: isRecording,
+    start: startRecording,
+    stop: stopRecording,
+    mimeType,
+  } = useSegmentRecorder();
 
   // --- Utils --------------------------------------------------
   const applyNoiseFilter = (stream: MediaStream): MediaStream => {
@@ -108,216 +95,6 @@ export function DemoComponent() {
   const formatTime = (s: number) =>
     `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, "0")}`;
 
-  // --- Audio Recording ---------------------------------------
-  const setupRecorder = (
-    stream: MediaStream,
-    destState: React.Dispatch<React.SetStateAction<MediaChunk[]>>,
-    ref: React.MutableRefObject<MediaRecorder | null>,
-    label: "mic" | "screen"
-  ) => {
-    const mime = getSupportedMimeType();
-    const rec = new MediaRecorder(stream, { mimeType: mime });
-    rec.ondataavailable = (e) => {
-      if (e.data.size > 0)
-        destState((p) => [...p, { blob: e.data, timestamp: Date.now() }]);
-    };
-    rec.onerror = (e) => console.error(`${label} recorder error`, e);
-    rec.start(AUDIO_CHUNK_TIMESLICE_MS);
-    ref.current = rec;
-  };
-
-  const startMicRecording = async (): Promise<boolean> => {
-    if (micRecorderRef.current) return true;
-    try {
-      const raw = await navigator.mediaDevices.getUserMedia({
-        audio: { noiseSuppression: true, echoCancellation: true },
-      });
-      micAudioStreamRef.current = raw;
-      const filtered = applyNoiseFilter(raw);
-      setupRecorder(filtered, setMicChunks, micRecorderRef, "mic");
-      setMicDuration(0);
-      return true;
-    } catch (e) {
-      console.error("mic getUserMedia error", e);
-      return false;
-    }
-  };
-
-  const startScreenCapture = async (): Promise<boolean> => {
-    if (screenStreamRef.current) return true;
-    try {
-      const stream = await navigator.mediaDevices.getDisplayMedia({
-        video: true,
-        audio: true,
-      });
-      screenStreamRef.current = stream;
-
-      let audioStarted = false;
-      let videoStarted = false;
-
-      if (stream.getAudioTracks().length > 0) {
-        const audioOnly = new MediaStream(stream.getAudioTracks());
-        const filteredAudio = applyNoiseFilter(audioOnly);
-        setupRecorder(
-          filteredAudio,
-          setScreenAudioChunks,
-          screenAudioRecorderRef,
-          "screen"
-        );
-        audioStarted = true;
-      } else {
-        console.warn("No audio track captured from screen share.");
-      }
-
-      if (stream.getVideoTracks().length > 0) {
-        setIsScreenSharing(true);
-        videoStarted = true;
-      } else {
-        console.warn("No video track captured from screen share.");
-        if (!audioStarted) cleanupStream(screenStreamRef);
-      }
-
-      return audioStarted || videoStarted;
-    } catch (e) {
-      console.warn("Screen capture failed or cancelled", e);
-      cleanupStream(screenStreamRef);
-      return false;
-    }
-  };
-
-  const stopScreenCapture = () => {
-    cleanupRecorder(screenAudioRecorderRef);
-    cleanupStream(screenStreamRef);
-    if (screenPreviewRef.current) screenPreviewRef.current.srcObject = null;
-    setIsScreenSharing(false);
-  };
-
-  const stopAllRecording = () => {
-    cleanupRecorder(micRecorderRef);
-    cleanupRecorder(screenAudioRecorderRef);
-    cleanupStream(micAudioStreamRef);
-    cleanupStream(screenStreamRef);
-
-    if (screenPreviewRef.current) {
-      screenPreviewRef.current.srcObject = null;
-    }
-    setIsScreenSharing(false);
-
-    if (finalMicUrl) URL.revokeObjectURL(finalMicUrl);
-    setIsRecording(false);
-  };
-
-  const toggleScreenShare = async () => {
-    if (isLoading) return;
-    if (isScreenSharing) {
-      stopScreenCapture();
-    } else {
-      if (!isRecording) {
-        await startRecording();
-      } else {
-        await startScreenCapture();
-      }
-    }
-  };
-
-  const startRecording = async () => {
-    if (isRecording || isLoading) return;
-    setIsLoading(true);
-    setAiMessages([]);
-    setMicChunks([]);
-    setScreenAudioChunks([]);
-    const micOK = await startMicRecording();
-    const screenOK = await startScreenCapture();
-    if (micOK || screenOK) {
-      setIsRecording(true);
-      const timer = setInterval(() => setMicDuration((d) => d + 1), 1000);
-      realTimeIntervalRef.current = timer;
-    } else {
-      stopAllRecording();
-    }
-    setIsLoading(false);
-  };
-
-  const stopRecording = () => {
-    stopAllRecording();
-    if (micChunks.length) {
-      const mime = micChunks[0]?.blob.type || getSupportedMimeType();
-      const blob = new Blob(
-        micChunks.map((c) => c.blob),
-        { type: mime }
-      );
-      setFinalMicUrl(URL.createObjectURL(blob));
-    }
-    if (realTimeIntervalRef.current) {
-      clearInterval(realTimeIntervalRef.current);
-      realTimeIntervalRef.current = null;
-    }
-    setMicDuration(0);
-  };
-
-  const gatherContext = async (): Promise<AIContextData | null> => {
-    const ctx: AIContextData = {};
-    const rawChunks = micChunks.length ? micChunks : screenAudioChunks;
-    if (!rawChunks.length) return null;
-
-    const originalMimeType =
-      rawChunks[0]?.blob.type || getSupportedMimeType();
-    const mergedBlob = new Blob(
-      rawChunks.map((c) => c.blob),
-      { type: originalMimeType }
-    );
-
-    setIsLoading(true);
-    try {
-      const base64Full = await blobToBase64(mergedBlob);
-      const base64Data = base64Full.split(",")[1];
-
-      if (!base64Data) {
-        throw new Error("無法將 blob 轉換為 base64 資料。");
-      }
-
-      const processResponse = await fetch("/api/process-audio", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          audioData: base64Data,
-          originalMimeType: originalMimeType,
-        }),
-      });
-
-      if (!processResponse.ok) {
-        const errorBody = await processResponse.text();
-        throw new Error(
-          `音訊處理 API 失敗: ${processResponse.status} ${errorBody}`
-        );
-      }
-
-      const { processedAudioData, processedMimeType } =
-        await processResponse.json();
-
-      if (!processedAudioData || !processedMimeType) {
-        throw new Error("從音訊處理 API 收到的回應無效。");
-      }
-
-      ctx.audioInput = {
-        data: processedAudioData,
-        mimeType: processedMimeType,
-      };
-      return ctx;
-    } catch (err) {
-      console.error("gatherContext audio processing failed:", err);
-      setAiMessages((p) => [
-        ...p,
-        {
-          id: `err-proc-${Date.now()}`,
-          role: "assistant",
-          content: `[音訊處理錯誤] ${err instanceof Error ? err.message : String(err)}`,
-        },
-      ]);
-      return null;
-    }
-  };
-
   const sendContextToAI = useCallback<
     (
       action: "real-time" | "answer" | "summary" | "search" | "custom",
@@ -336,10 +113,8 @@ export function DemoComponent() {
       }
 
       const promptMap: Record<typeof action, string> = {
-        "real-time":
-          "簡潔地分析最新的音訊內容，並標示關鍵字或待辦事項。",
-        answer:
-          "根據最近處理過的音訊片段，直接回答使用者潛在的問題。",
+        "real-time": "簡潔地分析最新的音訊內容，並標示關鍵字或待辦事項。",
+        answer: "根據最近處理過的音訊片段，直接回答使用者潛在的問題。",
         summary: "提供最近處理過的音訊片段的簡明摘要。",
         search:
           "針對最近處理過的音訊片段中提到的主題，建議有用的搜尋關鍵字或直接搜尋相關資訊。",
@@ -382,8 +157,53 @@ export function DemoComponent() {
         setIsLoading(false);
       }
     },
-    [isLoading, micChunks, screenAudioChunks, customPrompt]
+    [isLoading, segments, customPrompt]
   );
+
+  // --- Effects ------------------------------------------------
+  useEffect(() => {
+    let t: NodeJS.Timeout;
+    if (isRecording) {
+      setMicDuration(0);
+      t = setInterval(() => setMicDuration((d) => d + 1), 1000);
+    }
+    return () => clearInterval(t);
+  }, [isRecording]);
+
+  useEffect(() => {
+    const h = (e: CustomEvent<Blob>) =>
+      setSegments((p) => [...p, { blob: e.detail, timestamp: Date.now() }]);
+    window.addEventListener("segment", h as any);
+    return () => window.removeEventListener("segment", h as any);
+  }, []);
+
+  useEffect(() => {
+    sendContextToAIRef.current = sendContextToAI;
+  }, [sendContextToAI]);
+
+  useEffect(() => {
+    if (
+      isScreenSharing &&
+      screenPreviewRef.current &&
+      screenStreamRef.current
+    ) {
+      screenPreviewRef.current.srcObject = screenStreamRef.current;
+      screenPreviewRef.current.muted = true;
+      screenPreviewRef.current
+        .play()
+        .catch((e) => console.error("Video play error:", e));
+    }
+  }, [isScreenSharing]);
+
+  // --- Context ------------------------------------------------
+  const gatherContext = async (): Promise<AIContextData | null> => {
+    if (!segments.length) return null;
+    const last = segments[segments.length - 1]?.blob;
+    if (!last) return null;
+    const full = await blobToBase64(last);
+    const data = full.split(",")[1] || full;
+    return { audioInput: { data, mimeType } };
+  };
 
   const handleTextResponse = useCallback((text: string) => {
     setAiMessages((prev) => {
@@ -460,23 +280,45 @@ export function DemoComponent() {
     }
   }, []);
 
-  useEffect(() => {
-    sendContextToAIRef.current = sendContextToAI;
-  }, [sendContextToAI]);
+  const toggleScreenShare = async () => {
+    if (isLoading) return;
+    if (isScreenSharing) {
+      cleanupRecorder(screenAudioRecorderRef);
+      cleanupStream(screenStreamRef);
+      if (screenPreviewRef.current) screenPreviewRef.current.srcObject = null;
+      setIsScreenSharing(false);
+    } else {
+      try {
+        const stream = await navigator.mediaDevices.getDisplayMedia({
+          video: true,
+          audio: true,
+        });
+        screenStreamRef.current = stream;
 
-  useEffect(() => {
-    if (
-      isScreenSharing &&
-      screenPreviewRef.current &&
-      screenStreamRef.current
-    ) {
-      screenPreviewRef.current.srcObject = screenStreamRef.current;
-      screenPreviewRef.current.muted = true;
-      screenPreviewRef.current
-        .play()
-        .catch((e) => console.error("Video play error:", e));
+        let audioStarted = false;
+        let videoStarted = false;
+
+        if (stream.getAudioTracks().length > 0) {
+          const audioOnly = new MediaStream(stream.getAudioTracks());
+          const filteredAudio = applyNoiseFilter(audioOnly);
+          audioStarted = true;
+        } else {
+          console.warn("No audio track captured from screen share.");
+        }
+
+        if (stream.getVideoTracks().length > 0) {
+          setIsScreenSharing(true);
+          videoStarted = true;
+        } else {
+          console.warn("No video track captured from screen share.");
+          if (!audioStarted) cleanupStream(screenStreamRef);
+        }
+      } catch (e) {
+        console.warn("Screen capture failed or cancelled", e);
+        cleanupStream(screenStreamRef);
+      }
     }
-  }, [isScreenSharing]);
+  };
 
   return (
     <div className="flex flex-1 overflow-hidden border rounded-lg shadow-lg bg-card max-h-[70vh]">
@@ -523,20 +365,13 @@ export function DemoComponent() {
               onChange={(e) => setCustomPrompt(e.target.value)}
               placeholder="輸入自訂提示或問題…"
               className="flex-grow"
-              disabled={
-                isLoading ||
-                (!micChunks.length && !screenAudioChunks.length)
-              }
+              disabled={isLoading || !segments.length}
             />
             <Button
               type="submit"
               variant="default"
               size="icon"
-              disabled={
-                isLoading ||
-                (!micChunks.length && !screenAudioChunks.length) ||
-                !customPrompt.trim()
-              }
+              disabled={isLoading || !segments.length || !customPrompt.trim()}
               className="bg-primary hover:bg-primary/90 text-primary-foreground"
             >
               <SendIcon className="h-4 w-4" />
@@ -552,11 +387,7 @@ export function DemoComponent() {
               <span
                 className={`flex h-3 w-3 rounded-full ${isRecording ? (isLoading ? "bg-yellow-400" : "bg-destructive animate-pulse") : "bg-muted"}`}
               ></span>
-              {isLoading
-                ? "處理中..."
-                : isRecording
-                  ? "錄製中"
-                  : "已停止"}
+              {isLoading ? "處理中..." : isRecording ? "錄製中" : "已停止"}
             </span>
             {isRecording && (
               <span className="text-sm font-semibold tabular-nums text-foreground">
@@ -653,11 +484,10 @@ export function DemoComponent() {
                 key={action}
                 variant="outline"
                 size="sm"
-                disabled={
-                  isLoading ||
-                  (!micChunks.length && !screenAudioChunks.length)
+                disabled={isLoading || !segments.length}
+                onClick={() =>
+                  sendContextToAI(action as "answer" | "summary" | "search")
                 }
-                onClick={() => sendContextToAI(action as "answer" | "summary" | "search")}
                 className="flex items-center justify-start gap-2"
               >
                 <Icon className="h-4 w-4" />
@@ -689,8 +519,12 @@ export function DemoComponent() {
           <audio
             ref={audioPlayerRef}
             controls
-            src={finalMicUrl ?? undefined}
-            className={`w-full h-10 ${!finalMicUrl ? "opacity-50 cursor-not-allowed" : ""}`}
+            src={
+              segments[segments.length - 1]?.blob
+                ? URL.createObjectURL(segments[segments.length - 1]!.blob)
+                : undefined
+            }
+            className={`w-full h-10 ${!segments.length ? "opacity-50 cursor-not-allowed" : ""}`}
           ></audio>
         </div>
       </aside>
