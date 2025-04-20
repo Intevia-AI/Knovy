@@ -13,7 +13,8 @@ ENV PNPM_HOME="/pnpm" \
 FROM base AS installer
 ARG PROJECT=web
 # Install any OS dependencies needed (here, libc6-compat for some binaries)
-RUN apk update && apk add --no-cache libc6-compat
+# Add ffmpeg here
+RUN apk update && apk add --no-cache libc6-compat ffmpeg
 WORKDIR /app
 # Copy all files – use a proper .dockerignore to avoid copying unnecessary files
 COPY . .
@@ -41,7 +42,8 @@ ARG PROJECT=web
 WORKDIR /app
 
 # Install runtime OS dependencies and create a non-root user
-RUN apk update && apk add --no-cache libc6-compat && \
+# Add ffmpeg here
+RUN apk update && apk add --no-cache libc6-compat ffmpeg && \
     addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
 USER nextjs
