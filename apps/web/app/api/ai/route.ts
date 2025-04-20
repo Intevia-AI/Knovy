@@ -3,8 +3,8 @@ import { generateText, UserContent, Message, CoreMessage } from "ai";
 import { NextResponse } from "next/server";
 
 interface MediaFile { data: string; mimeType: string; }
-// Updated: Expect a single audio input
-interface AIRequestBody { audioInput?: MediaFile; }
+// Updated: Expect an array of audio inputs
+interface AIRequestBody { audioInputs?: MediaFile[]; }
 interface CompleteRequest { messages: Message[]; data?: AIRequestBody; }
 
 export async function POST(req: Request) {
@@ -14,10 +14,12 @@ export async function POST(req: Request) {
 
     // Build user content parts
     const parts: UserContent = [];
-    // Updated: Check for single audioInput
-    if (data.audioInput) {
-      parts.push({ type: "text", text: "Audio Input:" }); // Add context label
-      parts.push({ type: "file", data: data.audioInput.data, mimeType: data.audioInput.mimeType });
+    // Updated: Process array of audioInputs
+    if (data.audioInputs && data.audioInputs.length > 0) {
+      parts.push({ type: "text", text: "Audio Inputs:" }); // Add context label
+      data.audioInputs.forEach(audioInput => {
+        parts.push({ type: "file", data: audioInput.data, mimeType: audioInput.mimeType });
+      });
     }
 
     // If no media, just forward text messages

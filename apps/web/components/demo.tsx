@@ -21,7 +21,8 @@ import { useSegmentRecorder } from "@/hooks/useSegmentRecorder";
 
 // --- Types ----------------------------------------------------
 interface AIContextData {
-  audioInput?: { data: string; mimeType: string };
+  // Updated: Expect an array of audio inputs
+  audioInputs?: { data: string; mimeType: string }[];
 }
 
 interface Segment {
@@ -197,12 +198,24 @@ export function DemoComponent() {
 
   // --- Context ------------------------------------------------
   const gatherContext = async (): Promise<AIContextData | null> => {
-    if (!segments.length) return null;
-    const last = segments[segments.length - 1]?.blob;
-    if (!last) return null;
-    const full = await blobToBase64(last);
-    const data = full.split(",")[1] || full;
-    return { audioInput: { data, mimeType } };
+    // Get the last two segments if available, otherwise just the last one
+    const relevantSegments = segments.slice(-2);
+    if (!relevantSegments.length) return null;
+
+    const audioInputs = await Promise.all(
+      relevantSegments.map(async (segment) => {
+        const full = await blobToBase64(segment.blob);
+        const data = full.split(",")[1] || full;
+        return { data, mimeType };
+      })
+    );
+
+    // Filter out any potential nulls or errors if blobToBase64 could fail, though unlikely here
+    const validAudioInputs = audioInputs.filter(Boolean);
+
+    if (!validAudioInputs.length) return null;
+
+    return { audioInputs: validAudioInputs };
   };
 
   const handleTextResponse = useCallback((text: string) => {
