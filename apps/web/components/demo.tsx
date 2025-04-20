@@ -2,8 +2,6 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { Button } from "@workspace/ui/components/button";
 import {
   MicIcon,
-  PauseIcon,
-  PlayIcon,
   Loader2Icon,
   ClockIcon,
   ListCollapseIcon,
@@ -21,7 +19,6 @@ import { useSegmentRecorder } from "@/hooks/useSegmentRecorder";
 
 // --- Types ----------------------------------------------------
 interface AIContextData {
-  // Updated: Expect an array of audio inputs
   audioInputs?: { data: string; mimeType: string }[];
 }
 
@@ -35,6 +32,7 @@ export function DemoComponent() {
   // --- Refs ----------------------------------------------------
   const screenStreamRef = useRef<MediaStream | null>(null);
   const screenAudioRecorderRef = useRef<MediaRecorder | null>(null);
+  const systemAudioChunksRef = useRef<Blob[]>([]);
   const audioPlayerRef = useRef<HTMLAudioElement>(null);
   const screenPreviewRef = useRef<HTMLVideoElement>(null);
   const sendContextToAIRef = useRef<
@@ -47,19 +45,20 @@ export function DemoComponent() {
   // --- State --------------------------------------------------
   const [isLoading, setIsLoading] = useState(false);
   const [segments, setSegments] = useState<Segment[]>([]);
-  const [micDuration, setMicDuration] = useState(0); // in seconds
+  const [systemAudioSegments, setSystemAudioSegments] = useState<Segment[]>([]);
+  const [recordingDuration, setRecordingDuration] = useState(0);
   const [aiMessages, setAiMessages] = useState<Message[]>([]);
   const [customPrompt, setCustomPrompt] = useState("");
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [keywords, setKeywords] = useState<string[]>([]);
   const [selectedKeyword, setSelectedKeyword] = useState<string | null>(null);
+  const [systemAudioMimeType, setSystemAudioMimeType] = useState<string>("");
 
   // --- Hook ---------------------------------------------------
   const {
-    recording: isRecording,
-    start: startRecording,
-    stop: stopRecording,
-    mimeType,
+    start: startMicRecording,
+    stop: stopMicRecording,
+    mimeType: micMimeType,
   } = useSegmentRecorder();
 
   // --- Utils --------------------------------------------------
@@ -82,7 +81,13 @@ export function DemoComponent() {
   const cleanupRecorder = (
     ref: React.MutableRefObject<MediaRecorder | null>
   ) => {
-    if (ref.current && ref.current.state !== "inactive") ref.current.stop();
+    if (ref.current && ref.current.state !== "inactive") {
+      try {
+        ref.current.stop();
+      } catch (e) {
+        console.warn("Error stopping recorder:", e);
+      }
+    }
     ref.current = null;
   };
   const blobToBase64 = (b: Blob): Promise<string> =>
@@ -103,7 +108,7 @@ export function DemoComponent() {
     ) => Promise<void>
   >(
     async (action, customQuery) => {
-      if (isLoading) return;
+      if (isLoading || !isScreenSharing) return;
       setIsLoading(true);
 
       const ctx = await gatherContext();
@@ -158,18 +163,28 @@ export function DemoComponent() {
         setIsLoading(false);
       }
     },
-    [isLoading, segments, customPrompt]
+    [
+      isLoading,
+      isScreenSharing,
+      segments,
+      systemAudioSegments,
+      customPrompt,
+      micMimeType,
+      systemAudioMimeType,
+    ]
   );
 
   // --- Effects ------------------------------------------------
   useEffect(() => {
     let t: NodeJS.Timeout;
-    if (isRecording) {
-      setMicDuration(0);
-      t = setInterval(() => setMicDuration((d) => d + 1), 1000);
+    if (isScreenSharing) {
+      setRecordingDuration(0);
+      t = setInterval(() => setRecordingDuration((d) => d + 1), 1000);
+    } else {
+      setRecordingDuration(0);
     }
     return () => clearInterval(t);
-  }, [isRecording]);
+  }, [isScreenSharing]);
 
   useEffect(() => {
     const h = (e: CustomEvent<Blob>) =>
@@ -186,32 +201,56 @@ export function DemoComponent() {
     if (
       isScreenSharing &&
       screenPreviewRef.current &&
-      screenStreamRef.current
+      screenStreamRef.current?.getVideoTracks().length
     ) {
-      screenPreviewRef.current.srcObject = screenStreamRef.current;
+      const videoStream = new MediaStream(
+        screenStreamRef.current.getVideoTracks()
+      );
+      screenPreviewRef.current.srcObject = videoStream;
       screenPreviewRef.current.muted = true;
       screenPreviewRef.current
         .play()
         .catch((e) => console.error("Video play error:", e));
+    } else if (!isScreenSharing && screenPreviewRef.current) {
+      screenPreviewRef.current.srcObject = null;
     }
-  }, [isScreenSharing]);
+  }, [isScreenSharing, screenStreamRef.current]);
 
   // --- Context ------------------------------------------------
   const gatherContext = async (): Promise<AIContextData | null> => {
-    // Get the last two segments if available, otherwise just the last one
-    const relevantSegments = segments.slice(-2);
-    if (!relevantSegments.length) return null;
+    const micSegment =
+      segments.length > 0 ? segments[segments.length - 1] : null;
+    const systemSegment =
+      systemAudioSegments.length > 0
+        ? systemAudioSegments[systemAudioSegments.length - 1]
+        : null;
+
+    if (!micSegment && !systemSegment) return null;
+
+    const blobsToProcess: { blob: Blob; type: string }[] = [];
+    if (micSegment)
+      blobsToProcess.push({ blob: micSegment.blob, type: micMimeType });
+    if (systemSegment)
+      blobsToProcess.push({ blob: systemSegment.blob, type: systemAudioMimeType });
+
+    if (!blobsToProcess.length) return null;
 
     const audioInputs = await Promise.all(
-      relevantSegments.map(async (segment) => {
-        const full = await blobToBase64(segment.blob);
-        const data = full.split(",")[1] || full;
-        return { data, mimeType };
+      blobsToProcess.map(async ({ blob, type }) => {
+        try {
+          const full = await blobToBase64(blob);
+          const data = full.split(",")[1] || full;
+          return { data, mimeType: type };
+        } catch (error) {
+          console.error("Error converting blob to base64:", error);
+          return null;
+        }
       })
     );
 
-    // Filter out any potential nulls or errors if blobToBase64 could fail, though unlikely here
-    const validAudioInputs = audioInputs.filter(Boolean);
+    const validAudioInputs = audioInputs.filter(
+      Boolean
+    ) as { data: string; mimeType: string }[];
 
     if (!validAudioInputs.length) return null;
 
@@ -221,13 +260,13 @@ export function DemoComponent() {
   const handleTextResponse = useCallback((text: string) => {
     setAiMessages((prev) => {
       const lastMessage = prev[prev.length - 1];
-      if (lastMessage?.content.startsWith("[即時轉錄]")) {
+      if (
+        lastMessage?.role === "assistant" &&
+        lastMessage.content.startsWith("[即時轉錄]")
+      ) {
         return [
           ...prev.slice(0, -1),
-          {
-            ...lastMessage,
-            content: lastMessage.content + text,
-          },
+          { ...lastMessage, content: lastMessage.content + text },
         ];
       } else {
         return [
@@ -287,6 +326,14 @@ export function DemoComponent() {
       ]);
     } catch (error) {
       console.error("取得關鍵字解釋時發生錯誤:", error);
+      setAiMessages((prev) => [
+        ...prev,
+        {
+          id: `err-explanation-${Date.now()}`,
+          role: "assistant",
+          content: `[錯誤] 無法取得 ${keyword} 的解釋。`,
+        },
+      ]);
     } finally {
       setIsLoading(false);
       setSelectedKeyword(null);
@@ -295,12 +342,23 @@ export function DemoComponent() {
 
   const toggleScreenShare = async () => {
     if (isLoading) return;
+
     if (isScreenSharing) {
+      stopMicRecording();
       cleanupRecorder(screenAudioRecorderRef);
+      systemAudioChunksRef.current = [];
       cleanupStream(screenStreamRef);
+
       if (screenPreviewRef.current) screenPreviewRef.current.srcObject = null;
+
       setIsScreenSharing(false);
     } else {
+      setSegments([]);
+      setSystemAudioSegments([]);
+      systemAudioChunksRef.current = [];
+      setAiMessages([]);
+      setKeywords([]);
+
       try {
         const stream = await navigator.mediaDevices.getDisplayMedia({
           video: true,
@@ -308,27 +366,65 @@ export function DemoComponent() {
         });
         screenStreamRef.current = stream;
 
-        let audioStarted = false;
-        let videoStarted = false;
+        let systemAudioSetup = false;
+        let videoSetup = false;
 
         if (stream.getAudioTracks().length > 0) {
-          const audioOnly = new MediaStream(stream.getAudioTracks());
-          const filteredAudio = applyNoiseFilter(audioOnly);
-          audioStarted = true;
+          const audioTracks = stream.getAudioTracks();
+          const audioOnlyStream = new MediaStream(audioTracks);
+
+          const availableSystemMime = MediaRecorder.isTypeSupported(
+            "audio/webm;codecs=opus"
+          )
+            ? "audio/webm;codecs=opus"
+            : MediaRecorder.isTypeSupported("audio/ogg;codecs=opus")
+            ? "audio/ogg;codecs=opus"
+            : "audio/mp4";
+          setSystemAudioMimeType(availableSystemMime);
+
+          screenAudioRecorderRef.current = new MediaRecorder(audioOnlyStream, {
+            mimeType: availableSystemMime,
+          });
+
+          screenAudioRecorderRef.current.ondataavailable = (event) => {
+            if (event.data.size > 0) {
+              systemAudioChunksRef.current.push(event.data);
+            }
+          };
+
+          screenAudioRecorderRef.current.onstop = () => {
+            if (systemAudioChunksRef.current.length > 0) {
+              const blob = new Blob(systemAudioChunksRef.current, {
+                type: availableSystemMime,
+              });
+              setSystemAudioSegments((prev) => [
+                ...prev,
+                { blob, timestamp: Date.now() },
+              ]);
+            }
+          };
+
+          screenAudioRecorderRef.current.start(5000);
+          systemAudioSetup = true;
         } else {
-          console.warn("No audio track captured from screen share.");
+          setSystemAudioMimeType("");
         }
 
         if (stream.getVideoTracks().length > 0) {
+          videoSetup = true;
+        }
+
+        if (videoSetup || systemAudioSetup) {
+          await startMicRecording();
           setIsScreenSharing(true);
-          videoStarted = true;
         } else {
-          console.warn("No video track captured from screen share.");
-          if (!audioStarted) cleanupStream(screenStreamRef);
+          cleanupStream(screenStreamRef);
+          cleanupRecorder(screenAudioRecorderRef);
         }
       } catch (e) {
-        console.warn("Screen capture failed or cancelled", e);
         cleanupStream(screenStreamRef);
+        cleanupRecorder(screenAudioRecorderRef);
+        setIsScreenSharing(false);
       }
     }
   };
@@ -356,9 +452,14 @@ export function DemoComponent() {
               處理中，請稍候...
             </div>
           )}
-          {aiMessages.length === 0 && !isLoading && (
+          {aiMessages.length === 0 && !isLoading && !isScreenSharing && (
             <p className="text-sm text-center text-muted-foreground py-4">
-              點擊「開始錄製」或「分享螢幕」以啟動 AI 助理。
+              點擊「分享螢幕」以啟動 AI 助理並開始錄製。
+            </p>
+          )}
+          {aiMessages.length === 0 && !isLoading && isScreenSharing && (
+            <p className="text-sm text-center text-muted-foreground py-4">
+              錄製中... AI 分析將在處理音訊後顯示。
             </p>
           )}
         </div>
@@ -376,15 +477,17 @@ export function DemoComponent() {
             <Input
               value={customPrompt}
               onChange={(e) => setCustomPrompt(e.target.value)}
-              placeholder="輸入自訂提示或問題…"
+              placeholder={
+                isScreenSharing ? "輸入自訂提示或問題…" : "請先開始分享螢幕"
+              }
               className="flex-grow"
-              disabled={isLoading || !segments.length}
+              disabled={isLoading || !isScreenSharing}
             />
             <Button
               type="submit"
               variant="default"
               size="icon"
-              disabled={isLoading || !segments.length || !customPrompt.trim()}
+              disabled={isLoading || !isScreenSharing || !customPrompt.trim()}
               className="bg-primary hover:bg-primary/90 text-primary-foreground"
             >
               <SendIcon className="h-4 w-4" />
@@ -398,44 +501,33 @@ export function DemoComponent() {
           <div className="flex items-center justify-between gap-2">
             <span className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
               <span
-                className={`flex h-3 w-3 rounded-full ${isRecording ? (isLoading ? "bg-yellow-400" : "bg-destructive animate-pulse") : "bg-muted"}`}
+                className={`flex h-3 w-3 rounded-full ${
+                  isScreenSharing
+                    ? isLoading
+                      ? "bg-yellow-400"
+                      : "bg-destructive animate-pulse"
+                    : "bg-muted"
+                }`}
               ></span>
-              {isLoading ? "處理中..." : isRecording ? "錄製中" : "已停止"}
+              {isLoading
+                ? "處理中..."
+                : isScreenSharing
+                ? "分享/錄製中"
+                : "已停止"}
             </span>
-            {isRecording && (
+            {isScreenSharing && (
               <span className="text-sm font-semibold tabular-nums text-foreground">
                 <ClockIcon className="inline h-4 w-4 mr-1 align-[-2px]" />
-                {formatTime(micDuration)}
+                {formatTime(recordingDuration)}
               </span>
             )}
           </div>
           <div className="flex gap-2">
-            {isRecording ? (
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={stopRecording}
-                disabled={isLoading}
-                className="flex-1"
-              >
-                <PauseIcon className="h-4 w-4 mr-1" /> 停止
-              </Button>
-            ) : (
-              <Button
-                variant="default"
-                size="sm"
-                onClick={startRecording}
-                disabled={isLoading}
-                className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground"
-              >
-                <PlayIcon className="h-4 w-4 mr-1" /> 開始錄製
-              </Button>
-            )}
             <Button
-              variant={isScreenSharing ? "destructive" : "outline"}
+              variant={isScreenSharing ? "destructive" : "default"}
               size="sm"
               onClick={toggleScreenShare}
-              disabled={isLoading || (!isRecording && isScreenSharing)}
+              disabled={isLoading}
               aria-pressed={isScreenSharing}
               className="flex-1"
             >
@@ -444,18 +536,19 @@ export function DemoComponent() {
               ) : (
                 <MonitorIcon className="h-4 w-4 mr-1" />
               )}
-              {isScreenSharing ? "停止分享" : "分享螢幕"}
+              {isScreenSharing ? "停止分享/錄製" : "分享螢幕並錄製"}
             </Button>
           </div>
         </div>
 
         <div className="p-4 space-y-3 border-b border-border">
           <h3 className="text-base font-semibold text-card-foreground">
-            即時分析
+            即時分析 (麥克風)
           </h3>
           <RealTimeAnalysis
             onTextResponse={handleTextResponse}
             onKeywords={handleKeywords}
+            isRecordingActive={isScreenSharing}
           />
           {keywords.length > 0 && (
             <div className="pt-3 space-y-2">
@@ -497,7 +590,7 @@ export function DemoComponent() {
                 key={action}
                 variant="outline"
                 size="sm"
-                disabled={isLoading || !segments.length}
+                disabled={isLoading || !isScreenSharing}
                 onClick={() =>
                   sendContextToAI(action as "answer" | "summary" | "search")
                 }
@@ -510,34 +603,42 @@ export function DemoComponent() {
           </div>
         </div>
 
-        {isScreenSharing && (
-          <div className="p-4 space-y-2 border-b border-border">
-            <h3 className="text-base font-semibold text-card-foreground">
-              螢幕預覽
-            </h3>
-            <video
-              ref={screenPreviewRef}
-              className="w-full aspect-video rounded border border-border bg-muted"
-              autoPlay
-              playsInline
-              muted
-            />
-          </div>
-        )}
+        {isScreenSharing &&
+          screenStreamRef.current?.getVideoTracks().length > 0 && (
+            <div className="p-4 space-y-2 border-b border-border">
+              <h3 className="text-base font-semibold text-card-foreground">
+                螢幕預覽
+              </h3>
+              <video
+                ref={screenPreviewRef}
+                className="w-full aspect-video rounded border border-border bg-muted"
+                autoPlay
+                playsInline
+                muted
+              />
+            </div>
+          )}
 
         <div className="p-4 mt-auto space-y-2">
           <h3 className="text-sm font-medium text-muted-foreground">
-            音訊播放 (停止後)
+            麥克風音訊播放 (最新片段)
           </h3>
           <audio
             ref={audioPlayerRef}
             controls
             src={
-              segments[segments.length - 1]?.blob
+              segments.length > 0
                 ? URL.createObjectURL(segments[segments.length - 1]!.blob)
                 : undefined
             }
-            className={`w-full h-10 ${!segments.length ? "opacity-50 cursor-not-allowed" : ""}`}
+            className={`w-full h-10 ${
+              segments.length === 0 ? "opacity-50 cursor-not-allowed" : ""
+            }`}
+            key={
+              segments.length > 0
+                ? segments[segments.length - 1]?.timestamp
+                : "no-audio"
+            }
           ></audio>
         </div>
       </aside>
