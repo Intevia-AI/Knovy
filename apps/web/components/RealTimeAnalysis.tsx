@@ -157,7 +157,7 @@ export default function RealTimeAnalysis({
         "audio-processor",
         {
           processorOptions: {
-            bufferSize: 4096,
+            bufferSize: 8192,
           },
         }
       );
