@@ -8,11 +8,11 @@ import { cn } from "@workspace/ui/lib/utils";
 
 const menuItems = [
   {
-    name: "Home",
+    name: "首頁",
     href: "/#home",
   },
-  { name: "Features", href: "#features" },
-  { name: "Contact", href: "#contact" },
+  { name: "功能", href: "#features" },
+  { name: "聯絡我們", href: "#footer" },
 ];
 
 export const HeroHeader = () => {
@@ -96,12 +96,12 @@ export const HeroHeader = () => {
                     size="sm"
                     className={cn(isScrolled && "lg:hidden")}
                   >
-                    <span>Login</span>
+                    <span>登入</span>
                   </Button>
                 </Link>
                 <Link passHref href="/auth/register">
                   <Button size="sm" className={cn(isScrolled && "lg:hidden")}>
-                    <span>Sign Up</span>
+                    <span>註冊</span>
                   </Button>
                 </Link>
                 <Link passHref href="/auth/login">
@@ -109,7 +109,7 @@ export const HeroHeader = () => {
                     size="sm"
                     className={cn(isScrolled ? "lg:inline-flex" : "hidden")}
                   >
-                    <span>Get Started</span>
+                    <span>開始使用</span>
                   </Button>
                 </Link>
               </div>
