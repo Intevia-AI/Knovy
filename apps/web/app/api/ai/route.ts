@@ -47,8 +47,9 @@ export async function POST(req: Request) {
 
     const { text } = await generateText({
       // Updated model potentially supporting grounding, ensure it's appropriate
-      model: google("gemini-2.0-flash-lite"), // Using 2.0 Flash as it's generally good with multimodal
-      system: "You are a concise, helpful assistant analyzing meeting audio.", // Slightly more specific system prompt
+      model: google("gemini-2.0-flash", {
+        useSearchGrounding: true,
+      }), // Using 2.0 Flash as it's generally good with multimodal
       messages: formatted,
     });
 

@@ -10,7 +10,7 @@ const tmpCleanup = promisify(tmp.setGracefulCleanup); // Optional: better cleanu
 tmpCleanup(); // Call once to set up graceful cleanup
 
 // --- Constants -----------------------------------------------
-const MAX_TRIM_SECONDS = 30;
+const MAX_TRIM_SECONDS = 20;
 const TARGET_MIME_TYPE = "audio/wav";
 
 // Helper function to run ffmpeg command asynchronously

@@ -24,7 +24,7 @@ interface MediaChunk {
   timestamp: number;
 }
 
-// Updated: Expect only one audio input for the AI API
+// Updated: Expect raw audio input for the AI API
 interface AIContextData {
   audioInput?: { data: string; mimeType: string };
 }
@@ -64,7 +64,6 @@ export function DemoComponent() {
   // --- State --------------------------------------------------
   const [isRecording, setIsRecording] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [isProcessingAudio, setIsProcessingAudio] = useState(false);
   const [micChunks, setMicChunks] = useState<MediaChunk[]>([]);
   const [screenAudioChunks, setScreenAudioChunks] = useState<MediaChunk[]>([]);
   const [micDuration, setMicDuration] = useState(0); // in seconds
@@ -209,7 +208,7 @@ export function DemoComponent() {
   };
 
   const toggleScreenShare = async () => {
-    if (isLoading || isProcessingAudio) return;
+    if (isLoading) return;
     if (isScreenSharing) {
       stopScreenCapture();
     } else {
@@ -222,7 +221,7 @@ export function DemoComponent() {
   };
 
   const startRecording = async () => {
-    if (isRecording || isLoading || isProcessingAudio) return;
+    if (isRecording || isLoading) return;
     setIsLoading(true);
     setAiMessages([]);
     setMicChunks([]);
@@ -249,7 +248,10 @@ export function DemoComponent() {
       );
       setFinalMicUrl(URL.createObjectURL(blob));
     }
-    clearInterval(realTimeIntervalRef.current!);
+    if (realTimeIntervalRef.current) {
+      clearInterval(realTimeIntervalRef.current);
+      realTimeIntervalRef.current = null;
+    }
     setMicDuration(0);
   };
 
@@ -265,7 +267,7 @@ export function DemoComponent() {
       { type: originalMimeType }
     );
 
-    setIsProcessingAudio(true);
+    setIsLoading(true);
     try {
       const base64Full = await blobToBase64(mergedBlob);
       const base64Data = base64Full.split(",")[1];
@@ -303,7 +305,7 @@ export function DemoComponent() {
       };
       return ctx;
     } catch (err) {
-      console.error("gatherContext 音訊處理失敗:", err);
+      console.error("gatherContext audio processing failed:", err);
       setAiMessages((p) => [
         ...p,
         {
@@ -313,8 +315,6 @@ export function DemoComponent() {
         },
       ]);
       return null;
-    } finally {
-      setIsProcessingAudio(false);
     }
   };
 
@@ -325,7 +325,7 @@ export function DemoComponent() {
     ) => Promise<void>
   >(
     async (action, customQuery) => {
-      if (isLoading || isProcessingAudio) return;
+      if (isLoading) return;
       setIsLoading(true);
 
       const ctx = await gatherContext();
@@ -339,11 +339,11 @@ export function DemoComponent() {
         "real-time":
           "簡潔地分析最新的音訊內容，並標示關鍵字或待辦事項。",
         answer:
-          "根據最近的音訊，回答使用者潛在的問題。",
-        summary: "提供最近討論的簡明摘要（條列式）。",
+          "根據最近處理過的音訊片段，直接回答使用者潛在的問題。",
+        summary: "提供最近處理過的音訊片段的簡明摘要。",
         search:
-          "針對音訊中提到的主題，建議有用的搜尋關鍵字。",
-        custom: customQuery || "請依要求分析音訊內容。",
+          "針對最近處理過的音訊片段中提到的主題，建議有用的搜尋關鍵字或直接搜尋相關資訊。",
+        custom: customQuery || "請依要求分析最近處理過的音訊片段。",
       } as const;
       const userMsg: Message = {
         id: `user-${Date.now()}`,
@@ -382,7 +382,7 @@ export function DemoComponent() {
         setIsLoading(false);
       }
     },
-    [isLoading, isProcessingAudio, micChunks, screenAudioChunks, customPrompt, gatherContext]
+    [isLoading, micChunks, screenAudioChunks, customPrompt]
   );
 
   const handleTextResponse = useCallback((text: string) => {
@@ -495,13 +495,13 @@ export function DemoComponent() {
               <Markdown>{m.content}</Markdown>
             </div>
           ))}
-          {(isLoading || isProcessingAudio) && (
+          {isLoading && (
             <div className="flex items-center justify-center text-sm text-muted-foreground p-2">
               <Loader2Icon className="h-4 w-4 mr-2 animate-spin" />
-              {isProcessingAudio ? "處理音訊中..." : "等待 AI 回應..."}
+              處理中，請稍候...
             </div>
           )}
-          {aiMessages.length === 0 && !isLoading && !isProcessingAudio && (
+          {aiMessages.length === 0 && !isLoading && (
             <p className="text-sm text-center text-muted-foreground py-4">
               點擊「開始錄製」或「分享螢幕」以啟動 AI 助理。
             </p>
@@ -525,7 +525,6 @@ export function DemoComponent() {
               className="flex-grow"
               disabled={
                 isLoading ||
-                isProcessingAudio ||
                 (!micChunks.length && !screenAudioChunks.length)
               }
             />
@@ -535,7 +534,6 @@ export function DemoComponent() {
               size="icon"
               disabled={
                 isLoading ||
-                isProcessingAudio ||
                 (!micChunks.length && !screenAudioChunks.length) ||
                 !customPrompt.trim()
               }
@@ -552,15 +550,13 @@ export function DemoComponent() {
           <div className="flex items-center justify-between gap-2">
             <span className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
               <span
-                className={`flex h-3 w-3 rounded-full ${isRecording ? (isLoading || isProcessingAudio ? "bg-yellow-400" : "bg-destructive animate-pulse") : "bg-muted"}`}
+                className={`flex h-3 w-3 rounded-full ${isRecording ? (isLoading ? "bg-yellow-400" : "bg-destructive animate-pulse") : "bg-muted"}`}
               ></span>
-              {isProcessingAudio
+              {isLoading
                 ? "處理中..."
-                : isLoading
-                  ? "呼叫 AI..."
-                  : isRecording
-                    ? "錄製中"
-                    : "已停止"}
+                : isRecording
+                  ? "錄製中"
+                  : "已停止"}
             </span>
             {isRecording && (
               <span className="text-sm font-semibold tabular-nums text-foreground">
@@ -575,7 +571,7 @@ export function DemoComponent() {
                 variant="destructive"
                 size="sm"
                 onClick={stopRecording}
-                disabled={isLoading || isProcessingAudio}
+                disabled={isLoading}
                 className="flex-1"
               >
                 <PauseIcon className="h-4 w-4 mr-1" /> 停止
@@ -585,7 +581,7 @@ export function DemoComponent() {
                 variant="default"
                 size="sm"
                 onClick={startRecording}
-                disabled={isLoading || isProcessingAudio}
+                disabled={isLoading}
                 className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground"
               >
                 <PlayIcon className="h-4 w-4 mr-1" /> 開始錄製
@@ -595,11 +591,7 @@ export function DemoComponent() {
               variant={isScreenSharing ? "destructive" : "outline"}
               size="sm"
               onClick={toggleScreenShare}
-              disabled={
-                isLoading ||
-                isProcessingAudio ||
-                (!isRecording && isScreenSharing)
-              }
+              disabled={isLoading || (!isRecording && isScreenSharing)}
               aria-pressed={isScreenSharing}
               className="flex-1"
             >
@@ -663,7 +655,6 @@ export function DemoComponent() {
                 size="sm"
                 disabled={
                   isLoading ||
-                  isProcessingAudio ||
                   (!micChunks.length && !screenAudioChunks.length)
                 }
                 onClick={() => sendContextToAI(action as "answer" | "summary" | "search")}
