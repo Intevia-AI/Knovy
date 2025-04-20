@@ -253,7 +253,7 @@ export default function RealTimeAnalysis({
           ? "處理中..."
           : isActive
           ? "停止分析"
-          : "開始分析"}
+          : "開始即時分析"}
       </Button>
 
       {isActive && (

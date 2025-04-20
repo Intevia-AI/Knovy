@@ -499,112 +499,129 @@ export function DemoComponent() {
       let systemAudioStream: MediaStream | null = null;
 
       try {
-        capturedMicStream = await startMicRecording();
-        if (!capturedMicStream) {
-          console.error("Failed to start microphone recording.");
-          alert("無法啟動麥克風錄音，請檢查權限。");
-          setIsScreenSharing(false);
-          return;
-        }
-
+        // --- Step 1: Get Display Media (requires user gesture) ---
         displayStream = await navigator.mediaDevices.getDisplayMedia({
           video: true,
           audio: true,
         });
         screenStreamRef.current = displayStream;
 
+        // --- Step 2: Get Microphone Media ---
+        capturedMicStream = await startMicRecording();
+        if (!capturedMicStream) {
+          console.error("Failed to start microphone recording.");
+          alert("無法啟動麥克風錄音，請檢查權限。");
+          cleanupStream(screenStreamRef);
+          setIsScreenSharing(false);
+          return;
+        }
+
+        // --- Step 3: Process Audio Tracks ---
         const systemAudioTracks = displayStream.getAudioTracks();
         if (systemAudioTracks.length === 0) {
           console.warn("System audio track not found in screen share stream.");
           alert(
             "無法擷取系統音訊，錄音將只包含麥克風。若要錄製系統音訊，請在分享畫面時確認已勾選分享音訊選項。"
           );
-          throw new Error("System audio not available.");
+          systemAudioStream = null;
+        } else {
+          systemAudioStream = new MediaStream(systemAudioTracks);
+          setCurrentSystemAudioStream(systemAudioStream);
         }
 
-        systemAudioStream = new MediaStream(systemAudioTracks);
-        setCurrentSystemAudioStream(systemAudioStream);
-
-        const combinedAudioStream = new MediaStream([
-          ...systemAudioStream.getAudioTracks(),
+        // --- Step 4: Combine Streams and Setup Recorder ---
+        const audioTracksToRecord = [
+          ...(systemAudioStream ? systemAudioStream.getAudioTracks() : []),
           ...capturedMicStream.getAudioTracks(),
-        ]);
+        ];
 
-        const availableMime = MediaRecorder.isTypeSupported(
-          "audio/webm;codecs=opus"
-        )
-          ? "audio/webm;codecs=opus"
-          : "audio/ogg;codecs=opus";
-        setSystemAudioMimeType(availableMime);
+        if (audioTracksToRecord.length > 0) {
+          const combinedAudioStream = new MediaStream(audioTracksToRecord);
 
-        cleanupRecorder(screenAudioRecorderRef);
-        const combinedRecorder = new MediaRecorder(combinedAudioStream, {
-          mimeType: availableMime,
-        });
-        screenAudioRecorderRef.current = combinedRecorder;
+          const availableMime = MediaRecorder.isTypeSupported(
+            "audio/webm;codecs=opus"
+          )
+            ? "audio/webm;codecs=opus"
+            : "audio/ogg;codecs=opus";
+          setSystemAudioMimeType(availableMime);
 
-        combinedRecorder.ondataavailable = (e) => {
-          if (e.data.size > 0) systemAudioChunksRef.current.push(e.data);
-        };
+          cleanupRecorder(screenAudioRecorderRef);
+          const combinedRecorder = new MediaRecorder(combinedAudioStream, {
+            mimeType: availableMime,
+          });
+          screenAudioRecorderRef.current = combinedRecorder;
 
-        combinedRecorder.onstop = () => {
-          if (systemAudioChunksRef.current.length > 0) {
-            const blob = new Blob(systemAudioChunksRef.current, {
-              type: availableMime,
-            });
-            setSystemAudioSegments((p) => [
-              ...p,
-              { blob, timestamp: Date.now() },
-            ]);
-            systemAudioChunksRef.current = [];
-          }
-          if (
-            screenAudioRecorderRef.current &&
-            screenAudioRecorderRef.current.state === "inactive" &&
-            isScreenSharing
-          ) {
-            try {
-              screenAudioRecorderRef.current.start();
-            } catch (e) {
-              console.error("Error restarting combined recorder:", e);
+          combinedRecorder.ondataavailable = (e) => {
+            if (e.data.size > 0) systemAudioChunksRef.current.push(e.data);
+          };
+
+          combinedRecorder.onstop = () => {
+            if (systemAudioChunksRef.current.length > 0) {
+              const blob = new Blob(systemAudioChunksRef.current, {
+                type: availableMime,
+              });
+              setSystemAudioSegments((p) => [
+                ...p,
+                { blob, timestamp: Date.now() },
+              ]);
+              systemAudioChunksRef.current = [];
             }
-          }
-        };
-        combinedRecorder.onerror = (e) => {
-          console.error("Combined Recorder Error:", e);
-        };
+            if (
+              screenAudioRecorderRef.current &&
+              screenAudioRecorderRef.current.state === "inactive" &&
+              isScreenSharing
+            ) {
+              try {
+                screenAudioRecorderRef.current.start();
+              } catch (e) {
+                console.error("Error restarting combined recorder:", e);
+              }
+            }
+          };
+          combinedRecorder.onerror = (e) => {
+            console.error("Combined Recorder Error:", e);
+          };
 
-        combinedRecorder.start();
-        if (systemAudioTimerRef.current)
-          clearInterval(systemAudioTimerRef.current);
-        systemAudioTimerRef.current = setInterval(() => {
-          if (
-            screenAudioRecorderRef.current &&
-            screenAudioRecorderRef.current.state === "recording"
-          ) {
-            screenAudioRecorderRef.current.stop();
-          }
-        }, SEGMENT_MS);
+          combinedRecorder.start();
+          if (systemAudioTimerRef.current)
+            clearInterval(systemAudioTimerRef.current);
+          systemAudioTimerRef.current = setInterval(() => {
+            if (
+              screenAudioRecorderRef.current &&
+              screenAudioRecorderRef.current.state === "recording"
+            ) {
+              screenAudioRecorderRef.current.stop();
+            }
+          }, SEGMENT_MS);
+        } else {
+          console.warn("No audio tracks available to record.");
+        }
 
-        try {
-          const audioCtx = new window.AudioContext();
-          systemAudioContextRef.current = audioCtx;
-          const source = audioCtx.createMediaStreamSource(systemAudioStream);
-          systemAudioSourceNodeRef.current = source;
-          const analyser = audioCtx.createAnalyser();
-          analyser.smoothingTimeConstant = 0.3;
-          analyser.fftSize = 256;
-          source.connect(analyser);
-          setSystemAnalyserNode(analyser);
-        } catch (error) {
-          console.error("Error setting up system audio analyser:", error);
-          systemAudioSourceNodeRef.current?.disconnect();
-          systemAudioSourceNodeRef.current = null;
-          systemAudioContextRef.current?.close().catch(console.error);
-          systemAudioContextRef.current = null;
+        // --- Step 5: Setup System Audio Analyser (if system audio exists) ---
+        if (systemAudioStream) {
+          try {
+            const audioCtx = new window.AudioContext();
+            systemAudioContextRef.current = audioCtx;
+            const source = audioCtx.createMediaStreamSource(systemAudioStream);
+            systemAudioSourceNodeRef.current = source;
+            const analyser = audioCtx.createAnalyser();
+            analyser.smoothingTimeConstant = 0.3;
+            analyser.fftSize = 256;
+            source.connect(analyser);
+            setSystemAnalyserNode(analyser);
+          } catch (error) {
+            console.error("Error setting up system audio analyser:", error);
+            systemAudioSourceNodeRef.current?.disconnect();
+            systemAudioSourceNodeRef.current = null;
+            systemAudioContextRef.current?.close().catch(console.error);
+            systemAudioContextRef.current = null;
+            setSystemAnalyserNode(null);
+          }
+        } else {
           setSystemAnalyserNode(null);
         }
 
+        // --- Step 6: Finalize State ---
         setIsScreenSharing(true);
       } catch (e) {
         console.error("Error starting screen share:", e);
@@ -841,29 +858,6 @@ export function DemoComponent() {
             />
           </div>
         )}
-
-        <div className="p-4 mt-auto space-y-2">
-          <h3 className="text-sm font-medium text-muted-foreground">
-            麥克風音訊播放 (最新片段)
-          </h3>
-          <audio
-            ref={audioPlayerRef}
-            controls
-            src={
-              segments.length > 0
-                ? URL.createObjectURL(segments[segments.length - 1]!.blob)
-                : undefined
-            }
-            className={`w-full h-10 ${
-              segments.length === 0 ? "opacity-50 cursor-not-allowed" : ""
-            }`}
-            key={
-              segments.length > 0
-                ? segments[segments.length - 1]?.timestamp
-                : "no-audio"
-            }
-          ></audio>
-        </div>
       </aside>
     </div>
   );
