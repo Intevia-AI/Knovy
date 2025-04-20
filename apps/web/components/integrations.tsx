@@ -8,12 +8,69 @@ import {
 } from "@/components/logos";
 import { Logo } from "@/components/logo";
 import { cn } from "@workspace/ui/lib/utils";
+import Image from "next/image";
 
 // Placeholder Logos for Meeting Software
-const GoogleMeet = () => <div className="text-xs">(Google Meet)</div>;
-const Zoom = () => <div className="text-xs">(Zoom)</div>;
-const MicrosoftTeams = () => <div className="text-xs">(MS Teams)</div>;
-const Webex = () => <div className="text-xs">(Webex)</div>;
+const GoogleMeet = () => (
+  <div className="flex items-center justify-center w-full h-full">
+    <Image
+      src="/meeting/google.png"
+      alt="Google Meet"
+      width={40}
+      height={40}
+      className="object-contain"
+      priority
+    />
+  </div>
+);
+const Zoom = () => (
+  <div className="flex items-center justify-center w-full h-full">
+    <Image
+      src="/meeting/zoom.png"
+      alt="Zoom"
+      width={40}
+      height={40}
+      className="object-contain"
+      priority
+    />
+  </div>
+);
+const MicrosoftTeams = () => (
+  <div className="flex items-center justify-center w-full h-full">
+    <Image
+      src="/meeting/ms_meeting.png"
+      alt="Microsoft Teams"
+      width={40}
+      height={40}
+      className="object-contain"
+      priority
+    />
+  </div>
+);
+const Webex = () => (
+  <div className="flex items-center justify-center w-full h-full">
+    <Image
+      src="/meeting/webex.png"
+      alt="Webex"
+      width={40}
+      height={40}
+      className="object-contain"
+      priority
+    />
+  </div>
+);
+const InteviaLogo = () => (
+  <div className="flex items-center justify-center w-full h-full">
+    <Image
+      src="/meeting/intevia_logo.png"
+      alt="INTEVIA"
+      width={40}
+      height={40}
+      className="object-contain"
+      priority
+    />
+  </div>
+);
 
 export function IntegrationsSection() {
   return (
@@ -35,7 +92,7 @@ export function IntegrationsSection() {
                   borderClassName="shadow-black-950/10 shadow-xl border-black/25 dark:border-white/25"
                   className="dark:bg-white/10"
                 >
-                  <Logo />
+                  <InteviaLogo />
                 </IntegrationCard>
                 <IntegrationCard><Webex /></IntegrationCard>
               </div>
@@ -72,7 +129,7 @@ const IntegrationCard = ({
   return (
     <div
       className={cn(
-        "bg-background relative flex size-20 rounded-xl dark:bg-transparent",
+        "bg-background relative flex size-16 rounded-xl dark:bg-transparent",
         className,
       )}
     >
@@ -83,7 +140,7 @@ const IntegrationCard = ({
           borderClassName,
         )}
       />
-      <div className="relative z-20 m-auto size-fit *:size-8">{children}</div>
+      <div className="relative z-20 m-auto size-fit">{children}</div>
     </div>
   );
 };

@@ -2,19 +2,19 @@ import Image from "next/image";
 
 const members = [
   {
-    name: "姚志磐 Paul",
+    name: "Paul",
     role: "CEO (政治四)",
-    avatar: "/placeholder.png", // Replace with actual image path
+    avatar: "/team/yao.jpg",
   },
   {
-    name: "魏睿強 John",
+    name: "John",
     role: "CTO (電機四)",
-    avatar: "/placeholder.png", // Replace with actual image path
+    avatar: "/team/wei.jpg",
   },
   {
-    name: "葉又銘 Ming",
+    name: "Ming",
     role: "Co-CTO (資管四)",
-    avatar: "/placeholder.png", // Replace with actual image path
+    avatar: "/team/ye.jpg",
   },
 ];
 
@@ -32,24 +32,21 @@ export function TeamSection() {
           <div className="sm:w-2/5">
             <h2 className="text-3xl font-bold sm:text-4xl">我們的團隊</h2>
           </div>
-          <div className="mt-6 sm:mt-0">
-            <p className="text-muted-foreground">
+          <p className="text-muted-foreground">
+          我們是三個來自台大的學生，都各自參與過一些創業專案，這次因著「台大鳥巢」（台大第一個創業家和VC社團）聚集在一起。我們一開始從語音出發，想做即時的「口音轉換、優化AI」，在研究了一下後，發現此類產品市場上已非常多，技術也很成熟，甚至只是一些會議AI的「附屬功能」。因此，對於學生來說，現在才進入市場並且從零開始研發難度高的語音技術，似乎不是太好的起點，因此我們朝著會議、面試AI助力的方向軸轉。
+        </p>
+          {/* <div className="mt-6 sm:mt-0">
+            {/* <p className="text-muted-foreground">
               認識 INTEVIA AI 背後的核心團隊。
-            </p>
-            <h3 className="mt-6 text-xl font-semibold">目前進度</h3>
-            <ul className="mt-2 list-disc space-y-1 pl-5 text-muted-foreground">
-              <li>開發產品 MVP、收集第一波使用者回饋</li>
-              <li>討論商業模式、申請比賽資金</li>
-              <li>申請新型應用專利中</li>
-            </ul>
-          </div>
+            </p> */}
+          {/* </div>  */}
         </div>
         <div className="mt-12 md:mt-24">
           <div className="grid gap-x-6 gap-y-12 sm:grid-cols-2 lg:grid-cols-3">
             {members.map((member, index) => (
               <div key={index} className="group overflow-hidden">
                 <Image
-                  className="h-96 w-full rounded-md object-cover object-top grayscale transition-all duration-500 hover:grayscale-0 group-hover:h-[22.5rem] group-hover:rounded-xl"
+                  className="h-96 w-full rounded-md object-cover object-top transition-all duration-500 group-hover:h-[22.5rem] group-hover:rounded-xl"
                   src={member.avatar}
                   alt={`Avatar of ${member.name}`}
                   width={826}
@@ -70,6 +67,15 @@ export function TeamSection() {
               </div>
             ))}
           </div>
+        </div>
+      </div>
+      <div className="mx-auto mt-24 max-w-2xl text-center">
+        <h3 className="text-xl font-semibold">目前進度</h3>
+        <div className="mt-4 space-y-2 text-muted-foreground">
+          <p>開發產品Demo MVP</p>
+          <p>收集第一波用戶回饋、改良產品</p>
+          <p>開發客戶、參加創業競賽與尋求資金</p>
+          <p>申請新型應用專利中</p>
         </div>
       </div>
     </section>

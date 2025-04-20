@@ -33,17 +33,6 @@ export default function CallToAction() {
             </div>
           </form>
 
-          {/* Demo Testing Instructions */}
-          <div className="mt-16 max-w-3xl mx-auto text-left border-t pt-8">
-            <h3 className="text-2xl font-semibold mb-4 text-center">測試版試用說明</h3>
-            <p className="mb-4 text-muted-foreground text-center">我們做了一個包含基礎功能的試用版，使用步驟如下：</p>
-            <ol className="list-decimal list-inside space-y-2 text-muted-foreground mx-auto w-fit">
-              <li>點擊「開始」，允許麥克風和攝影機權限。</li>
-              <li>開始對鏡頭說話，主題、語言不限，可以是你發問、閒聊、提到一些新聞（模擬開會中的情境）。</li>
-              <li>開始說話後，AI便會開始運作。此時你可以使用工具列中的三項功能：即時統整、提問和查資料。AI會根據你real-time的說話內容，提供許多選項供您選擇。</li>
-            </ol>
-          </div>
-
           {/* Feedback Section */}
           <div className="mt-12 max-w-xl mx-auto text-left">
              <h3 className="text-xl font-semibold mb-2 text-center">使用回饋</h3>

@@ -37,6 +37,7 @@ export function DemoComponent() {
   const systemAudioTimerRef = useRef<NodeJS.Timeout | null>(null);
   const audioPlayerRef = useRef<HTMLAudioElement>(null);
   const screenPreviewRef = useRef<HTMLVideoElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const sendContextToAIRef = useRef<
     (
       action: "real-time" | "answer" | "summary" | "search" | "custom",
@@ -126,6 +127,9 @@ export function DemoComponent() {
   const formatTime = (s: number) =>
     `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, "0")}`;
 
+  const SEGMENT_MS = 20_000;
+  const ANSWER_SEGMENT_MS = 10_000; // 10 seconds for answer action
+
   const sendContextToAI = useCallback<
     (
       action: "real-time" | "answer" | "summary" | "search" | "custom",
@@ -145,7 +149,7 @@ export function DemoComponent() {
 
       const promptMap: Record<typeof action, string> = {
         "real-time": "簡潔地分析最新的音訊內容，並標示關鍵字或待辦事項。",
-        answer: "根據最近處理過的音訊片段，直接回答使用者潛在的問題。",
+        answer: "根據最近處理過的音訊片段，回答使用者最後問的問題或是潛在問題，若是有超過一個問題，請優先回答最後出現的。",
         summary: "提供最近處理過的音訊片段的簡明摘要。",
         search:
           "針對最近處理過的音訊片段中提到的主題，建議有用的搜尋關鍵字或直接搜尋相關資訊。",
@@ -289,6 +293,12 @@ export function DemoComponent() {
     };
   }, [isScreenSharing, micStream]);
 
+  useEffect(() => {
+    if (messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+    }
+  }, [aiMessages]);
+
   // --- Context ------------------------------------------------
   const gatherContext = async (): Promise<AIContextData | null> => {
     // Last completed segments
@@ -315,41 +325,54 @@ export function DemoComponent() {
 
     // Combine all potential audio sources
     const blobsToProcess: { blob: Blob; type: string; label: string }[] = [];
-    if (lastMicSegment)
-      blobsToProcess.push({
-        blob: lastMicSegment.blob,
-        type: micMimeType,
-        label: "microphone-last", // Updated label
-      });
-    if (lastSystemSegment)
-      blobsToProcess.push({
-        blob: lastSystemSegment.blob,
-        type: systemAudioMimeType,
-        label: "system-last", // Updated label
-      });
-    if (currentMicBlob)
+    
+    // For answer action, only use the most recent 10 seconds
+    if (lastMicSegment) {
+      const segmentDuration = lastMicSegment.timestamp - (lastMicSegment.timestamp - ANSWER_SEGMENT_MS);
+      if (segmentDuration <= ANSWER_SEGMENT_MS) {
+        blobsToProcess.push({
+          blob: lastMicSegment.blob,
+          type: micMimeType,
+          label: "microphone-last",
+        });
+      }
+    }
+    
+    if (lastSystemSegment) {
+      const segmentDuration = lastSystemSegment.timestamp - (lastSystemSegment.timestamp - ANSWER_SEGMENT_MS);
+      if (segmentDuration <= ANSWER_SEGMENT_MS) {
+        blobsToProcess.push({
+          blob: lastSystemSegment.blob,
+          type: systemAudioMimeType,
+          label: "system-last",
+        });
+      }
+    }
+
+    // For current recording, use the same logic
+    if (currentMicBlob) {
       blobsToProcess.push({
         blob: currentMicBlob,
         type: micMimeType,
-        label: "microphone-current", // New label for current mic audio
+        label: "microphone-current",
       });
-    if (currentSystemBlob)
+    }
+    if (currentSystemBlob) {
       blobsToProcess.push({
         blob: currentSystemBlob,
         type: systemAudioMimeType,
-        label: "system-current", // New label for current system audio
+        label: "system-current",
       });
+    }
 
-    if (!blobsToProcess.length) return null; // Exit if no audio data at all
+    if (!blobsToProcess.length) return null;
 
     const audioInputs = await Promise.all(
       blobsToProcess.map(async ({ blob, type, label }) => {
         try {
-          // Only process if blob has size to avoid empty data URLs
           if (blob.size === 0) return null;
           const full = await blobToBase64(blob);
-          const data = full.split(",")[1] || full; // Ensure we get the base64 part
-          // Double check data isn't empty after split
+          const data = full.split(",")[1] || full;
           if (!data) return null;
           return { data, mimeType: type, label };
         } catch (error) {
@@ -365,7 +388,7 @@ export function DemoComponent() {
       label: string;
     }[];
 
-    if (!validAudioInputs.length) return null; // Exit if conversion failed for all
+    if (!validAudioInputs.length) return null;
 
     return { audioInputs: validAudioInputs };
   };
@@ -639,232 +662,273 @@ export function DemoComponent() {
   };
 
   return (
-    <div className="flex flex-1 overflow-hidden border rounded-lg shadow-lg bg-card max-h-[70vh]">
-      <main className="flex flex-col flex-1 overflow-hidden">
-        <div className="flex-1 p-4 space-y-4 overflow-y-auto bg-muted/30">
-          {aiMessages.map((m) => (
-            <div
-              key={m.id}
-              className={cn(
-                "p-3 rounded-lg text-sm border w-fit max-w-[85%]",
-                m.role === "user"
-                  ? "bg-primary ml-auto text-primary-foreground"
-                  : "bg-muted mr-auto text-foreground"
-              )}
-            >
-              <Markdown>{m.content}</Markdown>
-            </div>
-          ))}
-          {isLoading && (
-            <div className="flex items-center justify-center text-sm text-muted-foreground p-2">
-              <Loader2Icon className="h-4 w-4 mr-2 animate-spin" />
-              處理中，請稍候...
-            </div>
-          )}
-          {aiMessages.length === 0 && !isLoading && !isScreenSharing && (
-            <p className="text-sm text-center text-muted-foreground py-4">
-              點擊「分享螢幕」以啟動 AI 助理並開始錄製。
-            </p>
-          )}
-          {aiMessages.length === 0 && !isLoading && isScreenSharing && (
-            <p className="text-sm text-center text-muted-foreground py-4">
-              錄製中... AI 分析將在處理音訊後顯示。
-            </p>
-          )}
+    <div className="flex flex-col gap-16">
+      
+      {/* 測試版試用說明 */}
+      <div className="max-w-3xl mx-auto text-left border rounded-lg p-6 bg-card">
+        <h3 className="text-2xl font-semibold mb-4 text-center">測試版試用說明</h3>
+        <p className="mb-4 text-muted-foreground text-center">我們做了一個包含基礎功能的試用版，使用步驟如下：</p>
+        <ol className="list-decimal list-inside space-y-2 text-muted-foreground mx-auto w-fit">
+          <li>建議使用電腦操作，確保功能完整運作。</li>
+          <li>點擊「開始錄製」和「分享螢幕」。</li>
+          <li>選擇你要分享的畫面，並允許麥克風和攝影機權限。</li>
+          <li>隨機找一些文件、網站、圖表，開在你分享的畫面上。</li>
+          <li>點擊「開始分析」</li>
+          <li>開始對鏡頭說話，主題、語言不限，可以是你發問、閒聊、提到一些新聞（模擬開會中的情境）；也可以用電腦播放任何你想要的影片、語音。</li>
+          <li>開始說話後，INTEVIA AI便會開始運作，逐字稿會持續產生。此時你可以使用工具列中的三項功能：回答、即時統整和查資料，AI會根據最近一段內容提供你選擇的資訊，也可以手動在文字框輸入Prompt你的要求或問題。</li>
+          <li>下方Keyword會根據音訊持續跳出，亦可以隨時點擊想查詢的關鍵字。</li>
+        </ol>
+        <div className="mt-6">
+          <h4 className="text-lg font-semibold mb-2 text-center">不知道說什麼的話你可以：</h4>
+          <ol className="list-decimal list-inside space-y-2 text-muted-foreground mx-auto w-fit">
+            <li>隨便找一部YouTube談話性影片（課程、演講、聊天）放在背景播放，自己一邊講話、提問，根據生成的逐字稿去測試三個按鈕。</li>
+            <li>找一個朋友或是自己，隨便聊最近的新聞或是分享自己的一天，然後一樣根據生成逐字稿的內容去測試功能。</li>
+          </ol>
         </div>
+      </div>
 
-        <div className="p-4 border-t bg-card border-border">
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (!customPrompt.trim()) return;
-              sendContextToAI("custom", customPrompt);
-              setCustomPrompt("");
-            }}
-            className="flex gap-2"
+      <h2 className="text-3xl font-bold text-center">Demo 試用</h2>
+
+      <div className="flex flex-1 overflow-hidden border rounded-lg shadow-lg bg-card max-h-[70vh]">
+        <main className="flex flex-col flex-1 overflow-hidden">
+          <div 
+            ref={messagesContainerRef}
+            className="flex-1 p-4 space-y-4 overflow-y-auto bg-muted/30"
           >
-            <Input
-              value={customPrompt}
-              onChange={(e) => setCustomPrompt(e.target.value)}
-              placeholder={
-                isScreenSharing ? "輸入自訂提示或問題…" : "請先開始分享螢幕"
-              }
-              className="flex-grow"
-              disabled={isLoading || !isScreenSharing}
-            />
-            <Button
-              type="submit"
-              variant="default"
-              size="icon"
-              disabled={isLoading || !isScreenSharing || !customPrompt.trim()}
-              className="bg-primary hover:bg-primary/90 text-primary-foreground"
-            >
-              <SendIcon className="h-4 w-4" />
-            </Button>
-          </form>
-        </div>
-      </main>
-
-      <aside className="flex flex-col w-full max-w-sm border-l border-border bg-card overflow-y-auto shrink-0">
-        <div className="p-4 space-y-3 border-b border-border">
-          <div className="flex items-center justify-between gap-2">
-            <span className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-              <span
-                className={`flex h-3 w-3 rounded-full ${
-                  isScreenSharing
-                    ? isLoading
-                      ? "bg-yellow-400"
-                      : "bg-destructive animate-pulse"
-                    : "bg-muted"
-                }`}
-              ></span>
-              {isLoading
-                ? "處理中..."
-                : isScreenSharing
-                  ? "分享/錄製中"
-                  : "已停止"}
-            </span>
-            {isScreenSharing && (
-              <span className="text-sm font-semibold tabular-nums text-foreground">
-                <ClockIcon className="inline h-4 w-4 mr-1 align-[-2px]" />
-                {formatTime(recordingDuration)}
-              </span>
+            {aiMessages.map((m) => (
+              <div
+                key={m.id}
+                className={cn(
+                  "p-3 rounded-lg text-sm border w-fit max-w-[85%]",
+                  m.role === "user"
+                    ? "bg-primary ml-auto text-primary-foreground"
+                    : "bg-muted mr-auto text-foreground"
+                )}
+              >
+                <Markdown>{m.content}</Markdown>
+              </div>
+            ))}
+            {isLoading && (
+              <div className="flex items-center justify-center text-sm text-muted-foreground p-2">
+                <Loader2Icon className="h-4 w-4 mr-2 animate-spin" />
+                處理中，請稍候...
+              </div>
+            )}
+            {aiMessages.length === 0 && !isLoading && !isScreenSharing && (
+              <p className="text-sm text-center text-muted-foreground py-4">
+                點擊「分享螢幕」以啟動 AI 助理並開始錄製。
+              </p>
+            )}
+            {aiMessages.length === 0 && !isLoading && isScreenSharing && (
+              <p className="text-sm text-center text-muted-foreground py-4">
+                錄製中... AI 分析將在處理音訊後顯示。
+              </p>
             )}
           </div>
-          <div className="flex gap-2">
-            <Button
-              variant={isScreenSharing ? "destructive" : "default"}
-              size="sm"
-              onClick={toggleScreenShare}
-              disabled={isLoading}
-              aria-pressed={isScreenSharing}
-              className="flex-1"
-            >
-              {isScreenSharing ? (
-                <MonitorOffIcon className="h-4 w-4 mr-1" />
-              ) : (
-                <MonitorIcon className="h-4 w-4 mr-1" />
-              )}
-              {isScreenSharing ? "停止分享/錄製" : "分享螢幕並錄製"}
-            </Button>
-          </div>
-        </div>
 
-        <div className="p-4 space-y-3 border-b border-border">
-          <RealTimeAnalysis
-            onTextResponse={handleTextResponse}
-            onKeywords={handleKeywords}
-            systemAudioStream={currentSystemAudioStream || undefined}
-          />
-          {keywords.length > 0 && (
-            <div className="pt-3 space-y-2">
-              <h4 className="text-sm font-medium text-muted-foreground">
-                偵測到的關鍵字
-              </h4>
-              <div className="flex flex-wrap gap-1.5">
-                {keywords.map((keyword, index) => (
-                  <Button
-                    key={index}
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => handleKeywordClick(keyword)}
-                    disabled={isLoading && selectedKeyword === keyword}
-                    className="flex items-center gap-1 text-xs"
-                  >
-                    {keyword}
-                    {isLoading && selectedKeyword === keyword && (
-                      <Loader2Icon className="h-3 w-3 animate-spin" />
-                    )}
-                  </Button>
-                ))}
+          <div className="p-4 border-t bg-card border-border">
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (!customPrompt.trim()) return;
+                sendContextToAI("custom", customPrompt);
+                setCustomPrompt("");
+              }}
+              className="flex gap-2"
+            >
+              <Input
+                value={customPrompt}
+                onChange={(e) => setCustomPrompt(e.target.value)}
+                placeholder={
+                  isScreenSharing ? "輸入自訂提示或問題…" : "請先開始分享螢幕"
+                }
+                className="flex-grow"
+                disabled={isLoading || !isScreenSharing}
+              />
+              <Button
+                type="submit"
+                variant="default"
+                size="icon"
+                disabled={isLoading || !isScreenSharing || !customPrompt.trim()}
+                className="bg-primary hover:bg-primary/90 text-primary-foreground"
+              >
+                <SendIcon className="h-4 w-4" />
+              </Button>
+            </form>
+          </div>
+        </main>
+
+        <aside className="flex flex-col w-full max-w-sm border-l border-border bg-card overflow-y-auto shrink-0">
+          <div className="p-4 space-y-3 border-b border-border">
+            <div className="flex items-center justify-between gap-2">
+              <span className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                <span
+                  className={`flex h-3 w-3 rounded-full ${
+                    isScreenSharing
+                      ? isLoading
+                        ? "bg-yellow-400"
+                        : "bg-destructive animate-pulse"
+                      : "bg-muted"
+                  }`}
+                ></span>
+                {isLoading
+                  ? "處理中..."
+                  : isScreenSharing
+                    ? "分享/錄製中"
+                    : "已停止"}
+              </span>
+              {isScreenSharing && (
+                <span className="text-sm font-semibold tabular-nums text-foreground">
+                  <ClockIcon className="inline h-4 w-4 mr-1 align-[-2px]" />
+                  {formatTime(recordingDuration)}
+                </span>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant={isScreenSharing ? "destructive" : "default"}
+                size="sm"
+                onClick={toggleScreenShare}
+                disabled={isLoading}
+                aria-pressed={isScreenSharing}
+                className="flex-1"
+              >
+                {isScreenSharing ? (
+                  <MonitorOffIcon className="h-4 w-4 mr-1" />
+                ) : (
+                  <MonitorIcon className="h-4 w-4 mr-1" />
+                )}
+                {isScreenSharing ? "停止分享/錄製" : "分享螢幕並錄製"}
+              </Button>
+            </div>
+          </div>
+
+          <div className="p-4 space-y-3 border-b border-border">
+            <RealTimeAnalysis
+              onTextResponse={handleTextResponse}
+              onKeywords={handleKeywords}
+              systemAudioStream={currentSystemAudioStream || undefined}
+            />
+            {keywords.length > 0 && (
+              <div className="pt-3 space-y-2">
+                <h4 className="text-sm font-medium text-muted-foreground">
+                  偵測到的關鍵字
+                </h4>
+                <div className="flex flex-wrap gap-1.5">
+                  {keywords.map((keyword, index) => (
+                    <Button
+                      key={index}
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => handleKeywordClick(keyword)}
+                      disabled={isLoading && selectedKeyword === keyword}
+                      className="flex items-center gap-1 text-xs"
+                    >
+                      {keyword}
+                      {isLoading && selectedKeyword === keyword && (
+                        <Loader2Icon className="h-3 w-3 animate-spin" />
+                      )}
+                    </Button>
+                  ))}
+                </div>
               </div>
+            )}
+          </div>
+
+          <div className="p-4 space-y-3 border-b border-border">
+            <h3 className="text-base font-semibold text-card-foreground">
+              AI 動作
+            </h3>
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { action: "answer", label: "回答問題", icon: MicIcon },
+                { action: "summary", label: "產生摘要", icon: ListCollapseIcon },
+                { action: "search", label: "搜尋主題", icon: SearchIcon },
+              ].map(({ action, label, icon: Icon }) => (
+                <Button
+                  key={action}
+                  variant="outline"
+                  size="sm"
+                  disabled={isLoading || !isScreenSharing}
+                  onClick={() =>
+                    sendContextToAI(action as "answer" | "summary" | "search")
+                  }
+                  className="flex items-center justify-start gap-2"
+                >
+                  <Icon className="h-4 w-4" />
+                  <span>{label}</span>
+                </Button>
+              ))}
+            </div>
+          </div>
+
+          <div className="p-4 space-y-3 border-b border-border">
+            <h3 className="text-base font-semibold text-card-foreground">
+              即時分析 (麥克風)
+            </h3>
+            <div className="py-2 w-full">
+              <AudioVisualizer analyserNode={micAnalyserNode} height={40} />
+            </div>
+          </div>
+
+          <div className="p-4 space-y-3 border-b border-border">
+            <h3 className="text-base font-semibold text-card-foreground">
+              即時分析 (系統音訊)
+            </h3>
+            <div className="py-2 w-full">
+              <AudioVisualizer analyserNode={systemAnalyserNode} height={40} />
+            </div>
+          </div>
+
+          {isScreenSharing && screenStreamRef.current?.getVideoTracks() && (
+            <div className="p-4 space-y-2 border-b border-border">
+              <h3 className="text-base font-semibold text-card-foreground">
+                螢幕預覽
+              </h3>
+              <video
+                ref={screenPreviewRef}
+                className="w-full aspect-video rounded border border-border bg-muted"
+                autoPlay
+                playsInline
+                muted
+              />
             </div>
           )}
-        </div>
 
-        <div className="p-4 space-y-3 border-b border-border">
-          <h3 className="text-base font-semibold text-card-foreground">
-            即時分析 (麥克風)
-          </h3>
-          <div className="py-2 w-full">
-            <AudioVisualizer analyserNode={micAnalyserNode} height={40} />
-          </div>
-        </div>
-
-        <div className="p-4 space-y-3 border-b border-border">
-          <h3 className="text-base font-semibold text-card-foreground">
-            即時分析 (系統音訊)
-          </h3>
-          <div className="py-2 w-full">
-            <AudioVisualizer analyserNode={systemAnalyserNode} height={40} />
-          </div>
-        </div>
-
-        <div className="p-4 space-y-3 border-b border-border">
-          <h3 className="text-base font-semibold text-card-foreground">
-            AI 動作
-          </h3>
-          <div className="grid grid-cols-2 gap-2">
-            {[
-              { action: "answer", label: "回答問題", icon: MicIcon },
-              { action: "summary", label: "產生摘要", icon: ListCollapseIcon },
-              { action: "search", label: "搜尋主題", icon: SearchIcon },
-            ].map(({ action, label, icon: Icon }) => (
-              <Button
-                key={action}
-                variant="outline"
-                size="sm"
-                disabled={isLoading || !isScreenSharing}
-                onClick={() =>
-                  sendContextToAI(action as "answer" | "summary" | "search")
-                }
-                className="flex items-center justify-start gap-2"
-              >
-                <Icon className="h-4 w-4" />
-                <span>{label}</span>
-              </Button>
-            ))}
-          </div>
-        </div>
-
-        {isScreenSharing && screenStreamRef.current?.getVideoTracks() && (
-          <div className="p-4 space-y-2 border-b border-border">
-            <h3 className="text-base font-semibold text-card-foreground">
-              螢幕預覽
+          <div className="p-4 mt-auto space-y-2">
+            <h3 className="text-sm font-medium text-muted-foreground">
+              麥克風音訊播放 (最新片段)
             </h3>
-            <video
-              ref={screenPreviewRef}
-              className="w-full aspect-video rounded border border-border bg-muted"
-              autoPlay
-              playsInline
-              muted
-            />
+            <audio
+              ref={audioPlayerRef}
+              controls
+              src={
+                segments.length > 0
+                  ? URL.createObjectURL(segments[segments.length - 1]!.blob)
+                  : undefined
+              }
+              className={`w-full h-10 ${
+                segments.length === 0 ? "opacity-50 cursor-not-allowed" : ""
+              }`}
+              key={
+                segments.length > 0
+                  ? segments[segments.length - 1]?.timestamp
+                  : "no-audio"
+              }
+            ></audio>
           </div>
-        )}
+        </aside>
+      </div>
 
-        <div className="p-4 mt-auto space-y-2">
-          <h3 className="text-sm font-medium text-muted-foreground">
-            麥克風音訊播放 (最新片段)
-          </h3>
-          <audio
-            ref={audioPlayerRef}
-            controls
-            src={
-              segments.length > 0
-                ? URL.createObjectURL(segments[segments.length - 1]!.blob)
-                : undefined
-            }
-            className={`w-full h-10 ${
-              segments.length === 0 ? "opacity-50 cursor-not-allowed" : ""
-            }`}
-            key={
-              segments.length > 0
-                ? segments[segments.length - 1]?.timestamp
-                : "no-audio"
-            }
-          ></audio>
-        </div>
-      </aside>
+      {/* 注意事項 */}
+      <div className="max-w-3xl mx-auto text-left border rounded-lg p-6 bg-card">
+        <h3 className="text-xl font-semibold mb-4 text-center">注意事項</h3>
+        <ul className="list-disc list-inside space-y-2 text-muted-foreground mx-auto w-fit">
+          <li>如有功能故障，可以試試F5重新整理。</li>
+          <li>很多下方提到的產品功能，我們尚未完整釋出，日後也會將軟體做成可以在背景運作的App，而非另開網頁形式。</li>
+          <li>此僅為測試版，許多功能尚不完整，演算法和生成內容也都還粗糙，敬請見諒，也請您在下方提供寶貴的意見給我們改良。</li>
+        </ul>
+      </div>
     </div>
   );
 }
