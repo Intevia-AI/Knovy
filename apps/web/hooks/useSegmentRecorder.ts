@@ -101,6 +101,6 @@ export function useSegmentRecorder() {
     setRecording(false);
   }, []);
 
-  // Expose streamRef's current value via micStream
-  return { recording, start, stop, mimeType, micStream: streamRef.current };
+  // Expose streamRef's current value via micStream and current chunks
+  return { recording, start, stop, mimeType, micStream: streamRef.current, currentMicChunks: chunksRef.current };
 }
