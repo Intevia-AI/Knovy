@@ -104,14 +104,14 @@ export const HeroHeader = () => {
                     <span>註冊</span>
                   </Button>
                 </Link> */}
-                <Link passHref href="/auth/login">
+                {/* <Link passHref href="/auth/login">
                   <Button
                     size="sm"
                     className={cn(isScrolled ? "lg:inline-flex" : "hidden")}
                   >
                     <span>開始使用</span>
                   </Button>
-                </Link>
+                </Link> */}
               </div>
             </div>
           </div>

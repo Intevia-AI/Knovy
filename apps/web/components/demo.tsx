@@ -154,12 +154,30 @@ export function DemoComponent() {
         search: "根據最近音訊片段中討論的主題，建議相關的搜尋關鍵字或查找相關資訊。請用中文回答。",
         custom: customQuery || "根據以下要求分析最近音訊片段中捕捉到的對話內容。請用中文回答。",
       } as const;
+
+      // 簡化的顯示用 prompt
+      const displayPromptMap: Record<typeof action, string> = {
+        "real-time": "即時轉錄",
+        answer: "根據語音內容回答問題",
+        summary: "根據過去語音內容產生摘要",
+        search: "根據語音內容搜尋主題",
+        custom: customPrompt,
+      } as const;
+
       const userMsg: Message = {
         id: `user-${Date.now()}`,
         role: "user",
         content: action === "custom" ? customPrompt : promptMap[action],
       };
-      if (action !== "real-time") setAiMessages((p) => [...p, userMsg]);
+
+      // 使用簡化的 prompt 顯示
+      const displayMsg: Message = {
+        id: `user-${Date.now()}`,
+        role: "user",
+        content: action === "custom" ? customPrompt : displayPromptMap[action],
+      };
+
+      if (action !== "real-time") setAiMessages((p) => [...p, displayMsg]);
 
       try {
         const res = await fetch("/api/ai", {
@@ -910,7 +928,7 @@ export function DemoComponent() {
             </div>
           )}
 
-          <div className="p-4 mt-auto space-y-2">
+          {/* <div className="p-4 mt-auto space-y-2">
             <h3 className="text-sm font-medium text-muted-foreground">
               麥克風音訊播放 (最新片段)
             </h3>
@@ -931,7 +949,7 @@ export function DemoComponent() {
                   : "no-audio"
               }
             ></audio>
-          </div>
+          </div> */}
         </aside>
       </div>
     </div>

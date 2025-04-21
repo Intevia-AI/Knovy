@@ -58,6 +58,16 @@ export function HeroSection() {
                 >
                   全方位AI開會神器
                 </TextEffect>
+                <TextEffect
+                  per="line"
+                  preset="fade-in-blur"
+                  speedSegment={0.3}
+                  delay={0.5}
+                  as="p"
+                  className="mx-auto mt-8 max-w-2xl text-balance text-lg"
+                >
+                  Your Personal Meeting Cheater – INTEVIA AI
+                </TextEffect>
               </div>
             </div>
 
