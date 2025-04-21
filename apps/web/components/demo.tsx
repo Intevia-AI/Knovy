@@ -167,7 +167,7 @@ export function DemoComponent() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ messages: [userMsg], data: ctx }),
         });
-        if (!res.ok) throw new Error(await res.text());
+        if (!res.ok) throw new Error(await res.text()); // Keep throwing the original error for console logging
         const ai: Message = await res.json();
         setAiMessages((p) => [
           ...p,
@@ -178,13 +178,15 @@ export function DemoComponent() {
           },
         ]);
       } catch (e: unknown) {
-        const errorMessage = e instanceof Error ? e.message : String(e);
+        // Log the actual error for debugging
+        console.error("AI request failed:", e);
+        // Display a generic error message to the user
         setAiMessages((p) => [
           ...p,
           {
             id: `err-ai-${Date.now()}`,
             role: "assistant",
-            content: `[AI 錯誤] ${errorMessage}`,
+            content: "[AI 錯誤] 無法處理您的請求。請檢查您的網路連線或稍後再試。音訊品質不佳也可能導致處理失敗。",
           },
         ]);
       } finally {
@@ -460,13 +462,14 @@ export function DemoComponent() {
         },
       ]);
     } catch (error) {
-      console.error("取得關鍵字解釋時發生錯誤:", error);
+      console.error("取得關鍵字解釋時發生錯誤:", error); // Log original error
+      // Display a generic error message
       setAiMessages((prev) => [
         ...prev,
         {
           id: `err-explanation-${Date.now()}`,
           role: "assistant",
-          content: `[錯誤] 無法取得 ${keyword} 的解釋。`,
+          content: `[錯誤] 無法取得 ${keyword} 的解釋。請檢查您的網路連線或稍後再試。`,
         },
       ]);
     } finally {
