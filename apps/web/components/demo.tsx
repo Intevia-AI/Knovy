@@ -149,11 +149,11 @@ export function DemoComponent() {
 
       const promptMap: Record<typeof action, string> = {
         "real-time": "簡潔地分析最新的音訊內容，並標示關鍵字或待辦事項。",
-        answer: "根據最近處理過的音訊片段，回答使用者最後問的問題或是潛在問題，若是有超過一個問題，請優先回答最後出現的。",
-        summary: "提供最近處理過的音訊片段的簡明摘要。",
+        answer: "根據最近處理過的音訊片段，回答使用者最後問的問題或是潛在問題，若是有超過一個問題，請優先回答最後出現的。請用中文回答。請針對有聲音的音訊回答。",
+        summary: "提供最近處理過的音訊片段的簡明摘要。請用中文回答。請針對有聲音的音訊回答。",
         search:
-          "針對最近處理過的音訊片段中提到的主題，建議有用的搜尋關鍵字或直接搜尋相關資訊。",
-        custom: customQuery || "請依要求分析最近處理過的音訊片段。",
+          "針對最近處理過的音訊片段中提到的主題，建議有用的搜尋關鍵字或直接搜尋相關資訊。請用中文回答。請針對有聲音的音訊回答。",
+        custom: customQuery || "請依要求分析最近處理過的音訊片段。請用中文回答。",
       } as const;
       const userMsg: Message = {
         id: `user-${Date.now()}`,
@@ -680,6 +680,7 @@ export function DemoComponent() {
 
   return (
     <div className="flex flex-col gap-16">
+      <h2 className="text-balance text-3xl font-semibold lg:text-4xl text-center">Demo 試用</h2>
       
       {/* 測試版試用說明 */}
       <div className="max-w-3xl mx-auto text-left border rounded-lg p-6 bg-card">
@@ -689,7 +690,6 @@ export function DemoComponent() {
           <li>建議使用電腦操作，確保功能完整運作。</li>
           <li>點擊「開始錄製」和「分享螢幕」。</li>
           <li>選擇你要分享的畫面，並允許麥克風和攝影機權限。</li>
-          <li>隨機找一些文件、網站、圖表，開在你分享的畫面上。</li>
           <li>點擊「開始分析」</li>
           <li>開始對鏡頭說話，主題、語言不限，可以是你發問、閒聊、提到一些新聞（模擬開會中的情境）；也可以用電腦播放任何你想要的影片、語音。</li>
           <li>開始說話後，INTEVIA AI便會開始運作，逐字稿會持續產生。此時你可以使用工具列中的三項功能：回答、即時統整和查資料，AI會根據最近一段內容提供你選擇的資訊，也可以手動在文字框輸入Prompt你的要求或問題。</li>
@@ -704,7 +704,6 @@ export function DemoComponent() {
         </div>
       </div>
 
-      <h2 className="text-balance text-3xl font-semibold lg:text-4xl text-center">Demo 試用</h2>
 
       <div className="flex flex-1 overflow-hidden border rounded-lg shadow-lg bg-card max-h-[70vh]">
         <main className="flex flex-col flex-1 overflow-hidden">

@@ -19,6 +19,7 @@ export class GeminiClient {
   private reconnectAttempts: number = 0;
   private maxReconnectAttempts: number = 5;
   private reconnectTimeout: number = 1000;
+  private streamingBuffer: string = '';
 
   constructor(
     onMessage: (text: string) => void,
@@ -131,5 +132,32 @@ export class GeminiClient {
       this.ws = null;
     }
     this.isConnected = false;
+  }
+
+  onTextResponse(text: string) {
+    if (this.streamingBuffer.includes("TRANSCRIPTION:")) {
+      // 使用正則表達式提取實際內容，完全移除標籤
+      const transcriptionMatch = this.streamingBuffer.match(/TRANSCRIPTION:\s*(.*?)(?:\n|$)/s);
+      if (transcriptionMatch && transcriptionMatch[1]) {
+        const cleanTranscription = transcriptionMatch[1]
+          .replace(/^TRANSCRIPTION:\s*/i, '') // 再次確保移除開頭的標籤
+          .replace(/\nTRANSCRIPTION:\s*/g, '\n') // 移除中間可能出現的標籤
+          .trim();
+        
+        // 如果有關鍵字部分，也一併處理
+        let keywords = '';
+        if (this.streamingBuffer.includes("KEYWORDS:")) {
+          const keywordsMatch = this.streamingBuffer.match(/KEYWORDS:\s*(.*?)(?:\n|$)/s);
+          if (keywordsMatch && keywordsMatch[1]) {
+            keywords = keywordsMatch[1].trim();
+          }
+        }
+
+        // 組合最終回應，確保格式乾淨
+        const finalResponse = cleanTranscription + (keywords ? `\n關鍵字：${keywords}` : '');
+        this.onTranscriptionCallback?.(finalResponse);
+        this.streamingBuffer = '';
+      }
+    }
   }
 } 
