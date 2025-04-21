@@ -36,10 +36,23 @@ export async function POST(req: Request) {
 
       // Add labeled audio parts
       for (const label in groupedAudio) {
+        // More descriptive labels for the AI
+        let descriptiveLabel = label;
+        if (label.startsWith("microphone")) {
+          descriptiveLabel = "麥克風音訊";
+        } else if (label.startsWith("system")) {
+          descriptiveLabel = "系統音訊";
+        }
+        if (label.endsWith("-last")) {
+          descriptiveLabel += " (最近片段)";
+        } else if (label.endsWith("-current")) {
+          descriptiveLabel += " (當前錄音)";
+        }
+
         parts.push({
           type: "text",
-          text: `\n--- ${label.charAt(0).toUpperCase() + label.slice(1)} Audio ---`,
-        }); // e.g., --- Microphone Audio ---
+          text: `\n--- ${descriptiveLabel} ---`,
+        });
         groupedAudio[label]?.forEach((audioInput) => {
           parts.push({
             type: "file",
@@ -92,14 +105,30 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "No input content" }, { status: 400 });
     }
 
+    // Define the system prompt in Traditional Chinese with examples
+    const systemPrompt = `你是一個專業的 AI 助理。你的任務是分析使用者提供的文字訊息以及從不同來源（麥克風、系統音訊）捕捉到的音訊內容。請專注於理解音訊中的對話、討論或呈現的內容，而不是音訊檔案本身。根據使用者的要求（例如：回答問題、產生摘要、搜尋主題、執行特定指令），針對音訊中的 *對話內容* 提供精確且有用的回應。請務必使用 **繁體中文** 回答。如果音訊來源（麥克風 vs 系統）與分析內容相關，請在回應中適當地區分或整合這些資訊。
+
+**範例：**
+
+1.  **使用者請求：** "剛剛麥克風提到下週會議的日期是什麼時候？"
+    **你的理想回應（基於音訊內容）：** "根據麥克風的錄音內容，下週的會議安排在星期三下午兩點。" (直接回答問題，指出資訊來源)
+
+2.  **使用者請求：** "總結一下系統音訊中關於新專案目標的討論。"
+    **你的理想回應（基於音訊內容）：** "系統音訊的討論中提到，新專案的主要目標是提高使用者參與度 15%，並在第三季推出 Beta 版本。他們還討論了初步的行銷策略。" (總結對話要點)
+
+3.  **使用者請求：** "搜尋剛剛提到的 '量子糾纏' 這個概念。"
+    **你的理想回應（基於音訊內容）：** "根據對話中提到的 '量子糾纏'，這是一個量子力學中的現象... [簡要解釋]。您可能想搜尋：'量子糾纏的解釋'、'量子糾纏應用'。" (根據對話內容提供解釋和搜尋建議)
+
+請避免像「這個音檔聽起來很清晰」或「麥克風音訊的長度是 15 秒」這樣的回應，而是專注於音訊傳達的 *資訊*。`;
+
     // console.log("Formatted messages sent to AI:", JSON.stringify(formatted, null, 2)); // DEBUG: Log formatted messages
 
     const { text } = await generateText({
-      model: google("gemini-1.5-flash-latest"), // Using 1.5 Flash as it's good with multimodal
-      // Removed grounding as it might interfere with direct audio analysis
-      // model: google("gemini-2.0-flash", {
-      //   useSearchGrounding: true,
-      // }),
+      // DO NOT CHANGE THIS MODEL
+      model: google("gemini-2.0-flash-001", {
+        useSearchGrounding: true,
+      }),
+      system: systemPrompt, // Add the system prompt here
       messages: formatted,
     });
 
