@@ -149,7 +149,7 @@ export function DemoComponent() {
 
       const promptMap: Record<typeof action, string> = {
         "real-time": "轉錄最新的語音內容，並識別其中提到的關鍵點、關鍵字或待辦事項。",
-        answer: "根據最近音訊中捕捉到的對話內容，回答使用者最後提出的問題或可能的後續問題。如果有多個問題，請優先回答最新的問題。請用中文回答。若是麥克風音訊沒有可回答的對話內容，請不用針對該音訊回答。",
+        answer: "根據最近音訊中的對話內容，回答音訊中最後提出的問題。因為會有兩種音訊，一種是麥克風音訊，一種是系統音訊，請先回答麥克風音訊再回答系統音訊的問題。有必要請上網查詢。",
         summary: "提供最近音訊片段中捕捉到的對話內容的簡明摘要。請用中文回答。若是麥克風音訊沒有可總結的對話內容，請不用針對該音訊回答。",
         search: "根據最近音訊片段中討論的主題，建議相關的搜尋關鍵字或查找相關資訊。請用中文回答。若是麥克風音訊沒有可搜尋的對話內容，請不用針對該音訊回答。",
         custom: customQuery || "根據以下要求分析最近音訊片段中捕捉到的對話內容。請用中文回答。",
@@ -320,6 +320,12 @@ export function DemoComponent() {
 
   // --- Context ------------------------------------------------
   const gatherContext = async (): Promise<AIContextData | null> => {
+    console.log("Checking audio recording status...");
+    console.log("Mic chunks length:", currentMicChunks.length);
+    console.log("System chunks length:", systemAudioChunksRef.current.length);
+    console.log("Last mic segment:", segments.length > 0 ? segments[segments.length - 1] : null);
+    console.log("Last system segment:", systemAudioSegments.length > 0 ? systemAudioSegments[systemAudioSegments.length - 1] : null);
+
     // Last completed segments
     const lastMicSegment =
       segments.length > 0 ? segments[segments.length - 1] : null;
@@ -342,18 +348,33 @@ export function DemoComponent() {
         ? new Blob(currentSystemRecordingChunks, { type: systemAudioMimeType })
         : null;
 
+    console.log("Current mic blob size:", currentMicBlob?.size);
+    console.log("Current system blob size:", currentSystemBlob?.size);
+
     // Combine all potential audio sources
     const blobsToProcess: { blob: Blob; type: string; label: string }[] = [];
     
     // For answer action, only use the most recent 10 seconds
     if (lastMicSegment) {
-      const segmentDuration = lastMicSegment.timestamp - (lastMicSegment.timestamp - ANSWER_SEGMENT_MS);
-      if (segmentDuration <= ANSWER_SEGMENT_MS) {
+      const currentTime = Date.now();
+      const segmentAge = currentTime - lastMicSegment.timestamp;
+      // 如果最後一個片段小於 10 秒，就使用它
+      if (segmentAge <= ANSWER_SEGMENT_MS) {
         blobsToProcess.push({
           blob: lastMicSegment.blob,
           type: micMimeType,
           label: "microphone-last",
         });
+      } else {
+        // 如果最後一個片段大於 10 秒，就只使用最後 10 秒
+        const startTime = currentTime - ANSWER_SEGMENT_MS;
+        if (lastMicSegment.timestamp >= startTime) {
+          blobsToProcess.push({
+            blob: lastMicSegment.blob,
+            type: micMimeType,
+            label: "microphone-last",
+          });
+        }
       }
     }
     
@@ -368,15 +389,18 @@ export function DemoComponent() {
       }
     }
 
-    // For current recording, use the same logic
-    if (currentMicBlob) {
-      blobsToProcess.push({
-        blob: currentMicBlob,
-        type: micMimeType,
-        label: "microphone-current",
-      });
+    // 對於當前錄製的片段，只使用最後 10 秒
+    if (currentMicRecordingChunks.length > 0) {
+      const currentBlob = new Blob(currentMicRecordingChunks, { type: micMimeType });
+      if (currentBlob.size > 0) {
+        blobsToProcess.push({
+          blob: currentBlob,
+          type: micMimeType,
+          label: "microphone-current",
+        });
+      }
     }
-    if (currentSystemBlob) {
+    if (currentSystemBlob && currentSystemBlob.size > 0) {
       blobsToProcess.push({
         blob: currentSystemBlob,
         type: systemAudioMimeType,
@@ -589,53 +613,38 @@ export function DemoComponent() {
           setSystemAudioMimeType(availableMime);
 
           cleanupRecorder(screenAudioRecorderRef);
-          const combinedRecorder = new MediaRecorder(combinedAudioStream, {
-            mimeType: availableMime,
-          });
-          screenAudioRecorderRef.current = combinedRecorder;
 
-          combinedRecorder.ondataavailable = (e) => {
-            if (e.data.size > 0) systemAudioChunksRef.current.push(e.data);
-          };
+          // 為系統音訊設置 MediaRecorder
+          if (systemAudioStream) {
+            const systemRecorder = new MediaRecorder(systemAudioStream, {
+              mimeType: availableMime,
+            });
 
-          combinedRecorder.onstop = () => {
-            if (systemAudioChunksRef.current.length > 0) {
-              const blob = new Blob(systemAudioChunksRef.current, {
-                type: availableMime,
-              });
-              setSystemAudioSegments((p) => [
-                ...p,
-                { blob, timestamp: Date.now() },
-              ]);
-              systemAudioChunksRef.current = [];
-            }
-            if (
-              screenAudioRecorderRef.current &&
-              screenAudioRecorderRef.current.state === "inactive" &&
-              isScreenSharing
-            ) {
-              try {
-                screenAudioRecorderRef.current.start();
-              } catch (e) {
-                console.error("Error restarting combined recorder:", e);
+            systemRecorder.ondataavailable = (e) => {
+              if (e.data.size > 0) {
+                systemAudioChunksRef.current.push(e.data);
+                // 每次收到新的數據時，都檢查是否有足夠的內容
+                const currentBlob = new Blob(systemAudioChunksRef.current, { type: availableMime });
+                if (currentBlob.size > 0) {
+                  setSystemAudioSegments((p) => [...p, { blob: currentBlob, timestamp: Date.now() }]);
+                }
               }
-            }
-          };
-          combinedRecorder.onerror = (e) => {
-            console.error("Combined Recorder Error:", e);
-          };
+            };
 
-          combinedRecorder.start();
-          if (systemAudioTimerRef.current)
-            clearInterval(systemAudioTimerRef.current);
-          systemAudioTimerRef.current = setInterval(() => {
-            if (
-              screenAudioRecorderRef.current &&
-              screenAudioRecorderRef.current.state === "recording"
-            ) {
-              screenAudioRecorderRef.current.stop();
+            systemRecorder.start(1000); // 每秒收集一次數據
+            screenAudioRecorderRef.current = systemRecorder;
+
+            // 設置定時器，每 20 秒重新開始錄製
+            if (systemAudioTimerRef.current) {
+              clearInterval(systemAudioTimerRef.current);
             }
-          }, SEGMENT_MS);
+            systemAudioTimerRef.current = setInterval(() => {
+              if (systemRecorder.state === "recording") {
+                systemRecorder.stop();
+                systemRecorder.start(1000);
+              }
+            }, 20000);
+          }
         } else {
           console.warn("No audio tracks available to record.");
         }

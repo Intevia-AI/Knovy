@@ -22,7 +22,16 @@ export function useSegmentRecorder() {
     isStoppingRef.current = false; // Reset stop flag
     try { // Add try-catch for MediaRecorder constructor
         const rec = new MediaRecorder(streamRef.current, { mimeType });
-        rec.ondataavailable = e => e.data.size && chunksRef.current.push(e.data);
+        rec.ondataavailable = e => {
+          if (e.data.size) {
+            chunksRef.current.push(e.data);
+            // 每次收到新的數據時，都檢查是否有足夠的內容
+            const currentBlob = new Blob(chunksRef.current, { type: mimeType });
+            if (currentBlob.size > 0) {
+              window.dispatchEvent(new CustomEvent('segment', { detail: currentBlob }));
+            }
+          }
+        };
         rec.onstop = () => {
           const blob = makeBlob();
           // Only dispatch if there's data, prevent empty blobs
