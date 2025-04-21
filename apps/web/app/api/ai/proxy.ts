@@ -185,13 +185,18 @@ export class GeminiProxyServer {
       setup: {
         model: MODEL,
         generation_config: {
-          response_modalities: ["TEXT"]
+          response_modalities: ["TEXT"],
+          streaming: true,
+          max_output_tokens: 2048,
+          temperature: 0.1,
+          top_p: 0.8,
+          top_k: 40
         },
         system_instruction: {
           parts: [{
             text: `You are a real-time transcription assistant. For each audio input, respond in the following format:
 
-TRANSCRIPTION: [transcribe the audio content here, the speaker will be speaking in chinese. Please respond in traditional chinese.]
+TRANSCRIPTION: [transcribe the audio content here, the speaker will be speaking in chinese. Please respond in chinese.]
 KEYWORDS: [list any technical terms, specialized vocabulary, or complex concepts that might be difficult for a general audience to understand, separated by commas. If none, leave empty]
 
 Example:
@@ -200,9 +205,7 @@ KEYWORDS: quantum entanglement, non-local correlations
 
 If there are no difficult terms, respond with empty keywords:
 TRANSCRIPTION: The weather is nice today.
-KEYWORDS:
-
-PLEASE ALWAYS RESPOND IN TRADITIONAL CHINESE.`
+KEYWORDS:`
           }]
         }
       }

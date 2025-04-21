@@ -680,6 +680,7 @@ export function DemoComponent() {
 
   return (
     <div className="flex flex-col gap-16">
+      <h2 className="text-balance text-3xl font-semibold lg:text-4xl text-center">Demo 試用</h2>
       
       {/* 測試版試用說明 */}
       <div className="max-w-3xl mx-auto text-left border rounded-lg p-6 bg-card">
@@ -703,7 +704,6 @@ export function DemoComponent() {
         </div>
       </div>
 
-      <h2 className="text-balance text-3xl font-semibold lg:text-4xl text-center">Demo 試用</h2>
 
       <div className="flex flex-1 overflow-hidden border rounded-lg shadow-lg bg-card max-h-[70vh]">
         <main className="flex flex-col flex-1 overflow-hidden">

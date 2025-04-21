@@ -2,18 +2,18 @@ import Image from "next/image";
 
 const members = [
   {
-    name: "Paul",
-    role: "CEO (政治四)",
+    name: "Paul (政治四)",
+    role: "CEO",
     avatar: "/team/yao.jpg",
   },
   {
-    name: "John",
-    role: "CTO (電機四)",
+    name: "John (電機四)",
+    role: "CTO",
     avatar: "/team/wei.jpg",
   },
   {
-    name: "Ming",
-    role: "Co-CTO (資管四)",
+    name: "Ming (資管四)",
+    role: "CTO",
     avatar: "/team/ye.jpg",
   },
 ];
@@ -26,12 +26,13 @@ export function TeamSection() {
     >
       <div className="mx-auto max-w-5xl border-t px-6">
         <span className="text-caption -ml-6 -mt-3.5 block w-max bg-gray-50 px-6 dark:bg-gray-950">
-          團隊成員
+          我們的團隊
         </span>
+        
         <div className="mt-12 gap-4 sm:grid sm:grid-cols-2 md:mt-24">
-          <div className="sm:w-2/5">
-            <h2 className="text-3xl font-bold sm:text-4xl">我們的團隊</h2>
-          </div>
+          {/* <div className="sm:w-2/5">
+              <h2 className="text-3xl font-bold sm:text-4xl">我們的團隊</h2>
+          </div> */}
           <p className="text-muted-foreground">
           我們是三個來自台大的學生，都各自參與過一些創業專案，這次因著「台大鳥巢」（台大第一個創業家和VC社團）聚集在一起。我們一開始從語音出發，想做即時的「口音轉換、優化AI」，在研究了一下後，發現此類產品市場上已非常多，技術也很成熟，甚至只是一些會議AI的「附屬功能」。因此，對於學生來說，現在才進入市場並且從零開始研發難度高的語音技術，似乎不是太好的起點，因此我們朝著會議、面試AI助力的方向軸轉。
         </p>

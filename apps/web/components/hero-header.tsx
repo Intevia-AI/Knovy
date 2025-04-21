@@ -11,7 +11,7 @@ const menuItems = [
     name: "首頁",
     href: "/#home",
   },
-  { name: "功能", href: "#features" },
+  { name: "介紹", href: "#features" },
   { name: "聯絡我們", href: "#footer" },
 ];
 
@@ -90,7 +90,7 @@ export const HeroHeader = () => {
                 </ul>
               </div>
               <div className="flex w-full flex-col space-y-3 sm:flex-row sm:gap-3 sm:space-y-0 md:w-fit">
-                <Link passHref href="/auth/login">
+                {/* <Link passHref href="/auth/login">
                   <Button
                     variant="outline"
                     size="sm"
@@ -103,7 +103,7 @@ export const HeroHeader = () => {
                   <Button size="sm" className={cn(isScrolled && "lg:hidden")}>
                     <span>註冊</span>
                   </Button>
-                </Link>
+                </Link> */}
                 <Link passHref href="/auth/login">
                   <Button
                     size="sm"
