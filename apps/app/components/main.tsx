@@ -51,6 +51,7 @@ declare global {
       on: (channel: string, callback: (...args: any[]) => void) => () => void; // Returns a cleanup function
       selectSource: (sourceId: string) => void;
       cancelSourceSelection: () => void;
+      trimAudio: (blobsBase64: { data: string; mimeType: string }[]) => Promise<string>;
     };
   }
 }
@@ -219,7 +220,7 @@ export function Main() {
       if (action !== "real-time") setAiMessages((p) => [...p, displayMsg]);
 
       try {
-        const res = await fetch("/api/ai", {
+        const res = await fetch("http://localhost:3001/api/ai", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ messages: [userMsg], data: ctx }),
@@ -431,124 +432,23 @@ export function Main() {
 
   // --- Context ------------------------------------------------
   const gatherContext = async (): Promise<AIContextData | null> => {
-    console.log("Checking audio recording status...");
-    console.log("Mic chunks length:", currentMicChunks.length);
-    console.log("System chunks length:", systemAudioChunksRef.current.length);
-    console.log(
-      "Last mic segment:",
-      segments.length > 0 ? segments[segments.length - 1] : null
-    );
-    console.log(
-      "Last system segment:",
-      systemAudioSegments.length > 0
-        ? systemAudioSegments[systemAudioSegments.length - 1]
-        : null
-    );
-
-    const lastMicSegment =
-      segments.length > 0 ? segments[segments.length - 1] : null;
-    const lastSystemSegment =
-      systemAudioSegments.length > 0
-        ? systemAudioSegments[systemAudioSegments.length - 1]
-        : null;
-
-    const currentMicRecordingChunks = currentMicChunks;
-    const currentSystemRecordingChunks = systemAudioChunksRef.current;
-
-    const currentMicBlob =
-      currentMicRecordingChunks.length > 0
-        ? new Blob(currentMicRecordingChunks, { type: micMimeType })
-        : null;
-    const currentSystemBlob =
-      currentSystemRecordingChunks.length > 0
-        ? new Blob(currentSystemRecordingChunks, { type: systemAudioMimeType })
-        : null;
-
-    console.log("Current mic blob size:", currentMicBlob?.size);
-    console.log("Current system blob size:", currentSystemBlob?.size);
-
-    const blobsToProcess: { blob: Blob; type: string; label: string }[] = [];
-
-    if (lastMicSegment) {
-      const currentTime = Date.now();
-      const segmentAge = currentTime - lastMicSegment.timestamp;
-      if (segmentAge <= ANSWER_SEGMENT_MS) {
-        blobsToProcess.push({
-          blob: lastMicSegment.blob,
-          type: micMimeType,
-          label: "microphone-last",
-        });
-      } else {
-        const startTime = currentTime - ANSWER_SEGMENT_MS;
-        if (lastMicSegment.timestamp >= startTime) {
-          blobsToProcess.push({
-            blob: lastMicSegment.blob,
-            type: micMimeType,
-            label: "microphone-last",
-          });
-        }
-      }
-    }
-
-    if (lastSystemSegment) {
-      const segmentDuration =
-        lastSystemSegment.timestamp -
-        (lastSystemSegment.timestamp - ANSWER_SEGMENT_MS);
-      if (segmentDuration <= ANSWER_SEGMENT_MS) {
-        blobsToProcess.push({
-          blob: lastSystemSegment.blob,
-          type: systemAudioMimeType,
-          label: "system-last",
-        });
-      }
-    }
-
-    if (currentMicRecordingChunks.length > 0) {
-      const currentBlob = new Blob(currentMicRecordingChunks, {
-        type: micMimeType,
-      });
-      if (currentBlob.size > 0) {
-        blobsToProcess.push({
-          blob: currentBlob,
-          type: micMimeType,
-          label: "microphone-current",
-        });
-      }
-    }
-    if (currentSystemBlob && currentSystemBlob.size > 0) {
-      blobsToProcess.push({
-        blob: currentSystemBlob,
-        type: systemAudioMimeType,
-        label: "system-current",
-      });
-    }
-
-    if (!blobsToProcess.length) return null;
-
-    const audioInputs = await Promise.all(
-      blobsToProcess.map(async ({ blob, type, label }) => {
-        try {
-          if (blob.size === 0) return null;
-          const full = await blobToBase64(blob);
-          const data = full.split(",")[1] || full;
-          if (!data) return null;
-          return { data, mimeType: type, label };
-        } catch (error) {
-          console.error(`Error converting blob (${label}) to base64:`, error);
-          return null;
-        }
+    if (segments.length === 0) return null;
+    const now = Date.now();
+    // Keep only segments from the last 30 seconds
+    const recent = segments.filter(seg => now - seg.timestamp <= 30_000);
+    if (recent.length === 0) return null;
+    // Convert blobs to Base64 data
+    const blobsBase64 = await Promise.all(
+      recent.map(async ({ blob }) => {
+        const dataUrl = await blobToBase64(blob);
+        const data = dataUrl.split(',')[1] || dataUrl;
+        return { data, mimeType: 'audio/webm' };
       })
     );
-
-    const validAudioInputs = audioInputs.filter(Boolean) as {
-      data: string;
-      mimeType: string;
-      label: string;
-    }[];
-
-    if (!validAudioInputs.length) return null;
-
-    return { audioInputs: validAudioInputs };
+    // Ask Electron main process to concat and trim to last 30s
+    const trimmed = await window.electronAPI.trimAudio(blobsBase64);
+    // Return single audio input of trimmed segment
+    return { audioInputs: [ { data: trimmed, mimeType: 'audio/webm', label: 'last30s' } ] };
   };
 
   const handleTextResponse = useCallback((text: string) => {
@@ -587,7 +487,7 @@ export function Main() {
     setIsLoading(true);
 
     try {
-      const response = await fetch("/api/ai", {
+      const response = await fetch("http://localhost:3001/api/ai", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -729,7 +629,7 @@ export function Main() {
         capturedMicStream = await startMicRecording();
         if (!capturedMicStream) {
           console.error("Failed to start microphone recording.");
-          alert("無法啟動麥克風錄音，請檢查權限。");
+          alert("無法啟動麵克風錄音，請檢查權限。");
           cleanupStream(screenStreamRef);
           setIsScreenSharing(false);
           return;

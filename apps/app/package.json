@@ -52,7 +52,8 @@
     "electron": "^35.2.0",
     "electron-builder": "^26.0.12",
     "ts-node": "^10.9.2",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "rimraf": "^5.0.0"
   },
   "build": {
     "appId": "com.example.intevia-ai",

@@ -3,8 +3,10 @@ import { useCallback, useRef, useState } from 'react';
 export const SEGMENT_MS = 20_000; // segment length - Exported
 const CHUNK_MS   = 1_000;  // internal timeslice
 
-export function useSegmentRecorder() {
-
+export function useSegmentRecorder(
+  chunkMs: number = 1000,
+  bufferLengthMs: number = 30000
+) {
   const streamRef = useRef<MediaStream | null>(null); // Make streamRef accessible
   const recRef    = useRef<MediaRecorder | null>(null); // Allow null initially
   const timerRef  = useRef<NodeJS.Timeout | null>(null); // Allow null initially
@@ -12,6 +14,7 @@ export function useSegmentRecorder() {
   const isStoppingRef = useRef<boolean>(false); // Flag for intentional stop
   const [recording, setRecording] = useState(false);
   const [mimeType,  setMime]      = useState('audio/webm;codecs=opus');
+  const [segments, setSegments] = useState<{ blob: Blob; timestamp: number }[]>([]);
 
   // assemble and dispatch a complete segment
   const makeBlob = () =>
@@ -24,12 +27,12 @@ export function useSegmentRecorder() {
         const rec = new MediaRecorder(streamRef.current, { mimeType });
         rec.ondataavailable = e => {
           if (e.data.size) {
-            chunksRef.current.push(e.data);
-            // 每次收到新的數據時，都檢查是否有足夠的內容
-            const currentBlob = new Blob(chunksRef.current, { type: mimeType });
-            if (currentBlob.size > 0) {
-              window.dispatchEvent(new CustomEvent('segment', { detail: currentBlob }));
-            }
+            const now = Date.now();
+            setSegments((prev) => {
+              // append new chunk and drop old beyond bufferLengthMs
+              const updated = [...prev, { blob: e.data, timestamp: now }];
+              return updated.filter(seg => now - seg.timestamp <= bufferLengthMs);
+            });
           }
         };
         rec.onstop = () => {
@@ -48,14 +51,14 @@ export function useSegmentRecorder() {
             // Optionally try to stop and cleanup
             stop();
         };
-        rec.start(CHUNK_MS);
+        rec.start(chunkMs);
         recRef.current = rec;
     } catch (err) {
         console.error("Error creating MediaRecorder:", err);
         // Handle error, maybe stop the process
         stop();
     }
-  }, [mimeType]); // Removed stop from dependencies
+  }, [mimeType, chunkMs, bufferLengthMs]);
 
   const start = useCallback(async (): Promise<MediaStream | null> => { // Return stream or null
     if (recording) return streamRef.current; // Return existing stream if already recording
@@ -111,5 +114,5 @@ export function useSegmentRecorder() {
   }, []);
 
   // Expose streamRef's current value via micStream and current chunks
-  return { recording, start, stop, mimeType, micStream: streamRef.current, currentMicChunks: chunksRef.current };
+  return { recording, start, stop, mimeType, micStream: streamRef.current, currentMicChunks: chunksRef.current, segments };
 }
