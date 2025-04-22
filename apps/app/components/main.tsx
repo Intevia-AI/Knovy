@@ -24,6 +24,13 @@ import AudioVisualizer from "./AudioVisualizer";
 import { cn } from "@workspace/ui/lib/utils";
 import { useSegmentRecorder } from "@/hooks/useSegmentRecorder";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import {
+  checkAccessibilityPermission,
+  checkMicrophonePermission,
+  checkScreenRecordingPermission,
+  requestMicrophonePermission,
+  requestScreenRecordingPermission,
+} from "tauri-plugin-macos-permissions-api";
 
 // --- Types ----------------------------------------------------
 interface AIContextData {
@@ -46,7 +53,13 @@ export function Main() {
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const sendContextToAIRef = useRef<
     (
-      action: "real-time" | "answer" | "summary" | "search" | "custom" | "find-clue", // <-- Add "find-clue"
+      action:
+        | "real-time"
+        | "answer"
+        | "summary"
+        | "search"
+        | "custom"
+        | "find-clue", // <-- Add "find-clue"
       customQuery?: string
     ) => Promise<void>
   >(async () => {});
@@ -128,7 +141,13 @@ export function Main() {
 
   const sendContextToAI = useCallback<
     (
-      action: "real-time" | "answer" | "summary" | "search" | "custom" | "find-clue", // <-- Add "find-clue"
+      action:
+        | "real-time"
+        | "answer"
+        | "summary"
+        | "search"
+        | "custom"
+        | "find-clue", // <-- Add "find-clue"
       customQuery?: string
     ) => Promise<void>
   >(
@@ -152,7 +171,8 @@ export function Main() {
           "提供最近音訊片段中捕捉到的對話內容的簡明摘要。請用中文回答。若是麥克風音訊沒有可總結的對話內容，請不用針對該音訊回答。",
         search:
           "根據最近音訊片段中討論的主題，建議相關的搜尋關鍵字或查找相關資訊。請用中文回答。若是麥克風音訊沒有可搜尋的對話內容，請不用針對該音訊回答。",
-        "find-clue": // <-- Add prompt for find-clue
+        // <-- Add prompt for find-clue
+        "find-clue":
           "根據最近的音訊內容，找出其中可能存在的線索、疑點或需要進一步探討的資訊。請用中文回答。",
         custom:
           customQuery ||
@@ -641,14 +661,7 @@ export function Main() {
 
         if (audioTracksToRecord.length > 0) {
           // Find a supported mime type
-          const potentialMimeTypes = [
-            "audio/webm;codecs=opus",
-            "audio/ogg;codecs=opus",
-            "audio/webm",
-            "audio/ogg",
-            "audio/mp4", // Less common for recording, but worth checking
-            "audio/aac", // Might require specific browser/OS support
-          ];
+          const potentialMimeTypes = ["video/mp4"];
           let supportedMimeType = "";
           for (const mime of potentialMimeTypes) {
             if (MediaRecorder.isTypeSupported(mime)) {
@@ -658,7 +671,9 @@ export function Main() {
           }
 
           if (!supportedMimeType) {
-            console.error("No supported audio mime type found for MediaRecorder.");
+            console.error(
+              "No supported audio mime type found for MediaRecorder."
+            );
             alert("抱歉，您的瀏覽器不支援錄製所需的音訊格式。");
             // Cleanup before returning
             stopMicRecording();
@@ -716,25 +731,34 @@ export function Main() {
                     screenAudioRecorderRef.current.stop();
                     // Ensure recorder is still valid before starting again
                     if (screenAudioRecorderRef.current) {
-                       screenAudioRecorderRef.current.start(1000);
+                      screenAudioRecorderRef.current.start(1000);
                     }
                   } catch (e) {
-                     console.warn("Error stopping/starting system recorder in interval:", e);
-                     // Handle potential errors during stop/start cycle
-                     cleanupRecorder(screenAudioRecorderRef);
-                     if (systemAudioTimerRef.current) clearInterval(systemAudioTimerRef.current);
+                    console.warn(
+                      "Error stopping/starting system recorder in interval:",
+                      e
+                    );
+                    // Handle potential errors during stop/start cycle
+                    cleanupRecorder(screenAudioRecorderRef);
+                    if (systemAudioTimerRef.current)
+                      clearInterval(systemAudioTimerRef.current);
                   }
                 } else if (systemAudioTimerRef.current) {
-                   // Clear interval if recorder is no longer recording or gone
-                   clearInterval(systemAudioTimerRef.current);
-                   systemAudioTimerRef.current = null;
+                  // Clear interval if recorder is no longer recording or gone
+                  clearInterval(systemAudioTimerRef.current);
+                  systemAudioTimerRef.current = null;
                 }
               }, SEGMENT_MS); // Use SEGMENT_MS constant
             } catch (recorderError) {
-              console.error("Failed to create system MediaRecorder:", recorderError);
-              alert(`無法建立系統音訊錄製器: ${recorderError instanceof Error ? recorderError.message : String(recorderError)}`);
+              console.error(
+                "Failed to create system MediaRecorder:",
+                recorderError
+              );
+              alert(
+                `無法建立系統音訊錄製器: ${recorderError instanceof Error ? recorderError.message : String(recorderError)}`
+              );
               // Cleanup if recorder creation fails
-              systemAudioStream.getTracks().forEach(track => track.stop());
+              systemAudioStream.getTracks().forEach((track) => track.stop());
               setCurrentSystemAudioStream(null);
               // Continue without system audio recording if possible, or stop entirely
             }
@@ -805,23 +829,24 @@ export function Main() {
     // set is content protected true
     const currentWindow = getCurrentWindow();
     currentWindow.setContentProtected(true);
-  },[])
+  }, []);
 
   return (
     <div className="flex flex-col gap-16 pt-8 h-screen rounded-lg bg-background opacity-100">
-      <header
-        className="fixed h-6 bg-muted overflow-hidden rounded-t-lg top-0 left-0 right-0 z-10 border-b border-border flex items-center justify-between"
-      >
+      <header className="fixed h-6 bg-muted overflow-hidden rounded-t-lg top-0 left-0 right-0 z-10 border-b border-border flex items-center justify-between">
         {/* Empty div to allow dragging on the left */}
-        <div className="flex-grow h-full" onMouseDown={(e) => {
-          // Only allow dragging when clicking on the header background, not the buttons
-          if (e.target === e.currentTarget && e.button === 0) {
-            e.preventDefault();
-            e.stopPropagation();
-            const currentWindow = getCurrentWindow();
-            currentWindow.startDragging();
-          }
-        }}></div>
+        <div
+          className="flex-grow h-full"
+          onMouseDown={(e) => {
+            // Only allow dragging when clicking on the header background, not the buttons
+            if (e.target === e.currentTarget && e.button === 0) {
+              e.preventDefault();
+              e.stopPropagation();
+              const currentWindow = getCurrentWindow();
+              currentWindow.startDragging();
+            }
+          }}
+        ></div>
         {/* Window control buttons */}
         <div className="flex items-center h-full mr-1">
           <Button
@@ -829,7 +854,9 @@ export function Main() {
             size="icon"
             className="h-5 w-5 rounded-sm hover:bg-muted-foreground/20"
             onClick={toggleAlwaysOnTop} // <-- Add onClick handler
-            aria-label={isAlwaysOnTop ? "Disable always on top" : "Enable always on top"} // <-- Add aria-label
+            aria-label={
+              isAlwaysOnTop ? "Disable always on top" : "Enable always on top"
+            } // <-- Add aria-label
           >
             {isAlwaysOnTop ? (
               <PinOffIcon className="h-3 w-3" /> // <-- Show PinOffIcon when active
@@ -1023,8 +1050,11 @@ export function Main() {
                   variant="outline"
                   size="sm"
                   disabled={isLoading || !isScreenSharing}
-                  onClick={() =>
-                    sendContextToAI(action as "answer" | "summary" | "search" | "find-clue") // <-- Update type cast
+                  onClick={
+                    () =>
+                      sendContextToAI(
+                        action as "answer" | "summary" | "search" | "find-clue"
+                      ) // <-- Update type cast
                   }
                   className="flex items-center justify-start gap-2"
                 >

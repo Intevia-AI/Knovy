@@ -2,7 +2,7 @@
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "intevia-app",
   "version": "0.1.0",
-  "identifier": "com.tauri.dev",
+  "identifier": "app.intevia.app",
   "build": {
     "frontendDist": "../out",
     "devUrl": "http://localhost:3000",
@@ -30,6 +30,9 @@
     "macOSPrivateApi": true
   },
   "bundle": {
+    "macOS": {
+      "entitlements": "./entitlements.plist"
+    },
     "active": true,
     "targets": "all",
     "icon": [
