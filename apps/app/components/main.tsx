@@ -12,9 +12,9 @@ import {
   MonitorOffIcon,
   MinusIcon,
   XIcon,
-  LightbulbIcon, // <-- Import LightbulbIcon
-  PinIcon, // <-- Import PinIcon
-  PinOffIcon, // <-- Import PinOffIcon
+  LightbulbIcon,
+  PinIcon,
+  PinOffIcon,
 } from "lucide-react";
 import { Message } from "ai";
 import { Input } from "@workspace/ui/components/input";
@@ -23,14 +23,6 @@ import RealTimeAnalysis from "@/components/RealTimeAnalysis";
 import AudioVisualizer from "./AudioVisualizer";
 import { cn } from "@workspace/ui/lib/utils";
 import { useSegmentRecorder } from "@/hooks/useSegmentRecorder";
-import { getCurrentWindow } from "@tauri-apps/api/window";
-import {
-  checkAccessibilityPermission,
-  checkMicrophonePermission,
-  checkScreenRecordingPermission,
-  requestMicrophonePermission,
-  requestScreenRecordingPermission,
-} from "tauri-plugin-macos-permissions-api";
 
 // --- Types ----------------------------------------------------
 interface AIContextData {
@@ -40,6 +32,27 @@ interface AIContextData {
 interface Segment {
   blob: Blob;
   timestamp: number;
+}
+
+interface ElectronSource {
+  id: string;
+  name: string;
+}
+
+// Add type definition for the exposed Electron API
+declare global {
+  interface Window {
+    electronAPI?: {
+      getSources: () => Promise<{ id: string; name: string }[]>;
+      minimizeWindow: () => void;
+      closeWindow: () => void;
+      toggleAlwaysOnTop: (isAlwaysOnTop: boolean) => void;
+      getInitialAlwaysOnTop: () => Promise<boolean>;
+      on: (channel: string, callback: (...args: any[]) => void) => () => void; // Returns a cleanup function
+      selectSource: (sourceId: string) => void;
+      cancelSourceSelection: () => void;
+    };
+  }
 }
 
 // =============================================================
@@ -59,7 +72,7 @@ export function Main() {
         | "summary"
         | "search"
         | "custom"
-        | "find-clue", // <-- Add "find-clue"
+        | "find-clue",
       customQuery?: string
     ) => Promise<void>
   >(async () => {});
@@ -90,7 +103,11 @@ export function Main() {
   const [micAnalyserNode, setMicAnalyserNode] = useState<AnalyserNode | null>(
     null
   );
-  const [isAlwaysOnTop, setIsAlwaysOnTop] = useState(false); // <-- Add state for always on top
+  const [isAlwaysOnTop, setIsAlwaysOnTop] = useState(false);
+  const [availableSources, setAvailableSources] = useState<ElectronSource[]>(
+    []
+  );
+  const [showSourcePicker, setShowSourcePicker] = useState(false);
 
   // --- Hook ---------------------------------------------------
   const {
@@ -98,7 +115,7 @@ export function Main() {
     stop: stopMicRecording,
     mimeType: micMimeType,
     micStream,
-    currentMicChunks, // <-- Add currentMicChunks
+    currentMicChunks,
   } = useSegmentRecorder();
 
   // --- Utils --------------------------------------------------
@@ -137,7 +154,7 @@ export function Main() {
     `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, "0")}`;
 
   const SEGMENT_MS = 20_000;
-  const ANSWER_SEGMENT_MS = 10_000; // 10 seconds for answer action
+  const ANSWER_SEGMENT_MS = 10_000;
 
   const sendContextToAI = useCallback<
     (
@@ -147,7 +164,7 @@ export function Main() {
         | "summary"
         | "search"
         | "custom"
-        | "find-clue", // <-- Add "find-clue"
+        | "find-clue",
       customQuery?: string
     ) => Promise<void>
   >(
@@ -171,7 +188,6 @@ export function Main() {
           "提供最近音訊片段中捕捉到的對話內容的簡明摘要。請用中文回答。若是麥克風音訊沒有可總結的對話內容，請不用針對該音訊回答。",
         search:
           "根據最近音訊片段中討論的主題，建議相關的搜尋關鍵字或查找相關資訊。請用中文回答。若是麥克風音訊沒有可搜尋的對話內容，請不用針對該音訊回答。",
-        // <-- Add prompt for find-clue
         "find-clue":
           "根據最近的音訊內容，找出其中可能存在的線索、疑點或需要進一步探討的資訊。請用中文回答。",
         custom:
@@ -179,13 +195,12 @@ export function Main() {
           "根據以下要求分析最近音訊片段中捕捉到的對話內容。請用中文回答。",
       } as const;
 
-      // 簡化的顯示用 prompt
       const displayPromptMap: Record<typeof action, string> = {
         "real-time": "即時轉錄",
         answer: "根據語音內容回答問題",
         summary: "根據過去語音內容產生摘要",
         search: "根據語音內容搜尋主題",
-        "find-clue": "根據語音內容找尋線索", // <-- Add display prompt for find-clue
+        "find-clue": "根據語音內容找尋線索",
         custom: customPrompt,
       } as const;
 
@@ -195,7 +210,6 @@ export function Main() {
         content: action === "custom" ? customPrompt : promptMap[action],
       };
 
-      // 使用簡化的 prompt 顯示
       const displayMsg: Message = {
         id: `user-${Date.now()}`,
         role: "user",
@@ -210,7 +224,7 @@ export function Main() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ messages: [userMsg], data: ctx }),
         });
-        if (!res.ok) throw new Error(await res.text()); // Keep throwing the original error for console logging
+        if (!res.ok) throw new Error(await res.text());
         const ai: Message = await res.json();
         setAiMessages((p) => [
           ...p,
@@ -221,9 +235,7 @@ export function Main() {
           },
         ]);
       } catch (e: unknown) {
-        // Log the actual error for debugging
         console.error("AI request failed:", e);
-        // Display a generic error message to the user
         setAiMessages((p) => [
           ...p,
           {
@@ -338,6 +350,64 @@ export function Main() {
     };
   }, [isScreenSharing, micStream]);
 
+  // Listener for available sources from main process
+  useEffect(() => {
+    if (window.electronAPI) {
+      const removeListener = window.electronAPI.on(
+        "electronAPI:availableSources",
+        (sources: ElectronSource[]) => {
+          console.log("Received available sources from main:", sources.length);
+          setAvailableSources(sources);
+          setShowSourcePicker(true); // Show the picker UI
+        }
+      );
+
+      // Cleanup
+      return () => {
+        if (removeListener) removeListener();
+      };
+    }
+  }, []);
+
+  // Effect to handle Electron-specific initialization and listeners
+  useEffect(() => {
+    const initializeElectronFeatures = async () => {
+      if (window.electronAPI) {
+        // Get initial always-on-top state
+        try {
+          const initialState = await window.electronAPI.getInitialAlwaysOnTop();
+          console.log("Initial Always On Top State:", initialState);
+          setIsAlwaysOnTop(initialState);
+        } catch (error) {
+          console.error("Failed to get initial always on top state:", error);
+        }
+
+        // Listen for changes from the main process
+        const removeListener = window.electronAPI.on(
+          "electronAPI:alwaysOnTopChanged",
+          (newState) => {
+            console.log(
+              "Always On Top state changed from main process:",
+              newState
+            );
+            setIsAlwaysOnTop(newState);
+          }
+        );
+
+        // Cleanup listener on component unmount
+        return () => {
+          if (removeListener) {
+            removeListener();
+          }
+        };
+      } else {
+        console.warn("Electron API not found. Running in browser mode?");
+      }
+    };
+
+    initializeElectronFeatures();
+  }, []); // Empty dependency array ensures this runs only once on mount
+
   useEffect(() => {
     if (messagesContainerRef.current) {
       messagesContainerRef.current.scrollTop =
@@ -346,22 +416,18 @@ export function Main() {
   }, [aiMessages]);
 
   const toggleAlwaysOnTop = async () => {
-    const currentWindow = getCurrentWindow();
-    const newAlwaysOnTopState = !isAlwaysOnTop;
-    await currentWindow.setAlwaysOnTop(newAlwaysOnTopState);
-    setIsAlwaysOnTop(newAlwaysOnTopState);
+    if (window.electronAPI) {
+      const newAlwaysOnTopState = !isAlwaysOnTop;
+      console.log(
+        "Toggling always on top via Electron API to:",
+        newAlwaysOnTopState
+      );
+      window.electronAPI.toggleAlwaysOnTop(newAlwaysOnTopState);
+      // State will be updated via the listener if successful
+    } else {
+      console.warn("Electron API not available for toggleAlwaysOnTop");
+    }
   };
-
-  useEffect(() => {
-    // set is content protected true and get initial always on top state
-    const initializeWindow = async () => {
-      const currentWindow = getCurrentWindow();
-      await currentWindow.setContentProtected(true);
-      const alwaysOnTop = await currentWindow.isAlwaysOnTop();
-      setIsAlwaysOnTop(alwaysOnTop);
-    };
-    initializeWindow();
-  }, []);
 
   // --- Context ------------------------------------------------
   const gatherContext = async (): Promise<AIContextData | null> => {
@@ -379,7 +445,6 @@ export function Main() {
         : null
     );
 
-    // Last completed segments
     const lastMicSegment =
       segments.length > 0 ? segments[segments.length - 1] : null;
     const lastSystemSegment =
@@ -387,11 +452,9 @@ export function Main() {
         ? systemAudioSegments[systemAudioSegments.length - 1]
         : null;
 
-    // Current recording chunks
-    const currentMicRecordingChunks = currentMicChunks; // From the hook
-    const currentSystemRecordingChunks = systemAudioChunksRef.current; // From component ref
+    const currentMicRecordingChunks = currentMicChunks;
+    const currentSystemRecordingChunks = systemAudioChunksRef.current;
 
-    // Create blobs from current chunks if they exist
     const currentMicBlob =
       currentMicRecordingChunks.length > 0
         ? new Blob(currentMicRecordingChunks, { type: micMimeType })
@@ -404,14 +467,11 @@ export function Main() {
     console.log("Current mic blob size:", currentMicBlob?.size);
     console.log("Current system blob size:", currentSystemBlob?.size);
 
-    // Combine all potential audio sources
     const blobsToProcess: { blob: Blob; type: string; label: string }[] = [];
 
-    // For answer action, only use the most recent 10 seconds
     if (lastMicSegment) {
       const currentTime = Date.now();
       const segmentAge = currentTime - lastMicSegment.timestamp;
-      // 如果最後一個片段小於 10 秒，就使用它
       if (segmentAge <= ANSWER_SEGMENT_MS) {
         blobsToProcess.push({
           blob: lastMicSegment.blob,
@@ -419,7 +479,6 @@ export function Main() {
           label: "microphone-last",
         });
       } else {
-        // 如果最後一個片段大於 10 秒，就只使用最後 10 秒
         const startTime = currentTime - ANSWER_SEGMENT_MS;
         if (lastMicSegment.timestamp >= startTime) {
           blobsToProcess.push({
@@ -444,7 +503,6 @@ export function Main() {
       }
     }
 
-    // 對於當前錄製的片段，只使用最後 10 秒
     if (currentMicRecordingChunks.length > 0) {
       const currentBlob = new Blob(currentMicRecordingChunks, {
         type: micMimeType,
@@ -561,8 +619,7 @@ export function Main() {
         },
       ]);
     } catch (error) {
-      console.error("取得關鍵字解釋時發生錯誤:", error); // Log original error
-      // Display a generic error message
+      console.error("取得關鍵字解釋時發生錯誤:", error);
       setAiMessages((prev) => [
         ...prev,
         {
@@ -595,7 +652,6 @@ export function Main() {
 
       if (screenPreviewRef.current) screenPreviewRef.current.srcObject = null;
 
-      // Cleanup system audio analyser
       systemAudioSourceNodeRef.current?.disconnect();
       systemAudioSourceNodeRef.current = null;
       if (
@@ -610,6 +666,8 @@ export function Main() {
 
       setIsScreenSharing(false);
       setRecordingDuration(0);
+      setShowSourcePicker(false);
+      setAvailableSources([]);
     } else {
       setSegments([]);
       setSystemAudioSegments([]);
@@ -617,20 +675,57 @@ export function Main() {
       setAiMessages([]);
       setKeywords([]);
       setRecordingDuration(0);
+      setAvailableSources([]);
+      setShowSourcePicker(false);
 
       let capturedMicStream: MediaStream | null = null;
       let displayStream: MediaStream | null = null;
       let systemAudioStream: MediaStream | null = null;
 
       try {
-        // --- Step 1: Get Display Media (requires user gesture) ---
+        // --- Step 1: Check for API support ---
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+          console.error("getDisplayMedia is not supported by this environment.");
+          alert(
+            "錯誤：您的環境不支援螢幕擷取功能。請確認您使用的 Electron 版本或設定。"
+          );
+          setIsScreenSharing(false);
+          return;
+        }
+        if (!window.electronAPI) {
+          alert("錯誤：Electron API 未載入，無法選擇分享來源。");
+          return;
+        }
+
+        console.log(
+          "Requesting screen share via getDisplayMedia (expecting interception)..."
+        );
         displayStream = await navigator.mediaDevices.getDisplayMedia({
           video: true,
           audio: true,
         });
         screenStreamRef.current = displayStream;
+        console.log("Screen share stream obtained after selection:", displayStream);
 
-        // --- Step 2: Get Microphone Media ---
+        // --- Check for Audio Track (System Audio) ---
+        const audioTracks = displayStream.getAudioTracks();
+        console.log(`Stream has ${audioTracks.length} audio tracks.`);
+        if (audioTracks.length === 0) {
+          console.warn(
+            "System audio track *NOT* found in the obtained stream, despite requesting 'loopback'. Recording mic only."
+          );
+          alert(
+            "警告：無法擷取系統音訊 (可能需要安裝 BlackHole 等驅動程式)。錄音將只包含麥克風。"
+          );
+          systemAudioStream = null;
+        } else {
+          console.log("System audio track found in stream.");
+          systemAudioStream = new MediaStream(audioTracks);
+          setCurrentSystemAudioStream(systemAudioStream);
+        }
+
+        // --- Step 2: Start Microphone Recording ---
+        console.log("Starting microphone recording...");
         capturedMicStream = await startMicRecording();
         if (!capturedMicStream) {
           console.error("Failed to start microphone recording.");
@@ -639,65 +734,46 @@ export function Main() {
           setIsScreenSharing(false);
           return;
         }
+        console.log("Microphone recording started.");
 
-        // --- Step 3: Process Audio Tracks ---
-        const systemAudioTracks = displayStream.getAudioTracks();
-        if (systemAudioTracks.length === 0) {
-          console.warn("System audio track not found in screen share stream.");
-          alert(
-            "無法擷取系統音訊，錄音將只包含麥克風。若要錄製系統音訊，請在分享畫面時確認已勾選分享音訊選項。"
-          );
-          systemAudioStream = null;
-        } else {
-          systemAudioStream = new MediaStream(systemAudioTracks);
-          setCurrentSystemAudioStream(systemAudioStream);
-        }
-
-        // --- Step 4: Combine Streams and Setup Recorder ---
+        // --- Step 3: Setup Recorders and Analysers ---
         const audioTracksToRecord = [
           ...(systemAudioStream ? systemAudioStream.getAudioTracks() : []),
           ...capturedMicStream.getAudioTracks(),
         ];
 
         if (audioTracksToRecord.length > 0) {
-          // Find a supported mime type
-          const potentialMimeTypes = ["video/mp4"];
-          let supportedMimeType = "";
-          for (const mime of potentialMimeTypes) {
-            if (MediaRecorder.isTypeSupported(mime)) {
-              supportedMimeType = mime;
-              break;
-            }
-          }
-
-          if (!supportedMimeType) {
-            console.error(
-              "No supported audio mime type found for MediaRecorder."
-            );
-            alert("抱歉，您的瀏覽器不支援錄製所需的音訊格式。");
-            // Cleanup before returning
-            stopMicRecording();
-            cleanupStream(screenStreamRef);
-            setIsScreenSharing(false);
-            return;
-          }
-
-          console.log("Using supported mime type:", supportedMimeType); // Log the chosen mime type
-          setSystemAudioMimeType(supportedMimeType); // Store the actually supported type
-
-          cleanupRecorder(screenAudioRecorderRef);
-
-          // 為系統音訊設置 MediaRecorder
           if (systemAudioStream) {
             try {
+              const potentialMimeTypes = [
+                "video/mp4",
+                "audio/webm",
+                "audio/ogg",
+              ];
+              let supportedMimeType = "";
+              for (const mime of potentialMimeTypes) {
+                if (MediaRecorder.isTypeSupported(mime)) {
+                  supportedMimeType = mime;
+                  break;
+                }
+              }
+              if (!supportedMimeType)
+                throw new Error("No supported audio mime type found.");
+
+              console.log(
+                "Using supported mime type for system audio:",
+                supportedMimeType
+              );
+              setSystemAudioMimeType(supportedMimeType);
+              cleanupRecorder(screenAudioRecorderRef);
+
               const systemRecorder = new MediaRecorder(systemAudioStream, {
-                mimeType: supportedMimeType, // Use the found supported mime type
+                mimeType: supportedMimeType,
               });
 
               systemRecorder.ondataavailable = (e) => {
                 if (e.data.size > 0) {
                   systemAudioChunksRef.current.push(e.data);
-                  // Use the state variable for the correct mime type
                   const currentBlob = new Blob(systemAudioChunksRef.current, {
                     type: systemAudioMimeType,
                   });
@@ -709,27 +785,22 @@ export function Main() {
                   }
                 }
               };
-
               systemRecorder.onerror = (event) => {
                 console.error("System MediaRecorder error:", event);
-                // Potentially alert the user or stop recording
               };
-
-              systemRecorder.start(1000); // 每秒收集一次數據
+              systemRecorder.start(1000);
               screenAudioRecorderRef.current = systemRecorder;
 
-              // 設置定時器，每 20 秒重新開始錄製
               if (systemAudioTimerRef.current) {
                 clearInterval(systemAudioTimerRef.current);
               }
               systemAudioTimerRef.current = setInterval(() => {
                 if (
-                  screenAudioRecorderRef.current && // Check if recorder still exists
+                  screenAudioRecorderRef.current &&
                   screenAudioRecorderRef.current.state === "recording"
                 ) {
                   try {
                     screenAudioRecorderRef.current.stop();
-                    // Ensure recorder is still valid before starting again
                     if (screenAudioRecorderRef.current) {
                       screenAudioRecorderRef.current.start(1000);
                     }
@@ -738,36 +809,40 @@ export function Main() {
                       "Error stopping/starting system recorder in interval:",
                       e
                     );
-                    // Handle potential errors during stop/start cycle
                     cleanupRecorder(screenAudioRecorderRef);
                     if (systemAudioTimerRef.current)
                       clearInterval(systemAudioTimerRef.current);
                   }
                 } else if (systemAudioTimerRef.current) {
-                  // Clear interval if recorder is no longer recording or gone
                   clearInterval(systemAudioTimerRef.current);
                   systemAudioTimerRef.current = null;
                 }
-              }, SEGMENT_MS); // Use SEGMENT_MS constant
+              }, SEGMENT_MS);
             } catch (recorderError) {
               console.error(
                 "Failed to create system MediaRecorder:",
                 recorderError
               );
               alert(
-                `無法建立系統音訊錄製器: ${recorderError instanceof Error ? recorderError.message : String(recorderError)}`
+                `無法建立系統音訊錄製器: ${
+                  recorderError instanceof Error
+                    ? recorderError.message
+                    : String(recorderError)
+                }`
               );
-              // Cleanup if recorder creation fails
               systemAudioStream.getTracks().forEach((track) => track.stop());
               setCurrentSystemAudioStream(null);
-              // Continue without system audio recording if possible, or stop entirely
+              systemAudioStream = null;
             }
+          } else {
+            console.log("No system audio stream, skipping system audio recorder setup.");
+            cleanupRecorder(screenAudioRecorderRef);
+            setSystemAudioMimeType("");
           }
         } else {
-          console.warn("No audio tracks available to record.");
+          console.warn("No audio tracks (mic or system) available to record.");
         }
 
-        // --- Step 5: Setup System Audio Analyser (if system audio exists) ---
         if (systemAudioStream) {
           try {
             const audioCtx = new window.AudioContext();
@@ -791,84 +866,109 @@ export function Main() {
           setSystemAnalyserNode(null);
         }
 
-        // --- Step 6: Finalize State ---
         setIsScreenSharing(true);
+        setShowSourcePicker(false);
+        console.log("Screen sharing and recording setup complete.");
       } catch (e) {
-        console.error("Error starting screen share:", e);
-        alert(
-          `啟動分享時發生錯誤: ${e instanceof Error ? e.message : String(e)}`
-        );
+        console.error("Error during screen share setup process:", e);
+        if (e instanceof DOMException && e.name === "NotAllowedError") {
+          console.log("getDisplayMedia request was denied or cancelled.");
+        } else if (e instanceof DOMException && e.name === "NotFoundError") {
+          console.error("No suitable media source found.");
+          alert("錯誤：找不到可分享的螢幕或視窗。");
+        } else {
+          alert(
+            `啟動分享時發生錯誤: ${
+              e instanceof Error ? e.message : String(e)
+            }`
+          );
+        }
 
         stopMicRecording();
         cleanupStream(screenStreamRef);
         cleanupRecorder(screenAudioRecorderRef);
-        if (systemAudioTimerRef.current) {
+        if (systemAudioTimerRef.current)
           clearInterval(systemAudioTimerRef.current);
-          systemAudioTimerRef.current = null;
-        }
         systemAudioChunksRef.current = [];
-
         systemAudioSourceNodeRef.current?.disconnect();
-        systemAudioSourceNodeRef.current = null;
-        if (
-          systemAudioContextRef.current &&
-          systemAudioContextRef.current.state !== "closed"
-        ) {
-          systemAudioContextRef.current.close().catch(console.error);
-        }
-        systemAudioContextRef.current = null;
+        if (systemAudioContextRef.current?.state !== "closed")
+          systemAudioContextRef.current?.close().catch(console.error);
         setCurrentSystemAudioStream(null);
         setSystemAnalyserNode(null);
+        micSourceNodeRef.current?.disconnect();
+        if (micAudioContextRef.current?.state !== "closed")
+          micAudioContextRef.current?.close().catch(console.error);
+        setMicAnalyserNode(null);
 
         setIsScreenSharing(false);
+        setShowSourcePicker(false);
+        setAvailableSources([]);
       }
     }
   };
 
-  useEffect(() => {
-    // set is content protected true
-    const currentWindow = getCurrentWindow();
-    currentWindow.setContentProtected(true);
-  }, []);
+  const handleSourceSelect = (sourceId: string) => {
+    setShowSourcePicker(false);
+    setAvailableSources([]);
+    if (window.electronAPI) {
+      window.electronAPI.selectSource(sourceId);
+    }
+  };
+
+  const handleCancelSelect = () => {
+    setShowSourcePicker(false);
+    setAvailableSources([]);
+    if (window.electronAPI) {
+      window.electronAPI.cancelSourceSelection();
+    }
+  };
+
+  const minimizeWindow = () => {
+    if (window.electronAPI) {
+      console.log("Minimizing window via Electron API");
+      window.electronAPI.minimizeWindow();
+    } else {
+      console.warn("Electron API not available for minimizeWindow");
+    }
+  };
+
+  const closeWindow = () => {
+    if (window.electronAPI) {
+      console.log("Closing window via Electron API");
+      window.electronAPI.closeWindow();
+    } else {
+      console.warn("Electron API not available for closeWindow");
+    }
+  };
 
   return (
     <div className="flex flex-col gap-16 pt-8 h-screen rounded-lg bg-background opacity-100">
       <header className="fixed h-6 bg-muted overflow-hidden rounded-t-lg top-0 left-0 right-0 z-10 border-b border-border flex items-center justify-between">
-        {/* Empty div to allow dragging on the left */}
         <div
           className="flex-grow h-full"
-          onMouseDown={(e) => {
-            // Only allow dragging when clicking on the header background, not the buttons
-            if (e.target === e.currentTarget && e.button === 0) {
-              e.preventDefault();
-              e.stopPropagation();
-              const currentWindow = getCurrentWindow();
-              currentWindow.startDragging();
-            }
-          }}
+          style={{ WebkitAppRegion: "drag" } as React.CSSProperties}
         ></div>
-        {/* Window control buttons */}
         <div className="flex items-center h-full mr-1">
           <Button
             variant="ghost"
             size="icon"
             className="h-5 w-5 rounded-sm hover:bg-muted-foreground/20"
-            onClick={toggleAlwaysOnTop} // <-- Add onClick handler
+            onClick={toggleAlwaysOnTop}
             aria-label={
               isAlwaysOnTop ? "Disable always on top" : "Enable always on top"
-            } // <-- Add aria-label
+            }
           >
             {isAlwaysOnTop ? (
-              <PinOffIcon className="h-3 w-3" /> // <-- Show PinOffIcon when active
+              <PinOffIcon className="h-3 w-3" />
             ) : (
-              <PinIcon className="h-3 w-3" /> // <-- Show PinIcon when inactive
+              <PinIcon className="h-3 w-3" />
             )}
           </Button>
           <Button
             variant="ghost"
             size="icon"
             className="h-5 w-5 rounded-sm hover:bg-muted-foreground/20"
-            onClick={() => getCurrentWindow().minimize()}
+            onClick={minimizeWindow}
             aria-label="Minimize window"
           >
             <MinusIcon className="h-3 w-3" />
@@ -877,13 +977,46 @@ export function Main() {
             variant="ghost"
             size="icon"
             className="h-5 w-5 rounded-sm hover:bg-destructive/80 hover:text-destructive-foreground"
-            onClick={() => getCurrentWindow().close()}
+            onClick={closeWindow}
             aria-label="Close window"
           >
             <XIcon className="h-3 w-3" />
           </Button>
         </div>
       </header>
+
+      {showSourcePicker && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-card p-6 rounded-lg shadow-xl max-w-md w-full">
+            <h3 className="text-lg font-semibold mb-4 text-card-foreground">
+              選擇要分享的畫面或視窗
+            </h3>
+            <div className="max-h-60 overflow-y-auto space-y-2 mb-4">
+              {availableSources.length > 0 ? (
+                availableSources.map((source) => (
+                  <button
+                    key={source.id}
+                    onClick={() => handleSourceSelect(source.id)}
+                    className="w-full text-left p-2 rounded hover:bg-muted transition-colors"
+                  >
+                    {source.name}
+                  </button>
+                ))
+              ) : (
+                <p className="text-muted-foreground text-sm">
+                  找不到可用的分享來源...
+                </p>
+              )}
+            </div>
+            <div className="flex justify-end">
+              <Button variant="ghost" onClick={handleCancelSelect}>
+                取消
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-1 overflow-hidden shadow-lg max-">
         <main className="flex flex-col flex-1 overflow-hidden">
           <div
@@ -969,8 +1102,8 @@ export function Main() {
                 {isLoading
                   ? "處理中..."
                   : isScreenSharing
-                    ? "分享/錄製中"
-                    : "已停止"}
+                  ? "分享/錄製中"
+                  : "已停止"}
               </span>
               {isScreenSharing && (
                 <span className="text-sm font-semibold tabular-nums text-foreground">
@@ -1043,18 +1176,17 @@ export function Main() {
                   icon: ListCollapseIcon,
                 },
                 { action: "search", label: "搜尋主題", icon: SearchIcon },
-                { action: "find-clue", label: "找尋線索", icon: LightbulbIcon }, // <-- Add find-clue button
+                { action: "find-clue", label: "找尋線索", icon: LightbulbIcon },
               ].map(({ action, label, icon: Icon }) => (
                 <Button
                   key={action}
                   variant="outline"
                   size="sm"
                   disabled={isLoading || !isScreenSharing}
-                  onClick={
-                    () =>
-                      sendContextToAI(
-                        action as "answer" | "summary" | "search" | "find-clue"
-                      ) // <-- Update type cast
+                  onClick={() =>
+                    sendContextToAI(
+                      action as "answer" | "summary" | "search" | "find-clue"
+                    )
                   }
                   className="flex items-center justify-start gap-2"
                 >
@@ -1097,29 +1229,6 @@ export function Main() {
               />
             </div>
           )}
-
-          {/* <div className="p-4 mt-auto space-y-2">
-            <h3 className="text-sm font-medium text-muted-foreground">
-              麥克風音訊播放 (最新片段)
-            </h3>
-            <audio
-              ref={audioPlayerRef}
-              controls
-              src={
-                segments.length > 0
-                  ? URL.createObjectURL(segments[segments.length - 1]!.blob)
-                  : undefined
-              }
-              className={`w-full h-10 ${
-                segments.length === 0 ? "opacity-50 cursor-not-allowed" : ""
-              }`}
-              key={
-                segments.length > 0
-                  ? segments[segments.length - 1]?.timestamp
-                  : "no-audio"
-              }
-            ></audio>
-          </div> */}
         </aside>
       </div>
     </div>
