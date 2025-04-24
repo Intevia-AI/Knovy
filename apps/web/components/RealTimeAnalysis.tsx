@@ -240,7 +240,7 @@ export default function RealTimeAnalysis({
         onClick={isActive ? stopAudio : startAudio}
         disabled={isProcessing}
         variant={isActive ? "destructive" : "default"}
-        className="flex items-center gap-2"
+        className="flex items-center gap-2 w-full"
       >
         {isProcessing ? (
           <Pause className="h-4 w-4 animate-spin" />
