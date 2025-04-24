@@ -24,7 +24,6 @@ declare global {
       on: (channel: string, callback: (...args: any[]) => void) => () => void; // Returns a cleanup function
       selectSource: (sourceId: string) => void;
       cancelSourceSelection: () => void;
-      trimAudio: (blobsBase64: { data: string; mimeType: string }[]) => Promise<string>;
     };
   }
 }

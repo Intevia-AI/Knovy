@@ -31,7 +31,6 @@ export function Main() {
     showSourcePicker,
     handleSourceSelect,
     handleCancelSelect,
-    trimAudio, // Needed for AI context
   } = useElectron();
 
   // Screen Sharing and Recording
@@ -46,11 +45,12 @@ export function Main() {
     systemAudioMimeType, // Needed for AI context
     toggleScreenShare,
     screenPreviewRef, // Ref for video element in ControlPanel
-    // resetMicRecorder is handled internally by useScreenShare now
+    currentMicChunksRef, // <<< Get this ref
+    systemAudioChunksRef, // <<< Get this ref
   } = useScreenShare();
 
   // Audio Analysis (Visualizers)
-  const { micAnalyserNode, systemAnalyserNode } = useAudioAnalysis(
+  const { micAnalyserNode, systemAnalyserNode, micLevel, systemLevel } = useAudioAnalysis(
     isScreenSharing ? micStream : null, // Pass stream only when sharing
     isScreenSharing ? currentSystemAudioStream : null // Pass stream only when sharing
   );
@@ -72,10 +72,11 @@ export function Main() {
   } = useAIInteraction({
     micSegments,
     systemAudioSegments,
+    currentMicChunksRef, // <<< Pass this ref
+    systemAudioChunksRef, // <<< Pass this ref
     micMimeType,
     systemAudioMimeType,
     isScreenSharing,
-    trimAudio, // Pass trim function from useElectron
   });
 
   // --- Effects ------------------------------------------------
@@ -131,6 +132,8 @@ export function Main() {
           selectedKeyword={selectedKeyword}
           micAnalyserNode={micAnalyserNode}
           systemAnalyserNode={systemAnalyserNode}
+          micLevel={micLevel} // <<< Pass micLevel
+          systemLevel={systemLevel} // <<< Pass systemLevel
           screenPreviewRef={screenPreviewRef}
           currentSystemAudioStream={currentSystemAudioStream} // Pass for RealTimeAnalysis
           onToggleScreenShare={toggleScreenShare}

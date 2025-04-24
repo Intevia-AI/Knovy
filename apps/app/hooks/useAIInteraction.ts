@@ -5,26 +5,27 @@ import { blobToBase64 } from '@/lib/utils';
 
 // Constants
 const API_URL = "http://localhost:3001/api/ai";
-const CONTEXT_WINDOW_MS = 30_000; // How far back to look for audio context
 
 type AIAction = "real-time" | "answer" | "summary" | "search" | "custom" | "find-clue";
 
 interface UseAIInteractionProps {
-  micSegments: Segment[];
-  systemAudioSegments: Segment[];
+  micSegments: Segment[]; // Array of completed mic segments
+  systemAudioSegments: Segment[]; // Array of completed system segments
+  currentMicChunksRef: React.RefObject<Blob[]>; // Ref to current mic chunks
+  systemAudioChunksRef: React.RefObject<Blob[]>; // Ref to current system chunks
   micMimeType: string;
   systemAudioMimeType: string;
   isScreenSharing: boolean;
-  trimAudio: (blobsBase64: { data: string; mimeType: string }[]) => Promise<string>; // From useElectron
 }
 
 export function useAIInteraction({
   micSegments,
   systemAudioSegments,
+  currentMicChunksRef,
+  systemAudioChunksRef,
   micMimeType,
   systemAudioMimeType,
   isScreenSharing,
-  trimAudio,
 }: UseAIInteractionProps) {
   const [aiMessages, setAiMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -40,109 +41,129 @@ export function useAIInteraction({
     }
   }, [aiMessages]);
 
-  // Function to gather context from recent audio segments
+  // Function to gather context from recent audio segments AND current chunks
   const gatherContext = useCallback(async (): Promise<AIContextData | null> => {
-    const now = Date.now();
-    const recentMicSegments = micSegments.filter(seg => now - seg.timestamp <= CONTEXT_WINDOW_MS);
-    const recentSystemSegments = systemAudioSegments.filter(seg => now - seg.timestamp <= CONTEXT_WINDOW_MS);
-
-    if (recentMicSegments.length === 0 && recentSystemSegments.length === 0) {
-        console.log("No recent audio segments found for context.");
-        return null;
-    }
+    console.log("[AIInteraction] Gathering context...");
 
     const audioInputs: AIContextData['audioInputs'] = [];
 
-    // Process Mic Audio
-    if (recentMicSegments.length > 0 && micMimeType) {
-        console.log(`Processing ${recentMicSegments.length} recent mic segments...`);
-        const blobsBase64 = await Promise.all(
-            recentMicSegments.map(async ({ blob }) => {
-                const dataUrl = await blobToBase64(blob);
-                const data = dataUrl.split(',')[1] || dataUrl;
-                return { data, mimeType: micMimeType };
-            })
-        );
-        try {
-            const trimmed = await trimAudio(blobsBase64); // Use Electron for trimming/concatenation
-            if (trimmed) {
-                audioInputs.push({ data: trimmed, mimeType: micMimeType, label: 'microphone_last_30s' });
-                console.log("Added trimmed mic audio to context.");
-            } else {
-                 console.warn("Mic audio trimming resulted in empty data.");
-            }
-        } catch (error) {
-             console.error("Error trimming mic audio via Electron:", error);
-        }
+    // --- Process Mic Audio ---
+    const currentMicChunks = currentMicChunksRef.current ?? [];
+    const lastMicSegment = micSegments.length > 0 ? micSegments[micSegments.length - 1] : null;
+
+    let micBlobToProcess: Blob | null = null;
+    let micLabel = "";
+
+    // Prioritize current chunks if they exist
+    if (currentMicChunks.length > 0) {
+      try {
+        micBlobToProcess = new Blob(currentMicChunks, { type: micMimeType });
+        micLabel = "mic-current";
+        console.log(`[AIInteraction] Using current mic chunks, size: ${micBlobToProcess?.size}`);
+      } catch (error) {
+        console.error("[AIInteraction] Error creating blob from current mic chunks:", error);
+        micBlobToProcess = null;
+      }
     }
 
-    // Process System Audio
-    if (recentSystemSegments.length > 0 && systemAudioMimeType) {
-        console.log(`Processing ${recentSystemSegments.length} recent system audio segments...`);
-         // System audio segments might already be concatenated blobs from the recorder interval
-         // Assuming the last segment is the most relevant concatenation for the window
-         const latestSystemSegment = recentSystemSegments[recentSystemSegments.length - 1];
-         if (latestSystemSegment) {
-             try {
-                 const dataUrl = await blobToBase64(latestSystemSegment.blob);
-                 const data = dataUrl.split(',')[1] || dataUrl;
-                 // System audio might not need trimming if segments are managed correctly
-                 audioInputs.push({ data, mimeType: systemAudioMimeType, label: 'system_audio_last_segment' });
-                 console.log("Added latest system audio segment to context.");
-             } catch (error) {
-                 console.error("Error processing system audio segment:", error);
-             }
-         }
-        // If trimming/concatenation is needed for system audio as well:
-        /*
-        const blobsBase64 = await Promise.all(
-            recentSystemSegments.map(async ({ blob }) => {
-                const dataUrl = await blobToBase64(blob);
-                const data = dataUrl.split(',')[1] || dataUrl;
-                return { data, mimeType: systemAudioMimeType };
-            })
-        );
-         try {
-            const trimmed = await trimAudio(blobsBase64); // Use Electron for trimming/concatenation
-            if (trimmed) {
-                audioInputs.push({ data: trimmed, mimeType: systemAudioMimeType, label: 'system_audio_last_30s' });
-                 console.log("Added trimmed system audio to context.");
-            } else {
-                 console.warn("System audio trimming resulted in empty data.");
-            }
-         } catch (error) {
-             console.error("Error trimming system audio via Electron:", error);
-         }
-        */
+    // If no current chunks, use the last completed segment
+    if (!micBlobToProcess && lastMicSegment) {
+      micBlobToProcess = lastMicSegment.blob;
+      micLabel = "mic-last-segment";
+      console.log(`[AIInteraction] Using last completed mic segment, size: ${micBlobToProcess?.size}`);
     }
 
+    // Convert selected mic blob to base64
+    if (micBlobToProcess && micBlobToProcess.size > 0 && micMimeType) {
+      try {
+        const dataUrl = await blobToBase64(micBlobToProcess);
+        const data = dataUrl.split(',')[1] || dataUrl;
+        audioInputs.push({ data, mimeType: micMimeType, label: micLabel });
+        console.log(`[AIInteraction] Added ${micLabel} (${data.length} base64 chars) to context.`);
+      } catch (error) {
+        console.error(`[AIInteraction] Error processing mic blob (${micLabel}):`, error);
+      }
+    } else {
+      console.log("[AIInteraction] No valid mic audio data found for context.");
+    }
 
-    return { audioInputs: audioInputs.length > 0 ? audioInputs : undefined };
-  }, [micSegments, systemAudioSegments, micMimeType, systemAudioMimeType, trimAudio]);
+    // --- Process System Audio ---
+    const currentSystemChunks = systemAudioChunksRef.current ?? [];
+    const lastSystemSegment = systemAudioSegments.length > 0 ? systemAudioSegments[systemAudioSegments.length - 1] : null;
 
+    let systemBlobToProcess: Blob | null = null;
+    let systemLabel = "";
+
+    // Prioritize current chunks
+    if (currentSystemChunks.length > 0) {
+      try {
+        systemBlobToProcess = new Blob(currentSystemChunks, { type: systemAudioMimeType });
+        systemLabel = "system-current";
+        console.log(`[AIInteraction] Using current system chunks, size: ${systemBlobToProcess?.size}`);
+      } catch (error) {
+        console.error("[AIInteraction] Error creating blob from current system chunks:", error);
+        systemBlobToProcess = null;
+      }
+    }
+
+    // Fallback to last completed segment
+    if (!systemBlobToProcess && lastSystemSegment) {
+      systemBlobToProcess = lastSystemSegment.blob;
+      systemLabel = "system-last-segment";
+      console.log(`[AIInteraction] Using last completed system segment, size: ${systemBlobToProcess?.size}`);
+    }
+
+    // Convert selected system blob to base64
+    if (systemBlobToProcess && systemBlobToProcess.size > 0 && systemAudioMimeType) {
+      try {
+        const dataUrl = await blobToBase64(systemBlobToProcess);
+        const data = dataUrl.split(',')[1] || dataUrl;
+        audioInputs.push({ data, mimeType: systemAudioMimeType, label: systemLabel });
+        console.log(`[AIInteraction] Added ${systemLabel} (${data.length} base64 chars) to context.`);
+      } catch (error) {
+        console.error(`[AIInteraction] Error processing system blob (${systemLabel}):`, error);
+      }
+    } else {
+      console.log("[AIInteraction] No valid system audio data found for context.");
+    }
+
+    // --- Return Context ---
+    if (audioInputs.length === 0) {
+      console.warn("[AIInteraction] No audio inputs gathered for context.");
+      return null;
+    }
+
+    return { audioInputs };
+  }, [
+    micSegments,
+    systemAudioSegments,
+    currentMicChunksRef,
+    systemAudioChunksRef,
+    micMimeType,
+    systemAudioMimeType,
+  ]); // Dependencies updated
 
   // Function to send context and prompt to the AI backend
   const sendContextToAI = useCallback(async (action: AIAction, query?: string) => {
     if (isLoading || !isScreenSharing) {
-        console.warn("AI request blocked: Not sharing or already loading.");
-        return;
+      console.warn("AI request blocked: Not sharing or already loading.");
+      return;
     }
     setIsLoading(true);
     console.log(`Sending AI request. Action: ${action}, Custom Query: ${query}`);
 
-    const context = await gatherContext();
+    const context = await gatherContext(); // Calls the updated gatherContext
 
     if (!context?.audioInputs || context.audioInputs.length === 0) {
       console.warn("AI request cancelled: No context gathered.");
-      // Optionally add a user-facing message
-       setAiMessages((prev) => [
-           ...prev,
-           {
-               id: `err-no-ctx-${Date.now()}`,
-               role: "assistant",
-               content: "[提示] 沒有足夠的近期音訊可供分析。",
-           },
-       ]);
+      setAiMessages((prev) => [
+        ...prev,
+        {
+          id: `err-no-ctx-${Date.now()}`,
+          role: "assistant",
+          content: "[提示] 沒有足夠的近期音訊可供分析。",
+        },
+      ]);
       setIsLoading(false);
       return;
     }
@@ -171,11 +192,10 @@ export function useAIInteraction({
     const userMsg: Message = { id: `user-${Date.now()}`, role: "user", content: userMsgContent };
     const displayMsg: Message = { id: `disp-${userMsg.id}`, role: "user", content: displayMsgContent };
 
-    // Add user's request to chat (except for real-time which might be too frequent)
     if (action !== "real-time") {
       setAiMessages((prev) => [...prev, displayMsg]);
     }
-    if (action === "custom") setCustomPrompt(""); // Clear input after sending custom prompt
+    if (action === "custom") setCustomPrompt("");
 
     try {
       console.log("Sending request to AI API:", API_URL);
@@ -217,18 +237,14 @@ export function useAIInteraction({
   }, [
     isLoading,
     isScreenSharing,
-    gatherContext,
-    customPrompt, // Include customPrompt dependency
-    // No need to depend directly on segments/mimetypes here as gatherContext handles them
+    gatherContext, // Depends on the updated gatherContext
+    customPrompt,
   ]);
 
-  // Handler for real-time text responses (e.g., from transcription)
-   const handleTextResponse = useCallback((text: string) => {
+  const handleTextResponse = useCallback((text: string) => {
     setAiMessages((prev) => {
       const lastMessage = prev[prev.length - 1];
-      // Append to existing real-time message or create a new one
       if (lastMessage?.role === "assistant" && lastMessage.content.startsWith("[即時轉錄]")) {
-        // Debounce or throttle this update if it becomes too frequent
         return [
           ...prev.slice(0, -1),
           { ...lastMessage, content: lastMessage.content + text },
@@ -240,33 +256,29 @@ export function useAIInteraction({
         ];
       }
     });
-  }, []); // No dependencies needed if it only manipulates state based on args
+  }, []);
 
-  // Handler for newly detected keywords
   const handleKeywords = useCallback((newKeywords: string[]) => {
     setKeywords((prev) => {
-      const uniqueNewKeywords = newKeywords.filter((k) => k && !prev.includes(k)); // Add check for non-empty keywords
+      const uniqueNewKeywords = newKeywords.filter((k) => k && !prev.includes(k));
       if (uniqueNewKeywords.length > 0) {
         return [...prev, ...uniqueNewKeywords];
       }
-      return prev; // Return previous state if no new unique keywords
+      return prev;
     });
-  }, []); // No dependencies needed
+  }, []);
 
-  // Handler for clicking a keyword to get an explanation
   const handleKeywordClick = useCallback(async (keyword: string) => {
-    if (!keyword || isLoading) return; // Prevent empty or concurrent requests
+    if (!keyword || isLoading) return;
 
     setSelectedKeyword(keyword);
     setIsLoading(true);
     console.log(`Fetching explanation for keyword: ${keyword}`);
 
-    // Add user intent message
     setAiMessages((prev) => [
-        ...prev,
-        { id: `user-kw-${Date.now()}`, role: "user", content: `解釋: ${keyword}` },
+      ...prev,
+      { id: `user-kw-${Date.now()}`, role: "user", content: `解釋: ${keyword}` },
     ]);
-
 
     try {
       const response = await fetch(API_URL, {
@@ -274,12 +286,12 @@ export function useAIInteraction({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           messages: [{ role: "user", content: `請用簡單易懂的方式解釋這個專業術語：${keyword}` }],
-          data: {}, // No audio context needed for simple explanation
+          data: {}, // No audio context needed
         }),
       });
 
       if (!response.ok) {
-         const errorText = await response.text();
+        const errorText = await response.text();
         throw new Error(`Keyword Explanation Error (${response.status}): ${errorText}`);
       }
 
@@ -298,21 +310,19 @@ export function useAIInteraction({
       ]);
     } finally {
       setIsLoading(false);
-      setSelectedKeyword(null); // Clear selected keyword after attempt
-       console.log(`Keyword explanation fetch finished for: ${keyword}`);
-    }
-  }, [isLoading]); // Depends on isLoading state
-
-  // Function to clear chat messages and keywords
-  const resetChat = useCallback(() => {
-      setAiMessages([]);
-      setKeywords([]);
-      setCustomPrompt("");
-      setIsLoading(false); // Ensure loading state is reset
       setSelectedKeyword(null);
-      console.log("Chat and keywords reset.");
-  }, []);
+      console.log(`Keyword explanation fetch finished for: ${keyword}`);
+    }
+  }, [isLoading]);
 
+  const resetChat = useCallback(() => {
+    setAiMessages([]);
+    setKeywords([]);
+    setCustomPrompt("");
+    setIsLoading(false);
+    setSelectedKeyword(null);
+    console.log("Chat and keywords reset.");
+  }, []);
 
   return {
     aiMessages,
@@ -322,10 +332,10 @@ export function useAIInteraction({
     keywords,
     selectedKeyword,
     sendContextToAI,
-    handleTextResponse, // For RealTimeAnalysis component
-    handleKeywords,     // For RealTimeAnalysis component
+    handleTextResponse,
+    handleKeywords,
     handleKeywordClick,
     messagesContainerRef,
-    resetChat, // Expose reset function
+    resetChat,
   };
 }

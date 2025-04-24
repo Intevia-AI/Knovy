@@ -13,6 +13,7 @@ import {
 import RealTimeAnalysis from "@/components/RealTimeAnalysis"; // Adjust path if needed
 import AudioVisualizer from "@/components/AudioVisualizer"; // Adjust path if needed
 import { formatTime } from '@/lib/utils'; // Adjust path if needed
+import { Progress } from "@workspace/ui/components/progress"; // Import Progress
 
 interface ControlPanelProps {
   isScreenSharing: boolean;
@@ -22,6 +23,8 @@ interface ControlPanelProps {
   selectedKeyword: string | null;
   micAnalyserNode: AnalyserNode | null;
   systemAnalyserNode: AnalyserNode | null;
+  micLevel: number; // Add micLevel prop
+  systemLevel: number; // Add systemLevel prop
   screenPreviewRef: React.RefObject<HTMLVideoElement | null>; // Allow null
   currentSystemAudioStream: MediaStream | null; // For RealTimeAnalysis
 
@@ -40,6 +43,8 @@ export function ControlPanel({
   selectedKeyword,
   micAnalyserNode,
   systemAnalyserNode,
+  micLevel, // Destructure micLevel
+  systemLevel, // Destructure systemLevel
   screenPreviewRef,
   currentSystemAudioStream,
   onToggleScreenShare,
@@ -171,6 +176,12 @@ export function ControlPanel({
              <p className="text-xs text-muted-foreground">麥克風未啟用</p>
           )}
         </div>
+        {isScreenSharing && (
+          <div className="space-y-1">
+            <Progress value={micLevel} className="h-2" />
+            <span className="text-xs text-muted-foreground text-right block">音量: {micLevel.toFixed(0)}%</span>
+          </div>
+        )}
       </div>
 
       {/* System Audio Visualizer */}
@@ -185,6 +196,12 @@ export function ControlPanel({
               <p className="text-xs text-muted-foreground">系統音訊未啟用或未擷取</p>
            )}
         </div>
+        {isScreenSharing && (
+          <div className="space-y-1">
+            <Progress value={systemLevel} className="h-2" />
+            <span className="text-xs text-muted-foreground text-right block">音量: {systemLevel.toFixed(0)}%</span>
+          </div>
+        )}
       </div>
 
       {/* Screen Preview */}

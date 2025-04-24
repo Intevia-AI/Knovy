@@ -100,15 +100,6 @@ export function useElectron() {
     }
   }, []);
 
-  const trimAudio = useCallback(async (blobsBase64: { data: string; mimeType: string }[]) => {
-     if (window.electronAPI) {
-       return window.electronAPI.trimAudio(blobsBase64);
-     }
-     console.warn("Electron API not available for trimAudio");
-     return ""; // Or throw an error
-  }, []);
-
-
   return {
     isAlwaysOnTop,
     toggleAlwaysOnTop,
@@ -120,6 +111,5 @@ export function useElectron() {
     handleCancelSelect,
     setShowSourcePicker, // Allow external control if needed
     setAvailableSources, // Allow external control if needed
-    trimAudio,
   };
 }

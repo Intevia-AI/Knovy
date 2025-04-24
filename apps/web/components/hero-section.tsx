@@ -4,8 +4,48 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { TextEffect } from "@workspace/ui/components/text-effect";
 import { DemoComponent } from "@/components/demo";
+import { Button } from "@workspace/ui/components/button";
+import { useState } from "react";
 
 export function HeroSection() {
+  const [feedback, setFeedback] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitStatus, setSubmitStatus] = useState<"idle" | "success" | "error">("idle");
+
+  const handleFeedbackSubmit = async () => {
+    if (!feedback.trim()) {
+      return;
+    }
+    setIsSubmitting(true);
+    setSubmitStatus("idle");
+    try {
+      const response = await fetch("/api/feedback", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ feedback }),
+      });
+
+      if (response.ok) {
+        setFeedback("");
+        setSubmitStatus("success");
+        console.log("Feedback submitted successfully!");
+        setTimeout(() => setSubmitStatus("idle"), 3000);
+      } else {
+        console.error("Failed to submit feedback");
+        setSubmitStatus("error");
+        setTimeout(() => setSubmitStatus("idle"), 3000);
+      }
+    } catch (error) {
+      console.error("Error submitting feedback:", error);
+      setSubmitStatus("error");
+      setTimeout(() => setSubmitStatus("idle"), 3000);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <>
       <main className="overflow-hidden" id="home">
@@ -73,6 +113,33 @@ export function HeroSection() {
 
             <div className="mx-auto max-w-5xl p-6 mt-12 lg:mt-16">
               <DemoComponent />
+            </div>
+
+            {/* Feedback Section */}
+            <div className="mt-12 max-w-xl mx-auto text-left px-6 pb-12">
+              <h3 className="text-xl font-semibold mb-2 text-center">使用回饋</h3>
+              <p className="mb-4 text-sm text-muted-foreground text-center">我們只花了兩週時間開發這個原型，請幫助我們改進。</p>
+              <textarea
+                placeholder="請在此輸入您的回饋..."
+                rows={4}
+                className="w-full rounded-md border bg-background p-3 text-sm focus:outline-none focus:ring-2 focus:ring-muted"
+                value={feedback}
+                onChange={(e) => setFeedback(e.target.value)}
+                disabled={isSubmitting}
+              />
+              <Button
+                className="mt-4 w-full"
+                onClick={handleFeedbackSubmit}
+                disabled={isSubmitting || !feedback.trim()}
+              >
+                {isSubmitting ? "提交中..." : "提交回饋"}
+              </Button>
+              {submitStatus === "success" && (
+                <p className="mt-2 text-sm text-green-600 text-center">感謝您的回饋！</p>
+              )}
+              {submitStatus === "error" && (
+                <p className="mt-2 text-sm text-red-600 text-center">提交失敗，請稍後再試。</p>
+              )}
             </div>
           </div>
         </section>

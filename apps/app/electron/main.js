@@ -1,10 +1,6 @@
 const { app, BrowserWindow, ipcMain, desktopCapturer, session, systemPreferences } = require("electron");
 const serve = require("electron-serve");
 const path = require("path");
-const fs = require('fs');
-const os = require('os');
-const { execFile } = require('child_process');
-const ffmpegPath = require('ffmpeg-static');
 
 const isDev = !app.isPackaged;
 const outputDir = path.join(__dirname, "../out");
@@ -182,45 +178,6 @@ app.on("ready", async () => {
     // Handle request for initial always on top state
     ipcMain.handle('electronAPI:getInitialAlwaysOnTop', () => {
         return mainWindow?.isAlwaysOnTop() ?? false;
-    });
-
-    // IPC handler to trim and concatenate audio chunks into last 30 seconds
-    ipcMain.handle('electronAPI:trimAudio', async (event, blobs) => {
-      try {
-        const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'audio-'));
-        const listFile = path.join(dir, 'list.txt');
-        const fileEntries = [];
-        // Write each blob's Base64 data to a file
-        for (let i = 0; i < blobs.length; i++) {
-          const { data, mimeType } = blobs[i];
-          const ext = mimeType.includes('ogg') ? 'ogg' : 'webm';
-          const filePath = path.join(dir, `chunk${i}.${ext}`);
-          fs.writeFileSync(filePath, Buffer.from(data, 'base64'));
-          // Escape single quotes in path
-          fileEntries.push(`file '${filePath.replace(/'/g, "'\\''")}'
-`);
-        }
-        fs.writeFileSync(listFile, fileEntries.join(''));
-        const outputPath = path.join(dir, `trimmed.webm`);
-        // Run ffmpeg to concat and trim to 30 seconds
-        await new Promise((resolve, reject) => {
-          const args = [
-            '-y',
-            '-f', 'concat',
-            '-safe', '0',
-            '-i', listFile,
-            '-c', 'copy',
-            '-t', '30',
-            outputPath
-          ];
-          execFile(ffmpegPath, args, (err) => err ? reject(err) : resolve());
-        });
-        const outBuf = fs.readFileSync(outputPath);
-        return outBuf.toString('base64');
-      } catch (err) {
-        console.error('Error trimming audio in main:', err);
-        throw err;
-      }
     });
 
 });

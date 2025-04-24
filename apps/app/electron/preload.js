@@ -4,7 +4,6 @@ contextBridge.exposeInMainWorld("electronAPI", {
     // --- Screen Capture ---
     selectSource: (sourceId) => ipcRenderer.invoke('electronAPI:selectSource', sourceId),
     cancelSourceSelection: () => ipcRenderer.invoke('electronAPI:cancelSourceSelection'),
-    trimAudio: (blobsBase64) => ipcRenderer.invoke('electronAPI:trimAudio', blobsBase64),
 
     // --- Window Controls ---
     minimizeWindow: () => ipcRenderer.send('electronAPI:minimizeWindow'),

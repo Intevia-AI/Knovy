@@ -33,18 +33,6 @@ export default function CallToAction() {
             </div>
           </form>
 
-          {/* Feedback Section */}
-          <div className="mt-12 max-w-xl mx-auto text-left">
-             <h3 className="text-xl font-semibold mb-2 text-center">使用回饋</h3>
-             <p className="mb-4 text-sm text-muted-foreground text-center">我們只花了兩週時間開發這個原型，請幫助我們改進。</p>
-             <textarea
-                placeholder="請在此輸入您的回饋..."
-                rows={4}
-                className="w-full rounded-md border bg-background p-3 text-sm focus:outline-none focus:ring-2 focus:ring-muted"
-             />
-             <Button className="mt-4 w-full">提交回饋</Button>
-          </div>
-
         </div>
       </div>
     </section>
