@@ -14,6 +14,7 @@ import RealTimeAnalysis from "@/components/RealTimeAnalysis"; // Adjust path if 
 import AudioVisualizer from "@/components/AudioVisualizer"; // Adjust path if needed
 import { formatTime } from '@/lib/utils'; // Adjust path if needed
 import { Progress } from "@workspace/ui/components/progress"; // Import Progress
+import RealTimeSubtitle from '@/components/RealTimeSubtitle';
 
 interface ControlPanelProps {
   isScreenSharing: boolean;
@@ -31,8 +32,10 @@ interface ControlPanelProps {
   onToggleScreenShare: () => void;
   onAiAction: (action: "answer" | "summary" | "search" | "find-clue") => void;
   onKeywordClick: (keyword: string) => void;
-  onTextResponse: (text: string) => void; // For RealTimeAnalysis
-  onKeywords: (keywords: string[]) => void; // For RealTimeAnalysis
+  onTranscriptionResponse: (text: string) => void; // For RealTimeSubtitle
+  onTranscriptionKeywords: (keywords: string[]) => void; // For RealTimeSubtitle
+  onAnswerResponse: (text: string) => void; // For RealTimeAnalysis
+  onAnswerKeywords: (keywords: string[]) => void; // For RealTimeAnalysis
 }
 
 export function ControlPanel({
@@ -50,8 +53,10 @@ export function ControlPanel({
   onToggleScreenShare,
   onAiAction,
   onKeywordClick,
-  onTextResponse,
-  onKeywords,
+  onTranscriptionResponse,
+  onTranscriptionKeywords,
+  onAnswerResponse,
+  onAnswerKeywords,
 }: ControlPanelProps) {
 
   const aiActions = [
@@ -108,12 +113,18 @@ export function ControlPanel({
 
       {/* Real-time Analysis & Keywords */}
       <div className="p-4 space-y-3 border-b border-border">
-         {/* Pass system audio stream for potential system audio transcription */}
-        <RealTimeAnalysis
-          onTextResponse={onTextResponse}
-          onKeywords={onKeywords}
-          systemAudioStream={currentSystemAudioStream || undefined}
-        />
+        <div className="flex gap-2">
+          <RealTimeSubtitle
+            onTextResponse={onTranscriptionResponse}
+            onKeywords={onTranscriptionKeywords}
+            systemAudioStream={currentSystemAudioStream || undefined}
+          />
+          <RealTimeAnalysis
+            onTextResponse={onAnswerResponse}
+            onKeywords={onAnswerKeywords}
+            systemAudioStream={currentSystemAudioStream || undefined}
+          />
+        </div>
         {keywords.length > 0 && (
           <div className="pt-3 space-y-2">
             <h4 className="text-sm font-medium text-muted-foreground">
@@ -140,7 +151,7 @@ export function ControlPanel({
           </div>
         )}
       </div>
-
+      
       {/* AI Actions */}
       <div className="p-4 space-y-3 border-b border-border">
         <h3 className="text-base font-semibold text-card-foreground">

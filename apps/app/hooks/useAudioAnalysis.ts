@@ -5,7 +5,10 @@ function getVolumeFromFrequencyData(analyser: AnalyserNode, dataArray: Uint8Arra
   analyser.getByteFrequencyData(dataArray);
   let sum = 0;
   for (let i = 0; i < dataArray.length; i++) {
-    sum += dataArray[i];
+    const value = dataArray[i];
+    if (value !== undefined) {
+      sum += value;
+    }
   }
   const average = sum / dataArray.length;
   // Scale to 0-100. Adjust the divisor (e.g., 128) based on typical levels
@@ -23,7 +26,7 @@ export function useAudioAnalysis(micStream: MediaStream | null, systemStream: Me
   const [systemAnalyserNode, setSystemAnalyserNode] = useState<AnalyserNode | null>(null);
   const [systemLevel, setSystemLevel] = useState(0); // System audio level state
 
-  const animationFrameRef = useRef<number>();
+  const animationFrameRef = useRef<number | undefined>(undefined);
 
   // Mic Analyser Setup
   useEffect(() => {

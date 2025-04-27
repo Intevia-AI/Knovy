@@ -239,9 +239,13 @@ export function useScreenShare() {
       console.log("[ScreenShare] Starting microphone recording...");
       capturedMicStream = await startMicRecording();
       if (!capturedMicStream) {
-        throw new Error("Failed to start microphone recording. Check permissions.");
+        console.error("[ScreenShare] Failed to start microphone recording.");
+        alert("無法啟動麥克風錄音，請檢查權限。");
+        cleanupStream(screenStreamRef);
+        setIsScreenSharing(false);
+        return;
       }
-      console.log("[ScreenShare] Microphone recording started.");
+      console.log("[ScreenShare] Microphone recording started successfully.");
 
       // --- Step 3: Setup System Audio Recorder (if audio track exists) ---
       if (systemAudioStreamOnly) {

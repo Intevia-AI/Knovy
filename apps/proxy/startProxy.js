@@ -103,13 +103,24 @@ class GeminiProxyServer {
 
   async handleClientMessage(clientId, data) {
     const client = this.clients.get(clientId);
-    if (!client) return;
+    if (!client) {
+      console.log(`[Proxy] Client ${clientId} not found`);
+      return;
+    }
 
-    if (data.type === 'connect') {
-      console.log(`[Proxy] Client ${clientId} connecting to Gemini...`);
-      await this.connectToGemini(client);
-    } else if (data.type === 'media_chunk') {
-      console.log(`[Proxy] Received media chunk from client ${clientId}, size: ${data.chunk.length}`);
+    if (data.type === "mode") {
+      console.log(`[Proxy] Client ${clientId} set mode to: ${data.mode}`);
+      client.mode = data.mode;
+      if (client.geminiWs) {
+        this.sendInitialSetup(client.geminiWs, data.mode);
+      }
+      return;
+    }
+
+    if (data.type === "media_chunk") {
+      if (!client.geminiWs) {
+        await this.connectToGemini(client);
+      }
       this.forwardToGemini(client, data);
     } else if (data.type === 'disconnect') {
       console.log(`[Proxy] Client ${clientId} disconnecting...`);
@@ -128,7 +139,7 @@ class GeminiProxyServer {
 
       geminiWs.on('open', () => {
         console.log(`[Proxy] Gemini connection opened for client ${client.id}`);
-        this.sendInitialSetup(geminiWs);
+        this.sendInitialSetup(geminiWs, client.mode);
       });
 
       geminiWs.on('message', (data) => {
@@ -152,17 +163,12 @@ class GeminiProxyServer {
     }
   }
 
-  sendInitialSetup(ws) {
-    console.log("[Proxy] Sending initial setup");
-    const setupMessage = {
-      setup: {
-        model: MODEL,
-        generation_config: {
-          response_modalities: ["TEXT"]
-        },
-        system_instruction: {
-          parts: [{
-            text: `You are a real-time transcription assistant. For each audio input, respond in the following format:
+  sendInitialSetup(ws, mode = 'transcription') {
+    console.log(`[Proxy] Sending initial setup for mode: ${mode}`);
+    let systemInstruction;
+    
+    if (mode === 'transcription') {
+      systemInstruction = `You are a real-time transcription assistant. For each audio input, respond in the following format:
 
 TRANSCRIPTION: [transcribe the audio content here, please use chinese or english only]
 KEYWORDS: [list any technical terms, specialized vocabulary, or complex concepts that might be difficult for a general audience to understand, separated by commas. If none, leave empty]
@@ -173,7 +179,37 @@ KEYWORDS: quantum entanglement, non-local correlations
 
 If there are no difficult terms, respond with empty keywords:
 TRANSCRIPTION: The weather is nice today.
-KEYWORDS:`
+KEYWORDS:`;
+    } else {
+      systemInstruction = `You are an AI assistant in a meeting. Your job is to listen silently and only respond when truly necessary, with natural spoken-style answers that the user can directly read out loud. Follow these strict rules:
+
+1. Wait until a full speaker turn or a complete sentence is received before making any decision. Do NOT react to partial input.
+2. Do NOT ask questions or take any initiative. You are purely reactive.
+3. Do NOT respond to greetings, small talk, or simple confirmations (such as "okay," "hi," "do you get it?").
+4. Only respond if the full utterance clearly:
+   - Contains a request for help or request for information
+   - Includes a complex or technical question
+   - Shows confusion or ambiguity that needs clarification
+5. Please respond at least 50 words.
+6. If none of these are detected, respond with: NULL
+7. Please answer the question detailed and complete in traditional chinese.
+8. For web-related questions (such as real-time info or news), respond with: [WEB_SEARCH_REQUEST] {user question here}
+
+User: 請跟我解釋一下什麼是量子糾纏？
+Assistant: 量子糾纏是量子力學中的一個重要概念，指的是兩個或以上的量子粒子在某些條件下會形成糾纏態，使得它們的量子態變得相關，即使它們相隔很遠，也能夠瞬間影響彼此的量子態。
+`;
+
+    }
+
+    const setupMessage = {
+      setup: {
+        model: MODEL,
+        generation_config: {
+          response_modalities: ["TEXT"],
+        },
+        system_instruction: {
+          parts: [{
+            text: systemInstruction
           }]
         }
       }

@@ -5,17 +5,17 @@ import { Button } from "@workspace/ui/components/button";
 import { Mic, MicOff, Pause } from "lucide-react";
 import { GeminiClient } from "./geminiClient";
 
-interface RealTimeAnalysisProps {
+interface RealTimeSubtitleProps {
   onTextResponse?: (text: string) => void; // 當收到文字回應時的回呼
   onKeywords?: (keywords: string[]) => void; // 當收到關鍵字時的回呼
   systemAudioStream?: MediaStream; // 系統音訊流 (可選)
 }
 
-export default function RealTimeAnalysis({
+export default function RealTimeSubtitle({
   onTextResponse,
   onKeywords,
   systemAudioStream,
-}: RealTimeAnalysisProps) {
+}: RealTimeSubtitleProps) {
   const [isActive, setIsActive] = useState(false); // 是否正在分析
   const [isProcessing, setIsProcessing] = useState(false); // 是否正在處理中 (例如：啟動/停止)
   const [audioLevel, setAudioLevel] = useState(0); // 音量大小 (0-100)
@@ -26,32 +26,64 @@ export default function RealTimeAnalysis({
   const mediaStreamRef = useRef<MediaStream | null>(null); // 麥克風音訊流
   const systemAudioSourceRef = useRef<MediaStreamAudioSourceNode | null>(null); // 系統音訊來源節點
   const shouldSendAudioRef = useRef(false); // 是否應該發送音訊數據
-  const textBufferRef = useRef("");
+  const textBufferRef = useRef(""); // 用於緩存收到的文字片段
 
   useEffect(() => {
     // 初始化 GeminiClient
     geminiClientRef.current = new GeminiClient(
       (text) => {
-        console.log("[即時問答] 收到回答:", text);
-        onTextResponse?.(text);
+        console.log("[即時字幕] 收到文字:", text);
+        textBufferRef.current += text;
+
+        if (
+          textBufferRef.current.includes("TRANSCRIPTION:") &&
+          textBufferRef.current.includes("KEYWORDS:")
+        ) {
+          const transcriptionMatch = textBufferRef.current.match(
+            /TRANSCRIPTION: (.*?)(?:\n|$)KEYWORDS:/s
+          );
+          const keywordsMatch = textBufferRef.current.match(
+            /KEYWORDS: (.*?)(?:\n|$)/s
+          );
+
+          if (transcriptionMatch && transcriptionMatch[1]) {
+            const transcription = transcriptionMatch[1].trim();
+            const cleanTranscription = transcription
+              .replace(/^TRANSCRIPTION:\s*/i, "")
+              .trim();
+            onTextResponse?.(cleanTranscription);
+          }
+
+          if (keywordsMatch && keywordsMatch[1]) {
+            const keywordsStr = keywordsMatch[1].trim();
+            if (keywordsStr) {
+              const keywords = keywordsStr
+                .split(",")
+                .map((k) => k.trim())
+                .filter((k) => k.length > 0);
+              onKeywords?.(keywords);
+            }
+          }
+
+          textBufferRef.current = "";
+        }
       },
       () => {
-        console.log("[即時問答] WebSocket 連線已建立");
+        console.log("[即時字幕] WebSocket 連線已建立");
         setIsConnected(true);
         shouldSendAudioRef.current = true;
       },
       (isPlaying) => {
-        console.log("[即時問答] 播放狀態變更:", isPlaying);
+        console.log("[即時字幕] 播放狀態變更:", isPlaying);
       },
       (level) => {
         setAudioLevel(level);
       },
-      () => {},
-      'answer'
+      () => {}
     );
 
     return () => {
-      console.log("[即時問答] 清理 WebSocket...");
+      console.log("[即時字幕] 清理 WebSocket...");
       if (geminiClientRef.current) {
         geminiClientRef.current.disconnect();
         geminiClientRef.current = null;
@@ -72,14 +104,14 @@ export default function RealTimeAnalysis({
 
   useEffect(() => {
     if (isActive && systemAudioStream) {
-      console.log("[即時分析] 系統音訊流更新，設定新的來源");
+      console.log("[即時字幕] 系統音訊流更新，設定新的來源");
       setupSystemAudioSource(systemAudioStream);
     }
   }, [systemAudioStream, isActive]);
 
   const setupSystemAudioSource = (stream: MediaStream) => {
     if (!audioContextRef.current) {
-      console.error("[即時分析] AudioContext 未初始化");
+      console.error("[即時字幕] AudioContext 未初始化");
       return;
     }
 
@@ -92,31 +124,31 @@ export default function RealTimeAnalysis({
       const source = audioContextRef.current.createMediaStreamSource(stream);
       source.connect(audioWorkletNodeRef.current!);
       systemAudioSourceRef.current = source;
-      console.log("[即時分析] 系統音訊來源已連接");
+      console.log("[即時字幕] 系統音訊來源已連接");
     } catch (error) {
-      console.error("[即時分析] 設定系統音訊來源時發生錯誤:", error);
+      console.error("[即時字幕] 設定系統音訊來源時發生錯誤:", error);
     }
   };
 
   const startAudio = async () => {
     try {
-      console.log("[即時分析] 開始音訊...");
+      console.log("[即時字幕] 開始音訊...");
       setIsProcessing(true);
 
-      console.log("[即時分析] 連接 WebSocket...");
+      console.log("[即時字幕] 連接 WebSocket...");
       if (!geminiClientRef.current) {
-        console.error("[即時分析] GeminiClient 實例為空!");
+        console.error("[即時字幕] GeminiClient 實例為空!");
         return;
       }
 
-      console.log("[即時分析] 在 GeminiClient 上呼叫 connect()...");
+      console.log("[即時字幕] 在 GeminiClient 上呼叫 connect()...");
       geminiClientRef.current.connect();
 
       audioContextRef.current = new AudioContext({
         sampleRate: 16000,
       });
 
-      console.log("[即時分析] 載入 audio worklet...");
+      console.log("[即時字幕] 載入 audio worklet...");
       await audioContextRef.current.audioWorklet.addModule(
         "/worklets/audio-processor.js"
       );
@@ -139,14 +171,14 @@ export default function RealTimeAnalysis({
             const b64Data = btoa(String.fromCharCode(...pcmArray));
             geminiClientRef.current.sendMediaChunk(b64Data, "audio/pcm");
           } catch (error) {
-            console.error("[即時分析] 發送音訊區塊時發生錯誤:", error);
+            console.error("[即時字幕] 發送音訊區塊時發生錯誤:", error);
           }
         }
       };
 
       audioWorkletNodeRef.current = audioWorkletNode;
 
-      console.log("[即時分析] 取得麥克風音訊流");
+      console.log("[即時字幕] 取得麥克風音訊流");
       const micStream = await navigator.mediaDevices.getUserMedia({
         audio: {
           sampleRate: 16000,
@@ -166,17 +198,17 @@ export default function RealTimeAnalysis({
       }
 
       shouldSendAudioRef.current = true;
-      console.log("[即時分析] 音訊設定完成");
+      console.log("[即時字幕] 音訊設定完成");
       setIsActive(true);
     } catch (error) {
-      console.error("[即時分析] 開始音訊時發生錯誤:", error);
+      console.error("[即時字幕] 開始音訊時發生錯誤:", error);
     } finally {
       setIsProcessing(false);
     }
   };
 
   const stopAudio = () => {
-    console.log("[即時分析] 停止音訊...");
+    console.log("[即時字幕] 停止音訊...");
     shouldSendAudioRef.current = false;
 
     if (systemAudioSourceRef.current) {
@@ -217,11 +249,7 @@ export default function RealTimeAnalysis({
         ) : (
           <Mic className="h-4 w-4" />
         )}
-        {isProcessing
-          ? "處理中..."
-          : isActive
-          ? "停止問答"
-          : "開始即時問答"}
+        {isProcessing ? "處理中..." : isActive ? "停止字幕" : "開始即時字幕"}
       </Button>
 
       {isActive && (

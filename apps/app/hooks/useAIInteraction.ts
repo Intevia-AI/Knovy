@@ -4,7 +4,7 @@ import type { Segment, AIContextData } from '@/types';
 import { blobToBase64 } from '@/lib/utils';
 
 // Constants
-const API_URL = "http://localhost:3001/api/ai";
+const API_URL = process.env.NEXT_PUBLIC_AI_API_URL || "http://localhost:3000/api/ai";
 
 type AIAction = "real-time" | "answer" | "summary" | "search" | "custom" | "find-clue";
 
@@ -241,7 +241,7 @@ export function useAIInteraction({
     customPrompt,
   ]);
 
-  const handleTextResponse = useCallback((text: string) => {
+  const handleTranscriptionResponse = useCallback((text: string) => {
     setAiMessages((prev) => {
       const lastMessage = prev[prev.length - 1];
       if (lastMessage?.role === "assistant" && lastMessage.content.startsWith("[即時轉錄]")) {
@@ -258,7 +258,73 @@ export function useAIInteraction({
     });
   }, []);
 
-  const handleKeywords = useCallback((newKeywords: string[]) => {
+  const handleAnswerResponse = useCallback((text: string) => {
+    // Skip if the text is "NULL", contains "NULL", or is empty/whitespace
+    if (!text || 
+        text.trim() === "" || 
+        text === "NULL" || 
+        text.includes("NULL") || 
+        text.trim() === "null" || 
+        text.includes("null")) {
+      console.log("[即時問答] 忽略無效回應:", text);
+      return;
+    }
+
+    // Check if the response contains a web search request
+    if (text.includes("[WEB_SEARCH") || text.includes("_REQUEST]")) {
+      console.log("[即時問答] 檢測到網路搜尋請求");
+      // Extract the search query from the response
+      const searchQuery = text
+        .replace("[WEB_SEARCH", "")
+        .replace("_REQUEST]", "")
+        .replace("收到回答:", "")
+        .trim();
+      
+      // Only proceed if we have a valid search query
+      if (searchQuery) {
+        console.log("[即時問答] 搜尋查詢:", searchQuery);
+        // Create a new message for the search request
+        setAiMessages((prev) => [
+          ...prev,
+          { 
+            id: `search-${Date.now()}`, 
+            role: "user", 
+            content: `搜尋: ${searchQuery}` 
+          }
+        ]);
+        // Send the search request to the AI SDK without checking isScreenSharing
+        sendContextToAI("search", searchQuery);
+      }
+      return;
+    }
+
+    setAiMessages((prev) => {
+      const lastMessage = prev[prev.length - 1];
+      if (lastMessage?.role === "assistant" && lastMessage.content.startsWith("[即時問答]")) {
+        return [
+          ...prev.slice(0, -1),
+          { ...lastMessage, content: lastMessage.content + text },
+        ];
+      } else {
+        return [
+          ...prev,
+          { id: `answer-${Date.now()}`, role: "assistant", content: `[即時問答] ${text}` },
+        ];
+      }
+    });
+  }, [sendContextToAI]);
+
+  const handleTranscriptionKeywords = useCallback((newKeywords: string[]) => {
+    setKeywords((prev) => {
+      const uniqueNewKeywords = newKeywords.filter((k) => k && !prev.includes(k));
+      if (uniqueNewKeywords.length > 0) {
+        return [...prev, ...uniqueNewKeywords];
+      }
+      return prev;
+    });
+  }, []);
+
+  const handleAnswerKeywords = useCallback((newKeywords: string[]) => {
     setKeywords((prev) => {
       const uniqueNewKeywords = newKeywords.filter((k) => k && !prev.includes(k));
       if (uniqueNewKeywords.length > 0) {
@@ -332,8 +398,10 @@ export function useAIInteraction({
     keywords,
     selectedKeyword,
     sendContextToAI,
-    handleTextResponse,
-    handleKeywords,
+    handleTranscriptionResponse,
+    handleTranscriptionKeywords,
+    handleAnswerResponse,
+    handleAnswerKeywords,
     handleKeywordClick,
     messagesContainerRef,
     resetChat,

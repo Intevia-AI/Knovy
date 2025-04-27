@@ -63,6 +63,7 @@ const createWindow = () => {
 app.on("ready", async () => {
     // --- Check/Request Screen Recording Permission (macOS) ---
     if (process.platform === 'darwin') { // Only run on macOS
+      // Check screen recording permission
       const screenStatus = systemPreferences.getMediaAccessStatus('screen');
       console.log(`Initial screen recording permission status: ${screenStatus}`);
 
@@ -71,18 +72,32 @@ app.on("ready", async () => {
           const granted = await systemPreferences.askForMediaAccess('screen');
           console.log(`Screen recording permission request result: ${granted ? 'Granted' : 'Denied'}`);
           if (!granted) {
-            // Optional: Inform user they need to grant permission manually
             console.error("Screen recording permission was denied by the user.");
-            // You might want to show a dialog here
           }
         } catch (error) {
           console.error("Error requesting screen recording permission:", error);
         }
       } else if (screenStatus === 'denied') {
         console.error("Screen recording permission is denied. Please grant access in System Settings > Privacy & Security > Screen Recording.");
-        // Optional: Show a dialog instructing the user
       }
-      // If 'granted', we don't need to do anything
+
+      // Check microphone permission
+      const micStatus = systemPreferences.getMediaAccessStatus('microphone');
+      console.log(`Initial microphone permission status: ${micStatus}`);
+
+      if (micStatus === 'not-determined') {
+        try {
+          const granted = await systemPreferences.askForMediaAccess('microphone');
+          console.log(`Microphone permission request result: ${granted ? 'Granted' : 'Denied'}`);
+          if (!granted) {
+            console.error("Microphone permission was denied by the user.");
+          }
+        } catch (error) {
+          console.error("Error requesting microphone permission:", error);
+        }
+      } else if (micStatus === 'denied') {
+        console.error("Microphone permission is denied. Please grant access in System Settings > Privacy & Security > Microphone.");
+      }
     }
     // --- End Permission Check ---
 

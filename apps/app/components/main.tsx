@@ -64,8 +64,10 @@ export function Main() {
     keywords,
     selectedKeyword,
     sendContextToAI,
-    handleTextResponse, // Pass to ControlPanel -> RealTimeAnalysis
-    handleKeywords,     // Pass to ControlPanel -> RealTimeAnalysis
+    handleTranscriptionResponse, // For RealTimeSubtitle
+    handleTranscriptionKeywords, // For RealTimeSubtitle
+    handleAnswerResponse, // For RealTimeAnalysis
+    handleAnswerKeywords, // For RealTimeAnalysis
     handleKeywordClick, // Pass to ControlPanel
     messagesContainerRef, // Pass to ChatPanel
     resetChat, // To reset AI state on starting share
@@ -132,15 +134,17 @@ export function Main() {
           selectedKeyword={selectedKeyword}
           micAnalyserNode={micAnalyserNode}
           systemAnalyserNode={systemAnalyserNode}
-          micLevel={micLevel} // <<< Pass micLevel
-          systemLevel={systemLevel} // <<< Pass systemLevel
+          micLevel={micLevel}
+          systemLevel={systemLevel}
           screenPreviewRef={screenPreviewRef}
-          currentSystemAudioStream={currentSystemAudioStream} // Pass for RealTimeAnalysis
+          currentSystemAudioStream={currentSystemAudioStream}
           onToggleScreenShare={toggleScreenShare}
-          onAiAction={sendContextToAI} // Pass the AI function
+          onAiAction={sendContextToAI}
           onKeywordClick={handleKeywordClick}
-          onTextResponse={handleTextResponse} // Pass down for RealTimeAnalysis
-          onKeywords={handleKeywords}         // Pass down for RealTimeAnalysis
+          onTranscriptionResponse={handleTranscriptionResponse}
+          onTranscriptionKeywords={handleTranscriptionKeywords}
+          onAnswerResponse={handleAnswerResponse}
+          onAnswerKeywords={handleAnswerKeywords}
         />
       </div>
     </div>

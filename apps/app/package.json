@@ -4,7 +4,7 @@
   "private": true,
   "main": "electron/main.js",
   "scripts": {
-    "dev": "concurrently -n \"NEXT,ELECTRON\" -c \"yellow,blue\" --kill-others \"next dev\" \"electron .\"",
+    "dev": "concurrently -n \"NEXT,ELECTRON\" -c \"yellow,blue\" --kill-others \"next dev\" \"node_modules/.bin/electron .\"",
     "build": "next build && electron-builder",
     "prepare": "rimraf node_modules/electron/dist && node node_modules/electron/install.js"
   },
