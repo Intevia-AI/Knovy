@@ -1,31 +1,24 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { google } from "@ai-sdk/google";
+import { generateText } from "ai";
 import { NextResponse } from "next/server";
-
-// Initialize the Gemini API client
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GENERATIVE_AI_API_KEY || "");
 
 export async function POST(request: Request) {
   try {
-    const { messages, mode } = await request.json();
+    const { messages } = await request.json();
 
-    // Get the Gemini model - using the correct model name
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-001" });
+    // Format messages for the AI
+    const formatted = messages.map((msg: any) => ({
+      role: msg.role,
+      content: msg.content,
+    }));
 
-    // Start a chat
-    const chat = model.startChat({
-      history: messages.slice(0, -1).map((msg: any) => ({
-        role: msg.role,
-        parts: msg.content,
-      })),
+    // Generate text using the Gemini model with search grounding enabled
+    const { text } = await generateText({
+      model: google("gemini-2.0-flash-001", {
+        useSearchGrounding: true,
+      }),
+      messages: formatted,
     });
-
-    // Get the last message
-    const lastMessage = messages[messages.length - 1];
-    
-    // Send the message and get the response
-    const result = await chat.sendMessage(lastMessage.content);
-    const response = await result.response;
-    const text = response.text();
 
     return NextResponse.json({ 
       id: `ai-${Date.now()}`,

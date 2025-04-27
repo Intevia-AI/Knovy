@@ -155,7 +155,7 @@ export function useAIInteraction({
       "real-time": "分析最新的轉錄內容，並識別其中提到的關鍵點、關鍵字或待辦事項。",
       answer: "根據以下的轉錄內容，回答其中最後提出的問題：\n\n" + context.text,
       summary: "根據以下的轉錄內容，提供簡明摘要：\n\n" + context.text,
-      search: "根據以下的轉錄內容，建議相關的搜尋關鍵字或查找相關資訊：\n\n" + context.text,
+      search: "Please search the web for the following query, and answer the question directly and answer in Chinese: " + context.text,
       "find-clue": "根據以下的轉錄內容，找出其中可能存在的線索、疑點或需要進一步探討的資訊：\n\n" + context.text,
       custom: query || "根據以下要求分析最近轉錄內容。請用中文回答。",
     };
@@ -188,9 +188,9 @@ export function useAIInteraction({
         body: JSON.stringify({ 
           messages: [userMsg], 
           action: action,
-          options: {
-            useSearchGrounding: true
-          }
+          // options: {
+          //   useSearchGrounding: true
+          // }
         }),
       });
 
