@@ -34,7 +34,10 @@ export default function RealTimeAnalysis({
       (text, turnComplete) => {
         console.log("[即時問答] 收到回答:", text);
         if (onTextResponse) {
-          onTextResponse(text, turnComplete);
+          // 使用 requestAnimationFrame 來延遲調用 onTextResponse
+          requestAnimationFrame(() => {
+            onTextResponse(text, turnComplete);
+          });
         }
       },
       () => {

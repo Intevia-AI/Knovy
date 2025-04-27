@@ -44,20 +44,29 @@ export default function ChatPanel({
         ref={messagesContainerRef}
         className="flex-1 p-4 space-y-4 overflow-y-auto bg-muted/30"
       >
-        {messages.map((m) => (
-          <div
-            key={m.id}
-            className={cn(
-              "p-3 rounded-lg text-sm border w-fit max-w-[85%] whitespace-pre-wrap",
-              m.role === "user"
-                ? "bg-primary ml-auto text-primary-foreground"
-                : "bg-muted mr-auto text-foreground",
-              !m.visible && m.content.startsWith("[即時轉錄]") && "hidden"  // 如果不可見且是轉錄訊息，則隱藏
-            )}
-          >
-            <Markdown>{m.content}</Markdown>
-          </div>
-        ))}
+        {messages.map((m) => {
+          console.log(`[ChatPanel] 渲染消息:`, {
+            id: m.id,
+            content: m.content,
+            visible: m.visible,
+            isTranscription: m.content.startsWith("[即時轉錄]"),
+            shouldHide: m.content.startsWith("[即時轉錄]") && !m.visible
+          });
+          return (
+            <div
+              key={m.id}
+              className={cn(
+                "p-3 rounded-lg text-sm border w-fit max-w-[85%] whitespace-pre-wrap",
+                m.role === "user"
+                  ? "bg-primary ml-auto text-primary-foreground"
+                  : "bg-muted mr-auto text-foreground",
+                m.content.startsWith("[即時轉錄]") && !m.visible && "hidden"  // 只有轉錄訊息才檢查 visible 屬性
+              )}
+            >
+              <Markdown>{m.content}</Markdown>
+            </div>
+          );
+        })}
         {/* Loading Indicator */}
         {isLoading && (
           <div className="flex items-center justify-center text-sm text-muted-foreground p-2">

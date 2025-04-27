@@ -49,7 +49,7 @@ export function useAIInteraction({
   const [selectedKeyword, setSelectedKeyword] = useState<string | null>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const accumulatedTextRef = useRef("");
-  const [isSubtitleVisible, setIsSubtitleVisible] = useState(false);
+  const [isSubtitleVisible, setIsSubtitleVisible] = useState(true);
 
   // Log transcriptions every 10 seconds
   useEffect(() => {
@@ -242,7 +242,7 @@ export function useAIInteraction({
         console.log('[Transcription] 新增轉錄訊息到聊天');
         return [
           ...prev,
-          { id: `realtime-${Date.now()}`, role: "assistant", content: `[即時轉錄] ${text}` },
+          { id: `realtime-${Date.now()}`, role: "assistant", content: `[即時轉錄] ${text}`, visible: isSubtitleVisible },
         ];
       }
     });
@@ -260,82 +260,28 @@ export function useAIInteraction({
       return;
     }
 
-  //   // Accumulate the text
-  //   console.log("[即時問答] 收到文本片段:", text);
-  //   accumulatedTextRef.current += text;
-
-  //   // Only process if turn is complete
-  //   if (turnComplete) {
-  //     console.log("[即時問答] 收到完整回應");
-  //     console.log("[即時問答] 累積的完整文本:", accumulatedTextRef.current);
-
-  //     // Check if the accumulated text contains a web search request
-  //     if (accumulatedTextRef.current.includes('[WEB_SEARCH_REQUEST]')) {
-  //       console.log("[即時問答] 檢測到網路搜尋請求");
-  //       // Extract the search query from the response
-  //       const searchQuery = accumulatedTextRef.current
-  //         .replace('[WEB_SEARCH_REQUEST]', '')
-  //         .replace('收到回答:', '')
-  //         .trim();
-        
-  //       // Only proceed if we have a valid search query
-  //       if (searchQuery) {
-  //         console.log("[即時問答] 搜尋查詢:", searchQuery);
-  //         // Create a new message for the search request
-  //         setAiMessages((prev) => [
-  //           ...prev,
-  //           { 
-  //             id: `search-${Date.now()}`, 
-  //             role: "user", 
-  //             content: `搜尋: ${searchQuery}` 
-  //           }
-  //         ]);
-  //         // Send the search request to the AI SDK without checking isScreenSharing
-  //         sendContextToAI("search", searchQuery);
-  //       }
-  //     } else {
-  //       // If no web search request, update the messages with the accumulated text
-  //       setAiMessages((prev) => {
-  //         const lastMessage = prev[prev.length - 1];
-  //         if (lastMessage?.role === "assistant" && lastMessage.content.startsWith("[即時問答]")) {
-  //           return [
-  //             ...prev.slice(0, -1),
-  //             { ...lastMessage, content: lastMessage.content + accumulatedTextRef.current },
-  //           ];
-  //         } else {
-  //           return [
-  //             ...prev,
-  //             { id: `answer-${Date.now()}`, role: "assistant", content: `[即時問答] ${accumulatedTextRef.current}` },
-  //           ];
-  //         }
-  //       });
-  //     }
-
-  //     // Clear the accumulated text after processing
-  //     accumulatedTextRef.current = "";
-  //   }
-  // }, [sendContextToAI]);
-
-  console.log('[Answer] 收到回答:', text);
+    console.log('[Answer] 收到回答:', text);
     
-  // 更新聊天消息
-  setAiMessages(prev => {
-    const lastMessage = prev[prev.length - 1];
-    if (lastMessage?.role === "assistant" && lastMessage.content.startsWith("[即時問答]")) {
-      console.log('[Answer] 更新現有回答訊息');
-      return [
-        ...prev.slice(0, -1),
-        { ...lastMessage, content: lastMessage.content + text },
-      ];
-    } else {
-      console.log('[Answer] 新增回答訊息到聊天');
-      return [
-        ...prev,
-        { id: `answer-${Date.now()}`, role: "assistant", content: `[即時問答] ${text}` },
-      ];
-    }
-  });
-}, []);
+    // 更新聊天消息，保留轉錄消息的可見性狀態
+    setAiMessages(prev => {
+      const lastMessage = prev[prev.length - 1];
+      if (lastMessage?.role === "assistant" && lastMessage.content.startsWith("[即時問答]")) {
+        console.log('[Answer] 更新現有回答訊息');
+        // 保留所有消息的 visible 狀態
+        return [
+          ...prev.slice(0, -1),
+          { ...lastMessage, content: lastMessage.content + text },
+        ];
+      } else {
+        console.log('[Answer] 新增回答訊息到聊天');
+        // 保留所有消息的 visible 狀態
+        return [
+          ...prev,
+          { id: `answer-${Date.now()}`, role: "assistant", content: `[即時問答] ${text}` },
+        ];
+      }
+    });
+  }, []);
 
   const handleTranscriptionKeywords = useCallback((newKeywords: string[]) => {
     setKeywords((prev) => {

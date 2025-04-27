@@ -24,7 +24,7 @@ export default function RealTimeSubtitle({
   const [isProcessing, setIsProcessing] = useState(false); // 是否正在處理中 (例如：啟動/停止)
   const [audioLevel, setAudioLevel] = useState(0); // 音量大小 (0-100)
   const [isConnected, setIsConnected] = useState(false); // WebSocket 是否已連線
-  const [isSubtitleVisible, setIsSubtitleVisible] = useState(false);
+  const [isSubtitleVisible, setIsSubtitleVisible] = useState(true); // 預設為可見
   const geminiClientRef = useRef<GeminiClient | null>(null); // Gemini 客戶端實例
   const audioContextRef = useRef<AudioContext | null>(null); // 音訊上下文
   const audioWorkletNodeRef = useRef<AudioWorkletNode | null>(null); // 音訊 Worklet 節點
