@@ -239,13 +239,9 @@ export function useScreenShare() {
       console.log("[ScreenShare] Starting microphone recording...");
       capturedMicStream = await startMicRecording();
       if (!capturedMicStream) {
-        console.error("[ScreenShare] Failed to start microphone recording.");
-        alert("無法啟動麥克風錄音，請檢查權限。");
-        cleanupStream(screenStreamRef);
-        setIsScreenSharing(false);
-        return;
+        throw new Error("Failed to start microphone recording. Check permissions.");
       }
-      console.log("[ScreenShare] Microphone recording started successfully.");
+      console.log("[ScreenShare] Microphone recording started.");
 
       // --- Step 3: Setup System Audio Recorder (if audio track exists) ---
       if (systemAudioStreamOnly) {
@@ -270,6 +266,8 @@ export function useScreenShare() {
       }
 
       // --- Finalize ---
+      // 等待一小段時間確保所有資源都已初始化
+      await new Promise(resolve => setTimeout(resolve, 500));
       setIsScreenSharing(true);
       console.log("[ScreenShare] Screen sharing and recording setup complete.");
 
@@ -286,7 +284,7 @@ export function useScreenShare() {
       alert(userMessage);
       stopScreenShare(); // Ensure cleanup on any error
     }
-  }, [startMicRecording, stopScreenShare, startSystemAudioRecorderInternal]); // Dependencies updated
+  }, [startMicRecording, stopScreenShare, startSystemAudioRecorderInternal]);
 
   const toggleScreenShare = useCallback(() => {
     if (isScreenSharing) {

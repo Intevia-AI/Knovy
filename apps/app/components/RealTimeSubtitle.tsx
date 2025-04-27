@@ -8,18 +8,23 @@ import { GeminiClient } from "./geminiClient";
 interface RealTimeSubtitleProps {
   onTextResponse?: (text: string) => void; // 當收到文字回應時的回呼
   onKeywords?: (keywords: string[]) => void; // 當收到關鍵字時的回呼
-  systemAudioStream?: MediaStream; // 系統音訊流 (可選)
+  systemAudioStream?: MediaStream | null; // 系統音訊流 (可選)
+  isScreenSharing?: boolean; // 新增螢幕分享狀態
+  setSubtitleVisibility: (visibility: boolean) => void;  // 新增 prop
 }
 
 export default function RealTimeSubtitle({
   onTextResponse,
   onKeywords,
   systemAudioStream,
+  isScreenSharing = false, // 預設值為 false
+  setSubtitleVisibility,  // 新增 prop
 }: RealTimeSubtitleProps) {
   const [isActive, setIsActive] = useState(false); // 是否正在分析
   const [isProcessing, setIsProcessing] = useState(false); // 是否正在處理中 (例如：啟動/停止)
   const [audioLevel, setAudioLevel] = useState(0); // 音量大小 (0-100)
   const [isConnected, setIsConnected] = useState(false); // WebSocket 是否已連線
+  const [isSubtitleVisible, setIsSubtitleVisible] = useState(false);
   const geminiClientRef = useRef<GeminiClient | null>(null); // Gemini 客戶端實例
   const audioContextRef = useRef<AudioContext | null>(null); // 音訊上下文
   const audioWorkletNodeRef = useRef<AudioWorkletNode | null>(null); // 音訊 Worklet 節點
@@ -28,17 +33,28 @@ export default function RealTimeSubtitle({
   const shouldSendAudioRef = useRef(false); // 是否應該發送音訊數據
   const textBufferRef = useRef(""); // 用於緩存收到的文字片段
 
+  // 監聽螢幕分享狀態變化
+  useEffect(() => {
+    if (isScreenSharing && !isActive) {
+      startAudio();
+    } else if (!isScreenSharing && isActive) {
+      stopAudio();
+    }
+  }, [isScreenSharing]);
+
   useEffect(() => {
     // 初始化 GeminiClient
     geminiClientRef.current = new GeminiClient(
       (text) => {
-        console.log("[即時字幕] 收到文字:", text);
+        console.log("[即時字幕] 收到原始文字:", text);
         textBufferRef.current += text;
+        console.log("[即時字幕] 當前緩衝區內容:", textBufferRef.current);
 
         if (
           textBufferRef.current.includes("TRANSCRIPTION:") &&
           textBufferRef.current.includes("KEYWORDS:")
         ) {
+          console.log("[即時字幕] 檢測到完整的轉錄和關鍵字標記");
           const transcriptionMatch = textBufferRef.current.match(
             /TRANSCRIPTION: (.*?)(?:\n|$)KEYWORDS:/s
           );
@@ -51,6 +67,7 @@ export default function RealTimeSubtitle({
             const cleanTranscription = transcription
               .replace(/^TRANSCRIPTION:\s*/i, "")
               .trim();
+            console.log("[即時字幕] 提取的轉錄文字:", cleanTranscription);
             onTextResponse?.(cleanTranscription);
           }
 
@@ -61,11 +78,13 @@ export default function RealTimeSubtitle({
                 .split(",")
                 .map((k) => k.trim())
                 .filter((k) => k.length > 0);
+              console.log("[即時字幕] 提取的關鍵字:", keywords);
               onKeywords?.(keywords);
             }
           }
 
           textBufferRef.current = "";
+          console.log("[即時字幕] 清空緩衝區");
         }
       },
       () => {
@@ -234,25 +253,32 @@ export default function RealTimeSubtitle({
     setIsConnected(false);
   };
 
+  // 處理字幕可見性變化
+  const handleVisibilityToggle = () => {
+    const newVisibility = !isSubtitleVisible;
+    setIsSubtitleVisible(newVisibility);
+    setSubtitleVisibility(newVisibility);
+  };
+
   return (
     <div className="flex flex-col items-center space-y-4 w-full max-w-2xl mx-auto">
       <Button
-        onClick={isActive ? stopAudio : startAudio}
+        onClick={handleVisibilityToggle}
         disabled={isProcessing}
-        variant={isActive ? "destructive" : "default"}
+        variant={isSubtitleVisible ? "default" : "outline"}
         className="flex items-center gap-2 w-full"
       >
         {isProcessing ? (
           <Pause className="h-4 w-4 animate-spin" />
-        ) : isActive ? (
-          <MicOff className="h-4 w-4" />
-        ) : (
+        ) : isSubtitleVisible ? (
           <Mic className="h-4 w-4" />
+        ) : (
+          <MicOff className="h-4 w-4" />
         )}
-        {isProcessing ? "處理中..." : isActive ? "停止字幕" : "開始即時字幕"}
+        {isProcessing ? "處理中..." : isSubtitleVisible ? "隱藏字幕" : "顯示字幕"}
       </Button>
 
-      {isActive && (
+      {/* {isSubtitleVisible && isActive && (
         <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
           <div
             className="h-full bg-blue-500 transition-all duration-100"
@@ -260,6 +286,12 @@ export default function RealTimeSubtitle({
           />
         </div>
       )}
+
+      {isSubtitleVisible && textBufferRef.current && (
+        <div className="w-full p-4 bg-black bg-opacity-50 text-white rounded-lg">
+          {textBufferRef.current}
+        </div>
+      )} */}
     </div>
   );
 }

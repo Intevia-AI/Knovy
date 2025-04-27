@@ -34,8 +34,9 @@ interface ControlPanelProps {
   onKeywordClick: (keyword: string) => void;
   onTranscriptionResponse: (text: string) => void; // For RealTimeSubtitle
   onTranscriptionKeywords: (keywords: string[]) => void; // For RealTimeSubtitle
-  onAnswerResponse: (text: string) => void; // For RealTimeAnalysis
+  onAnswerResponse: (text: string, turnComplete: boolean) => void; // For RealTimeAnalysis
   onAnswerKeywords: (keywords: string[]) => void; // For RealTimeAnalysis
+  setSubtitleVisibility: (visibility: boolean) => void; // For RealTimeSubtitle
 }
 
 export function ControlPanel({
@@ -57,6 +58,7 @@ export function ControlPanel({
   onTranscriptionKeywords,
   onAnswerResponse,
   onAnswerKeywords,
+  setSubtitleVisibility,
 }: ControlPanelProps) {
 
   const aiActions = [
@@ -113,11 +115,13 @@ export function ControlPanel({
 
       {/* Real-time Analysis & Keywords */}
       <div className="p-4 space-y-3 border-b border-border">
-        <div className="flex gap-2">
+        <div className="flex flex-col gap-4">
           <RealTimeSubtitle
             onTextResponse={onTranscriptionResponse}
             onKeywords={onTranscriptionKeywords}
             systemAudioStream={currentSystemAudioStream || undefined}
+            isScreenSharing={isScreenSharing}
+            setSubtitleVisibility={setSubtitleVisibility}
           />
           <RealTimeAnalysis
             onTextResponse={onAnswerResponse}

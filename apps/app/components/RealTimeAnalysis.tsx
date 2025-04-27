@@ -6,7 +6,7 @@ import { Mic, MicOff, Pause } from "lucide-react";
 import { GeminiClient } from "./geminiClient";
 
 interface RealTimeAnalysisProps {
-  onTextResponse?: (text: string) => void; // 當收到文字回應時的回呼
+  onTextResponse?: (text: string, turnComplete: boolean) => void; // 當收到文字回應時的回呼
   onKeywords?: (keywords: string[]) => void; // 當收到關鍵字時的回呼
   systemAudioStream?: MediaStream; // 系統音訊流 (可選)
 }
@@ -31,9 +31,11 @@ export default function RealTimeAnalysis({
   useEffect(() => {
     // 初始化 GeminiClient
     geminiClientRef.current = new GeminiClient(
-      (text) => {
+      (text, turnComplete) => {
         console.log("[即時問答] 收到回答:", text);
-        onTextResponse?.(text);
+        if (onTextResponse) {
+          onTextResponse(text, turnComplete);
+        }
       },
       () => {
         console.log("[即時問答] WebSocket 連線已建立");

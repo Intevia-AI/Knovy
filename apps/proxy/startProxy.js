@@ -170,7 +170,7 @@ class GeminiProxyServer {
     if (mode === 'transcription') {
       systemInstruction = `You are a real-time transcription assistant. For each audio input, respond in the following format:
 
-TRANSCRIPTION: [transcribe the audio content here, please use chinese or english only]
+TRANSCRIPTION: [transcribe the audio content here, please use traditional chinese]
 KEYWORDS: [list any technical terms, specialized vocabulary, or complex concepts that might be difficult for a general audience to understand, separated by commas. If none, leave empty]
 
 Example:
@@ -258,7 +258,10 @@ Assistant: 量子糾纏是量子力學中的一個重要概念，指的是兩個
         for (const part of parts) {
           if (part.text) {
             console.log(`[Proxy] Forwarding text to client ${client.id}: ${part.text}`);
-            client.ws.send(JSON.stringify({ text: part.text }));
+            client.ws.send(JSON.stringify({ 
+              text: part.text,
+              turnComplete: messageData.serverContent?.turnComplete === true
+            }));
           }
         }
       } else if (messageData.error) {

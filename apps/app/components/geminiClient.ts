@@ -12,7 +12,7 @@ export class GeminiClient {
   private ws: WebSocket | null = null;
   private isConnected: boolean = false;
   private isSetupComplete: boolean = false;
-  private onMessageCallback: ((text: string) => void) | null = null;
+  private onMessageCallback: ((text: string, turnComplete: boolean) => void) | null = null;
   private onSetupCompleteCallback: (() => void) | null = null;
   private onPlayingStateChange: ((isPlaying: boolean) => void) | null = null;
   private onAudioLevelChange: ((level: number) => void) | null = null;
@@ -24,7 +24,7 @@ export class GeminiClient {
   private mode: 'transcription' | 'answer';
 
   constructor(
-    onMessage: (text: string) => void,
+    onMessage: (text: string, turnComplete: boolean) => void,
     onSetupComplete: () => void,
     onPlayingStateChange: (isPlaying: boolean) => void,
     onAudioLevelChange: (level: number) => void,
@@ -71,9 +71,10 @@ export class GeminiClient {
       try {
         const data = JSON.parse(event.data);
         if (data.text) {
-          this.onMessageCallback?.(data.text);
+          this.onMessageCallback?.(data.text, data.turnComplete);
         } else if (data.setupComplete) {
           this.isSetupComplete = true;
+          this.onSetupCompleteCallback?.();
         }
       } catch (error) {
         this.onError(error as Error);
