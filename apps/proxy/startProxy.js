@@ -193,7 +193,7 @@ KEYWORDS:`;
 5. Please respond at least 50 words.
 6. If none of these are detected, respond with: NULL
 7. Please answer the question detailed and complete in traditional chinese.
-8. For web-related questions (such as real-time info or news), respond with: [WEB_SEARCH_REQUEST] {user question here}
+8. For web-related questions (such as real-time info or news), respond with: [WEB] {user question here}
 
 User: 請跟我解釋一下什麼是量子糾纏？
 Assistant: 量子糾纏是量子力學中的一個重要概念，指的是兩個或以上的量子粒子在某些條件下會形成糾纏態，使得它們的量子態變得相關，即使它們相隔很遠，也能夠瞬間影響彼此的量子態。
@@ -260,15 +260,22 @@ Assistant: 量子糾纏是量子力學中的一個重要概念，指的是兩個
             console.log(`[Proxy] Forwarding text to client ${client.id}: ${part.text}`);
             client.ws.send(JSON.stringify({ 
               text: part.text,
-              turnComplete: messageData.serverContent?.turnComplete === true
+              turnComplete: false
             }));
           }
         }
+      } else if (messageData.serverContent?.turnComplete === true) {
+        console.log(`[Proxy] Turn complete received for client ${client.id}`);
+        client.ws.send(JSON.stringify({ 
+          text: "search web",
+          turnComplete: true
+        }));
       } else if (messageData.error) {
         console.error(`[Proxy] Gemini returned an error:`, messageData.error);
         client.ws.send(JSON.stringify({ error: messageData.error }));
       } else {
-        console.log(`[Proxy] Unhandled message type:`, messageData);
+        console.log("[WebSocket] Message data:", messageData);
+        console.log("[WebSocket] Turn complete value:", messageData.serverContent?.turnComplete);
       }
     } catch (error) {
       console.error(`[Proxy] Error processing Gemini response:`, error);

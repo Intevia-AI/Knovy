@@ -60,7 +60,7 @@ export default function ChatPanel({
                 m.role === "user"
                   ? "bg-primary ml-auto text-primary-foreground"
                   : "bg-muted mr-auto text-foreground",
-                m.content.startsWith("[即時轉錄]") && !m.visible && "hidden"  // 只有轉錄訊息才檢查 visible 屬性
+                (m.content.startsWith("[即時轉錄]") && !m.visible && "hidden") || m.content.includes("search web")  // 只有轉錄訊息才檢查 visible 屬性
               )}
             >
               <Markdown>{m.content}</Markdown>
