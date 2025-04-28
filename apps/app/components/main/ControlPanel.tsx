@@ -62,14 +62,13 @@ export function ControlPanel({
 }: ControlPanelProps) {
 
   const aiActions = [
-    { action: "answer", label: "回答問題", icon: MicIcon },
+    { action: "answer", label: "深度回答", icon: MicIcon },
     { action: "summary", label: "產生摘要", icon: ListCollapseIcon },
     { action: "search", label: "搜尋主題", icon: SearchIcon },
-    { action: "find-clue", label: "找尋線索", icon: LightbulbIcon },
   ] as const; // Use const assertion
 
   return (
-    <aside className="flex flex-col w-full max-w-xs border-l border-border overflow-y-auto shrink-0 bg-card">
+    <aside className="flex flex-col w-full max-w-[300px] border-l border-border overflow-y-auto shrink-0 bg-card">
       {/* Status and Control */}
       <div className="p-4 space-y-3 border-b border-border">
         <div className="flex items-center justify-between gap-2">
@@ -161,7 +160,7 @@ export function ControlPanel({
         <h3 className="text-base font-semibold text-card-foreground">
           AI 動作
         </h3>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-3 gap-2">
           {aiActions.map(({ action, label, icon: Icon }) => (
             <Button
               key={action}
@@ -169,22 +168,22 @@ export function ControlPanel({
               size="sm"
               disabled={isLoading || !isScreenSharing}
               onClick={() => onAiAction(action)}
-              className="flex items-center justify-start gap-2 text-sm" // Ensure consistent text size
+              className="flex items-center justify-center gap-1 text-xs px-2" // Adjusted padding and text size
                title={label} // Tooltip
             >
-              <Icon className="h-4 w-4" />
-              <span>{label}</span>
+              <Icon className="h-3 w-3" /> {/* Smaller icon */}
+              <span className="truncate">{label}</span> {/* Truncate long text */}
             </Button>
           ))}
         </div>
       </div>
 
-      {/* Mic Audio Visualizer */}
+      {/* Mic Audio Visualizer - Commented out
       <div className="p-4 space-y-3 border-b border-border">
         <h3 className="text-base font-semibold text-card-foreground">
           即時分析 (麥克風)
         </h3>
-        <div className="py-2 w-full h-[56px] flex items-center justify-center"> {/* Added fixed height */}
+        <div className="py-2 w-full h-[56px] flex items-center justify-center">
           {isScreenSharing && micAnalyserNode ? (
              <AudioVisualizer analyserNode={micAnalyserNode} height={40} />
           ) : (
@@ -198,6 +197,7 @@ export function ControlPanel({
           </div>
         )}
       </div>
+      */}
 
       {/* System Audio Visualizer */}
       <div className="p-4 space-y-3 border-b border-border">

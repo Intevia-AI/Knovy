@@ -15,8 +15,8 @@ let pendingMediaRequest = null; // Keep track of the callback for the media requ
 
 const createWindow = () => {
   mainWindow = new BrowserWindow({ // Assign to mainWindow
-    width: 800,
-    height: 600,
+    width: 600,
+    height: 480,
     frame: false, // Remove default frame to use custom header
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
