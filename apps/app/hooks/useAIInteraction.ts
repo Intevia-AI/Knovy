@@ -107,10 +107,10 @@ export function useAIInteraction({
       };
     }
 
-    // 如果是回答問題，只使用最近的轉錄內容
-    const contextTranscriptions = action === "answer" 
-      ? transcriptions.slice(-5) // 使用最近的 5 條轉錄
-      : transcriptions; // 其他動作使用所有轉錄
+    // 如果是回答問題或摘要，使用所有轉錄內容
+    const contextTranscriptions = action === "answer" || action === "summary"
+      ? transcriptions // 使用所有轉錄
+      : transcriptions.slice(-5); // 其他動作使用最近的 5 條轉錄
 
     console.log("[AIInteraction] Selected transcriptions for context:", contextTranscriptions);
 
@@ -170,8 +170,8 @@ export function useAIInteraction({
 
     const promptMap: Record<AIAction, string> = {
       "real-time": "分析最新的轉錄內容，並識別其中提到的關鍵點、關鍵字或待辦事項。",
-      answer: "根據以下的轉錄內容，回答其中最後提出的問題：\n\n" + context.text,
-      summary: "根據以下的轉錄內容，提供簡明摘要：\n\n" + context.text,
+      answer: "附上的轉錄內容是一個會議全部的對話，請根據整個會議的對話，詳細回答最後提出的問題: " + context.text,
+      summary: "根據以下的轉錄內容，提供簡明摘要: " + context.text,
       search: "Please search the web for the following query, and answer the question directly and answer in Chinese: " + context.text,
       "find-clue": "根據以下的轉錄內容，找出其中可能存在的線索、疑點或需要進一步探討的資訊：\n\n" + context.text,
       custom: query || "根據以下要求分析最近轉錄內容。請用中文回答。",
