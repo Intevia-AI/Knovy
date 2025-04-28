@@ -2,11 +2,19 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { Message as AIMessage } from 'ai';
 import type { Segment } from '@/types';
 import { blobToBase64 } from '@/lib/utils';
+import html2canvas from 'html2canvas-pro';
+import { useRouter } from "next/navigation";
+import { useToast } from "@/components/ui/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
+import { useSettings } from "@/contexts/SettingsContext";
+import { useCamera } from "@/contexts/CameraContext";
+import { useTranscription as useTranscriptionContext } from "@/contexts/TranscriptionContext";
+import { useAI } from "@/contexts/AIContext";
 
 // Constants
 const API_URL = process.env.NEXT_PUBLIC_AI_API_URL || "http://localhost:3000/api/ai";
 
-type AIAction = "real-time" | "answer" | "summary" | "search" | "custom" | "find-clue";
+type AIAction = "real-time" | "answer" | "summary" | "search" | "custom" | "find-clue" | "screen";
 
 interface TranscriptionMessage extends AIMessage {
   timestamp: number;
@@ -16,6 +24,7 @@ interface TranscriptionMessage extends AIMessage {
 interface AIContextData {
   text?: string;
   timestamp?: number;
+  screenshot?: string;
 }
 
 interface UseAIInteractionProps {
@@ -118,14 +127,22 @@ export function useAIInteraction({
   }, [transcriptions]);
 
   // Function to send context and prompt to the AI backend
-  const sendContextToAI = useCallback(async (action: AIAction, query?: string) => {
+  const sendContextToAI = useCallback(async (action: AIAction, query?: string, screenshot?: string) => {
     setIsLoading(true);
     console.log(`Sending AI request. Action: ${action}, Custom Query: ${query}`);
 
     let context: AIContextData;
     
+    if (action === "screen") {
+      context = {
+        text: query || "",
+        screenshot: screenshot || "",
+        timestamp: Date.now()
+      };
+      console.log("[AIInteraction] Using screenshot as context for screen analysis:", context.text);
+    }
     // 如果是 web search，直接使用 query 作為 context
-    if (action === "search") {
+    else if (action === "search") {
       context = {
         text: query || "",
         timestamp: Date.now()
@@ -158,6 +175,7 @@ export function useAIInteraction({
       search: "Please search the web for the following query, and answer the question directly and answer in Chinese: " + context.text,
       "find-clue": "根據以下的轉錄內容，找出其中可能存在的線索、疑點或需要進一步探討的資訊：\n\n" + context.text,
       custom: query || "根據以下要求分析最近轉錄內容。請用中文回答。",
+      screen: "請你分析截圖，並回答以下問題：\n\n" + context.text,
     };
 
     const displayPromptMap: Record<AIAction, string> = {
@@ -167,6 +185,7 @@ export function useAIInteraction({
       search: "根據轉錄內容搜尋主題",
       "find-clue": "根據轉錄內容找尋線索",
       custom: customPrompt || "自訂請求",
+      screen: "截圖分析",
     };
 
     const userMsgContent = action === "custom" ? customPrompt : promptMap[action];
@@ -188,9 +207,11 @@ export function useAIInteraction({
         body: JSON.stringify({ 
           messages: [userMsg], 
           action: action,
-          // options: {
-          //   useSearchGrounding: true
-          // }
+          data: {
+            text: context.text,
+            timestamp: context.timestamp,
+            screenshot: context.screenshot
+          }
         }),
       });
 
@@ -303,6 +324,53 @@ export function useAIInteraction({
         const searchQuery = accumulatedTextRef.current.replace("[WEB]", "").trim();
         // 發送搜尋請求
         sendContextToAI("search", searchQuery);
+        // 重置累積文本
+        accumulatedTextRef.current = "";
+        return;
+      }
+
+      if (accumulatedTextRef.current.includes("[SCREEN]")) {
+        console.log('[Answer] 檢測到截圖請求');
+        // 提取搜尋查詢
+        const searchQuery = accumulatedTextRef.current.replace("[SCREEN]", "").trim();
+        
+        // 使用 html2canvas 獲取截圖
+        html2canvas(document.body, {
+          useCORS: true,
+          allowTaint: true,
+          scale: 1,
+          logging: false,
+          backgroundColor: '#ffffff',  // 設置背景色
+          ignoreElements: (element) => {
+            // 忽略可能導致問題的元素
+            return element.tagName === 'VIDEO' || 
+                   element.tagName === 'CANVAS' ||
+                   element.tagName === 'IFRAME';
+          },
+          onclone: (clonedDoc) => {
+            // 在克隆的文檔中處理樣式
+            const style = clonedDoc.createElement('style');
+            style.textContent = `
+              * {
+                color: #000000 !important;
+                background-color: #ffffff !important;
+              }
+            `;
+            clonedDoc.head.appendChild(style);
+          }
+        }).then(canvas => {
+          // 轉換為 base64
+          const imageData = canvas.toDataURL('image/jpeg', 0.8);
+          const b64Data = imageData.split(',')[1];
+          const screenshot = b64Data;
+          // 發送搜尋請求，包含截圖
+          sendContextToAI("screen", searchQuery, screenshot);
+        }).catch(error => {
+          console.error('截圖失敗:', error);
+          // 如果截圖失敗，仍然發送搜尋請求
+          sendContextToAI("screen", searchQuery);
+        });
+        
         // 重置累積文本
         accumulatedTextRef.current = "";
         return;

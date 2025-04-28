@@ -194,9 +194,12 @@ KEYWORDS:`;
 6. If none of these are detected, respond with: NULL
 7. Please answer the question detailed and complete in traditional chinese.
 8. For web-related questions (such as real-time info or news), respond with: [WEB] {user question here}
-
+9. If the user mentions screen, display, image, or anything visual, respond with: [SCREEN] {user question here}
 User: 請跟我解釋一下什麼是量子糾纏？
 Assistant: 量子糾纏是量子力學中的一個重要概念，指的是兩個或以上的量子粒子在某些條件下會形成糾纏態，使得它們的量子態變得相關，即使它們相隔很遠，也能夠瞬間影響彼此的量子態。
+
+User: 英偉達的股價是多少？
+Assistant: [WEB] 英偉達的股價是多少？
 `;
 
     }
