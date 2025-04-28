@@ -45,13 +45,6 @@ export default function ChatPanel({
         className="flex-1 p-4 space-y-4 overflow-y-auto bg-muted/30"
       >
         {messages.map((m) => {
-          console.log(`[ChatPanel] 渲染消息:`, {
-            id: m.id,
-            content: m.content,
-            visible: m.visible,
-            isTranscription: m.content.startsWith("[即時轉錄]"),
-            shouldHide: m.content.startsWith("[即時轉錄]") && !m.visible
-          });
           return (
             <div
               key={m.id}

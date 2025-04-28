@@ -50,25 +50,30 @@ export default function RealTimeSubtitle({
         textBufferRef.current += text;
         console.log("[即時字幕] 當前緩衝區內容:", textBufferRef.current);
 
-        if (
-          textBufferRef.current.includes("TRANSCRIPTION:") &&
-          textBufferRef.current.includes("KEYWORDS:")
-        ) {
+        // 檢查是否包含完整的轉錄和關鍵字標記
+        if (textBufferRef.current.includes("TRANSCRIPTION:") && textBufferRef.current.includes("KEYWORDS:")) {
           console.log("[即時字幕] 檢測到完整的轉錄和關鍵字標記");
+          
+          // 提取轉錄內容
           const transcriptionMatch = textBufferRef.current.match(
             /TRANSCRIPTION: (.*?)(?:\n|$)KEYWORDS:/s
           );
+          
+          // 提取關鍵字
           const keywordsMatch = textBufferRef.current.match(
             /KEYWORDS: (.*?)(?:\n|$)/s
           );
 
           if (transcriptionMatch && transcriptionMatch[1]) {
-            const transcription = transcriptionMatch[1].trim();
-            const cleanTranscription = transcription
-              .replace(/^TRANSCRIPTION:\s*/i, "")
+            // 清理轉錄文本
+            const transcription = transcriptionMatch[1]
+              .replace(/TRANSCRIPTION:\s*/gi, "") // 移除所有 TRANSCRIPTION: 標記
+              .replace(/search web/g, "") // 移除 search web 標記
+              .replace(/\s+/g, " ") // 移除多餘空格
               .trim();
-            console.log("[即時字幕] 提取的轉錄文字:", cleanTranscription);
-            onTextResponse?.(cleanTranscription);
+            
+            console.log("[即時字幕] 提取的轉錄文字:", transcription);
+            onTextResponse?.(transcription);
           }
 
           if (keywordsMatch && keywordsMatch[1]) {
@@ -83,6 +88,7 @@ export default function RealTimeSubtitle({
             }
           }
 
+          // 清空緩衝區
           textBufferRef.current = "";
           console.log("[即時字幕] 清空緩衝區");
         }
