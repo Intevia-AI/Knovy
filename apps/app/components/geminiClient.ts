@@ -4,13 +4,15 @@ import dotenv from "dotenv";
 dotenv.config();
 
 // const PROXY_SERVER_URL = process.env.PROXY_SERVER_URL || `ws://${process.env.PROXY_HOST || 'localhost'}:${process.env.PROXY_PORT || '4567'}`;
-const PROXY_SERVER_URL = "wss://intevia-api.adastra.tw";
+// const PROXY_SERVER_URL = "wss://intevia-api.adastra.tw";
+const PROXY_SERVER_URL = process.env.NEXT_PUBLIC_GEMINI_WS_URL || "ws://localhost:4567";
+console.log(PROXY_SERVER_URL);
 
 export class GeminiClient {
   private ws: WebSocket | null = null;
   private isConnected: boolean = false;
   private isSetupComplete: boolean = false;
-  private onMessageCallback: ((text: string) => void) | null = null;
+  private onMessageCallback: ((text: string, turnComplete: boolean) => void) | null = null;
   private onSetupCompleteCallback: (() => void) | null = null;
   private onPlayingStateChange: ((isPlaying: boolean) => void) | null = null;
   private onAudioLevelChange: ((level: number) => void) | null = null;
@@ -19,13 +21,15 @@ export class GeminiClient {
   private maxReconnectAttempts: number = 5;
   private reconnectTimeout: number = 1000;
   private streamingBuffer: string = "";
+  private mode: 'transcription' | 'answer';
 
   constructor(
-    onMessage: (text: string) => void,
+    onMessage: (text: string, turnComplete: boolean) => void,
     onSetupComplete: () => void,
     onPlayingStateChange: (isPlaying: boolean) => void,
     onAudioLevelChange: (level: number) => void,
-    onTranscription: (text: string) => void
+    onTranscription: (text: string) => void,
+    mode: 'transcription' | 'answer' = 'transcription'
   ) {
     // Security check: Ensure we're not running in production without proper proxy configuration
     if (process.env.NODE_ENV === "production" && !PROXY_SERVER_URL) {
@@ -39,48 +43,55 @@ export class GeminiClient {
     this.onPlayingStateChange = onPlayingStateChange;
     this.onAudioLevelChange = onAudioLevelChange;
     this.onTranscriptionCallback = onTranscription;
+    this.mode = mode;
   }
 
   connect() {
-    try {
-      this.ws = new WebSocket(PROXY_SERVER_URL);
-
-      this.ws.onopen = () => {
-        console.log("Connected to proxy server");
-        this.isConnected = true;
-        this.reconnectAttempts = 0;
-        // Send initialization message
-        this.ws?.send(JSON.stringify({ type: "connect" }));
-      };
-
-      this.ws.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          if (data.text) {
-            this.onMessageCallback?.(data.text);
-          } else if (data.setupComplete) {
-            this.isSetupComplete = true;
-            this.onSetupCompleteCallback?.();
-          }
-        } catch (error) {
-          this.onError(error as Error);
-        }
-      };
-
-      this.ws.onerror = (error) => {
-        console.error("WebSocket error:", error);
-        this.onError(new Error("WebSocket error occurred"));
-      };
-
-      this.ws.onclose = () => {
-        console.log("WebSocket closed");
-        this.isConnected = false;
-        this.onClose();
-        this.reconnect();
-      };
-    } catch (error) {
-      this.onError(error as Error);
+    if (this.ws) {
+      console.warn("[Gemini] WebSocket 已經連接");
+      return;
     }
+
+    const wsUrl = process.env.NEXT_PUBLIC_GEMINI_WS_URL || "ws://localhost:4567";
+    this.ws = new WebSocket(wsUrl);
+
+    this.ws.onopen = () => {
+      console.log("[Gemini] WebSocket 連接成功");
+      // 發送模式信息
+      this.ws?.send(JSON.stringify({
+        type: "mode",
+        mode: this.mode
+      }));
+      this.onSetupCompleteCallback?.();
+      this.isConnected = true;
+      this.reconnectAttempts = 0;
+    };
+
+    this.ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.text) {
+          this.onMessageCallback?.(data.text, data.turnComplete);
+        } else if (data.setupComplete) {
+          this.isSetupComplete = true;
+          this.onSetupCompleteCallback?.();
+        }
+      } catch (error) {
+        this.onError(error as Error);
+      }
+    };
+
+    this.ws.onerror = (error) => {
+      console.error("WebSocket error:", error);
+      this.onError(new Error("WebSocket error occurred"));
+    };
+
+    this.ws.onclose = () => {
+      console.log("WebSocket closed");
+      this.isConnected = false;
+      this.onClose();
+      this.reconnect();
+    };
   }
 
   private reconnect() {

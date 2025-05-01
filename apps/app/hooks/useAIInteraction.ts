@@ -1,12 +1,31 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { Message } from 'ai';
-import type { Segment, AIContextData } from '@/types';
+import { Message as AIMessage } from 'ai';
+import type { Segment } from '@/types';
 import { blobToBase64 } from '@/lib/utils';
+import html2canvas from 'html2canvas-pro';
+import { useRouter } from "next/navigation";
+import { useToast } from "@/components/ui/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
+import { useSettings } from "@/contexts/SettingsContext";
+import { useCamera } from "@/contexts/CameraContext";
+import { useTranscription as useTranscriptionContext } from "@/contexts/TranscriptionContext";
+import { useAI } from "@/contexts/AIContext";
 
 // Constants
-const API_URL = "http://localhost:3001/api/ai";
+const API_URL = process.env.NEXT_PUBLIC_AI_API_URL || "http://localhost:3000/api/ai";
 
-type AIAction = "real-time" | "answer" | "summary" | "search" | "custom" | "find-clue";
+type AIAction = "real-time" | "answer" | "summary" | "search" | "custom" | "find-clue" | "screen";
+
+interface TranscriptionMessage extends AIMessage {
+  timestamp: number;
+  type: 'transcription';
+}
+
+interface AIContextData {
+  text?: string;
+  timestamp?: number;
+  screenshot?: string;
+}
 
 interface UseAIInteractionProps {
   micSegments: Segment[]; // Array of completed mic segments
@@ -18,6 +37,10 @@ interface UseAIInteractionProps {
   isScreenSharing: boolean;
 }
 
+interface CustomMessage extends AIMessage {
+  visible?: boolean;
+}
+
 export function useAIInteraction({
   micSegments,
   systemAudioSegments,
@@ -27,12 +50,41 @@ export function useAIInteraction({
   systemAudioMimeType,
   isScreenSharing,
 }: UseAIInteractionProps) {
-  const [aiMessages, setAiMessages] = useState<Message[]>([]);
+  const [aiMessages, setAiMessages] = useState<CustomMessage[]>([]);
+  const [transcriptions, setTranscriptions] = useState<TranscriptionMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [customPrompt, setCustomPrompt] = useState("");
   const [keywords, setKeywords] = useState<string[]>([]);
   const [selectedKeyword, setSelectedKeyword] = useState<string | null>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const accumulatedTextRef = useRef("");
+  const [isSubtitleVisible, setIsSubtitleVisible] = useState(true);
+
+  // Log transcriptions every 10 seconds
+  useEffect(() => {
+    const logTranscriptions = () => {
+      if (transcriptions.length > 0) {
+        console.log('\n=== 轉錄對話記錄 ===');
+        console.log(`總共 ${transcriptions.length} 條轉錄`);
+        console.log('-------------------');
+        transcriptions.forEach((t, index) => {
+          const time = new Date(t.timestamp).toLocaleTimeString();
+          console.log(`[${index + 1}] [${time}] ${t.content}`);
+        });
+        console.log('===================\n');
+      }
+    };
+
+    // 立即執行一次
+    logTranscriptions();
+
+    // 設置定時器
+    const interval = setInterval(logTranscriptions, 10000);
+
+    return () => {
+      clearInterval(interval);
+    };
+  }, [transcriptions]);
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -41,156 +93,106 @@ export function useAIInteraction({
     }
   }, [aiMessages]);
 
-  // Function to gather context from recent audio segments AND current chunks
-  const gatherContext = useCallback(async (): Promise<AIContextData | null> => {
-    console.log("[AIInteraction] Gathering context...");
-
-    const audioInputs: AIContextData['audioInputs'] = [];
-
-    // --- Process Mic Audio ---
-    const currentMicChunks = currentMicChunksRef.current ?? [];
-    const lastMicSegment = micSegments.length > 0 ? micSegments[micSegments.length - 1] : null;
-
-    let micBlobToProcess: Blob | null = null;
-    let micLabel = "";
-
-    // Prioritize current chunks if they exist
-    if (currentMicChunks.length > 0) {
-      try {
-        micBlobToProcess = new Blob(currentMicChunks, { type: micMimeType });
-        micLabel = "mic-current";
-        console.log(`[AIInteraction] Using current mic chunks, size: ${micBlobToProcess?.size}`);
-      } catch (error) {
-        console.error("[AIInteraction] Error creating blob from current mic chunks:", error);
-        micBlobToProcess = null;
-      }
+  // Function to gather context from transcriptions
+  const gatherContext = useCallback(async (action?: AIAction): Promise<AIContextData | null> => {
+    console.log("[AIInteraction] Gathering context from transcriptions...");
+    console.log("[AIInteraction] Current transcriptions:", transcriptions);
+    
+    // 即使沒有轉錄內容，也返回一個空的 context
+    if (transcriptions.length === 0) {
+      console.log("[AIInteraction] No transcriptions available, using empty context");
+      return {
+        text: "",
+        timestamp: Date.now()
+      };
     }
 
-    // If no current chunks, use the last completed segment
-    if (!micBlobToProcess && lastMicSegment) {
-      micBlobToProcess = lastMicSegment.blob;
-      micLabel = "mic-last-segment";
-      console.log(`[AIInteraction] Using last completed mic segment, size: ${micBlobToProcess?.size}`);
-    }
+    // 如果是回答問題或摘要，使用所有轉錄內容
+    const contextTranscriptions = action === "answer" || action === "summary"
+      ? transcriptions // 使用所有轉錄
+      : transcriptions.slice(-5); // 其他動作使用最近的 5 條轉錄
 
-    // Convert selected mic blob to base64
-    if (micBlobToProcess && micBlobToProcess.size > 0 && micMimeType) {
-      try {
-        const dataUrl = await blobToBase64(micBlobToProcess);
-        const data = dataUrl.split(',')[1] || dataUrl;
-        audioInputs.push({ data, mimeType: micMimeType, label: micLabel });
-        console.log(`[AIInteraction] Added ${micLabel} (${data.length} base64 chars) to context.`);
-      } catch (error) {
-        console.error(`[AIInteraction] Error processing mic blob (${micLabel}):`, error);
-      }
-    } else {
-      console.log("[AIInteraction] No valid mic audio data found for context.");
-    }
+    console.log("[AIInteraction] Selected transcriptions for context:", contextTranscriptions);
 
-    // --- Process System Audio ---
-    const currentSystemChunks = systemAudioChunksRef.current ?? [];
-    const lastSystemSegment = systemAudioSegments.length > 0 ? systemAudioSegments[systemAudioSegments.length - 1] : null;
+    const contextText = contextTranscriptions
+      .map(t => t.content)
+      .join('\n');
 
-    let systemBlobToProcess: Blob | null = null;
-    let systemLabel = "";
-
-    // Prioritize current chunks
-    if (currentSystemChunks.length > 0) {
-      try {
-        systemBlobToProcess = new Blob(currentSystemChunks, { type: systemAudioMimeType });
-        systemLabel = "system-current";
-        console.log(`[AIInteraction] Using current system chunks, size: ${systemBlobToProcess?.size}`);
-      } catch (error) {
-        console.error("[AIInteraction] Error creating blob from current system chunks:", error);
-        systemBlobToProcess = null;
-      }
-    }
-
-    // Fallback to last completed segment
-    if (!systemBlobToProcess && lastSystemSegment) {
-      systemBlobToProcess = lastSystemSegment.blob;
-      systemLabel = "system-last-segment";
-      console.log(`[AIInteraction] Using last completed system segment, size: ${systemBlobToProcess?.size}`);
-    }
-
-    // Convert selected system blob to base64
-    if (systemBlobToProcess && systemBlobToProcess.size > 0 && systemAudioMimeType) {
-      try {
-        const dataUrl = await blobToBase64(systemBlobToProcess);
-        const data = dataUrl.split(',')[1] || dataUrl;
-        audioInputs.push({ data, mimeType: systemAudioMimeType, label: systemLabel });
-        console.log(`[AIInteraction] Added ${systemLabel} (${data.length} base64 chars) to context.`);
-      } catch (error) {
-        console.error(`[AIInteraction] Error processing system blob (${systemLabel}):`, error);
-      }
-    } else {
-      console.log("[AIInteraction] No valid system audio data found for context.");
-    }
-
-    // --- Return Context ---
-    if (audioInputs.length === 0) {
-      console.warn("[AIInteraction] No audio inputs gathered for context.");
-      return null;
-    }
-
-    return { audioInputs };
-  }, [
-    micSegments,
-    systemAudioSegments,
-    currentMicChunksRef,
-    systemAudioChunksRef,
-    micMimeType,
-    systemAudioMimeType,
-  ]); // Dependencies updated
+    console.log("[AIInteraction] Context text:", contextText);
+    
+    return {
+      text: contextText,
+      timestamp: Date.now()
+    };
+  }, [transcriptions]);
 
   // Function to send context and prompt to the AI backend
-  const sendContextToAI = useCallback(async (action: AIAction, query?: string) => {
-    if (isLoading || !isScreenSharing) {
-      console.warn("AI request blocked: Not sharing or already loading.");
-      return;
-    }
+  const sendContextToAI = useCallback(async (action: AIAction, query?: string, screenshot?: string) => {
     setIsLoading(true);
     console.log(`Sending AI request. Action: ${action}, Custom Query: ${query}`);
 
-    const context = await gatherContext(); // Calls the updated gatherContext
-
-    if (!context?.audioInputs || context.audioInputs.length === 0) {
-      console.warn("AI request cancelled: No context gathered.");
-      setAiMessages((prev) => [
-        ...prev,
-        {
-          id: `err-no-ctx-${Date.now()}`,
-          role: "assistant",
-          content: "[提示] 沒有足夠的近期音訊可供分析。",
-        },
-      ]);
-      setIsLoading(false);
-      return;
+    let context: AIContextData;
+    
+    if (action === "screen") {
+      context = {
+        text: query || "",
+        screenshot: screenshot || "",
+        timestamp: Date.now()
+      };
+      console.log("[AIInteraction] Using screenshot as context for screen analysis:", context.text);
+    }
+    // 如果是 web search，直接使用 query 作為 context
+    else if (action === "search") {
+      context = {
+        text: query || "",
+        timestamp: Date.now()
+      };
+      console.log("[AIInteraction] Using query as context for web search:", context);
+    } else {
+      const gatheredContext = await gatherContext(action);
+      if (!gatheredContext?.text) {
+        console.warn("AI request cancelled: No context gathered.");
+        setAiMessages((prev) => [
+          ...prev,
+          {
+            id: `err-no-ctx-${Date.now()}`,
+            role: "assistant",
+            content: "[提示] 沒有足夠的轉錄內容可供分析。",
+          },
+        ]);
+        setIsLoading(false);
+        return;
+      }
+      context = gatheredContext;
     }
 
+    console.log("[AIInteraction] Sending context to AI:", context);
+
     const promptMap: Record<AIAction, string> = {
-      "real-time": "轉錄最新的語音內容，並識別其中提到的關鍵點、關鍵字或待辦事項。",
-      answer: "根據最近音訊中的對話內容，回答音訊中最後提出的問題。區分麥克風和系統音訊來源。有必要請上網查詢。",
-      summary: "提供最近音訊片段中捕捉到的對話內容的簡明摘要（區分麥克風和系統音訊）。請用中文回答。",
-      search: "根據最近音訊片段中討論的主題，建議相關的搜尋關鍵字或查找相關資訊（區分麥克風和系統音訊）。請用中文回答。",
-      "find-clue": "根據最近的音訊內容，找出其中可能存在的線索、疑點或需要進一步探討的資訊（區分麥克風和系統音訊）。請用中文回答。",
-      custom: query || "根據以下要求分析最近音訊片段中捕捉到的對話內容。請用中文回答。",
+      "real-time": "分析最新的轉錄內容，並識別其中提到的關鍵點、關鍵字或待辦事項。",
+      answer: "附上的轉錄內容是一個會議全部的對話，請根據整個會議的對話，詳細回答最後提出的問題: " + context.text,
+      summary: "根據以下的轉錄內容，提供簡明摘要: " + context.text,
+      search: "Please search the web for the following query, and answer the question directly and answer in Chinese: " + context.text,
+      "find-clue": "根據以下的轉錄內容，找出其中可能存在的線索、疑點或需要進一步探討的資訊：\n\n" + context.text,
+      custom: query || "根據以下要求分析最近轉錄內容。請用中文回答。",
+      screen: "請你分析截圖，並回答以下問題：\n\n" + context.text,
     };
 
     const displayPromptMap: Record<AIAction, string> = {
-      "real-time": "即時轉錄",
-      answer: "根據語音內容回答問題",
-      summary: "根據過去語音內容產生摘要",
-      search: "根據語音內容搜尋主題",
-      "find-clue": "根據語音內容找尋線索",
+      "real-time": "即時分析",
+      answer: "根據轉錄內容回答出現或是潛在的問題，請針對最後出現的問題回答",
+      summary: "根據轉錄內容產生摘要",
+      search: "根據轉錄內容搜尋主題",
+      "find-clue": "根據轉錄內容找尋線索",
       custom: customPrompt || "自訂請求",
+      screen: "截圖分析",
     };
 
     const userMsgContent = action === "custom" ? customPrompt : promptMap[action];
     const displayMsgContent = action === "custom" ? customPrompt : displayPromptMap[action];
 
-    const userMsg: Message = { id: `user-${Date.now()}`, role: "user", content: userMsgContent };
-    const displayMsg: Message = { id: `disp-${userMsg.id}`, role: "user", content: displayMsgContent };
+    const userMsg: CustomMessage = { id: `user-${Date.now()}`, role: "user", content: userMsgContent };
+    const displayMsg: CustomMessage = { id: `disp-${userMsg.id}`, role: "user", content: displayMsgContent };
 
     if (action !== "real-time") {
       setAiMessages((prev) => [...prev, displayMsg]);
@@ -202,7 +204,15 @@ export function useAIInteraction({
       const res = await fetch(API_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: [userMsg], data: context }),
+        body: JSON.stringify({ 
+          messages: [userMsg], 
+          action: action,
+          data: {
+            text: context.text,
+            timestamp: context.timestamp,
+            screenshot: context.screenshot
+          }
+        }),
       });
 
       if (!res.ok) {
@@ -210,7 +220,7 @@ export function useAIInteraction({
         throw new Error(`AI API Error (${res.status}): ${errorText}`);
       }
 
-      const aiResponse: Message = await res.json();
+      const aiResponse: CustomMessage = await res.json();
       console.log("Received AI response:", aiResponse);
       setAiMessages((prev) => [
         ...prev,
@@ -235,30 +245,178 @@ export function useAIInteraction({
       console.log("AI request finished.");
     }
   }, [
-    isLoading,
-    isScreenSharing,
-    gatherContext, // Depends on the updated gatherContext
+    gatherContext,
     customPrompt,
   ]);
 
-  const handleTextResponse = useCallback((text: string) => {
-    setAiMessages((prev) => {
+  const handleTranscriptionResponse = useCallback((text: string) => {
+    console.log('[Transcription] 收到轉錄文字:', text);
+    
+    // Create a new transcription message
+    const newTranscription: TranscriptionMessage = {
+      id: `transcription-${Date.now()}`,
+      role: "assistant",
+      content: text,
+      timestamp: Date.now(),
+      type: "transcription"
+    };
+
+    console.log('[Transcription] 新增轉錄訊息:', newTranscription);
+
+    // Add to transcriptions state
+    setTranscriptions(prev => {
+      console.log('[Transcription] 當前轉錄數量:', prev.length);
+      return [...prev, newTranscription];
+    });
+
+    // Also update the chat messages for display
+    setAiMessages(prev => {
       const lastMessage = prev[prev.length - 1];
       if (lastMessage?.role === "assistant" && lastMessage.content.startsWith("[即時轉錄]")) {
+        console.log('[Transcription] 更新現有轉錄訊息');
         return [
           ...prev.slice(0, -1),
           { ...lastMessage, content: lastMessage.content + text },
         ];
       } else {
+        console.log('[Transcription] 新增轉錄訊息到聊天');
         return [
           ...prev,
-          { id: `realtime-${Date.now()}`, role: "assistant", content: `[即時轉錄] ${text}` },
+          { id: `realtime-${Date.now()}`, role: "assistant", content: `[即時轉錄] ${text}`, visible: isSubtitleVisible },
         ];
       }
     });
   }, []);
 
-  const handleKeywords = useCallback((newKeywords: string[]) => {
+  const handleAnswerResponse = useCallback((text: string, turnComplete: boolean = false) => {
+    // Skip if the text is "NULL", contains "NULL", or is empty/whitespace
+    if (!text || 
+        text.trim() === "" || 
+        text === "NULL" || 
+        text.includes("NULL") || 
+        text.trim() === "null" || 
+        text.includes("null")) {
+      console.log("[即時問答] 忽略無效回應:", text);
+      return;
+    }
+
+    console.log('[Answer] 收到回答:', text, accumulatedTextRef.current);
+    
+    // 累積文本
+    if (text !== "search web") {
+      accumulatedTextRef.current += text;
+      console.log('[Answer] 累積文本:', accumulatedTextRef.current);
+    }
+
+    if (text === "search web" && accumulatedTextRef.current === "") {
+      console.log('[Answer] 忽略 search web 消息');
+      return;
+    }
+
+    // 只有在收到完整句子時才處理 web search 請求
+    if (turnComplete) {
+      console.log('[Answer] 收到完整句子，檢查是否需要處理');
+      
+      // 檢查是否包含 [WEB] 標記
+      if (accumulatedTextRef.current.includes("[WEB]")) {
+        console.log('[Answer] 檢測到網路搜尋請求');
+        // 提取搜尋查詢
+        const searchQuery = accumulatedTextRef.current.replace("[WEB]", "").trim();
+        // 發送搜尋請求
+        sendContextToAI("search", searchQuery);
+        // 重置累積文本
+        accumulatedTextRef.current = "";
+        return;
+      }
+
+      if (accumulatedTextRef.current.includes("[SCREEN]")) {
+        console.log('[Answer] 檢測到截圖請求');
+        // 提取搜尋查詢
+        const searchQuery = accumulatedTextRef.current.replace("[SCREEN]", "").trim();
+        
+        // 使用 html2canvas 獲取截圖
+        html2canvas(document.body, {
+          useCORS: true,
+          allowTaint: true,
+          scale: 1,
+          logging: false,
+          backgroundColor: '#ffffff',  // 設置背景色
+          ignoreElements: (element) => {
+            // 忽略可能導致問題的元素
+            return element.tagName === 'VIDEO' || 
+                   element.tagName === 'CANVAS' ||
+                   element.tagName === 'IFRAME';
+          },
+          onclone: (clonedDoc) => {
+            // 在克隆的文檔中處理樣式
+            const style = clonedDoc.createElement('style');
+            style.textContent = `
+              * {
+                color: #000000 !important;
+                background-color: #ffffff !important;
+              }
+            `;
+            clonedDoc.head.appendChild(style);
+          }
+        }).then(canvas => {
+          // 轉換為 base64
+          const imageData = canvas.toDataURL('image/jpeg', 0.8);
+          const b64Data = imageData.split(',')[1];
+          const screenshot = b64Data;
+          // 發送搜尋請求，包含截圖
+          sendContextToAI("screen", searchQuery, screenshot);
+        }).catch(error => {
+          console.error('截圖失敗:', error);
+          // 如果截圖失敗，仍然發送搜尋請求
+          sendContextToAI("screen", searchQuery);
+        });
+        
+        // 重置累積文本
+        accumulatedTextRef.current = "";
+        return;
+      }
+
+      // // 如果是 "search web" 消息，只處理不顯示
+      // if (accumulatedTextRef.current === "") {
+      //   console.log('[Answer] 處理 search web 消息但不顯示');
+      //   // 重置累積文本
+      //   accumulatedTextRef.current = "";
+      //   return;
+      // }
+
+      // 更新聊天消息
+      setAiMessages(prev => {
+        const lastMessage = prev[prev.length - 1];
+        if (lastMessage?.role === "assistant" && lastMessage.content.startsWith("[即時問答]")) {
+          console.log('[Answer] 更新現有回答訊息');
+          return [
+            ...prev.slice(0, -1),
+            { ...lastMessage, content: lastMessage.content + accumulatedTextRef.current },
+          ];
+        } else {
+          console.log('[Answer] 新增回答訊息到聊天');
+          return [
+            ...prev,
+            { id: `answer-${Date.now()}`, role: "assistant", content: `[即時問答] ${accumulatedTextRef.current}` },
+          ];
+        }
+      });
+      // 重置累積文本
+      accumulatedTextRef.current = "";
+    }
+  }, []);
+
+  const handleTranscriptionKeywords = useCallback((newKeywords: string[]) => {
+    setKeywords((prev) => {
+      const uniqueNewKeywords = newKeywords.filter((k) => k && !prev.includes(k));
+      if (uniqueNewKeywords.length > 0) {
+        return [...prev, ...uniqueNewKeywords];
+      }
+      return prev;
+    });
+  }, []);
+
+  const handleAnswerKeywords = useCallback((newKeywords: string[]) => {
     setKeywords((prev) => {
       const uniqueNewKeywords = newKeywords.filter((k) => k && !prev.includes(k));
       if (uniqueNewKeywords.length > 0) {
@@ -324,18 +482,36 @@ export function useAIInteraction({
     console.log("Chat and keywords reset.");
   }, []);
 
+  // 新增函數來控制字幕可見性
+  const setSubtitleVisibility = (visible: boolean) => {
+    setIsSubtitleVisible(visible);
+    // 更新所有轉錄訊息的可見性
+    setAiMessages(prev => prev.map(msg => {
+      if (msg.content.startsWith("[即時轉錄]")) {
+        return { ...msg, visible };
+      }
+      return msg;
+    }));
+  };
+
   return {
     aiMessages,
+    transcriptions,
     isLoading,
     customPrompt,
     setCustomPrompt,
     keywords,
     selectedKeyword,
     sendContextToAI,
-    handleTextResponse,
-    handleKeywords,
+    handleTranscriptionResponse,
+    handleTranscriptionKeywords,
+    handleAnswerResponse,
+    handleAnswerKeywords,
     handleKeywordClick,
     messagesContainerRef,
     resetChat,
+    setSubtitleVisibility,
+    messages: aiMessages,
+    handleSendMessage: sendContextToAI,
   };
 }

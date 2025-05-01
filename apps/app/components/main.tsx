@@ -1,6 +1,7 @@
 "use client";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import type { Message } from 'ai'; // Import Message type
+import type { CustomMessage } from '@/hooks/useAIInteraction'; // Import CustomMessage type
 
 // Hooks
 import { useElectron } from "@/hooks/useElectron";
@@ -11,7 +12,7 @@ import { useAIInteraction } from "@/hooks/useAIInteraction";
 // Components
 import { HeaderBar } from "./main/HeaderBar";
 import { SourcePickerModal } from "./main/SourcePickerModal";
-import { ChatPanel } from "./main/ChatPanel";
+import ChatPanel from "./main/ChatPanel";
 import { ControlPanel } from "./main/ControlPanel";
 
 // Types (Import necessary types)
@@ -64,11 +65,16 @@ export function Main() {
     keywords,
     selectedKeyword,
     sendContextToAI,
-    handleTextResponse, // Pass to ControlPanel -> RealTimeAnalysis
-    handleKeywords,     // Pass to ControlPanel -> RealTimeAnalysis
+    handleTranscriptionResponse, // For RealTimeSubtitle
+    handleTranscriptionKeywords, // For RealTimeSubtitle
+    handleAnswerResponse, // For RealTimeAnalysis
+    handleAnswerKeywords, // For RealTimeAnalysis
     handleKeywordClick, // Pass to ControlPanel
     messagesContainerRef, // Pass to ChatPanel
     resetChat, // To reset AI state on starting share
+    messages,
+    handleSendMessage,
+    setSubtitleVisibility,
   } = useAIInteraction({
     micSegments,
     systemAudioSegments,
@@ -89,6 +95,18 @@ export function Main() {
     }
   }, [isScreenSharing, resetChat]);
 
+  const onAnswerResponse = (text: string, turnComplete: boolean) => {
+    console.log("[Main] 收到回答:", text);
+    // 將回答添加到消息列表中
+    setAiMessages((prev: CustomMessage[]) => [
+      ...prev,
+      {
+        id: Date.now().toString(),
+        role: "assistant",
+        content: text,
+      },
+    ]);
+  };
 
   // --- Render -------------------------------------------------
   return (
@@ -114,12 +132,12 @@ export function Main() {
       <div className="flex flex-1 overflow-hidden shadow-lg">
         {/* Chat Panel */}
         <ChatPanel
-          messages={aiMessages}
+          messages={messages}
           isLoading={isLoading}
           isScreenSharing={isScreenSharing}
           customPrompt={customPrompt}
           setCustomPrompt={setCustomPrompt}
-          onSendMessage={sendContextToAI} // Pass the AI function
+          onSendMessage={handleSendMessage}
           messagesContainerRef={messagesContainerRef}
         />
 
@@ -132,15 +150,18 @@ export function Main() {
           selectedKeyword={selectedKeyword}
           micAnalyserNode={micAnalyserNode}
           systemAnalyserNode={systemAnalyserNode}
-          micLevel={micLevel} // <<< Pass micLevel
-          systemLevel={systemLevel} // <<< Pass systemLevel
+          micLevel={micLevel}
+          systemLevel={systemLevel}
           screenPreviewRef={screenPreviewRef}
-          currentSystemAudioStream={currentSystemAudioStream} // Pass for RealTimeAnalysis
+          currentSystemAudioStream={currentSystemAudioStream}
           onToggleScreenShare={toggleScreenShare}
-          onAiAction={sendContextToAI} // Pass the AI function
+          onAiAction={sendContextToAI}
           onKeywordClick={handleKeywordClick}
-          onTextResponse={handleTextResponse} // Pass down for RealTimeAnalysis
-          onKeywords={handleKeywords}         // Pass down for RealTimeAnalysis
+          onTranscriptionResponse={handleTranscriptionResponse}
+          onTranscriptionKeywords={handleTranscriptionKeywords}
+          onAnswerResponse={handleAnswerResponse}
+          onAnswerKeywords={handleAnswerKeywords}
+          setSubtitleVisibility={setSubtitleVisibility}
         />
       </div>
     </div>

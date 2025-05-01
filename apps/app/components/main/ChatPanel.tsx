@@ -1,30 +1,35 @@
-import React, { useRef } from 'react';
-import { Message } from 'ai';
+import React, { useRef, useState } from 'react';
+import { Message as AIMessage } from 'ai';
 import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
 import { Loader2Icon, SendIcon } from "lucide-react";
 import { Markdown } from "@/components/markdown"; // Adjust path if needed
 import { cn } from "@workspace/ui/lib/utils"; // Adjust path if needed
 
+interface CustomMessage extends AIMessage {
+  visible?: boolean;
+}
+
 interface ChatPanelProps {
-  messages: Message[];
+  messages: CustomMessage[];
   isLoading: boolean;
   isScreenSharing: boolean;
   customPrompt: string;
   setCustomPrompt: (prompt: string) => void;
   onSendMessage: (action: "custom", prompt: string) => void;
-  messagesContainerRef: React.RefObject<HTMLDivElement | null>; // Allow null
+  messagesContainerRef?: React.RefObject<HTMLDivElement | null>;
 }
 
-export function ChatPanel({
+export default function ChatPanel({
   messages,
   isLoading,
   isScreenSharing,
   customPrompt,
   setCustomPrompt,
   onSendMessage,
-  messagesContainerRef,
 }: ChatPanelProps) {
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const [input, setInput] = useState("");
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -34,25 +39,27 @@ export function ChatPanel({
   };
 
   return (
-    <main className="flex flex-col flex-1 overflow-hidden">
-      {/* Message List */}
+    <div className="flex flex-col h-full">
       <div
         ref={messagesContainerRef}
         className="flex-1 p-4 space-y-4 overflow-y-auto bg-muted/30"
       >
-        {messages.map((m) => (
-          <div
-            key={m.id}
-            className={cn(
-              "p-3 rounded-lg text-sm border w-fit max-w-[85%] whitespace-pre-wrap", // Added whitespace-pre-wrap
-              m.role === "user"
-                ? "bg-primary ml-auto text-primary-foreground"
-                : "bg-muted mr-auto text-foreground"
-            )}
-          >
-            <Markdown>{m.content}</Markdown>
-          </div>
-        ))}
+        {messages.map((m) => {
+          return (
+            <div
+              key={m.id}
+              className={cn(
+                "p-3 rounded-lg text-sm border w-fit max-w-[85%] whitespace-pre-wrap",
+                m.role === "user"
+                  ? "bg-primary ml-auto text-primary-foreground"
+                  : "bg-muted mr-auto text-foreground",
+                (m.content.startsWith("[即時轉錄]") && !m.visible && "hidden") || m.content.includes("search web")  // 只有轉錄訊息才檢查 visible 屬性
+              )}
+            >
+              <Markdown>{m.content}</Markdown>
+            </div>
+          );
+        })}
         {/* Loading Indicator */}
         {isLoading && (
           <div className="flex items-center justify-center text-sm text-muted-foreground p-2">
@@ -99,6 +106,6 @@ export function ChatPanel({
           </Button>
         </form>
       </div>
-    </main>
+    </div>
   );
 }

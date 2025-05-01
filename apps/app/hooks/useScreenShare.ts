@@ -266,6 +266,8 @@ export function useScreenShare() {
       }
 
       // --- Finalize ---
+      // 等待一小段時間確保所有資源都已初始化
+      await new Promise(resolve => setTimeout(resolve, 500));
       setIsScreenSharing(true);
       console.log("[ScreenShare] Screen sharing and recording setup complete.");
 
@@ -282,7 +284,7 @@ export function useScreenShare() {
       alert(userMessage);
       stopScreenShare(); // Ensure cleanup on any error
     }
-  }, [startMicRecording, stopScreenShare, startSystemAudioRecorderInternal]); // Dependencies updated
+  }, [startMicRecording, stopScreenShare, startSystemAudioRecorderInternal]);
 
   const toggleScreenShare = useCallback(() => {
     if (isScreenSharing) {
