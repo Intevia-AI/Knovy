@@ -427,51 +427,61 @@ export function useAIInteraction({
   }, []);
 
   const handleKeywordClick = useCallback(async (keyword: string) => {
-    if (!keyword || isLoading) return;
-
+    if (isLoading) return;
     setSelectedKeyword(keyword);
     setIsLoading(true);
-    console.log(`Fetching explanation for keyword: ${keyword}`);
-
-    setAiMessages((prev) => [
-      ...prev,
-      { id: `user-kw-${Date.now()}`, role: "user", content: `解釋: ${keyword}` },
-    ]);
 
     try {
-      const response = await fetch(API_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          messages: [{ role: "user", content: `請用簡單易懂的方式解釋這個專業術語：${keyword}` }],
-          data: {}, // No audio context needed
-        }),
-      });
+      // 最多重試5次
+      let retries = 0;
+      const maxRetries = 5;
+      let lastError = null;
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Keyword Explanation Error (${response.status}): ${errorText}`);
+      // 獲取最後兩句轉錄內容作為上下文
+      const contextText = transcriptions
+        .slice(-2)
+        .map(t => t.content)
+        .join('\n');
+
+      while (retries < maxRetries) {
+        try {
+          // 使用 search 動作，並加入轉錄內容作為上下文
+          await sendContextToAI("search", `請用簡單易懂的方式解釋這個專業術語：${keyword}\n\n上下文：\n${contextText}`);
+          return; // 如果成功，直接返回
+        } catch (error) {
+          lastError = error;
+          retries++;
+          if (retries < maxRetries) {
+            // 等待一段時間後重試，等待時間隨重試次數增加
+            await new Promise(resolve => setTimeout(resolve, 1000 * retries));
+          }
+        }
       }
 
-      const data = await response.json();
-      const explanation = data.content || "[無法取得解釋]";
-
-      setAiMessages((prev) => [
-        ...prev,
-        { id: `explanation-${Date.now()}`, role: "assistant", content: `[${keyword} 的解釋] ${explanation}` },
-      ]);
+      // 如果所有重試都失敗了
+      throw lastError;
     } catch (error) {
-      console.error("取得關鍵字解釋時發生錯誤:", error);
-      setAiMessages((prev) => [
+      console.error(`[錯誤] 無法取得 ${keyword} 的解釋:`, error);
+      // 顯示更友好的錯誤訊息
+      const errorMessage = error instanceof Error 
+        ? error.message.includes("overloaded") 
+          ? "模型服務器暫時過載，請稍後再試"
+          : error.message
+        : "發生未知錯誤，請稍後再試";
+      
+      setAiMessages(prev => [
         ...prev,
-        { id: `err-explanation-${Date.now()}`, role: "assistant", content: `[錯誤] 無法取得 ${keyword} 的解釋: ${error instanceof Error ? error.message : String(error)}` },
+        {
+          id: `error-${Date.now()}`,
+          role: "assistant",
+          content: `[錯誤] 無法取得 "${keyword}" 的解釋: ${errorMessage}`
+        }
       ]);
     } finally {
       setIsLoading(false);
       setSelectedKeyword(null);
-      console.log(`Keyword explanation fetch finished for: ${keyword}`);
     }
-  }, [isLoading]);
+  }, [isLoading, sendContextToAI, transcriptions]);
 
   const resetChat = useCallback(() => {
     setAiMessages([]);
