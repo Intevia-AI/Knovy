@@ -1,7 +1,15 @@
 import React from "react";
 import { Button } from "@workspace/ui/components/button";
-import { MinusIcon, XIcon, PinIcon, PinOffIcon, SunIcon, MoonIcon } from "lucide-react";
+import {
+  MinusIcon,
+  XIcon,
+  PinIcon,
+  PinOffIcon,
+  SunIcon,
+  MoonIcon,
+} from "lucide-react";
 import { useTheme } from "next-themes";
+import { useI18n } from "@/hooks/useI18n";
 
 interface HeaderBarProps {
   isAlwaysOnTop: boolean;
@@ -16,6 +24,8 @@ export function HeaderBar({
   minimizeWindow,
   closeWindow,
 }: HeaderBarProps) {
+  const { t } = useI18n();
+
   return (
     <header className="fixed h-6 bg-muted/10 overflow-hidden rounded-t-lg top-0 left-0 right-0 z-10 border-b border-border/30 flex items-center justify-between">
       {/* Draggable Region */}
@@ -34,9 +44,11 @@ export function HeaderBar({
           className="h-5 w-5 rounded-sm hover:bg-muted-foreground/20"
           onClick={toggleAlwaysOnTop}
           aria-label={
-            isAlwaysOnTop ? "Disable always on top" : "Enable always on top"
+            isAlwaysOnTop ? t("unpinWindowTooltip") : t("pinWindowTooltip")
           }
-          title={isAlwaysOnTop ? "取消置頂" : "視窗置頂"} // Tooltip
+          title={
+            isAlwaysOnTop ? t("unpinWindowTooltip") : t("pinWindowTooltip")
+          }
         >
           {isAlwaysOnTop ? (
             <PinOffIcon className="h-3 w-3" />
@@ -50,7 +62,7 @@ export function HeaderBar({
           className="h-5 w-5 rounded-sm hover:bg-muted-foreground/20"
           onClick={minimizeWindow}
           aria-label="Minimize window"
-          title="最小化" // Tooltip
+          title={t("minimizeWindowTooltip")}
         >
           <MinusIcon className="h-3 w-3" />
         </Button>
@@ -60,7 +72,7 @@ export function HeaderBar({
           className="h-5 w-5 rounded-sm hover:bg-destructive/80 hover:text-destructive-foreground"
           onClick={closeWindow}
           aria-label="Close window"
-          title="關閉" // Tooltip
+          title={t("closeWindowTooltip")}
         >
           <XIcon className="h-3 w-3" />
         </Button>

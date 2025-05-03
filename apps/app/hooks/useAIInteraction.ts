@@ -27,14 +27,8 @@ interface AIContextData {
   screenshot?: string;
 }
 
-interface CustomMessage extends AIMessage {
-  visible?: boolean;
-}
-
-export type { CustomMessage };
-
 export function useAIInteraction() {
-  const [aiMessages, setAiMessages] = useState<CustomMessage[]>([]);
+  const [aiMessages, setAiMessages] = useState<AIMessage[]>([]);
   const [transcriptions, setTranscriptions] = useState<TranscriptionMessage[]>(
     [],
   );
@@ -205,12 +199,12 @@ export function useAIInteraction() {
       const displayMsgContent =
         action === "custom" ? customPrompt : displayPromptMap[action];
 
-      const userMsg: CustomMessage = {
+      const userMsg: AIMessage = {
         id: `user-${Date.now()}`,
         role: "user",
         content: userMsgContent,
       };
-      const displayMsg: CustomMessage = {
+      const displayMsg: AIMessage = {
         id: `disp-${userMsg.id}`,
         role: "user",
         content: displayMsgContent,
@@ -242,7 +236,7 @@ export function useAIInteraction() {
           throw new Error(`AI API Error (${res.status}): ${errorText}`);
         }
 
-        const aiResponse: CustomMessage = await res.json();
+        const aiResponse: AIMessage = await res.json();
         console.log("Received AI response:", aiResponse);
         setAiMessages((prev) => [
           ...prev,
@@ -310,7 +304,6 @@ export function useAIInteraction() {
             id: `realtime-${Date.now()}`,
             role: "assistant",
             content: `[即時轉錄] ${text}`,
-            visible: isSubtitleVisible,
           },
         ];
       }
@@ -560,15 +553,6 @@ export function useAIInteraction() {
   // 新增函數來控制字幕可見性
   const setSubtitleVisibility = (visible: boolean) => {
     setIsSubtitleVisible(visible);
-    // 更新所有轉錄訊息的可見性
-    setAiMessages((prev) =>
-      prev.map((msg) => {
-        if (msg.content.startsWith("[即時轉錄]")) {
-          return { ...msg, visible };
-        }
-        return msg;
-      }),
-    );
   };
 
   return {
@@ -588,6 +572,7 @@ export function useAIInteraction() {
     handleKeywordClick,
     messagesContainerRef,
     resetChat,
+    isSubtitleVisible,
     setSubtitleVisibility,
     handleSendMessage: sendContextToAI,
   };

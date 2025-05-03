@@ -18,6 +18,7 @@ interface ChatPanelProps {
   setCustomPrompt: (prompt: string) => void;
   onSendMessage: (action: "custom", prompt: string) => void;
   messagesContainerRef?: React.RefObject<HTMLDivElement | null>;
+  isSubtitleVisible?: boolean;
 }
 
 export default function ChatPanel({
@@ -27,6 +28,7 @@ export default function ChatPanel({
   customPrompt,
   setCustomPrompt,
   onSendMessage,
+  isSubtitleVisible,
 }: ChatPanelProps) {
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const [input, setInput] = useState("");
@@ -64,8 +66,10 @@ export default function ChatPanel({
               m.role === "user"
                 ? "bg-primary ml-auto text-primary-foreground"
                 : "bg-muted mr-auto text-foreground",
-              (m.content.startsWith("[即時轉錄]") && m.visible !== false && "hidden") ||
-                m.content.includes("search web")
+              (m.content.startsWith("[即時轉錄]") &&
+                !isSubtitleVisible &&
+                "hidden") ||
+                m.content.includes("search web"),
             )}
           >
             <Markdown>{m.content}</Markdown>

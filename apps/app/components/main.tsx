@@ -6,6 +6,7 @@ import { useElectron } from "@/hooks/useElectron";
 import { useScreenShare } from "@/hooks/useScreenShare";
 import { useAudioAnalysis } from "@/hooks/useAudioAnalysis";
 import { useAIInteraction } from "@/hooks/useAIInteraction";
+import { useLanguage } from "@/context/LanguageContext";
 
 // Components
 import { HeaderBar } from "./main/HeaderBar";
@@ -25,7 +26,7 @@ import {
 export function Main() {
   // --- Hooks ----------------------------------------------------
   const { setTheme } = useTheme();
-  const [language, setLanguage] = useState("zh-TW");
+  const { language, setLanguage } = useLanguage();
 
   // Electron Interactions
   const {
@@ -59,7 +60,7 @@ export function Main() {
   const { micAnalyserNode, systemAnalyserNode, micLevel, systemLevel } =
     useAudioAnalysis(
       isScreenSharing ? micStream : null, // Pass stream only when sharing
-      isScreenSharing ? currentSystemAudioStream : null // Pass stream only when sharing
+      isScreenSharing ? currentSystemAudioStream : null, // Pass stream only when sharing
     );
 
   // AI Interaction Logic
@@ -80,6 +81,7 @@ export function Main() {
     resetChat,
     handleSendMessage,
     setSubtitleVisibility,
+    isSubtitleVisible,
   } = useAIInteraction();
 
   // --- Effects ------------------------------------------------
@@ -137,8 +139,6 @@ export function Main() {
             currentSystemAudioStream={currentSystemAudioStream}
             customPrompt={customPrompt}
             setCustomPrompt={setCustomPrompt}
-            language={language}
-            setLanguage={setLanguage}
             onToggleScreenShare={toggleScreenShare}
             onAiAction={sendContextToAI}
             onKeywordClick={handleKeywordClick}
@@ -150,7 +150,7 @@ export function Main() {
           />
         </ResizablePanel>
 
-        <ResizableHandle withHandle className="bg-border/70"/>
+        <ResizableHandle withHandle className="bg-border/70" />
 
         {/* Chat Panel - Moved to the right */}
         <ResizablePanel defaultSize={60} minSize={20} className="border-none">
@@ -162,6 +162,7 @@ export function Main() {
             setCustomPrompt={setCustomPrompt}
             onSendMessage={handleSendMessage}
             messagesContainerRef={messagesContainerRef}
+            isSubtitleVisible={isSubtitleVisible}
           />
         </ResizablePanel>
       </ResizablePanelGroup>
