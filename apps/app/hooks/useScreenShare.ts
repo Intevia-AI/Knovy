@@ -220,6 +220,13 @@ export function useScreenShare() {
         video: true,
         audio: true,
       });
+      
+      // Check if the stream was cancelled
+      if (!displayStream || displayStream.getVideoTracks().length === 0) {
+        console.log("[ScreenShare] Screen share was cancelled by user.");
+        return; // Exit gracefully without throwing an error
+      }
+      
       screenStreamRef.current = displayStream;
       console.log("Screen share stream obtained:", displayStream);
 
@@ -274,14 +281,25 @@ export function useScreenShare() {
     } catch (e) {
       console.error("Error during screen share setup process:", e);
       let userMessage = `啟動分享時發生錯誤: ${e instanceof Error ? e.message : String(e)}`;
+      
+      // Handle specific error cases
       if (e instanceof DOMException) {
         if (e.name === "NotAllowedError") {
           userMessage = "錯誤：螢幕分享權限被拒絕或取消。";
         } else if (e.name === "NotFoundError") {
           userMessage = "錯誤：找不到可分享的螢幕或視窗。";
+        } else if (e.name === "AbortError") {
+          // User cancelled the selection
+          console.log("[ScreenShare] User cancelled screen share selection.");
+          return; // Exit without showing error message
         }
       }
-      alert(userMessage);
+      
+      // Only show alert if it's not a cancellation
+      if (!(e instanceof DOMException && e.name === "AbortError")) {
+        alert(userMessage);
+      }
+      
       stopScreenShare(); // Ensure cleanup on any error
     }
   }, [startMicRecording, stopScreenShare, startSystemAudioRecorderInternal]);

@@ -269,9 +269,9 @@ export default function RealTimeSubtitle({
 
   return (
     <div className="flex items-center justify-between bg-muted space-x-2 w-full max-w-2xl mx-auto p-2 border rounded-md bg-muted/30">
-      <Label htmlFor="subtitle-switch" className="text-sm font-medium">
-        {isSubtitleVisible ? "顯示字幕" : "隱藏字幕"}
-      </Label>
+      <h4 className="text-xs font-medium text-foreground">
+          {isSubtitleVisible ? "顯示字幕" : "隱藏字幕"}
+      </h4>
       <Switch
         id="subtitle-switch"
         checked={isSubtitleVisible}

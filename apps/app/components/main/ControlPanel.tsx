@@ -68,7 +68,7 @@ export function ControlPanel({
   ] as const; // Use const assertion
 
   return (
-    <aside className="flex flex-col w-full max-w-[200px] border-l border-border overflow-y-auto shrink-0 bg-card">
+    <aside className="flex flex-col w-full max-w-[160px] border-l border-border overflow-y-auto shrink-0 bg-card">
       {/* Status and Control */}
       <div className="p-2 space-y-1.5 border-b border-border">
         <div className="flex items-center justify-between gap-1">
@@ -109,31 +109,14 @@ export function ControlPanel({
             {isScreenSharing ? "停止" : "分享"}
           </Button>
         </div>
-      </div>
 
-      {/* Real-time Analysis & Keywords */}
-      <div className="p-2 space-y-1.5 border-b border-border">
-        <div className="flex flex-col gap-2">
-          <RealTimeSubtitle
-            onTextResponse={onTranscriptionResponse}
-            onKeywords={onTranscriptionKeywords}
-            systemAudioStream={currentSystemAudioStream || undefined}
-            isScreenSharing={isScreenSharing}
-            setSubtitleVisibility={setSubtitleVisibility}
-          />
-          <RealTimeAnalysis
-            onTextResponse={onAnswerResponse}
-            onKeywords={onAnswerKeywords}
-            systemAudioStream={currentSystemAudioStream || undefined}
-            isScreenSharing={isScreenSharing}
-          />
-        </div>
+        {/* Keywords Section */}
         {keywords.length > 0 && (
           <div className="pt-1.5 space-y-1">
-            <h4 className="text-xs font-medium text-muted-foreground">
+            <h4 className="text-xs font-medium text-foreground">
               關鍵字
             </h4>
-            <div className="flex flex-wrap gap-1.5 max-h-[120px] overflow-y-auto pr-1">
+            <div className="flex flex-wrap gap-1.5 max-h-[80px] overflow-y-auto pr-1">
               {keywords.map((keyword, index) => (
                 <Button
                   key={`${keyword}-${index}`}
@@ -154,12 +137,31 @@ export function ControlPanel({
           </div>
         )}
       </div>
+
+      {/* Real-time Analysis & Keywords */}
+      <div className="p-2 space-y-1.5 border-b border-border">
+        <div className="flex flex-col gap-2">
+          <RealTimeSubtitle
+            onTextResponse={onTranscriptionResponse}
+            onKeywords={onTranscriptionKeywords}
+            systemAudioStream={currentSystemAudioStream || undefined}
+            isScreenSharing={isScreenSharing}
+            setSubtitleVisibility={setSubtitleVisibility}
+          />
+          <RealTimeAnalysis
+            onTextResponse={onAnswerResponse}
+            onKeywords={onAnswerKeywords}
+            systemAudioStream={currentSystemAudioStream || undefined}
+            isScreenSharing={isScreenSharing}
+          />
+        </div>
+      </div>
       
       {/* AI Actions */}
       <div className="p-2 space-y-1.5 border-b border-border">
-        <h3 className="text-xs font-semibold text-card-foreground">
+        <h4 className="text-xs font-medium text-foreground">
           AI 動作
-        </h3>
+        </h4>
         <div className="grid grid-cols-2 gap-1">
           {aiActions.map(({ action, label, icon: Icon }) => (
             <Button
@@ -200,23 +202,25 @@ export function ControlPanel({
       */}
 
       {/* System Audio Visualizer */}
-      <div className="p-4 space-y-3 border-b border-border">
-        <h3 className="text-base font-semibold text-card-foreground">
-          即時分析 (系統音訊)
-        </h3>
-         <div className="py-2 w-full h-[56px] flex items-center justify-center"> {/* Added fixed height */}
-           {isScreenSharing && systemAnalyserNode ? (
-             <AudioVisualizer analyserNode={systemAnalyserNode} height={40} />
-           ) : (
-              <p className="text-xs text-muted-foreground">系統音訊未啟用或未擷取</p>
-           )}
+      <div className="p-1.5 space-y-1 border-b border-border">
+        <div className="flex items-center justify-between">
+          {/* <span className="text-xs text-muted-foreground">系統音訊</span> */}
+          <h4 className="text-xs font-medium text-foreground">
+              系統音訊
+          </h4>
+          {isScreenSharing && (
+            <span className="text-xs text-muted-foreground">
+              {systemLevel.toFixed(0)}%
+            </span>
+          )}
         </div>
-        {isScreenSharing && (
-          <div className="space-y-1">
-            <Progress value={systemLevel} className="h-2" />
-            <span className="text-xs text-muted-foreground text-right block">音量: {systemLevel.toFixed(0)}%</span>
-          </div>
-        )}
+        <div className="w-full h-[4px] flex items-center">
+          {isScreenSharing && systemAnalyserNode ? (
+            <AudioVisualizer analyserNode={systemAnalyserNode} height={4} />
+          ) : (
+            <div className="w-full h-full bg-muted rounded-full" />
+          )}
+        </div>
       </div>
 
       {/* Screen Preview */}

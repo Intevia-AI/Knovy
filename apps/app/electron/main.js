@@ -15,7 +15,7 @@ let pendingMediaRequest = null; // Keep track of the callback for the media requ
 
 const createWindow = () => {
   mainWindow = new BrowserWindow({ // Assign to mainWindow
-    width: 600,
+    width: 400,
     height: 480,
     frame: false, // Remove default frame to use custom header
     webPreferences: {
@@ -122,29 +122,31 @@ app.on("ready", async () => {
            const selectedSource = sources.find(s => s.id === sourceId);
            if (selectedSource) {
              console.log(`Granting access to source: ${selectedSource.name} (${selectedSource.id}) with loopback audio`);
-             pendingMediaRequest({ video: selectedSource, audio: 'loopback' }); // Use selected source
+             try {
+               pendingMediaRequest({ video: selectedSource, audio: 'loopback' }); // Use selected source
+             } catch (error) {
+               console.error("Error granting access to source:", error);
+               // Don't throw the error, just log it and clear the request
+             }
            } else {
-             console.error(`Selected source ID ${sourceId} not found!`);
-             // Handle error - maybe reject the original request?
+             console.log(`Selected source ID ${sourceId} not found, treating as cancellation.`);
            }
-           pendingMediaRequest = null; // Consume the callback
+           pendingMediaRequest = null; // Always clear the request after handling
         }).catch(err => {
             console.error("Error re-fetching sources for selection:", err);
             pendingMediaRequest = null;
         });
       } else {
-        console.warn("Received source selection, but no pending media request callback found.");
+        console.log("No pending media request found, treating as cancellation.");
       }
-      // No return value needed for handle if we consume the callback
     });
 
      ipcMain.handle('electronAPI:cancelSourceSelection', () => {
         console.log("Renderer cancelled source selection.");
         if (pendingMediaRequest) {
-            // How to cancel? Let's try calling callback with empty constraints.
-            // This might cause getDisplayMedia to throw an error in the renderer.
-            pendingMediaRequest({});
+            // Instead of calling with empty constraints, we'll just clear the pending request
             pendingMediaRequest = null;
+            console.log("Cleared pending media request without error.");
         }
      });
 

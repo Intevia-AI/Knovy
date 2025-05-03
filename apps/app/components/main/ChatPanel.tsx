@@ -39,7 +39,7 @@ export default function ChatPanel({
   };
 
   return (
-    <div className="flex flex-col h-full w-[300px] border-l border-border overflow-hidden bg-card">
+    <aside className="flex flex-col w-full max-w-[220px] border-l border-border overflow-y-auto shrink-0 bg-card">
       {/* <div className="flex-none p-4 border-b border-border">
         <h2 className="text-lg font-semibold">對話記錄</h2>
       </div> */}
@@ -48,7 +48,7 @@ export default function ChatPanel({
           <div
             key={m.id}
             className={cn(
-              "p-3 rounded-lg text-sm border w-fit max-w-[85%] whitespace-pre-wrap",
+              "p-3 rounded-lg text-sm border w-fit max-w-[100%] whitespace-pre-wrap",
               m.role === "user"
                 ? "bg-primary ml-auto text-primary-foreground"
                 : "bg-muted mr-auto text-foreground",
@@ -88,6 +88,6 @@ export default function ChatPanel({
           </Button>
         </form>
       </div>
-    </div>
+    </aside>
   );
 }
