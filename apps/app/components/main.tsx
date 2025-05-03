@@ -154,6 +154,8 @@ export function Main() {
           systemLevel={systemLevel}
           screenPreviewRef={screenPreviewRef}
           currentSystemAudioStream={currentSystemAudioStream}
+          customPrompt={customPrompt}
+          setCustomPrompt={setCustomPrompt}
           onToggleScreenShare={toggleScreenShare}
           onAiAction={sendContextToAI}
           onKeywordClick={handleKeywordClick}

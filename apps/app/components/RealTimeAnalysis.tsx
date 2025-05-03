@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { Button } from "@workspace/ui/components/button";
 import { Mic, MicOff, Pause } from "lucide-react";
 import { GeminiClient } from "./geminiClient";
@@ -11,6 +11,7 @@ interface RealTimeAnalysisProps {
   onKeywords?: (keywords: string[]) => void; // 當收到關鍵字時的回呼
   systemAudioStream?: MediaStream; // 系統音訊流 (可選)
   isScreenSharing: boolean; // 是否正在進行螢幕分享
+  customPrompt?: string; // Add customPrompt prop
 }
 
 export default function RealTimeAnalysis({
@@ -18,6 +19,7 @@ export default function RealTimeAnalysis({
   onKeywords,
   systemAudioStream,
   isScreenSharing,
+  customPrompt, // Add customPrompt to destructuring
 }: RealTimeAnalysisProps) {
   const [isActive, setIsActive] = useState(false); // 是否正在分析
   const [isProcessing, setIsProcessing] = useState(false); // 是否正在處理中 (例如：啟動/停止)
@@ -55,7 +57,8 @@ export default function RealTimeAnalysis({
         setAudioLevel(level);
       },
       () => {},
-      'answer'
+      'answer',
+      customPrompt
     );
 
     return () => {
@@ -76,7 +79,7 @@ export default function RealTimeAnalysis({
       shouldSendAudioRef.current = false;
       textBufferRef.current = "";
     };
-  }, [onTextResponse, onKeywords]);
+  }, [onTextResponse, onKeywords, customPrompt]);
 
   useEffect(() => {
     if (isActive && systemAudioStream) {
@@ -106,7 +109,9 @@ export default function RealTimeAnalysis({
     }
   };
 
-  const startAudio = async () => {
+  const startAudio = useCallback(async () => {
+    if (!isScreenSharing) return;
+
     try {
       console.log("[即時分析] 開始音訊...");
       setIsProcessing(true);
@@ -181,7 +186,7 @@ export default function RealTimeAnalysis({
     } finally {
       setIsProcessing(false);
     }
-  };
+  }, [isScreenSharing, systemAudioStream]);
 
   const stopAudio = () => {
     console.log("[即時分析] 停止音訊...");

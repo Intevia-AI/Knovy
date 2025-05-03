@@ -117,6 +117,15 @@ class GeminiProxyServer {
       return;
     }
 
+    if (data.type === "custom_prompt") {
+      console.log(`[Proxy] Client ${clientId} set custom prompt`);
+      client.customPrompt = data.prompt;
+      if (client.geminiWs) {
+        this.sendInitialSetup(client.geminiWs, client.mode, data.prompt);
+      }
+      return;
+    }
+
     if (data.type === "media_chunk") {
       if (!client.geminiWs) {
         await this.connectToGemini(client);
@@ -139,7 +148,7 @@ class GeminiProxyServer {
 
       geminiWs.on('open', () => {
         console.log(`[Proxy] Gemini connection opened for client ${client.id}`);
-        this.sendInitialSetup(geminiWs, client.mode);
+        this.sendInitialSetup(geminiWs, client.mode, client.customPrompt);
       });
 
       geminiWs.on('message', (data) => {
@@ -163,8 +172,8 @@ class GeminiProxyServer {
     }
   }
 
-  sendInitialSetup(ws, mode = 'transcription') {
-    console.log(`[Proxy] Sending initial setup for mode: ${mode}`);
+  sendInitialSetup(ws, mode = 'transcription', customPrompt = null) {
+    console.log(`[Proxy] Sending initial setup for mode: ${mode}, customPrompt: ${customPrompt}`);
     let systemInstruction;
     
     if (mode === 'transcription') {
@@ -184,7 +193,11 @@ KEYWORDS:
 Please always answer in traditional chinese instead of simplified chinese !!!!!
 `;
     } else {
-      systemInstruction = `You are an AI assistant in a meeting. Your job is to listen silently and only respond when truly necessary, with natural spoken-style answers that the user can directly read out loud. Follow these strict rules:
+      systemInstruction = `
+If the user provides additional instruction {Additional Instruction: ${customPrompt}}, please follow the instruction strictly, and if it has conflict with the following rules, please follow the additional instruction, and neglect the following rules.
+For example, if the user tells you to ask questions, then neglect rule 2 and rule 3.
+
+You are an AI assistant in a meeting. Your job is to listen silently and only respond when truly necessary, with natural spoken-style answers that the user can directly read out loud. Follow these strict rules:
 
 1. Wait until a full speaker turn or a complete sentence is received before making any decision. Do NOT react to partial input.
 2. Do NOT ask questions or take any initiative. You are purely reactive.
@@ -199,6 +212,7 @@ Please always answer in traditional chinese instead of simplified chinese !!!!!
 8. For web-related questions (such as real-time info or news), or if you think search web is needed for answering the question, respond with: [WEB] {user question here}
 9. If the user mentions screen, display, image, or anything visual, respond with: [SCREEN] {user question here}
 
+
 User: 可以看到我的螢幕嗎？
 Assistant: [SCREEN] 可以看到我的螢幕嗎？
 
@@ -206,9 +220,10 @@ User: 英偉達的股價是多少？
 Assistant: [WEB] 英偉達的股價是多少？
 
 Please always answer in traditional chinese instead of simplified chinese !!!!!
-`;
+Please always follow the additional instruction strictly, and if it has conflict with the rules, follow the additional instructions with highest priority.`;
     }
 
+    console.log(`[Proxy] System instruction: ${systemInstruction}`);
     const setupMessage = {
       setup: {
         model: MODEL,

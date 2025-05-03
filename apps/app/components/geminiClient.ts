@@ -22,6 +22,7 @@ export class GeminiClient {
   private reconnectTimeout: number = 1000;
   private streamingBuffer: string = "";
   private mode: 'transcription' | 'answer';
+  private customPrompt: string | null = null;
 
   constructor(
     onMessage: (text: string, turnComplete: boolean) => void,
@@ -29,7 +30,8 @@ export class GeminiClient {
     onPlayingStateChange: (isPlaying: boolean) => void,
     onAudioLevelChange: (level: number) => void,
     onTranscription: (text: string) => void,
-    mode: 'transcription' | 'answer' = 'transcription'
+    mode: 'transcription' | 'answer' = 'transcription',
+    customPrompt?: string
   ) {
     // Security check: Ensure we're not running in production without proper proxy configuration
     if (process.env.NODE_ENV === "production" && !PROXY_SERVER_URL) {
@@ -44,6 +46,7 @@ export class GeminiClient {
     this.onAudioLevelChange = onAudioLevelChange;
     this.onTranscriptionCallback = onTranscription;
     this.mode = mode;
+    this.customPrompt = customPrompt || null;
   }
 
   connect() {
@@ -57,7 +60,16 @@ export class GeminiClient {
 
     this.ws.onopen = () => {
       console.log("[Gemini] WebSocket 連接成功");
-      // 發送模式信息
+      // 先發送自定義提示詞
+      if (this.customPrompt) {
+        console.log("[Gemini] Sending custom prompt:", this.customPrompt);
+        this.ws?.send(JSON.stringify({
+          type: "custom_prompt",
+          prompt: this.customPrompt
+        }));
+      }
+      // 再發送模式信息
+      console.log("[Gemini] 發送模式信息:", this.mode, this.customPrompt);
       this.ws?.send(JSON.stringify({
         type: "mode",
         mode: this.mode
@@ -71,23 +83,22 @@ export class GeminiClient {
       try {
         const data = JSON.parse(event.data);
         if (data.text) {
-          this.onMessageCallback?.(data.text, data.turnComplete);
+          this.onMessageCallback?.(data.text, data.turnComplete || false);
         } else if (data.setupComplete) {
           this.isSetupComplete = true;
-          this.onSetupCompleteCallback?.();
         }
       } catch (error) {
-        this.onError(error as Error);
+        console.error("[Gemini] 處理消息時發生錯誤:", error);
       }
     };
 
     this.ws.onerror = (error) => {
-      console.error("WebSocket error:", error);
-      this.onError(new Error("WebSocket error occurred"));
+      console.error("[Gemini] WebSocket 錯誤:", error);
+      this.onError(new Error("WebSocket connection error"));
     };
 
     this.ws.onclose = () => {
-      console.log("WebSocket closed");
+      console.log("[Gemini] WebSocket 已關閉");
       this.isConnected = false;
       this.onClose();
       this.reconnect();

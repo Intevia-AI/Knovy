@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from "@workspace/ui/components/button";
 import {
   MicIcon,
@@ -9,12 +9,15 @@ import {
   MonitorIcon,
   MonitorOffIcon,
   LightbulbIcon,
+  LanguagesIcon,
 } from "lucide-react";
 import RealTimeAnalysis from "@/components/RealTimeAnalysis"; // Adjust path if needed
 import AudioVisualizer from "@/components/AudioVisualizer"; // Adjust path if needed
 import { formatTime } from '@/lib/utils'; // Adjust path if needed
 import { Progress } from "@workspace/ui/components/progress"; // Import Progress
 import RealTimeSubtitle from '@/components/RealTimeSubtitle';
+import { Input } from "@workspace/ui/components/input"; // Add Input component
+import { Label } from "@workspace/ui/components/label"; // Add Label component
 
 interface ControlPanelProps {
   isScreenSharing: boolean;
@@ -28,6 +31,10 @@ interface ControlPanelProps {
   systemLevel: number; // Add systemLevel prop
   screenPreviewRef: React.RefObject<HTMLVideoElement | null>; // Allow null
   currentSystemAudioStream: MediaStream | null; // For RealTimeAnalysis
+  customPrompt?: string; // Add custom prompt prop
+  setCustomPrompt?: (prompt: string) => void; // Add setter for custom prompt
+  language?: string;
+  setLanguage?: (language: string) => void;
 
   onToggleScreenShare: () => void;
   onAiAction: (action: "answer" | "summary" | "search" | "find-clue") => void;
@@ -51,6 +58,10 @@ export function ControlPanel({
   systemLevel, // Destructure systemLevel
   screenPreviewRef,
   currentSystemAudioStream,
+  customPrompt, // Add custom prompt to destructuring
+  setCustomPrompt, // Add setter to destructuring
+  language,
+  setLanguage,
   onToggleScreenShare,
   onAiAction,
   onKeywordClick,
@@ -60,12 +71,22 @@ export function ControlPanel({
   onAnswerKeywords,
   setSubtitleVisibility,
 }: ControlPanelProps) {
+  // 追踪確認的提示詞
+  const [confirmedPrompt, setConfirmedPrompt] = useState<string | undefined>(customPrompt);
+  // 追踪輸入中的提示詞
+  const [draftPrompt, setDraftPrompt] = useState<string>(customPrompt || '');
 
   const aiActions = [
     { action: "answer", label: "深度回答", icon: MicIcon },
     { action: "summary", label: "產生摘要", icon: ListCollapseIcon },
     // { action: "search", label: "搜尋主題", icon: SearchIcon },
   ] as const; // Use const assertion
+
+  const languages = [
+    { code: 'zh-TW', name: '繁體中文' },
+    { code: 'en-US', name: 'English' },
+    { code: 'ja-JP', name: '日本語' },
+  ];
 
   return (
     <aside className="flex flex-col w-full max-w-[160px] border-l border-border overflow-y-auto shrink-0 bg-card">
@@ -153,6 +174,7 @@ export function ControlPanel({
             onKeywords={onAnswerKeywords}
             systemAudioStream={currentSystemAudioStream || undefined}
             isScreenSharing={isScreenSharing}
+            customPrompt={confirmedPrompt}
           />
         </div>
       </div>
@@ -180,6 +202,81 @@ export function ControlPanel({
         </div>
       </div>
 
+      {/* Custom Prompt Input */}
+      {setCustomPrompt && !confirmedPrompt && (
+        <div className="p-2 space-y-1.5 border-b border-border">
+          <Label htmlFor="custom-prompt" className="text-xs font-medium text-foreground">
+            客製化模型要求
+          </Label>
+          <Input
+            id="custom-prompt"
+            type="text"
+            placeholder="輸入自定義提示詞後按 Enter..."
+            value={draftPrompt}
+            onChange={(e) => setDraftPrompt(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                // 確認提示詞
+                setConfirmedPrompt(draftPrompt);
+                setCustomPrompt(draftPrompt);
+                e.currentTarget.blur();
+              }
+            }}
+            className="h-7 text-xs"
+          />
+        </div>
+      )}
+
+      {/* Confirmed Prompt Display */}
+      {confirmedPrompt && (
+        <div className="p-2 space-y-1.5 border-b border-border">
+          <div className="flex items-center justify-between">
+            <Label className="text-xs font-medium text-foreground">
+              當前模型要求
+            </Label>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setConfirmedPrompt(undefined);
+                if (setCustomPrompt) {
+                  setCustomPrompt('');
+                }
+                setDraftPrompt('');
+              }}
+              className="h-6 text-xs"
+            >
+              清除
+            </Button>
+          </div>
+          <div className="text-xs text-muted-foreground break-words">
+            {confirmedPrompt}
+          </div>
+        </div>
+      )}
+
+      {setLanguage && (
+        <div className="p-2 space-y-1.5 border-b border-border">
+          <div className="flex items-center justify-between">
+            <Label className="text-xs font-medium text-foreground">
+              語言選擇
+            </Label>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const currentIndex = languages.findIndex(lang => lang.code === (language || 'zh-TW'));
+                const nextIndex = (currentIndex + 1) % languages.length;
+                (setLanguage as (lang: string) => void)(languages[nextIndex].code);
+              }}
+              className="text-xs h-7 px-2"
+              title="切換語言"
+            >
+              <LanguagesIcon className="h-3 w-3" />
+            </Button>
+          </div>
+        </div>
+      )}
       {/* Mic Audio Visualizer - Commented out
       <div className="p-4 space-y-3 border-b border-border">
         <h3 className="text-base font-semibold text-card-foreground">
