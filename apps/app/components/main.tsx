@@ -78,18 +78,9 @@ export function Main() {
     handleKeywordClick,
     messagesContainerRef,
     resetChat,
-    messages,
     handleSendMessage,
     setSubtitleVisibility,
-  } = useAIInteraction({
-    micSegments,
-    systemAudioSegments,
-    currentMicChunksRef, // <<< Pass this ref
-    systemAudioChunksRef, // <<< Pass this ref
-    micMimeType,
-    systemAudioMimeType,
-    isScreenSharing,
-  });
+  } = useAIInteraction();
 
   // --- Effects ------------------------------------------------
 
@@ -164,7 +155,7 @@ export function Main() {
         {/* Chat Panel - Moved to the right */}
         <ResizablePanel defaultSize={60} minSize={20} className="border-none">
           <ChatPanel
-            messages={messages}
+            messages={aiMessages}
             isLoading={isLoading}
             isScreenSharing={isScreenSharing}
             customPrompt={customPrompt}

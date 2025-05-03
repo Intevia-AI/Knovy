@@ -79,7 +79,7 @@ export function ControlPanel({
 }: ControlPanelProps) {
   // 追踪確認的提示詞
   const [confirmedPrompt, setConfirmedPrompt] = useState<string | undefined>(
-    customPrompt,
+    customPrompt
   );
   // 追踪輸入中的提示詞
   const [draftPrompt, setDraftPrompt] = useState<string>(customPrompt || "");
@@ -87,8 +87,8 @@ export function ControlPanel({
   const asideRef = useRef<HTMLElement>(null); // Ref for the aside element
 
   const aiActions = [
-    { action: "answer", label: "深度回答", icon: MicIcon },
-    { action: "summary", label: "產生摘要", icon: ListCollapseIcon },
+    { action: "answer", label: "深度回答", icon: MicIcon, shortcut: "1" }, // Keep shortcut as number for key check
+    { action: "summary", label: "產生摘要", icon: ListCollapseIcon, shortcut: "2" }, // Keep shortcut as number for key check
     // { action: "search", label: "搜尋主題", icon: SearchIcon },
   ] as const; // Use const assertion
 
@@ -110,10 +110,63 @@ export function ControlPanel({
     }
   }, [isAdvancedSettingsOpen]);
 
+  // Handle AI Action shortcuts
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Check if Cmd (Mac) or Ctrl (Windows/Linux) is pressed
+      const modifierPressed = event.metaKey || event.ctrlKey;
+
+      // Ignore if modifier key isn't pressed, or if other modifiers are pressed,
+      // or if input/textarea has focus
+      if (
+        !modifierPressed ||
+        event.altKey ||
+        event.shiftKey ||
+        event.target instanceof HTMLInputElement ||
+        event.target instanceof HTMLTextAreaElement
+      ) {
+        return;
+      }
+
+      const actionMapping = aiActions.find((a) => a.shortcut === event.key);
+
+      if (actionMapping && !isLoading && isScreenSharing) {
+        event.preventDefault(); // Prevent default browser behavior (like opening bookmarks)
+        onAiAction(actionMapping.action);
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+
+    // Cleanup function to remove the event listener
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isLoading, isScreenSharing, onAiAction, aiActions]); // Add dependencies
+
+  // Determine modifier key display based on OS (simple check)
+  const modifierKey =
+    navigator.platform.toUpperCase().indexOf("MAC") >= 0 ? "⌘" : "Ctrl";
+
   return (
     <aside ref={asideRef} className="flex flex-col h-full overflow-y-auto">
       {/* Status and Control */}
       <div className="p-2 space-y-1.5 border-b border-border/30">
+        {/* Screen Preview */}
+        {isScreenSharing && ( // Only show preview section when sharing
+          <div className="p-4 space-y-2 border-t border-border/30">
+            <h3 className="text-base font-semibold text-card-foreground">
+              螢幕預覽
+            </h3>
+            <video
+              ref={screenPreviewRef}
+              className="w-full aspect-video rounded border border-border/30 bg-muted"
+              autoPlay
+              playsInline
+              muted // Preview should always be muted
+            />
+          </div>
+        )}
         <div className="flex items-center justify-between gap-1">
           <span className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
             <span
@@ -128,8 +181,8 @@ export function ControlPanel({
                 isLoading
                   ? "AI 處理中"
                   : isScreenSharing
-                    ? "分享/錄製中"
-                    : "已停止"
+                  ? "分享/錄製中"
+                  : "已停止"
               }
             ></span>
             {isLoading ? "處理中..." : isScreenSharing ? "分享中" : "已停止"}
@@ -211,7 +264,7 @@ export function ControlPanel({
       <div className="p-2 space-y-1.5 border-b border-border/30">
         <h4 className="text-xs font-medium text-foreground">AI 動作</h4>
         <div className="grid grid-cols-2 gap-1">
-          {aiActions.map(({ action, label, icon: Icon }) => (
+          {aiActions.map(({ action, label, icon: Icon, shortcut }) => (
             <Button
               key={action}
               variant="outline"
@@ -219,10 +272,13 @@ export function ControlPanel({
               disabled={isLoading || !isScreenSharing}
               onClick={() => onAiAction(action)}
               className="flex items-center justify-center gap-0.5 text-xs px-1 h-7"
-              title={label}
+              title={`${label} (快捷鍵: ${modifierKey}+${shortcut})`} // Updated tooltip display
             >
               <Icon className="h-2.5 w-2.5" />
               <span className="truncate">{label}</span>
+              <span className="ml-1 text-[10px] text-muted-foreground/80 border border-muted/50 rounded-sm px-0.5">
+                {modifierKey}+{shortcut}
+              </span>
             </Button>
           ))}
         </div>
@@ -322,7 +378,11 @@ export function ControlPanel({
                     </SelectTrigger>
                     <SelectContent>
                       {languages.map((lang) => (
-                        <SelectItem key={lang.code} value={lang.code} className="text-xs">
+                        <SelectItem
+                          key={lang.code}
+                          value={lang.code}
+                          className="text-xs"
+                        >
                           {lang.name}
                         </SelectItem>
                       ))}
@@ -374,22 +434,6 @@ export function ControlPanel({
               </div>
             </div>
             */}
-
-            {/* Screen Preview */}
-            {isScreenSharing && ( // Only show preview section when sharing
-              <div className="p-4 space-y-2 border-t border-border/30">
-                <h3 className="text-base font-semibold text-card-foreground">
-                  螢幕預覽
-                </h3>
-                <video
-                  ref={screenPreviewRef}
-                  className="w-full aspect-video rounded border border-border/30 bg-muted"
-                  autoPlay
-                  playsInline
-                  muted // Preview should always be muted
-                />
-              </div>
-            )}
           </div>
         )}
       </div>
