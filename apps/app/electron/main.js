@@ -82,6 +82,13 @@ const toggleWindow = () => {
 
 // Make the ready handler async to use await
 app.on("ready", async () => {
+    // --- Hide Dock Icon (macOS) ---
+    if (process.platform === 'darwin' && app.dock) {
+      app.dock.hide();
+      console.log("Dock icon hidden on macOS.");
+    }
+    // --- End Hide Dock Icon ---
+
     // --- Check/Request Screen Recording Permission (macOS) ---
     if (process.platform === 'darwin') { // Only run on macOS
       const screenStatus = systemPreferences.getMediaAccessStatus('screen');
