@@ -1,20 +1,24 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { Button } from "@workspace/ui/components/button";
-import { Mic, MicOff, Pause } from "lucide-react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { GeminiClient } from "./geminiClient";
 
 interface RealTimeAnalysisProps {
   onTextResponse?: (text: string, turnComplete: boolean) => void; // 當收到文字回應時的回呼
   onKeywords?: (keywords: string[]) => void; // 當收到關鍵字時的回呼
   systemAudioStream?: MediaStream; // 系統音訊流 (可選)
+  isScreenSharing: boolean; // 是否正在進行螢幕分享
+  customPrompt?: string; // Add customPrompt prop
+  language?: string;
 }
 
 export default function RealTimeAnalysis({
   onTextResponse,
   onKeywords,
   systemAudioStream,
+  isScreenSharing,
+  customPrompt, // Add customPrompt to destructuring
+  language,
 }: RealTimeAnalysisProps) {
   const [isActive, setIsActive] = useState(false); // 是否正在分析
   const [isProcessing, setIsProcessing] = useState(false); // 是否正在處理中 (例如：啟動/停止)
@@ -29,31 +33,42 @@ export default function RealTimeAnalysis({
   const textBufferRef = useRef("");
 
   useEffect(() => {
-    // 初始化 GeminiClient
-    geminiClientRef.current = new GeminiClient(
-      (text, turnComplete) => {
-        console.log("[即時問答] 收到回答:", text);
-        if (onTextResponse) {
-          // 使用 requestAnimationFrame 來延遲調用 onTextResponse
-          requestAnimationFrame(() => {
-            onTextResponse(text, turnComplete);
-          });
-        }
-      },
-      () => {
-        console.log("[即時問答] WebSocket 連線已建立");
-        setIsConnected(true);
-        shouldSendAudioRef.current = true;
-      },
-      (isPlaying) => {
-        console.log("[即時問答] 播放狀態變更:", isPlaying);
-      },
-      (level) => {
-        setAudioLevel(level);
-      },
-      () => {},
-      'answer'
-    );
+    if (isScreenSharing && systemAudioStream) {
+      console.log(
+        "[RealTimeAnalysis] 初始化 GeminiClient, language:",
+        language,
+      );
+      geminiClientRef.current = new GeminiClient(
+        (text, turnComplete) => {
+          console.log("[即時問答] 收到回答:", text);
+          if (onTextResponse) {
+            // 使用 requestAnimationFrame 來延遲調用 onTextResponse
+            requestAnimationFrame(() => {
+              onTextResponse(text, turnComplete);
+            });
+          }
+        },
+        () => {
+          console.log("[即時問答] WebSocket 連線已建立");
+          setIsConnected(true);
+          shouldSendAudioRef.current = true;
+        },
+        (isPlaying) => {
+          console.log("[即時問答] 播放狀態變更:", isPlaying);
+        },
+        (level) => {
+          console.log("[RealTimeAnalysis] 音訊等級變更:", level);
+          setAudioLevel(level);
+        },
+        (text) => {
+          console.log("[即時問答] 收到轉錄:", text);
+          textBufferRef.current = text;
+        },
+        "answer",
+        customPrompt,
+        language,
+      );
+    }
 
     return () => {
       console.log("[即時問答] 清理 WebSocket...");
@@ -73,7 +88,14 @@ export default function RealTimeAnalysis({
       shouldSendAudioRef.current = false;
       textBufferRef.current = "";
     };
-  }, [onTextResponse, onKeywords]);
+  }, [
+    onTextResponse,
+    onKeywords,
+    customPrompt,
+    language,
+    isScreenSharing,
+    systemAudioStream,
+  ]);
 
   useEffect(() => {
     if (isActive && systemAudioStream) {
@@ -103,7 +125,9 @@ export default function RealTimeAnalysis({
     }
   };
 
-  const startAudio = async () => {
+  const startAudio = useCallback(async () => {
+    if (!isScreenSharing) return;
+
     try {
       console.log("[即時分析] 開始音訊...");
       setIsProcessing(true);
@@ -123,7 +147,7 @@ export default function RealTimeAnalysis({
 
       console.log("[即時分析] 載入 audio worklet...");
       await audioContextRef.current.audioWorklet.addModule(
-        "/worklets/audio-processor.js"
+        "/worklets/audio-processor.js",
       );
       const audioWorkletNode = new AudioWorkletNode(
         audioContextRef.current,
@@ -132,7 +156,7 @@ export default function RealTimeAnalysis({
           processorOptions: {
             bufferSize: 8192,
           },
-        }
+        },
       );
 
       audioWorkletNode.port.onmessage = (event) => {
@@ -178,7 +202,7 @@ export default function RealTimeAnalysis({
     } finally {
       setIsProcessing(false);
     }
-  };
+  }, [isScreenSharing, systemAudioStream]);
 
   const stopAudio = () => {
     console.log("[即時分析] 停止音訊...");
@@ -207,36 +231,14 @@ export default function RealTimeAnalysis({
     setIsConnected(false);
   };
 
-  return (
-    <div className="flex flex-col items-center space-y-4 w-full max-w-2xl mx-auto">
-      <Button
-        onClick={isActive ? stopAudio : startAudio}
-        disabled={isProcessing}
-        variant={isActive ? "destructive" : "default"}
-        className="flex items-center gap-2 w-full"
-      >
-        {isProcessing ? (
-          <Pause className="h-4 w-4 animate-spin" />
-        ) : isActive ? (
-          <MicOff className="h-4 w-4" />
-        ) : (
-          <Mic className="h-4 w-4" />
-        )}
-        {isProcessing
-          ? "處理中..."
-          : isActive
-          ? "停止問答"
-          : "開始即時問答"}
-      </Button>
+  // 監聽螢幕分享狀態變化
+  useEffect(() => {
+    if (isScreenSharing) {
+      startAudio();
+    } else {
+      stopAudio();
+    }
+  }, [isScreenSharing]);
 
-      {isActive && (
-        <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
-          <div
-            className="h-full bg-blue-500 transition-all duration-100"
-            style={{ width: `${audioLevel}%` }}
-          />
-        </div>
-      )}
-    </div>
-  );
+  return <></>;
 }

@@ -40,10 +40,10 @@ export default function RealTimeAnalysis({
           textBufferRef.current.includes("KEYWORDS:")
         ) {
           const transcriptionMatch = textBufferRef.current.match(
-            /TRANSCRIPTION: (.*?)(?:\n|$)KEYWORDS:/s
+            /TRANSCRIPTION: (.*?)(?:\n|$)KEYWORDS:/s,
           );
           const keywordsMatch = textBufferRef.current.match(
-            /KEYWORDS: (.*?)(?:\n|$)/s
+            /KEYWORDS: (.*?)(?:\n|$)/s,
           );
 
           if (transcriptionMatch && transcriptionMatch[1]) {
@@ -79,7 +79,7 @@ export default function RealTimeAnalysis({
       (level) => {
         setAudioLevel(level);
       },
-      () => {}
+      () => {},
     );
 
     return () => {
@@ -150,7 +150,7 @@ export default function RealTimeAnalysis({
 
       console.log("[即時分析] 載入 audio worklet...");
       await audioContextRef.current.audioWorklet.addModule(
-        "/worklets/audio-processor.js"
+        "/worklets/audio-processor.js",
       );
       const audioWorkletNode = new AudioWorkletNode(
         audioContextRef.current,
@@ -159,7 +159,7 @@ export default function RealTimeAnalysis({
           processorOptions: {
             bufferSize: 8192,
           },
-        }
+        },
       );
 
       audioWorkletNode.port.onmessage = (event) => {
@@ -249,11 +249,7 @@ export default function RealTimeAnalysis({
         ) : (
           <Mic className="h-4 w-4" />
         )}
-        {isProcessing
-          ? "處理中..."
-          : isActive
-          ? "停止分析"
-          : "開始即時分析"}
+        {isProcessing ? "處理中..." : isActive ? "停止分析" : "開始即時分析"}
       </Button>
 
       {isActive && (

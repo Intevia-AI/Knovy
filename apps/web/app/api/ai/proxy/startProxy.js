@@ -114,6 +114,12 @@ class GeminiProxyServer {
     } else if (data.type === 'disconnect') {
       console.log(`[Proxy] Client ${clientId} disconnecting...`);
       this.cleanupClient(clientId);
+    } else if (data.type === 'language') {
+      console.log(`[Proxy] Client ${clientId} setting language to: ${data.language}`);
+      client.language = data.language;
+      if (client.geminiWs) {
+        this.sendInitialSetup(client.geminiWs, client.mode, client.customPrompt, client.language);
+      }
     } else {
       console.log(`[Proxy] Unknown message type from client ${clientId}:`, data.type);
     }

@@ -3,4 +3,4 @@ export class TranscriptionService {
     // For now, we'll just return an empty string since we're not using transcription
     return "";
   }
-} 
+}

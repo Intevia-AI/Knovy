@@ -25,7 +25,7 @@ export async function POST(req: Request) {
     console.error("Error sending feedback:", error);
     return NextResponse.json(
       { message: "Error sending feedback" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

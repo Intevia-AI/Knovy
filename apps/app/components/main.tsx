@@ -1,7 +1,5 @@
 "use client";
 import { useEffect, useState } from "react";
-import type { Message } from 'ai'; // Import Message type
-import type { CustomMessage } from '@/hooks/useAIInteraction'; // Import CustomMessage type
 
 // Hooks
 import { useElectron } from "@/hooks/useElectron";
@@ -14,13 +12,20 @@ import { HeaderBar } from "./main/HeaderBar";
 import { SourcePickerModal } from "./main/SourcePickerModal";
 import ChatPanel from "./main/ChatPanel";
 import { ControlPanel } from "./main/ControlPanel";
+import { useTheme } from "next-themes";
+import {
+  ResizableHandle,
+  ResizablePanel,
+  ResizablePanelGroup,
+} from "@workspace/ui/components/resizable"; // Import Resizable components
 
 // Types (Import necessary types)
-import type { Segment, ElectronSource } from '@/types';
 
 // =============================================================
 export function Main() {
   // --- Hooks ----------------------------------------------------
+  const { setTheme } = useTheme();
+  const [language, setLanguage] = useState("zh-TW");
 
   // Electron Interactions
   const {
@@ -51,10 +56,11 @@ export function Main() {
   } = useScreenShare();
 
   // Audio Analysis (Visualizers)
-  const { micAnalyserNode, systemAnalyserNode, micLevel, systemLevel } = useAudioAnalysis(
-    isScreenSharing ? micStream : null, // Pass stream only when sharing
-    isScreenSharing ? currentSystemAudioStream : null // Pass stream only when sharing
-  );
+  const { micAnalyserNode, systemAnalyserNode, micLevel, systemLevel } =
+    useAudioAnalysis(
+      isScreenSharing ? micStream : null, // Pass stream only when sharing
+      isScreenSharing ? currentSystemAudioStream : null // Pass stream only when sharing
+    );
 
   // AI Interaction Logic
   const {
@@ -65,13 +71,13 @@ export function Main() {
     keywords,
     selectedKeyword,
     sendContextToAI,
-    handleTranscriptionResponse, // For RealTimeSubtitle
-    handleTranscriptionKeywords, // For RealTimeSubtitle
-    handleAnswerResponse, // For RealTimeAnalysis
-    handleAnswerKeywords, // For RealTimeAnalysis
-    handleKeywordClick, // Pass to ControlPanel
-    messagesContainerRef, // Pass to ChatPanel
-    resetChat, // To reset AI state on starting share
+    handleTranscriptionResponse,
+    handleTranscriptionKeywords,
+    handleAnswerResponse,
+    handleAnswerKeywords,
+    handleKeywordClick,
+    messagesContainerRef,
+    resetChat,
     messages,
     handleSendMessage,
     setSubtitleVisibility,
@@ -95,23 +101,14 @@ export function Main() {
     }
   }, [isScreenSharing, resetChat]);
 
-  const onAnswerResponse = (text: string, turnComplete: boolean) => {
-    console.log("[Main] 收到回答:", text);
-    // 將回答添加到消息列表中
-    setAiMessages((prev: CustomMessage[]) => [
-      ...prev,
-      {
-        id: Date.now().toString(),
-        role: "assistant",
-        content: text,
-      },
-    ]);
-  };
+  useEffect(() => {
+    setTheme("dark");
+  }, []);
 
   // --- Render -------------------------------------------------
   return (
     // Added padding-top to account for fixed header height (h-6 = pt-6)
-    <div className="flex flex-col h-screen rounded-lg bg-background pt-6">
+    <div className="flex flex-col h-screen rounded-lg bg-transparent pt-6">
       {/* Fixed Header */}
       <HeaderBar
         isAlwaysOnTop={isAlwaysOnTop}
@@ -128,42 +125,55 @@ export function Main() {
         onCancel={handleCancelSelect}
       />
 
-      {/* Main Content Area */}
-      <div className="flex flex-1 overflow-hidden shadow-lg">
-        {/* Chat Panel */}
-        <ChatPanel
-          messages={messages}
-          isLoading={isLoading}
-          isScreenSharing={isScreenSharing}
-          customPrompt={customPrompt}
-          setCustomPrompt={setCustomPrompt}
-          onSendMessage={handleSendMessage}
-          messagesContainerRef={messagesContainerRef}
-        />
+      {/* Main Content Area using ResizablePanelGroup */}
+      <ResizablePanelGroup
+        direction="vertical"
+        className="flex flex-1 overflow-hidden shadow-lg rounded-b-lg" // Added border and rounded-b-lg
+      >
+        {/* Control Panel (Sidebar) - Moved to the left */}
+        <ResizablePanel defaultSize={40} minSize={30} className="border-none">
+          <ControlPanel
+            isScreenSharing={isScreenSharing}
+            isLoading={isLoading}
+            recordingDuration={recordingDuration}
+            keywords={keywords}
+            selectedKeyword={selectedKeyword}
+            micAnalyserNode={micAnalyserNode}
+            systemAnalyserNode={systemAnalyserNode}
+            micLevel={micLevel}
+            systemLevel={systemLevel}
+            screenPreviewRef={screenPreviewRef}
+            currentSystemAudioStream={currentSystemAudioStream}
+            customPrompt={customPrompt}
+            setCustomPrompt={setCustomPrompt}
+            language={language}
+            setLanguage={setLanguage}
+            onToggleScreenShare={toggleScreenShare}
+            onAiAction={sendContextToAI}
+            onKeywordClick={handleKeywordClick}
+            onTranscriptionResponse={handleTranscriptionResponse}
+            onTranscriptionKeywords={handleTranscriptionKeywords}
+            onAnswerResponse={handleAnswerResponse}
+            onAnswerKeywords={handleAnswerKeywords}
+            setSubtitleVisibility={setSubtitleVisibility}
+          />
+        </ResizablePanel>
 
-        {/* Control Panel (Sidebar) */}
-        <ControlPanel
-          isScreenSharing={isScreenSharing}
-          isLoading={isLoading}
-          recordingDuration={recordingDuration}
-          keywords={keywords}
-          selectedKeyword={selectedKeyword}
-          micAnalyserNode={micAnalyserNode}
-          systemAnalyserNode={systemAnalyserNode}
-          micLevel={micLevel}
-          systemLevel={systemLevel}
-          screenPreviewRef={screenPreviewRef}
-          currentSystemAudioStream={currentSystemAudioStream}
-          onToggleScreenShare={toggleScreenShare}
-          onAiAction={sendContextToAI}
-          onKeywordClick={handleKeywordClick}
-          onTranscriptionResponse={handleTranscriptionResponse}
-          onTranscriptionKeywords={handleTranscriptionKeywords}
-          onAnswerResponse={handleAnswerResponse}
-          onAnswerKeywords={handleAnswerKeywords}
-          setSubtitleVisibility={setSubtitleVisibility}
-        />
-      </div>
+        <ResizableHandle withHandle className="bg-border/70"/>
+
+        {/* Chat Panel - Moved to the right */}
+        <ResizablePanel defaultSize={60} minSize={20} className="border-none">
+          <ChatPanel
+            messages={messages}
+            isLoading={isLoading}
+            isScreenSharing={isScreenSharing}
+            customPrompt={customPrompt}
+            setCustomPrompt={setCustomPrompt}
+            onSendMessage={handleSendMessage}
+            messagesContainerRef={messagesContainerRef}
+          />
+        </ResizablePanel>
+      </ResizablePanelGroup>
     </div>
   );
 }

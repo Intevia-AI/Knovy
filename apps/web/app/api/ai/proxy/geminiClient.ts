@@ -4,8 +4,7 @@ import dotenv from "dotenv";
 dotenv.config();
 
 // const PROXY_SERVER_URL = process.env.PROXY_SERVER_URL || `ws://${process.env.PROXY_HOST || 'localhost'}:${process.env.PROXY_PORT || '4567'}`;
-const PROXY_SERVER_URL = "wss://intevia-api.adastra.tw"
-
+const PROXY_SERVER_URL = "wss://intevia-api.adastra.tw";
 
 export class GeminiClient {
   private ws: WebSocket | null = null;
@@ -19,18 +18,20 @@ export class GeminiClient {
   private reconnectAttempts: number = 0;
   private maxReconnectAttempts: number = 5;
   private reconnectTimeout: number = 1000;
-  private streamingBuffer: string = '';
+  private streamingBuffer: string = "";
 
   constructor(
     onMessage: (text: string) => void,
     onSetupComplete: () => void,
     onPlayingStateChange: (isPlaying: boolean) => void,
     onAudioLevelChange: (level: number) => void,
-    onTranscription: (text: string) => void
+    onTranscription: (text: string) => void,
   ) {
     // Security check: Ensure we're not running in production without proper proxy configuration
-    if (process.env.NODE_ENV === 'production' && (!PROXY_SERVER_URL)) {
-      throw new Error('Proxy server configuration is required in production environment');
+    if (process.env.NODE_ENV === "production" && !PROXY_SERVER_URL) {
+      throw new Error(
+        "Proxy server configuration is required in production environment",
+      );
     }
 
     this.onMessageCallback = onMessage;
@@ -49,7 +50,7 @@ export class GeminiClient {
         this.isConnected = true;
         this.reconnectAttempts = 0;
         // Send initialization message
-        this.ws?.send(JSON.stringify({ type: 'connect' }));
+        this.ws?.send(JSON.stringify({ type: "connect" }));
       };
 
       this.ws.onmessage = (event) => {
@@ -86,7 +87,9 @@ export class GeminiClient {
     if (this.reconnectAttempts < this.maxReconnectAttempts) {
       this.reconnectAttempts++;
       setTimeout(() => {
-        console.log(`Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
+        console.log(
+          `Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts})`,
+        );
         this.connect();
       }, this.reconnectTimeout * this.reconnectAttempts);
     }
@@ -108,11 +111,14 @@ export class GeminiClient {
 
   sendMediaChunk(data: string, mimeType: string) {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      console.log("[GeminiClient] Sending media chunk, data size:", data.length);
+      console.log(
+        "[GeminiClient] Sending media chunk, data size:",
+        data.length,
+      );
       const message = {
-        type: 'media_chunk',
+        type: "media_chunk",
         mimeType,
-        chunk: data
+        chunk: data,
       };
       try {
         this.ws.send(JSON.stringify(message));
@@ -121,7 +127,10 @@ export class GeminiClient {
         console.error("[GeminiClient] Error sending media chunk:", error);
       }
     } else {
-      console.error("[GeminiClient] WebSocket not ready, state:", this.ws?.readyState);
+      console.error(
+        "[GeminiClient] WebSocket not ready, state:",
+        this.ws?.readyState,
+      );
     }
   }
 
@@ -137,27 +146,32 @@ export class GeminiClient {
   onTextResponse(text: string) {
     if (this.streamingBuffer.includes("TRANSCRIPTION:")) {
       // 使用正則表達式提取實際內容，完全移除標籤
-      const transcriptionMatch = this.streamingBuffer.match(/TRANSCRIPTION:\s*(.*?)(?:\n|$)/s);
+      const transcriptionMatch = this.streamingBuffer.match(
+        /TRANSCRIPTION:\s*(.*?)(?:\n|$)/s,
+      );
       if (transcriptionMatch && transcriptionMatch[1]) {
         const cleanTranscription = transcriptionMatch[1]
-          .replace(/^TRANSCRIPTION:\s*/i, '') // 再次確保移除開頭的標籤
-          .replace(/\nTRANSCRIPTION:\s*/g, '\n') // 移除中間可能出現的標籤
+          .replace(/^TRANSCRIPTION:\s*/i, "") // 再次確保移除開頭的標籤
+          .replace(/\nTRANSCRIPTION:\s*/g, "\n") // 移除中間可能出現的標籤
           .trim();
-        
+
         // 如果有關鍵字部分，也一併處理
-        let keywords = '';
+        let keywords = "";
         if (this.streamingBuffer.includes("KEYWORDS:")) {
-          const keywordsMatch = this.streamingBuffer.match(/KEYWORDS:\s*(.*?)(?:\n|$)/s);
+          const keywordsMatch = this.streamingBuffer.match(
+            /KEYWORDS:\s*(.*?)(?:\n|$)/s,
+          );
           if (keywordsMatch && keywordsMatch[1]) {
             keywords = keywordsMatch[1].trim();
           }
         }
 
         // 組合最終回應，確保格式乾淨
-        const finalResponse = cleanTranscription + (keywords ? `\n關鍵字：${keywords}` : '');
+        const finalResponse =
+          cleanTranscription + (keywords ? `\n關鍵字：${keywords}` : "");
         this.onTranscriptionCallback?.(finalResponse);
-        this.streamingBuffer = '';
+        this.streamingBuffer = "";
       }
     }
   }
-} 
+}

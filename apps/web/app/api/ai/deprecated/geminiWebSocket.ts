@@ -13,7 +13,7 @@
 //   private onMessageCallback: ((text: string) => void) | null = null;
 //   private onSetupCompleteCallback: (() => void) | null = null;
 //   private audioContext: AudioContext | null = null;
-  
+
 //   // Audio queue management
 //   private audioQueue: Float32Array[] = [];
 //   private isPlaying: boolean = false;
@@ -29,7 +29,7 @@
 //   private reconnectDelay: number = 1000;
 
 //   constructor(
-//     onMessage: (text: string) => void, 
+//     onMessage: (text: string) => void,
 //     onSetupComplete: () => void,
 //     onPlayingStateChange: (isPlaying: boolean) => void,
 //     onAudioLevelChange: (level: number) => void,
@@ -49,7 +49,7 @@
 
 //   private createWebSocket(): WebSocket {
 //     const ws = new WebSocket(WS_URL);
-    
+
 //     ws.onopen = () => {
 //       console.log("[GeminiWebSocket] WebSocket connection opened");
 //       this.isConnected = true;
@@ -68,7 +68,7 @@
 //         } else {
 //           messageText = event.data;
 //         }
-        
+
 //         await this.handleMessage(messageText);
 //       } catch (error) {
 //         console.error("[GeminiWebSocket] Error processing message:", error);
@@ -82,7 +82,7 @@
 //     ws.onclose = (event) => {
 //       console.log("[GeminiWebSocket] WebSocket closed:", event.code, event.reason);
 //       this.isConnected = false;
-      
+
 //       if (!event.wasClean && this.isSetupComplete && this.reconnectAttempts < this.maxReconnectAttempts) {
 //         this.reconnectAttempts++;
 //         console.log(`[GeminiWebSocket] Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts})...`);
@@ -99,7 +99,7 @@
 //       console.log("[GeminiWebSocket] WebSocket already connected");
 //       return;
 //     }
-    
+
 //     this.ws = this.createWebSocket();
 //   }
 
@@ -109,7 +109,7 @@
 //       setup: {
 //         model: MODEL,
 //         generation_config: {
-//           response_modalities: ["TEXT"] 
+//           response_modalities: ["TEXT"]
 //         },
 //         system_instruction: {
 //           parts: [{
@@ -172,7 +172,7 @@
 
 //       // Convert to Int16Array (PCM format)
 //       const pcmData = new Int16Array(bytes.buffer);
-      
+
 //       // Convert to float32 for Web Audio API
 //       const float32Data = new Float32Array(pcmData.length);
 //       for (let i = 0; i < pcmData.length; i++) {
@@ -214,7 +214,7 @@
 //       this.currentSource = this.audioContext.createBufferSource();
 //       this.currentSource.buffer = audioBuffer;
 //       this.currentSource.connect(this.audioContext.destination);
-      
+
 //       this.currentSource.onended = () => {
 //         this.isPlaying = false;
 //         this.currentSource = null;
@@ -254,7 +254,7 @@
 //   private async handleMessage(message: string) {
 //     try {
 //       const messageData = JSON.parse(message);
-      
+
 //       if (messageData.setupComplete) {
 //         this.isSetupComplete = true;
 //         this.onSetupCompleteCallback?.();
@@ -281,7 +281,7 @@
 //           try {
 //             const fullPcmData = this.accumulatedPcmData.join('');
 //             const wavData = await pcmToWav(fullPcmData, 24000);
-            
+
 //             const transcription = await this.transcriptionService.transcribeAudio(
 //               wavData,
 //               "audio/wav"
@@ -309,4 +309,4 @@
 //     this.isConnected = false;
 //     this.accumulatedPcmData = [];
 //   }
-// } 
+// }

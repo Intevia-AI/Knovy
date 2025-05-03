@@ -17,13 +17,15 @@ export const blobToBase64 = (b: Blob): Promise<string> =>
 export const formatTime = (s: number) =>
   `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, "0")}`;
 
-export const cleanupStream = (ref: React.MutableRefObject<MediaStream | null>) => {
+export const cleanupStream = (
+  ref: React.MutableRefObject<MediaStream | null>,
+) => {
   ref.current?.getTracks().forEach((t) => t.stop());
   ref.current = null;
 };
 
 export const cleanupRecorder = (
-  ref: React.MutableRefObject<MediaRecorder | null>
+  ref: React.MutableRefObject<MediaRecorder | null>,
 ) => {
   if (ref.current && ref.current.state !== "inactive") {
     ref.current.ondataavailable = null;
@@ -37,4 +39,3 @@ export const cleanupRecorder = (
   }
   ref.current = null;
 };
-

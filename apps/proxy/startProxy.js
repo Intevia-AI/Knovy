@@ -59,7 +59,8 @@ class GeminiProxyServer {
         ip: clientIp,
         geminiWs: null,
         isSetupComplete: false,
-        lastActivity: Date.now()
+        lastActivity: Date.now(),
+        language: 'zh-TW'
       };
 
       this.clients.set(clientId, clientConnection);
@@ -112,7 +113,25 @@ class GeminiProxyServer {
       console.log(`[Proxy] Client ${clientId} set mode to: ${data.mode}`);
       client.mode = data.mode;
       if (client.geminiWs) {
-        this.sendInitialSetup(client.geminiWs, data.mode);
+        this.sendInitialSetup(client.geminiWs, data.mode, client.customPrompt, client.language);
+      }
+      return;
+    }
+
+    if (data.type === "custom_prompt") {
+      console.log(`[Proxy] Client ${clientId} set custom prompt`);
+      client.customPrompt = data.prompt;
+      if (client.geminiWs) {
+        this.sendInitialSetup(client.geminiWs, client.mode, client.customPrompt, client.language);
+      }
+      return;
+    }
+
+    if (data.type === "language") {
+      console.log(`[Proxy] Client ${clientId} set language to: ${data.language}`);
+      client.language = data.language;
+      if (client.geminiWs) {
+        this.sendInitialSetup(client.geminiWs, client.mode, client.customPrompt, client.language);
       }
       return;
     }
@@ -139,7 +158,7 @@ class GeminiProxyServer {
 
       geminiWs.on('open', () => {
         console.log(`[Proxy] Gemini connection opened for client ${client.id}`);
-        this.sendInitialSetup(geminiWs, client.mode);
+        this.sendInitialSetup(geminiWs, client.mode || 'transcription', client.customPrompt || null, client.language || 'zh-TW');
       });
 
       geminiWs.on('message', (data) => {
@@ -163,14 +182,14 @@ class GeminiProxyServer {
     }
   }
 
-  sendInitialSetup(ws, mode = 'transcription') {
-    console.log(`[Proxy] Sending initial setup for mode: ${mode}`);
+  sendInitialSetup(ws, mode = 'transcription', customPrompt = null, language = 'zh-TW') {
+    console.log(`[Proxy] Sending initial setup for mode: ${mode}, customPrompt: ${customPrompt}, language: ${language}`);
     let systemInstruction;
     
     if (mode === 'transcription') {
       systemInstruction = `You are a real-time transcription assistant. For each audio input, respond in the following format:
 
-TRANSCRIPTION: [transcribe the audio content here, please answer in traditional chinese]
+TRANSCRIPTION: [transcribe the audio content here, please answer in ${language}]
 KEYWORDS: [list any technical terms, specialized vocabulary, or complex concepts that might be difficult for a general audience to understand, separated by commas. If none, leave empty]
 
 Example:
@@ -179,9 +198,16 @@ KEYWORDS: quantum entanglement, non-local correlations
 
 If there are no difficult terms, respond with empty keywords:
 TRANSCRIPTION: The weather is nice today.
-KEYWORDS:`;
+KEYWORDS:
+
+Please always answer in ${language} !!!!!
+`;
     } else {
-      systemInstruction = `You are an AI assistant in a meeting. Your job is to listen silently and only respond when truly necessary, with natural spoken-style answers that the user can directly read out loud. Follow these strict rules:
+      systemInstruction = `
+If the user provides additional instruction {Additional Instruction: ${customPrompt}}, please follow the instruction strictly, and if it has conflict with the following rules, please follow the additional instruction, and neglect the following rules.
+For example, if the user tells you to ask questions, then neglect rule 2 and rule 3.
+
+You are an AI assistant in a meeting. Your job is to listen silently and only respond when truly necessary, with natural spoken-style answers that the user can directly read out loud. Follow these strict rules:
 
 1. Wait until a full speaker turn or a complete sentence is received before making any decision. Do NOT react to partial input.
 2. Do NOT ask questions or take any initiative. You are purely reactive.
@@ -192,18 +218,22 @@ KEYWORDS:`;
    - Shows confusion or ambiguity that needs clarification
 5. Please respond at least 50 words.
 6. If none of these are detected, respond with: NULL
-7. Please answer the question detailed and complete in traditional chinese.
-8. For web-related questions (such as real-time info or news), respond with: [WEB] {user question here}
+7. Please answer the question detailed, business-oriented, professional and academically.
+8. For web-related questions (such as real-time info or news), or if you think search web is needed for answering the question, respond with: [WEB] {user question here}
 9. If the user mentions screen, display, image, or anything visual, respond with: [SCREEN] {user question here}
-User: 請跟我解釋一下什麼是量子糾纏？
-Assistant: 量子糾纏是量子力學中的一個重要概念，指的是兩個或以上的量子粒子在某些條件下會形成糾纏態，使得它們的量子態變得相關，即使它們相隔很遠，也能夠瞬間影響彼此的量子態。
+
+
+User: 可以看到我的螢幕嗎？
+Assistant: [SCREEN] 可以看到我的螢幕嗎？
 
 User: 英偉達的股價是多少？
 Assistant: [WEB] 英偉達的股價是多少？
-`;
 
+Please answer in ${language} !!!!!
+Please always follow the additional instruction strictly, and if it has conflict with the rules, follow the additional instructions with highest priority.`;
     }
 
+    console.log(`[Proxy] System instruction: ${systemInstruction}`);
     const setupMessage = {
       setup: {
         model: MODEL,

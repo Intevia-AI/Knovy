@@ -1,6 +1,7 @@
-import React from 'react';
+import React from "react";
 import { Button } from "@workspace/ui/components/button";
-import { MinusIcon, XIcon, PinIcon, PinOffIcon } from "lucide-react";
+import { MinusIcon, XIcon, PinIcon, PinOffIcon, SunIcon, MoonIcon } from "lucide-react";
+import { useTheme } from "next-themes";
 
 interface HeaderBarProps {
   isAlwaysOnTop: boolean;
@@ -16,20 +17,25 @@ export function HeaderBar({
   closeWindow,
 }: HeaderBarProps) {
   return (
-    <header className="fixed h-6 bg-muted overflow-hidden rounded-t-lg top-0 left-0 right-0 z-10 border-b border-border flex items-center justify-between">
+    <header className="fixed h-6 bg-muted/10 overflow-hidden rounded-t-lg top-0 left-0 right-0 z-10 border-b border-border/30 flex items-center justify-between">
       {/* Draggable Region */}
       <div
         className="flex-grow h-full"
         style={{ WebkitAppRegion: "drag" } as React.CSSProperties}
       ></div>
       {/* Window Controls */}
-      <div className="flex items-center h-full mr-1" style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}>
+      <div
+        className="flex items-center h-full mr-1"
+        style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
+      >
         <Button
           variant="ghost"
           size="icon"
           className="h-5 w-5 rounded-sm hover:bg-muted-foreground/20"
           onClick={toggleAlwaysOnTop}
-          aria-label={isAlwaysOnTop ? "Disable always on top" : "Enable always on top"}
+          aria-label={
+            isAlwaysOnTop ? "Disable always on top" : "Enable always on top"
+          }
           title={isAlwaysOnTop ? "取消置頂" : "視窗置頂"} // Tooltip
         >
           {isAlwaysOnTop ? (
@@ -44,7 +50,7 @@ export function HeaderBar({
           className="h-5 w-5 rounded-sm hover:bg-muted-foreground/20"
           onClick={minimizeWindow}
           aria-label="Minimize window"
-           title="最小化" // Tooltip
+          title="最小化" // Tooltip
         >
           <MinusIcon className="h-3 w-3" />
         </Button>
@@ -54,7 +60,7 @@ export function HeaderBar({
           className="h-5 w-5 rounded-sm hover:bg-destructive/80 hover:text-destructive-foreground"
           onClick={closeWindow}
           aria-label="Close window"
-           title="關閉" // Tooltip
+          title="關閉" // Tooltip
         >
           <XIcon className="h-3 w-3" />
         </Button>
