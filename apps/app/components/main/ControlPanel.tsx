@@ -148,6 +148,50 @@ export function ControlPanel({
   const modifierKey =
     navigator.platform.toUpperCase().indexOf("MAC") >= 0 ? "⌘" : "Ctrl";
 
+  // 處理語言選擇
+  const handleLanguageChange = (value: string) => {
+    console.log("[ControlPanel] 選擇語言:", value);
+    if (setLanguage) {
+      // 如果正在螢幕分享，先停止分享
+      if (isScreenSharing) {
+        console.log("[ControlPanel] 正在螢幕分享，先停止分享");
+        onToggleScreenShare();
+      }
+      setLanguage(value);
+    }
+  };
+
+  // 處理 custom prompt 確認
+  const handleCustomPromptConfirm = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      // 如果正在螢幕分享，先停止分享
+      if (isScreenSharing) {
+        console.log("[ControlPanel] 正在螢幕分享，先停止分享");
+        onToggleScreenShare();
+      }
+      // 確認提示詞
+      setConfirmedPrompt(draftPrompt);
+      if (setCustomPrompt) {
+        setCustomPrompt(draftPrompt);
+      }
+      e.currentTarget.blur();
+    }
+  };
+
+  // 處理清除 custom prompt
+  const handleClearCustomPrompt = () => {
+    // 如果正在螢幕分享，先停止分享
+    if (isScreenSharing) {
+      console.log("[ControlPanel] 正在螢幕分享，先停止分享");
+      onToggleScreenShare();
+    }
+    setConfirmedPrompt(undefined);
+    if (setCustomPrompt) {
+      setCustomPrompt('');
+    }
+    setDraftPrompt('');
+  };
+
   return (
     <aside ref={asideRef} className="flex flex-col h-full overflow-y-auto">
       {/* Status and Control */}
@@ -303,61 +347,6 @@ export function ControlPanel({
 
         {isAdvancedSettingsOpen && (
           <div id="advanced-settings-content" className="space-y-1.5">
-            {/* Custom Prompt Input */}
-            {setCustomPrompt && !confirmedPrompt && (
-              <div className="p-2 space-y-1.5 border-t border-border/30">
-                <Label
-                  htmlFor="custom-prompt"
-                  className="text-xs font-medium text-foreground"
-                >
-                  客製化模型要求
-                </Label>
-                <Textarea
-                  id="custom-prompt"
-                  placeholder="輸入自定義提示詞後按 Enter..."
-                  value={draftPrompt}
-                  onChange={(e) => setDraftPrompt(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
-                      // 確認提示詞
-                      setConfirmedPrompt(draftPrompt);
-                      setCustomPrompt(draftPrompt);
-                      e.currentTarget.blur();
-                    }
-                  }}
-                  className="h-7 text-xs border-border/30 bg-muted/50 focus-visible:ring-0 focus-visible:border-primary focus-visible:outline-none"
-                />
-              </div>
-            )}
-
-            {/* Confirmed Prompt Display */}
-            {confirmedPrompt && (
-              <div className="p-2 space-y-1.5 border-t border-border/30">
-                <div className="flex items-center justify-between">
-                  <Label className="text-xs font-medium text-foreground">
-                    當前模型要求
-                  </Label>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setConfirmedPrompt(undefined);
-                      if (setCustomPrompt) {
-                        setCustomPrompt("");
-                      }
-                      setDraftPrompt("");
-                    }}
-                    className="h-6 text-xs"
-                  >
-                    清除
-                  </Button>
-                </div>
-                <div className="text-xs text-muted-foreground break-words">
-                  {confirmedPrompt}
-                </div>
-              </div>
-            )}
-
             {/* Language Selection */}
             {setLanguage && (
               <div className="p-2 space-y-1.5 border-t border-border/30">
@@ -366,11 +355,8 @@ export function ControlPanel({
                     語言選擇
                   </Label>
                   <Select
-                    value={language || "zh-TW"} // Default to zh-TW if language is undefined
-                    onValueChange={(value) => {
-                      console.log("[ControlPanel] 選擇語言:", value);
-                      (setLanguage as (lang: string) => void)(value);
-                    }}
+                    value={language || "zh-TW"}
+                    onValueChange={handleLanguageChange}
                   >
                     <SelectTrigger className="w-[120px] h-7! text-xs px-2 bg-background!">
                       <LanguagesIcon className="h-3 w-3 mr-1" />
@@ -388,6 +374,48 @@ export function ControlPanel({
                       ))}
                     </SelectContent>
                   </Select>
+                </div>
+              </div>
+            )}
+
+            {/* Custom Prompt Input */}
+            {setCustomPrompt && !confirmedPrompt && (
+              <div className="p-2 space-y-1.5 border-t border-border/30">
+                <Label
+                  htmlFor="custom-prompt"
+                  className="text-xs font-medium text-foreground"
+                >
+                  客製化模型要求
+                </Label>
+                <Textarea
+                  id="custom-prompt"
+                  placeholder="輸入自定義提示詞後按 Enter..."
+                  value={draftPrompt}
+                  onChange={(e) => setDraftPrompt(e.target.value)}
+                  onKeyDown={handleCustomPromptConfirm}
+                  className="h-7 text-xs border-border/30 bg-muted/50 focus-visible:ring-0 focus-visible:border-primary focus-visible:outline-none"
+                />
+              </div>
+            )}
+
+            {/* Confirmed Prompt Display */}
+            {confirmedPrompt && (
+              <div className="p-2 space-y-1.5 border-t border-border/30">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-medium text-foreground">
+                    當前模型要求
+                  </Label>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleClearCustomPrompt}
+                    className="h-6 text-xs"
+                  >
+                    清除
+                  </Button>
+                </div>
+                <div className="text-xs text-muted-foreground break-words">
+                  {confirmedPrompt}
                 </div>
               </div>
             )}
