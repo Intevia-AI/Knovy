@@ -4,17 +4,20 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@workspace/ui/components/button";
 import { Mic, MicOff, Pause } from "lucide-react";
 import { GeminiClient } from "./geminiClient";
+import { Label } from "@workspace/ui/components/label";
 
 interface RealTimeAnalysisProps {
   onTextResponse?: (text: string, turnComplete: boolean) => void; // 當收到文字回應時的回呼
   onKeywords?: (keywords: string[]) => void; // 當收到關鍵字時的回呼
   systemAudioStream?: MediaStream; // 系統音訊流 (可選)
+  isScreenSharing: boolean; // 是否正在進行螢幕分享
 }
 
 export default function RealTimeAnalysis({
   onTextResponse,
   onKeywords,
   systemAudioStream,
+  isScreenSharing,
 }: RealTimeAnalysisProps) {
   const [isActive, setIsActive] = useState(false); // 是否正在分析
   const [isProcessing, setIsProcessing] = useState(false); // 是否正在處理中 (例如：啟動/停止)
@@ -207,36 +210,14 @@ export default function RealTimeAnalysis({
     setIsConnected(false);
   };
 
-  return (
-    <div className="flex flex-col items-center space-y-4 w-full max-w-2xl mx-auto">
-      <Button
-        onClick={isActive ? stopAudio : startAudio}
-        disabled={isProcessing}
-        variant={isActive ? "destructive" : "default"}
-        className="flex items-center gap-2 w-full"
-      >
-        {isProcessing ? (
-          <Pause className="h-4 w-4 animate-spin" />
-        ) : isActive ? (
-          <MicOff className="h-4 w-4" />
-        ) : (
-          <Mic className="h-4 w-4" />
-        )}
-        {isProcessing
-          ? "處理中..."
-          : isActive
-          ? "停止問答"
-          : "開始即時問答"}
-      </Button>
+  // 監聽螢幕分享狀態變化
+  useEffect(() => {
+    if (isScreenSharing) {
+      startAudio();
+    } else {
+      stopAudio();
+    }
+  }, [isScreenSharing]);
 
-      {isActive && (
-        <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
-          <div
-            className="h-full bg-blue-500 transition-all duration-100"
-            style={{ width: `${audioLevel}%` }}
-          />
-        </div>
-      )}
-    </div>
-  );
+  return <></>;
 }

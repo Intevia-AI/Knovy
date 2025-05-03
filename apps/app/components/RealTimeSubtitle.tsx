@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@workspace/ui/components/button";
 import { Mic, MicOff, Pause } from "lucide-react";
 import { GeminiClient } from "./geminiClient";
+import { Label } from "@workspace/ui/components/label";
+import { Switch } from "@workspace/ui/components/switch";
 
 interface RealTimeSubtitleProps {
   onTextResponse?: (text: string) => void; // 當收到文字回應時的回呼
@@ -260,44 +262,23 @@ export default function RealTimeSubtitle({
   };
 
   // 處理字幕可見性變化
-  const handleVisibilityToggle = () => {
-    const newVisibility = !isSubtitleVisible;
-    setIsSubtitleVisible(newVisibility);
-    setSubtitleVisibility(newVisibility);
+  const handleCheckedChange = (checked: boolean) => {
+    setIsSubtitleVisible(checked);
+    setSubtitleVisibility(checked);
   };
 
   return (
-    <div className="flex flex-col items-center space-y-4 w-full max-w-2xl mx-auto">
-      <Button
-        onClick={handleVisibilityToggle}
+    <div className="flex items-center justify-between bg-muted space-x-2 w-full max-w-2xl mx-auto p-2 border rounded-md bg-muted/30">
+      <Label htmlFor="subtitle-switch" className="text-sm font-medium">
+        {isSubtitleVisible ? "顯示字幕" : "隱藏字幕"}
+      </Label>
+      <Switch
+        id="subtitle-switch"
+        checked={isSubtitleVisible}
+        onCheckedChange={handleCheckedChange}
         disabled={isProcessing}
-        variant={isSubtitleVisible ? "default" : "outline"}
-        className="flex items-center gap-2 w-full"
-      >
-        {isProcessing ? (
-          <Pause className="h-4 w-4 animate-spin" />
-        ) : isSubtitleVisible ? (
-          <Mic className="h-4 w-4" />
-        ) : (
-          <MicOff className="h-4 w-4" />
-        )}
-        {isProcessing ? "處理中..." : isSubtitleVisible ? "隱藏字幕" : "顯示字幕"}
-      </Button>
-
-      {/* {isSubtitleVisible && isActive && (
-        <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
-          <div
-            className="h-full bg-blue-500 transition-all duration-100"
-            style={{ width: `${audioLevel}%` }}
-          />
-        </div>
-      )}
-
-      {isSubtitleVisible && textBufferRef.current && (
-        <div className="w-full p-4 bg-black bg-opacity-50 text-white rounded-lg">
-          {textBufferRef.current}
-        </div>
-      )} */}
+        aria-label={isSubtitleVisible ? "Hide subtitles" : "Show subtitles"}
+      />
     </div>
   );
 }

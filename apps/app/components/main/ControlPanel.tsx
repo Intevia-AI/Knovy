@@ -64,57 +64,56 @@ export function ControlPanel({
   const aiActions = [
     { action: "answer", label: "深度回答", icon: MicIcon },
     { action: "summary", label: "產生摘要", icon: ListCollapseIcon },
-    { action: "search", label: "搜尋主題", icon: SearchIcon },
+    // { action: "search", label: "搜尋主題", icon: SearchIcon },
   ] as const; // Use const assertion
 
   return (
-    <aside className="flex flex-col w-full max-w-[300px] border-l border-border overflow-y-auto shrink-0 bg-card">
+    <aside className="flex flex-col w-full max-w-[200px] border-l border-border overflow-y-auto shrink-0 bg-card">
       {/* Status and Control */}
-      <div className="p-4 space-y-3 border-b border-border">
-        <div className="flex items-center justify-between gap-2">
-          <span className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+      <div className="p-2 space-y-1.5 border-b border-border">
+        <div className="flex items-center justify-between gap-1">
+          <span className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
             <span
-              className={`flex h-3 w-3 rounded-full ${
+              className={`flex h-2.5 w-2.5 rounded-full ${
                 isScreenSharing
-                  ? isLoading // Show yellow if AI is loading during sharing
+                  ? isLoading
                     ? "bg-yellow-400 animate-pulse"
-                    : "bg-destructive animate-pulse" // Red pulse if sharing and not loading
-                  : "bg-muted" // Grey if stopped
+                    : "bg-destructive animate-pulse"
+                  : "bg-muted"
               }`}
               title={isLoading ? "AI 處理中" : isScreenSharing ? "分享/錄製中" : "已停止"}
             ></span>
-            {isLoading ? "處理中..." : isScreenSharing ? "分享/錄製中" : "已停止"}
+            {isLoading ? "處理中..." : isScreenSharing ? "分享中" : "已停止"}
           </span>
           {isScreenSharing && (
-            <span className="text-sm font-semibold tabular-nums text-foreground">
-              <ClockIcon className="inline h-4 w-4 mr-1 align-[-2px]" />
+            <span className="text-xs font-semibold tabular-nums text-foreground">
+              <ClockIcon className="inline h-3 w-3 mr-0.5 align-[-2px]" />
               {formatTime(recordingDuration)}
             </span>
           )}
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-1">
           <Button
             variant={isScreenSharing ? "destructive" : "default"}
             size="sm"
             onClick={onToggleScreenShare}
-            disabled={isLoading && isScreenSharing} // Disable stop if AI is processing? Maybe allow stopping anytime. Let's disable only start when loading.
-            // disabled={isLoading} // Simpler: disable toggle if AI is busy
+            disabled={isLoading && isScreenSharing}
             aria-pressed={isScreenSharing}
-            className="flex-1"
+            className="flex-1 text-xs h-7"
           >
             {isScreenSharing ? (
-              <MonitorOffIcon className="h-4 w-4 mr-1" />
+              <MonitorOffIcon className="h-3 w-3 mr-0.5" />
             ) : (
-              <MonitorIcon className="h-4 w-4 mr-1" />
+              <MonitorIcon className="h-3 w-3 mr-0.5" />
             )}
-            {isScreenSharing ? "停止分享/錄製" : "分享螢幕並錄製"}
+            {isScreenSharing ? "停止" : "分享"}
           </Button>
         </div>
       </div>
 
       {/* Real-time Analysis & Keywords */}
-      <div className="p-4 space-y-3 border-b border-border">
-        <div className="flex flex-col gap-4">
+      <div className="p-2 space-y-1.5 border-b border-border">
+        <div className="flex flex-col gap-2">
           <RealTimeSubtitle
             onTextResponse={onTranscriptionResponse}
             onKeywords={onTranscriptionKeywords}
@@ -126,27 +125,28 @@ export function ControlPanel({
             onTextResponse={onAnswerResponse}
             onKeywords={onAnswerKeywords}
             systemAudioStream={currentSystemAudioStream || undefined}
+            isScreenSharing={isScreenSharing}
           />
         </div>
         {keywords.length > 0 && (
-          <div className="pt-3 space-y-2">
-            <h4 className="text-sm font-medium text-muted-foreground">
-              偵測到的關鍵字
+          <div className="pt-1.5 space-y-1">
+            <h4 className="text-xs font-medium text-muted-foreground">
+              關鍵字
             </h4>
-            <div className="flex flex-wrap gap-1.5">
+            <div className="flex flex-wrap gap-1.5 max-h-[120px] overflow-y-auto pr-1">
               {keywords.map((keyword, index) => (
                 <Button
-                  key={`${keyword}-${index}`} // Use keyword and index for key
+                  key={`${keyword}-${index}`}
                   variant="secondary"
                   size="sm"
                   onClick={() => onKeywordClick(keyword)}
                   disabled={isLoading && selectedKeyword === keyword}
-                  className="flex items-center gap-1 text-xs h-6 px-2" // Adjusted size
-                   title={`解釋 "${keyword}"`} // Tooltip
+                  className="flex items-center gap-0.5 text-xs h-4 px-1"
+                  title={`解釋 "${keyword}"`}
                 >
                   {keyword}
                   {isLoading && selectedKeyword === keyword && (
-                    <Loader2Icon className="h-3 w-3 animate-spin ml-1" /> // Added margin
+                    <Loader2Icon className="h-2.5 w-2.5 animate-spin ml-0.5" />
                   )}
                 </Button>
               ))}
@@ -156,11 +156,11 @@ export function ControlPanel({
       </div>
       
       {/* AI Actions */}
-      <div className="p-4 space-y-3 border-b border-border">
-        <h3 className="text-base font-semibold text-card-foreground">
+      <div className="p-2 space-y-1.5 border-b border-border">
+        <h3 className="text-xs font-semibold text-card-foreground">
           AI 動作
         </h3>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 gap-1">
           {aiActions.map(({ action, label, icon: Icon }) => (
             <Button
               key={action}
@@ -168,11 +168,11 @@ export function ControlPanel({
               size="sm"
               disabled={isLoading || !isScreenSharing}
               onClick={() => onAiAction(action)}
-              className="flex items-center justify-center gap-1 text-xs px-2" // Adjusted padding and text size
-               title={label} // Tooltip
+              className="flex items-center justify-center gap-0.5 text-xs px-1 h-7"
+              title={label}
             >
-              <Icon className="h-3 w-3" /> {/* Smaller icon */}
-              <span className="truncate">{label}</span> {/* Truncate long text */}
+              <Icon className="h-2.5 w-2.5" />
+              <span className="truncate">{label}</span>
             </Button>
           ))}
         </div>
