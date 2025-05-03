@@ -1,6 +1,6 @@
-import { WebSocketServer, WebSocket } from 'ws';
-import { GoogleGenerativeAI } from '@google/generative-ai';
-import dotenv from 'dotenv';
+import { WebSocketServer, WebSocket } from "ws";
+import { GoogleGenerativeAI } from "@google/generative-ai";
+import dotenv from "dotenv";
 
 // Load environment variables
 dotenv.config();
@@ -11,7 +11,7 @@ const HOST = "generativelanguage.googleapis.com";
 const WS_URL = `wss://${HOST}/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent?key=${API_KEY}`;
 
 if (!API_KEY) {
-  throw new Error('GEMINI_API_KEY is not set in environment variables');
+  throw new Error("GEMINI_API_KEY is not set in environment variables");
 }
 
 interface ClientConnection {
@@ -38,7 +38,7 @@ export class GeminiProxyServer {
   }
 
   private setupServer() {
-    this.wss.on('connection', (ws: WebSocket) => {
+    this.wss.on("connection", (ws: WebSocket) => {
       const clientId = this.generateClientId();
       console.log(`[Proxy] New client connected: ${clientId}`);
 
@@ -47,7 +47,7 @@ export class GeminiProxyServer {
         id: clientId,
         geminiWs: null,
         isSetupComplete: false,
-        lastActivity: Date.now()
+        lastActivity: Date.now(),
       };
 
       this.clients.set(clientId, clientConnection);
@@ -55,7 +55,7 @@ export class GeminiProxyServer {
       // Set up health check for this client
       this.setupHealthCheck(clientId);
 
-      ws.on('message', async (message: string) => {
+      ws.on("message", async (message: string) => {
         try {
           clientConnection.lastActivity = Date.now();
           const data = JSON.parse(message);
@@ -65,12 +65,12 @@ export class GeminiProxyServer {
         }
       });
 
-      ws.on('close', () => {
+      ws.on("close", () => {
         console.log(`[Proxy] Client disconnected: ${clientId}`);
         this.cleanupClient(clientId);
       });
 
-      ws.on('error', (error) => {
+      ws.on("error", (error) => {
         console.error(`[Proxy] Client error:`, error);
         this.cleanupClient(clientId);
       });
@@ -95,11 +95,16 @@ export class GeminiProxyServer {
 
       const now = Date.now();
       if (now - client.lastActivity > this.healthCheckInterval) {
-        console.log(`[Proxy] Client ${clientId} inactive for too long, sending ping`);
+        console.log(
+          `[Proxy] Client ${clientId} inactive for too long, sending ping`,
+        );
         try {
           client.ws.ping();
         } catch (error) {
-          console.error(`[Proxy] Error sending ping to client ${clientId}:`, error);
+          console.error(
+            `[Proxy] Error sending ping to client ${clientId}:`,
+            error,
+          );
           this.cleanupClient(clientId);
         }
       }
@@ -109,7 +114,10 @@ export class GeminiProxyServer {
         try {
           client.geminiWs.ping();
         } catch (error) {
-          console.error(`[Proxy] Error sending ping to Gemini for client ${clientId}:`, error);
+          console.error(
+            `[Proxy] Error sending ping to Gemini for client ${clientId}:`,
+            error,
+          );
           this.attemptReconnect(client);
         }
       }
@@ -126,11 +134,11 @@ export class GeminiProxyServer {
     const client = this.clients.get(clientId);
     if (!client) return;
 
-    if (data.type === 'connect') {
+    if (data.type === "connect") {
       await this.connectToGemini(client);
-    } else if (data.type === 'media_chunk') {
+    } else if (data.type === "media_chunk") {
       this.forwardToGemini(client, data);
-    } else if (data.type === 'disconnect') {
+    } else if (data.type === "disconnect") {
       this.cleanupClient(clientId);
     }
   }
@@ -142,39 +150,44 @@ export class GeminiProxyServer {
       const geminiWs = new WebSocket(WS_URL);
       client.geminiWs = geminiWs;
 
-      geminiWs.on('open', () => {
+      geminiWs.on("open", () => {
         console.log(`[Proxy] Gemini connection opened for client ${client.id}`);
         this.reconnectAttempts.set(client.id, 0); // Reset reconnect attempts
         this.sendInitialSetup(geminiWs);
       });
 
-      geminiWs.on('message', (data: any) => {
+      geminiWs.on("message", (data: any) => {
         this.forwardToClient(client, data);
       });
 
-      geminiWs.on('close', () => {
+      geminiWs.on("close", () => {
         console.log(`[Proxy] Gemini connection closed for client ${client.id}`);
         this.cleanupGeminiConnection(client.id);
         this.attemptReconnect(client);
       });
 
-      geminiWs.on('error', (error) => {
-        console.error(`[Proxy] Gemini connection error for client ${client.id}:`, error);
+      geminiWs.on("error", (error) => {
+        console.error(
+          `[Proxy] Gemini connection error for client ${client.id}:`,
+          error,
+        );
         this.cleanupGeminiConnection(client.id);
         this.attemptReconnect(client);
       });
 
-      geminiWs.on('ping', () => {
+      geminiWs.on("ping", () => {
         geminiWs.pong();
       });
 
-      geminiWs.on('pong', () => {
+      geminiWs.on("pong", () => {
         // Connection is healthy
         client.lastActivity = Date.now();
       });
-
     } catch (error) {
-      console.error(`[Proxy] Error connecting to Gemini for client ${client.id}:`, error);
+      console.error(
+        `[Proxy] Error connecting to Gemini for client ${client.id}:`,
+        error,
+      );
       this.cleanupGeminiConnection(client.id);
       this.attemptReconnect(client);
     }
@@ -190,11 +203,12 @@ export class GeminiProxyServer {
           max_output_tokens: 2048,
           temperature: 0.1,
           top_p: 0.8,
-          top_k: 40
+          top_k: 40,
         },
         system_instruction: {
-          parts: [{
-            text: `You are a real-time transcription assistant. For each audio input, respond in the following format:
+          parts: [
+            {
+              text: `You are a real-time transcription assistant. For each audio input, respond in the following format:
 
 TRANSCRIPTION: [transcribe the audio content here, the speaker will be speaking in chinese. Please respond in chinese.]
 KEYWORDS: [list any technical terms, specialized vocabulary, or complex concepts that might be difficult for a general audience to understand, separated by commas. If none, leave empty]
@@ -205,10 +219,11 @@ KEYWORDS: quantum entanglement, non-local correlations
 
 If there are no difficult terms, respond with empty keywords:
 TRANSCRIPTION: The weather is nice today.
-KEYWORDS:`
-          }]
-        }
-      }
+KEYWORDS:`,
+            },
+          ],
+        },
+      },
     };
     ws.send(JSON.stringify(setupMessage));
   }
@@ -219,11 +234,14 @@ KEYWORDS:`
     try {
       const message = {
         realtime_input: {
-          media_chunks: [{
-            mime_type: data.mimeType === "audio/pcm" ? "audio/pcm" : data.mimeType,
-            data: data.chunk
-          }]
-        }
+          media_chunks: [
+            {
+              mime_type:
+                data.mimeType === "audio/pcm" ? "audio/pcm" : data.mimeType,
+              data: data.chunk,
+            },
+          ],
+        },
       };
       client.geminiWs.send(JSON.stringify(message));
     } catch (error) {
@@ -273,11 +291,15 @@ KEYWORDS:`
     if (attempts < this.maxReconnectAttempts) {
       this.reconnectAttempts.set(client.id, attempts + 1);
       const delay = this.reconnectTimeout * (attempts + 1);
-      console.log(`[Proxy] Attempting to reconnect to Gemini for client ${client.id} (${attempts + 1}/${this.maxReconnectAttempts}) in ${delay}ms`);
+      console.log(
+        `[Proxy] Attempting to reconnect to Gemini for client ${client.id} (${attempts + 1}/${this.maxReconnectAttempts}) in ${delay}ms`,
+      );
       setTimeout(() => this.connectToGemini(client), delay);
     } else {
-      console.log(`[Proxy] Max reconnection attempts reached for client ${client.id}`);
+      console.log(
+        `[Proxy] Max reconnection attempts reached for client ${client.id}`,
+      );
       this.cleanupClient(client.id);
     }
   }
-} 
+}

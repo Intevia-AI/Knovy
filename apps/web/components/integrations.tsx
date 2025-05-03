@@ -82,19 +82,27 @@ export function IntegrationsSection() {
               <div className="bg-radial to-muted dark:to-background absolute inset-0 z-10 from-transparent to-75%"></div>
               {/* Row 1 */}
               <div className="mx-auto mb-2 flex w-fit justify-center gap-2">
-                <IntegrationCard><GoogleMeet /></IntegrationCard>
-                <IntegrationCard><Zoom /></IntegrationCard>
+                <IntegrationCard>
+                  <GoogleMeet />
+                </IntegrationCard>
+                <IntegrationCard>
+                  <Zoom />
+                </IntegrationCard>
               </div>
               {/* Row 2 - Centered Logo */}
               <div className="mx-auto my-2 flex w-fit justify-center gap-2">
-                <IntegrationCard><MicrosoftTeams /></IntegrationCard>
+                <IntegrationCard>
+                  <MicrosoftTeams />
+                </IntegrationCard>
                 <IntegrationCard
                   borderClassName="shadow-black-950/10 shadow-xl border-black/25 dark:border-white/25"
                   className="dark:bg-white/10"
                 >
                   <InteviaLogo />
                 </IntegrationCard>
-                <IntegrationCard><Webex /></IntegrationCard>
+                <IntegrationCard>
+                  <Webex />
+                </IntegrationCard>
               </div>
               {/* Row 3 - AI Logos (Optional, can be kept or removed) */}
               {/* <div className="mx-auto flex w-fit justify-center gap-2">
@@ -107,7 +115,8 @@ export function IntegrationsSection() {
                 適用於您常用的會議軟體
               </h2>
               <p className="text-muted-foreground">
-                INTEVIA AI 在背景運作，並能無縫整合 Google Meet、Zoom、Microsoft Teams、Webex 等常用平台。
+                INTEVIA AI 在背景運作，並能無縫整合 Google Meet、Zoom、Microsoft
+                Teams、Webex 等常用平台。
               </p>
             </div>
           </div>

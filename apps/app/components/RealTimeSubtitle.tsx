@@ -1,10 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Button } from "@workspace/ui/components/button";
-import { Mic, MicOff, Pause } from "lucide-react";
 import { GeminiClient } from "./geminiClient";
-import { Label } from "@workspace/ui/components/label";
 import { Switch } from "@workspace/ui/components/switch";
 
 interface RealTimeSubtitleProps {
@@ -12,7 +9,7 @@ interface RealTimeSubtitleProps {
   onKeywords?: (keywords: string[]) => void; // 當收到關鍵字時的回呼
   systemAudioStream?: MediaStream | null; // 系統音訊流 (可選)
   isScreenSharing?: boolean; // 新增螢幕分享狀態
-  setSubtitleVisibility: (visibility: boolean) => void;  // 新增 prop
+  setSubtitleVisibility: (visibility: boolean) => void; // 新增 prop
   language?: string; // 新增語言參數
 }
 
@@ -21,8 +18,8 @@ export default function RealTimeSubtitle({
   onKeywords,
   systemAudioStream,
   isScreenSharing = false, // 預設值為 false
-  setSubtitleVisibility,  // 新增 prop
-  language = 'zh-TW', // 新增語言參數，默認為繁體中文
+  setSubtitleVisibility, // 新增 prop
+  language = "zh-TW", // 新增語言參數，默認為繁體中文
 }: RealTimeSubtitleProps) {
   const [isActive, setIsActive] = useState(false); // 是否正在分析
   const [isProcessing, setIsProcessing] = useState(false); // 是否正在處理中 (例如：啟動/停止)
@@ -55,17 +52,20 @@ export default function RealTimeSubtitle({
         console.log("[即時字幕] 當前緩衝區內容:", textBufferRef.current);
 
         // 檢查是否包含完整的轉錄和關鍵字標記
-        if (textBufferRef.current.includes("TRANSCRIPTION:") && textBufferRef.current.includes("KEYWORDS:")) {
+        if (
+          textBufferRef.current.includes("TRANSCRIPTION:") &&
+          textBufferRef.current.includes("KEYWORDS:")
+        ) {
           console.log("[即時字幕] 檢測到完整的轉錄和關鍵字標記");
-          
+
           // 提取轉錄內容
           const transcriptionMatch = textBufferRef.current.match(
-            /TRANSCRIPTION: (.*?)(?:\n|$)KEYWORDS:/s
+            /TRANSCRIPTION: (.*?)(?:\n|$)KEYWORDS:/s,
           );
-          
+
           // 提取關鍵字
           const keywordsMatch = textBufferRef.current.match(
-            /KEYWORDS: (.*?)(?:\n|$)/s
+            /KEYWORDS: (.*?)(?:\n|$)/s,
           );
 
           if (transcriptionMatch && transcriptionMatch[1]) {
@@ -75,7 +75,7 @@ export default function RealTimeSubtitle({
               .replace(/search web/g, "") // 移除 search web 標記
               .replace(/\s+/g, " ") // 移除多餘空格
               .trim();
-            
+
             console.log("[即時字幕] 提取的轉錄文字:", transcription);
             onTextResponse?.(transcription);
           }
@@ -109,9 +109,9 @@ export default function RealTimeSubtitle({
         setAudioLevel(level);
       },
       () => {},
-      'transcription',
+      "transcription",
       undefined,
-      language
+      language,
     );
 
     return () => {
@@ -182,7 +182,7 @@ export default function RealTimeSubtitle({
 
       console.log("[即時字幕] 載入 audio worklet...");
       await audioContextRef.current.audioWorklet.addModule(
-        "/worklets/audio-processor.js"
+        "/worklets/audio-processor.js",
       );
       const audioWorkletNode = new AudioWorkletNode(
         audioContextRef.current,
@@ -191,7 +191,7 @@ export default function RealTimeSubtitle({
           processorOptions: {
             bufferSize: 8192,
           },
-        }
+        },
       );
 
       audioWorkletNode.port.onmessage = (event) => {
@@ -273,9 +273,9 @@ export default function RealTimeSubtitle({
   };
 
   return (
-    <div className="flex items-center justify-between bg-muted space-x-2 w-full max-w-2xl mx-auto p-2 border rounded-md bg-muted/30">
+    <div className="flex items-center justify-between space-x-2 w-full max-w-2xl mx-auto p-2 border rounded-md bg-muted/30 border-border">
       <h4 className="text-xs font-medium text-foreground">
-          {isSubtitleVisible ? "顯示字幕" : "隱藏字幕"}
+        {isSubtitleVisible ? "顯示字幕" : "隱藏字幕"}
       </h4>
       <Switch
         id="subtitle-switch"

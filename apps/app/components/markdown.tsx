@@ -27,7 +27,7 @@ const CodeBlock: React.FC<{
         {...props}
         className={cn(
           className,
-          "bg-muted relative mt-2 w-full max-w-[80dvw] rounded-lg p-3 text-sm md:max-w-[500px]"
+          "bg-muted relative mt-2 w-full max-w-[80dvw] rounded-lg p-3 text-sm md:max-w-[500px]",
         )}
       >
         <button
@@ -167,7 +167,7 @@ const NonMemoizedMarkdown: React.FC<MarkdownProps> = ({
 
 export const Markdown = memo(
   NonMemoizedMarkdown,
-  (prevProps, nextProps) => prevProps.children === nextProps.children
+  (prevProps, nextProps) => prevProps.children === nextProps.children,
 );
 
 // Add displayName for better debugging

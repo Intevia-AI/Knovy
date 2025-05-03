@@ -9,7 +9,9 @@ export default function CallToAction() {
           <h2 className="text-balance text-4xl font-semibold lg:text-5xl">
             訂閱以獲取未來更新！
           </h2>
-          <p className="mt-4 text-muted-foreground">如果您對我們的產品有興趣，請填入電子信箱，當新版本釋出時會通知您！</p>
+          <p className="mt-4 text-muted-foreground">
+            如果您對我們的產品有興趣，請填入電子信箱，當新版本釋出時會通知您！
+          </p>
 
           <form action="" className="mx-auto mt-10 max-w-sm lg:mt-12">
             <div className="bg-background has-[input:focus]:ring-muted relative grid grid-cols-[1fr_auto] items-center rounded-[calc(var(--radius)+0.75rem)] border pr-3 shadow shadow-zinc-950/5 has-[input:focus]:ring-2">
@@ -32,7 +34,6 @@ export default function CallToAction() {
               </div>
             </div>
           </form>
-
         </div>
       </div>
     </section>

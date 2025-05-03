@@ -43,7 +43,14 @@ export default function FooterSection() {
         {/* Contact Info */}
         <div className="my-8 text-center">
           <h3 className="text-lg font-semibold mb-2">聯絡我們</h3>
-          <p className="text-muted-foreground text-sm"><a href="mailto:paulyao0825@gmail.com" className="hover:text-primary">電子郵件: paulyao0825@gmail.com</a></p>
+          <p className="text-muted-foreground text-sm">
+            <a
+              href="mailto:paulyao0825@gmail.com"
+              className="hover:text-primary"
+            >
+              電子郵件: paulyao0825@gmail.com
+            </a>
+          </p>
           <div className="mt-4 flex justify-center gap-4">
             <Link
               href="https://www.instagram.com/paulyao825" // Assuming this is the correct URL
@@ -67,7 +74,9 @@ export default function FooterSection() {
             </Link>
             {/* Add other relevant social links if needed */}
           </div>
-          <p className="mt-6 text-sm text-muted-foreground">歡迎對這個題目有興趣的同學來找我們聊聊！</p>
+          <p className="mt-6 text-sm text-muted-foreground">
+            歡迎對這個題目有興趣的同學來找我們聊聊！
+          </p>
         </div>
 
         <span className="text-muted-foreground block text-center text-sm">

@@ -70,7 +70,7 @@
 //         console.error("[AudioControl] GeminiWebSocket instance is null!");
 //         return;
 //       }
-      
+
 //       console.log("[AudioControl] Calling connect() on GeminiWebSocket...");
 //       geminiWsRef.current.connect();
 
@@ -165,4 +165,4 @@
 //       )}
 //     </div>
 //   );
-// } 
+// }

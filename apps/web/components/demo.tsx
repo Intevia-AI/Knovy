@@ -41,7 +41,7 @@ export function DemoComponent() {
   const sendContextToAIRef = useRef<
     (
       action: "real-time" | "answer" | "summary" | "search" | "custom",
-      customQuery?: string
+      customQuery?: string,
     ) => Promise<void>
   >(async () => {});
   const micAudioContextRef = useRef<AudioContext | null>(null);
@@ -50,7 +50,7 @@ export function DemoComponent() {
   // Add refs & state for system audio analyser
   const systemAudioContextRef = useRef<AudioContext | null>(null);
   const systemAudioSourceNodeRef = useRef<MediaStreamAudioSourceNode | null>(
-    null
+    null,
   );
   const [systemAnalyserNode, setSystemAnalyserNode] =
     useState<AnalyserNode | null>(null);
@@ -69,7 +69,7 @@ export function DemoComponent() {
   const [selectedKeyword, setSelectedKeyword] = useState<string | null>(null);
   const [systemAudioMimeType, setSystemAudioMimeType] = useState<string>("");
   const [micAnalyserNode, setMicAnalyserNode] = useState<AnalyserNode | null>(
-    null
+    null,
   );
 
   // --- Hook ---------------------------------------------------
@@ -100,7 +100,7 @@ export function DemoComponent() {
   };
 
   const cleanupRecorder = (
-    ref: React.MutableRefObject<MediaRecorder | null>
+    ref: React.MutableRefObject<MediaRecorder | null>,
   ) => {
     if (ref.current && ref.current.state !== "inactive") {
       ref.current.ondataavailable = null;
@@ -133,7 +133,7 @@ export function DemoComponent() {
   const sendContextToAI = useCallback<
     (
       action: "real-time" | "answer" | "summary" | "search" | "custom",
-      customQuery?: string
+      customQuery?: string,
     ) => Promise<void>
   >(
     async (action, customQuery) => {
@@ -148,11 +148,17 @@ export function DemoComponent() {
       }
 
       const promptMap: Record<typeof action, string> = {
-        "real-time": "轉錄最新的語音內容，並識別其中提到的關鍵點、關鍵字或待辦事項。",
-        answer: "根據最近音訊中的對話內容，回答音訊中最後提出的問題。因為會有兩種音訊，一種是麥克風音訊，一種是系統音訊，請先回答麥克風音訊再回答系統音訊的問題。有必要請上網查詢。",
-        summary: "提供最近音訊片段中捕捉到的對話內容的簡明摘要。請用中文回答。若是麥克風音訊沒有可總結的對話內容，請不用針對該音訊回答。",
-        search: "根據最近音訊片段中討論的主題，建議相關的搜尋關鍵字或查找相關資訊。請用中文回答。若是麥克風音訊沒有可搜尋的對話內容，請不用針對該音訊回答。",
-        custom: customQuery || "根據以下要求分析最近音訊片段中捕捉到的對話內容。請用中文回答。",
+        "real-time":
+          "轉錄最新的語音內容，並識別其中提到的關鍵點、關鍵字或待辦事項。",
+        answer:
+          "根據最近音訊中的對話內容，回答音訊中最後提出的問題。因為會有兩種音訊，一種是麥克風音訊，一種是系統音訊，請先回答麥克風音訊再回答系統音訊的問題。有必要請上網查詢。",
+        summary:
+          "提供最近音訊片段中捕捉到的對話內容的簡明摘要。請用中文回答。若是麥克風音訊沒有可總結的對話內容，請不用針對該音訊回答。",
+        search:
+          "根據最近音訊片段中討論的主題，建議相關的搜尋關鍵字或查找相關資訊。請用中文回答。若是麥克風音訊沒有可搜尋的對話內容，請不用針對該音訊回答。",
+        custom:
+          customQuery ||
+          "根據以下要求分析最近音訊片段中捕捉到的對話內容。請用中文回答。",
       } as const;
 
       // 簡化的顯示用 prompt
@@ -204,7 +210,8 @@ export function DemoComponent() {
           {
             id: `err-ai-${Date.now()}`,
             role: "assistant",
-            content: "[AI 錯誤] 無法處理您的請求。請檢查您的網路連線或稍後再試。音訊品質不佳也可能導致處理失敗。",
+            content:
+              "[AI 錯誤] 無法處理您的請求。請檢查您的網路連線或稍後再試。音訊品質不佳也可能導致處理失敗。",
           },
         ]);
       } finally {
@@ -219,7 +226,7 @@ export function DemoComponent() {
       customPrompt,
       micMimeType,
       systemAudioMimeType,
-    ]
+    ],
   );
 
   // --- Effects ------------------------------------------------
@@ -252,7 +259,7 @@ export function DemoComponent() {
       screenStreamRef.current?.getVideoTracks().length
     ) {
       const videoStream = new MediaStream(
-        screenStreamRef.current.getVideoTracks()
+        screenStreamRef.current.getVideoTracks(),
       );
       screenPreviewRef.current.srcObject = videoStream;
       screenPreviewRef.current.muted = true;
@@ -314,7 +321,8 @@ export function DemoComponent() {
 
   useEffect(() => {
     if (messagesContainerRef.current) {
-      messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+      messagesContainerRef.current.scrollTop =
+        messagesContainerRef.current.scrollHeight;
     }
   }, [aiMessages]);
 
@@ -323,8 +331,16 @@ export function DemoComponent() {
     console.log("Checking audio recording status...");
     console.log("Mic chunks length:", currentMicChunks.length);
     console.log("System chunks length:", systemAudioChunksRef.current.length);
-    console.log("Last mic segment:", segments.length > 0 ? segments[segments.length - 1] : null);
-    console.log("Last system segment:", systemAudioSegments.length > 0 ? systemAudioSegments[systemAudioSegments.length - 1] : null);
+    console.log(
+      "Last mic segment:",
+      segments.length > 0 ? segments[segments.length - 1] : null,
+    );
+    console.log(
+      "Last system segment:",
+      systemAudioSegments.length > 0
+        ? systemAudioSegments[systemAudioSegments.length - 1]
+        : null,
+    );
 
     // Last completed segments
     const lastMicSegment =
@@ -353,7 +369,7 @@ export function DemoComponent() {
 
     // Combine all potential audio sources
     const blobsToProcess: { blob: Blob; type: string; label: string }[] = [];
-    
+
     // For answer action, only use the most recent 10 seconds
     if (lastMicSegment) {
       const currentTime = Date.now();
@@ -377,9 +393,11 @@ export function DemoComponent() {
         }
       }
     }
-    
+
     if (lastSystemSegment) {
-      const segmentDuration = lastSystemSegment.timestamp - (lastSystemSegment.timestamp - ANSWER_SEGMENT_MS);
+      const segmentDuration =
+        lastSystemSegment.timestamp -
+        (lastSystemSegment.timestamp - ANSWER_SEGMENT_MS);
       if (segmentDuration <= ANSWER_SEGMENT_MS) {
         blobsToProcess.push({
           blob: lastSystemSegment.blob,
@@ -391,7 +409,9 @@ export function DemoComponent() {
 
     // 對於當前錄製的片段，只使用最後 10 秒
     if (currentMicRecordingChunks.length > 0) {
-      const currentBlob = new Blob(currentMicRecordingChunks, { type: micMimeType });
+      const currentBlob = new Blob(currentMicRecordingChunks, {
+        type: micMimeType,
+      });
       if (currentBlob.size > 0) {
         blobsToProcess.push({
           blob: currentBlob,
@@ -422,7 +442,7 @@ export function DemoComponent() {
           console.error(`Error converting blob (${label}) to base64:`, error);
           return null;
         }
-      })
+      }),
     );
 
     const validAudioInputs = audioInputs.filter(Boolean) as {
@@ -588,7 +608,7 @@ export function DemoComponent() {
         if (systemAudioTracks.length === 0) {
           console.warn("System audio track not found in screen share stream.");
           alert(
-            "無法擷取系統音訊，錄音將只包含麥克風。若要錄製系統音訊，請在分享畫面時確認已勾選分享音訊選項。"
+            "無法擷取系統音訊，錄音將只包含麥克風。若要錄製系統音訊，請在分享畫面時確認已勾選分享音訊選項。",
           );
           systemAudioStream = null;
         } else {
@@ -606,7 +626,7 @@ export function DemoComponent() {
           const combinedAudioStream = new MediaStream(audioTracksToRecord);
 
           const availableMime = MediaRecorder.isTypeSupported(
-            "audio/webm;codecs=opus"
+            "audio/webm;codecs=opus",
           )
             ? "audio/webm;codecs=opus"
             : "audio/ogg;codecs=opus";
@@ -624,9 +644,14 @@ export function DemoComponent() {
               if (e.data.size > 0) {
                 systemAudioChunksRef.current.push(e.data);
                 // 每次收到新的數據時，都檢查是否有足夠的內容
-                const currentBlob = new Blob(systemAudioChunksRef.current, { type: availableMime });
+                const currentBlob = new Blob(systemAudioChunksRef.current, {
+                  type: availableMime,
+                });
                 if (currentBlob.size > 0) {
-                  setSystemAudioSegments((p) => [...p, { blob: currentBlob, timestamp: Date.now() }]);
+                  setSystemAudioSegments((p) => [
+                    ...p,
+                    { blob: currentBlob, timestamp: Date.now() },
+                  ]);
                 }
               }
             };
@@ -678,7 +703,7 @@ export function DemoComponent() {
       } catch (e) {
         console.error("Error starting screen share:", e);
         alert(
-          `啟動分享時發生錯誤: ${e instanceof Error ? e.message : String(e)}`
+          `啟動分享時發生錯誤: ${e instanceof Error ? e.message : String(e)}`,
         );
 
         stopMicRecording();
@@ -709,34 +734,50 @@ export function DemoComponent() {
 
   return (
     <div className="flex flex-col gap-16">
-      <h2 className="text-balance text-3xl font-semibold lg:text-4xl text-center">Demo 試用</h2>
-      
+      <h2 className="text-balance text-3xl font-semibold lg:text-4xl text-center">
+        Demo 試用
+      </h2>
+
       {/* 測試版試用說明 */}
       <div className="max-w-3xl mx-auto text-left border rounded-lg p-6 bg-card">
-        <h3 className="text-2xl font-semibold mb-4 text-center">測試版試用說明</h3>
-        <p className="mb-4 text-muted-foreground text-center">我們做了一個包含基礎功能的試用版，使用步驟如下：</p>
+        <h3 className="text-2xl font-semibold mb-4 text-center">
+          測試版試用說明
+        </h3>
+        <p className="mb-4 text-muted-foreground text-center">
+          我們做了一個包含基礎功能的試用版，使用步驟如下：
+        </p>
         <ol className="list-decimal list-inside space-y-2 text-muted-foreground mx-auto w-fit">
           <li>建議使用電腦操作，確保功能完整運作。</li>
           <li>點擊「開始錄製」和「分享螢幕」。</li>
           <li>選擇你要分享的畫面，並允許麥克風和攝影機權限。</li>
           <li>點擊「開始分析」</li>
-          <li>開始對鏡頭說話，主題、語言不限，可以是你發問、閒聊、提到一些新聞（模擬開會中的情境）；也可以用電腦播放任何你想要的影片、語音。</li>
-          <li>開始說話後，INTEVIA AI便會開始運作，逐字稿會持續產生。此時你可以使用工具列中的三項功能：回答、即時統整和查資料，AI會根據最近一段內容提供你選擇的資訊，也可以手動在文字框輸入Prompt你的要求或問題。</li>
+          <li>
+            開始對鏡頭說話，主題、語言不限，可以是你發問、閒聊、提到一些新聞（模擬開會中的情境）；也可以用電腦播放任何你想要的影片、語音。
+          </li>
+          <li>
+            開始說話後，INTEVIA
+            AI便會開始運作，逐字稿會持續產生。此時你可以使用工具列中的三項功能：回答、即時統整和查資料，AI會根據最近一段內容提供你選擇的資訊，也可以手動在文字框輸入Prompt你的要求或問題。
+          </li>
           <li>下方Keyword會根據音訊持續跳出，亦可以隨時點擊想查詢的關鍵字。</li>
         </ol>
         <div className="mt-6">
-          <h4 className="text-lg font-semibold mb-2 text-center">不知道說什麼的話你可以：</h4>
+          <h4 className="text-lg font-semibold mb-2 text-center">
+            不知道說什麼的話你可以：
+          </h4>
           <ol className="list-decimal list-inside space-y-2 text-muted-foreground mx-auto w-fit">
-            <li>隨便找一部YouTube談話性影片（課程、演講、聊天）放在背景播放，自己一邊講話、提問，根據生成的逐字稿去測試三個按鈕。</li>
-            <li>找一個朋友或是自己，隨便聊最近的新聞或是分享自己的一天，然後一樣根據生成逐字稿的內容去測試功能。</li>
+            <li>
+              隨便找一部YouTube談話性影片（課程、演講、聊天）放在背景播放，自己一邊講話、提問，根據生成的逐字稿去測試三個按鈕。
+            </li>
+            <li>
+              找一個朋友或是自己，隨便聊最近的新聞或是分享自己的一天，然後一樣根據生成逐字稿的內容去測試功能。
+            </li>
           </ol>
         </div>
       </div>
 
-
       <div className="flex flex-1 overflow-hidden border rounded-lg shadow-lg bg-card max-h-[70vh]">
         <main className="flex flex-col flex-1 overflow-hidden">
-          <div 
+          <div
             ref={messagesContainerRef}
             className="flex-1 p-4 space-y-4 overflow-y-auto bg-muted/30"
           >
@@ -747,7 +788,7 @@ export function DemoComponent() {
                   "p-3 rounded-lg text-sm border w-fit max-w-[85%]",
                   m.role === "user"
                     ? "bg-primary ml-auto text-primary-foreground"
-                    : "bg-muted mr-auto text-foreground"
+                    : "bg-muted mr-auto text-foreground",
                 )}
               >
                 <Markdown>{m.content}</Markdown>
@@ -887,7 +928,11 @@ export function DemoComponent() {
             <div className="grid grid-cols-2 gap-2">
               {[
                 { action: "answer", label: "回答問題", icon: MicIcon },
-                { action: "summary", label: "產生摘要", icon: ListCollapseIcon },
+                {
+                  action: "summary",
+                  label: "產生摘要",
+                  icon: ListCollapseIcon,
+                },
                 { action: "search", label: "搜尋主題", icon: SearchIcon },
               ].map(({ action, label, icon: Icon }) => (
                 <Button

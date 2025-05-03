@@ -10,7 +10,9 @@ import { useState } from "react";
 export function HeroSection() {
   const [feedback, setFeedback] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitStatus, setSubmitStatus] = useState<"idle" | "success" | "error">("idle");
+  const [submitStatus, setSubmitStatus] = useState<
+    "idle" | "success" | "error"
+  >("idle");
 
   const handleFeedbackSubmit = async () => {
     if (!feedback.trim()) {
@@ -117,8 +119,12 @@ export function HeroSection() {
 
             {/* Feedback Section */}
             <div className="mt-12 max-w-xl mx-auto text-left px-6 pb-12">
-              <h3 className="text-xl font-semibold mb-2 text-center">使用回饋</h3>
-              <p className="mb-4 text-sm text-muted-foreground text-center">我們只花了兩週時間開發這個原型，請幫助我們改進。</p>
+              <h3 className="text-xl font-semibold mb-2 text-center">
+                使用回饋
+              </h3>
+              <p className="mb-4 text-sm text-muted-foreground text-center">
+                我們只花了兩週時間開發這個原型，請幫助我們改進。
+              </p>
               <textarea
                 placeholder="請在此輸入您的回饋..."
                 rows={4}
@@ -135,10 +141,14 @@ export function HeroSection() {
                 {isSubmitting ? "提交中..." : "提交回饋"}
               </Button>
               {submitStatus === "success" && (
-                <p className="mt-2 text-sm text-green-600 text-center">感謝您的回饋！</p>
+                <p className="mt-2 text-sm text-green-600 text-center">
+                  感謝您的回饋！
+                </p>
               )}
               {submitStatus === "error" && (
-                <p className="mt-2 text-sm text-red-600 text-center">提交失敗，請稍後再試。</p>
+                <p className="mt-2 text-sm text-red-600 text-center">
+                  提交失敗，請稍後再試。
+                </p>
               )}
             </div>
           </div>

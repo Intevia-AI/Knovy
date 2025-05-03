@@ -16,7 +16,7 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     console.log("Received request body:", JSON.stringify(body, null, 2));
-    
+
     const { messages, action, data } = body as AIRequest;
 
     // Format messages for the AI
@@ -34,7 +34,7 @@ export async function POST(request: Request) {
       if (lastUserMessage && lastUserMessage.role === "user") {
         const content: UserContent = [
           { type: "text", text: lastUserMessage.content as string },
-          { type: "image", image: data.screenshot }
+          { type: "image", image: data.screenshot },
         ];
         lastUserMessage.content = content;
         console.log("Updated last user message with screenshot");
@@ -52,10 +52,10 @@ export async function POST(request: Request) {
 
     console.log("Generated text:", text);
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       id: `ai-${Date.now()}`,
       role: "assistant",
-      content: text 
+      content: text,
     });
   } catch (error) {
     console.error("Detailed error in AI route:", error);
@@ -63,8 +63,10 @@ export async function POST(request: Request) {
       console.error("Error stack:", error.stack);
     }
     return NextResponse.json(
-      { error: `Failed to process AI request: ${error instanceof Error ? error.message : String(error)}` },
-      { status: 500 }
+      {
+        error: `Failed to process AI request: ${error instanceof Error ? error.message : String(error)}`,
+      },
+      { status: 500 },
     );
   }
-} 
+}

@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, desktopCapturer, session, systemPreferences } = require("electron");
+const { app, BrowserWindow, ipcMain, desktopCapturer, session, systemPreferences, globalShortcut } = require("electron");
 const serve = require("electron-serve");
 const path = require("path");
 
@@ -15,9 +15,15 @@ let pendingMediaRequest = null; // Keep track of the callback for the media requ
 
 const createWindow = () => {
   mainWindow = new BrowserWindow({ // Assign to mainWindow
-    width: 400,
-    height: 480,
+    width: 480,
+    height: 400,
     frame: false, // Remove default frame to use custom header
+    // Transparent background + blur effect
+    transparent: true,
+    vibrancy: 'fullscreen-ui',           // macOS blur material
+    visualEffectState: 'active',         // keep blur even when unfocused
+
+    backgroundMaterial: 'acrylic', // on Windows 11
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true, // Recommended for security
@@ -26,7 +32,7 @@ const createWindow = () => {
   });
 
   // Set content protection - prevents screen capture of the app window itself
-  mainWindow.setContentProtection(true);
+  // mainWindow.setContentProtection(true);
 
   if (isDev) {
     // Development: Load from Next.js dev server
@@ -56,8 +62,23 @@ const createWindow = () => {
   mainWindow.on('closed', () => {
     mainWindow = null; // Dereference the window object
     pendingMediaRequest = null; // Clear request on window close
+    // Note: We don't unregister the shortcut here, as the app might still be running.
   });
 }
+
+// Function to toggle window visibility or create it
+const toggleWindow = () => {
+  if (!mainWindow) {
+    createWindow(); // Create if it doesn't exist
+  } else {
+    if (mainWindow.isVisible() && mainWindow.isFocused()) {
+      mainWindow.hide();
+    } else {
+      mainWindow.show(); // Show if hidden or not focused
+      mainWindow.focus(); // Focus it
+    }
+  }
+};
 
 // Make the ready handler async to use await
 app.on("ready", async () => {
@@ -87,6 +108,16 @@ app.on("ready", async () => {
     // --- End Permission Check ---
 
     createWindow();
+
+    // --- Register Global Shortcut ---
+    const ret = globalShortcut.register('CommandOrControl+K', toggleWindow);
+
+    if (!ret) {
+      console.log('Global shortcut registration failed');
+    } else {
+      console.log('Global shortcut "CommandOrControl+Shift+I" registered successfully');
+    }
+    // --- End Global Shortcut Registration ---
 
     // --- Set up DisplayMediaRequestHandler ---
     session.defaultSession.setDisplayMediaRequestHandler((request, callback) => {
@@ -185,9 +216,20 @@ app.on("ready", async () => {
 });
 
 app.on("window-all-closed", () => {
+    // On Windows/Linux, closing the window usually quits the app.
+    // On macOS, the app often stays active.
+    // We keep the shortcut active even if the window is closed on macOS.
     if(process.platform !== "darwin"){
-        app.quit();
+        app.quit(); // This will trigger 'will-quit'
     }
+});
+
+app.on('will-quit', () => {
+  // Unregister the shortcut when the application is about to quit
+  globalShortcut.unregister('CommandOrControl+Shift+I');
+  console.log('Global shortcut "CommandOrControl+Shift+I" unregistered');
+  // Unregister all shortcuts.
+  globalShortcut.unregisterAll();
 });
 
 app.on('activate', () => {

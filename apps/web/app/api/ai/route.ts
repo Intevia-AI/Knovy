@@ -31,7 +31,7 @@ export async function POST(req: Request) {
           acc[audio.label]?.push(audio);
           return acc;
         },
-        {} as Record<string, MediaFile[]>
+        {} as Record<string, MediaFile[]>,
       );
 
       // Add labeled audio parts
@@ -98,7 +98,7 @@ export async function POST(req: Request) {
           m.content &&
           (Array.isArray(m.content)
             ? m.content.length > 0
-            : String(m.content).trim() !== "")
+            : String(m.content).trim() !== ""),
       )
     ) {
       console.warn("AI API: No input content after formatting.");

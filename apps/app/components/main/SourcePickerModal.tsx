@@ -1,6 +1,12 @@
-import React from 'react';
 import { Button } from "@workspace/ui/components/button";
-import type { ElectronSource } from '@/types';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@workspace/ui/components/dialog";
+import type { ElectronSource } from "@/types";
 
 interface SourcePickerModalProps {
   show: boolean;
@@ -9,18 +15,19 @@ interface SourcePickerModalProps {
   onCancel: () => void;
 }
 
-export function SourcePickerModal({ show, sources, onSelect, onCancel }: SourcePickerModalProps) {
-  if (!show) {
-    return null;
-  }
-
+export function SourcePickerModal({
+  show,
+  sources,
+  onSelect,
+  onCancel,
+}: SourcePickerModalProps) {
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-card p-3 rounded-lg shadow-xl max-w-xs w-full">
-        <h3 className="text-sm font-semibold mb-2 text-card-foreground">
-          選擇分享來源
-        </h3>
-        <div className="max-h-40 overflow-y-auto space-y-1 mb-2 border rounded p-1.5 bg-background">
+    <Dialog open={show} onOpenChange={(isOpen) => !isOpen && onCancel()}>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle className="text-sm">選擇分享來源</DialogTitle>
+        </DialogHeader>
+        <div className="max-h-60 overflow-y-auto space-y-1 p-1.5 bg-background border rounded">
           {sources.length > 0 ? (
             sources.map((source) => (
               <button
@@ -33,22 +40,22 @@ export function SourcePickerModal({ show, sources, onSelect, onCancel }: SourceP
               </button>
             ))
           ) : (
-            <p className="text-muted-foreground text-xs text-center py-2">
+            <p className="text-muted-foreground text-xs text-center py-4">
               正在搜尋可用的分享來源...
             </p>
           )}
         </div>
-        <div className="flex justify-end">
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={onCancel} 
-            className="text-xs bg-muted/50 hover:bg-muted/80"
+        <DialogFooter>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onCancel}
+            className="text-xs"
           >
             取消
           </Button>
-        </div>
-      </div>
-    </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

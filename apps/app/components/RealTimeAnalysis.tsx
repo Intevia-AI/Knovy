@@ -1,10 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import { Button } from "@workspace/ui/components/button";
-import { Mic, MicOff, Pause } from "lucide-react";
 import { GeminiClient } from "./geminiClient";
-import { Label } from "@workspace/ui/components/label";
 
 interface RealTimeAnalysisProps {
   onTextResponse?: (text: string, turnComplete: boolean) => void; // 當收到文字回應時的回呼
@@ -37,7 +34,10 @@ export default function RealTimeAnalysis({
 
   useEffect(() => {
     if (isScreenSharing && systemAudioStream) {
-      console.log("[RealTimeAnalysis] 初始化 GeminiClient, language:", language);
+      console.log(
+        "[RealTimeAnalysis] 初始化 GeminiClient, language:",
+        language,
+      );
       geminiClientRef.current = new GeminiClient(
         (text, turnComplete) => {
           console.log("[即時問答] 收到回答:", text);
@@ -64,9 +64,9 @@ export default function RealTimeAnalysis({
           console.log("[即時問答] 收到轉錄:", text);
           textBufferRef.current = text;
         },
-        'answer',
+        "answer",
         customPrompt,
-        language
+        language,
       );
     }
 
@@ -88,7 +88,14 @@ export default function RealTimeAnalysis({
       shouldSendAudioRef.current = false;
       textBufferRef.current = "";
     };
-  }, [onTextResponse, onKeywords, customPrompt, language, isScreenSharing, systemAudioStream]);
+  }, [
+    onTextResponse,
+    onKeywords,
+    customPrompt,
+    language,
+    isScreenSharing,
+    systemAudioStream,
+  ]);
 
   useEffect(() => {
     if (isActive && systemAudioStream) {
@@ -140,7 +147,7 @@ export default function RealTimeAnalysis({
 
       console.log("[即時分析] 載入 audio worklet...");
       await audioContextRef.current.audioWorklet.addModule(
-        "/worklets/audio-processor.js"
+        "/worklets/audio-processor.js",
       );
       const audioWorkletNode = new AudioWorkletNode(
         audioContextRef.current,
@@ -149,7 +156,7 @@ export default function RealTimeAnalysis({
           processorOptions: {
             bufferSize: 8192,
           },
-        }
+        },
       );
 
       audioWorkletNode.port.onmessage = (event) => {

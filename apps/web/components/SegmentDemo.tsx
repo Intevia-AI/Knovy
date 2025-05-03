@@ -1,6 +1,6 @@
-'use client';
-import { useEffect, useState } from 'react';
-import { useSegmentRecorder } from '@/hooks/useSegmentRecorder';
+"use client";
+import { useEffect, useState } from "react";
+import { useSegmentRecorder } from "@/hooks/useSegmentRecorder";
 
 export default function SegmentDemo() {
   const { recording, start, stop, mimeType } = useSegmentRecorder();
@@ -11,15 +11,15 @@ export default function SegmentDemo() {
       setBusy(true);
       const buf = await e.detail.arrayBuffer();
       const b64 = btoa(String.fromCharCode(...new Uint8Array(buf)));
-      await fetch('/api/ai', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      await fetch("/api/ai", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ data: b64, mimeType }),
       });
       setBusy(false);
     };
-    window.addEventListener('segment', handler as any);
-    return () => window.removeEventListener('segment', handler as any);
+    window.addEventListener("segment", handler as any);
+    return () => window.removeEventListener("segment", handler as any);
   }, [mimeType]);
 
   return (

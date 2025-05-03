@@ -49,7 +49,7 @@ function getAudioDuration(filePath: string): Promise<number | null> {
         resolve(metadata.format.duration);
       } else {
         console.warn(
-          "Could not determine a valid audio duration from metadata."
+          "Could not determine a valid audio duration from metadata.",
         );
         resolve(null); // Resolve with null if duration is invalid/missing
       }
@@ -70,7 +70,7 @@ export async function POST(req: Request) {
     const { audioData, originalMimeType }: ProcessAudioRequest =
       await req.json();
     console.log(
-      `[Server Process] Received audio. Original type: ${originalMimeType}`
+      `[Server Process] Received audio. Original type: ${originalMimeType}`,
     );
 
     if (!audioData) {
@@ -83,7 +83,7 @@ export async function POST(req: Request) {
     tempInputPath = await tmpName();
     await fs.writeFile(tempInputPath, audioBuffer);
     console.log(
-      `[Server Process] Wrote ${audioBuffer.length} bytes to temp input: ${tempInputPath}`
+      `[Server Process] Wrote ${audioBuffer.length} bytes to temp input: ${tempInputPath}`,
     );
 
     // 2. Get duration using ffprobe
@@ -96,7 +96,7 @@ export async function POST(req: Request) {
       startSec = Math.max(duration - MAX_TRIM_SECONDS, 0);
     } else {
       console.warn(
-        `[Server Process] Could not get valid duration. Processing entire audio.`
+        `[Server Process] Could not get valid duration. Processing entire audio.`,
       );
       // Keep startSec = 0
     }
@@ -123,7 +123,7 @@ export async function POST(req: Request) {
     // 6. Read the processed WAV file
     const processedWavBuffer = await fs.readFile(tempOutputPath);
     console.log(
-      `[Server Process] Read processed WAV: ${processedWavBuffer.length} bytes from ${tempOutputPath}`
+      `[Server Process] Read processed WAV: ${processedWavBuffer.length} bytes from ${tempOutputPath}`,
     );
 
     // 7. Base64 encode the result for JSON transport
@@ -138,7 +138,7 @@ export async function POST(req: Request) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     return NextResponse.json(
       { error: `Audio processing failed: ${errorMessage}` },
-      { status: 500 }
+      { status: 500 },
     );
   } finally {
     // 8. Clean up temporary files
@@ -149,7 +149,7 @@ export async function POST(req: Request) {
     } catch (cleanupError) {
       console.error(
         "[Server Process] Error cleaning up temp files:",
-        cleanupError
+        cleanupError,
       );
     }
   }
