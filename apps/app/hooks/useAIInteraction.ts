@@ -41,6 +41,8 @@ interface CustomMessage extends AIMessage {
   visible?: boolean;
 }
 
+export type { CustomMessage };
+
 export function useAIInteraction({
   micSegments,
   systemAudioSegments,
@@ -506,6 +508,7 @@ export function useAIInteraction({
 
   return {
     aiMessages,
+    setAiMessages,
     transcriptions,
     isLoading,
     customPrompt,

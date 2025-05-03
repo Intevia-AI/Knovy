@@ -75,6 +75,7 @@ export function ControlPanel({
   const [confirmedPrompt, setConfirmedPrompt] = useState<string | undefined>(customPrompt);
   // 追踪輸入中的提示詞
   const [draftPrompt, setDraftPrompt] = useState<string>(customPrompt || '');
+  const [isLanguageDropdownOpen, setIsLanguageDropdownOpen] = useState(false);
 
   const aiActions = [
     { action: "answer", label: "深度回答", icon: MicIcon },
@@ -168,6 +169,7 @@ export function ControlPanel({
             systemAudioStream={currentSystemAudioStream || undefined}
             isScreenSharing={isScreenSharing}
             setSubtitleVisibility={setSubtitleVisibility}
+            language={language}
           />
           <RealTimeAnalysis
             onTextResponse={onAnswerResponse}
@@ -175,6 +177,7 @@ export function ControlPanel({
             systemAudioStream={currentSystemAudioStream || undefined}
             isScreenSharing={isScreenSharing}
             customPrompt={confirmedPrompt}
+            language={language}
           />
         </div>
       </div>
@@ -261,19 +264,39 @@ export function ControlPanel({
             <Label className="text-xs font-medium text-foreground">
               語言選擇
             </Label>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                const currentIndex = languages.findIndex(lang => lang.code === (language || 'zh-TW'));
-                const nextIndex = (currentIndex + 1) % languages.length;
-                (setLanguage as (lang: string) => void)(languages[nextIndex].code);
-              }}
-              className="text-xs h-7 px-2"
-              title="切換語言"
-            >
-              <LanguagesIcon className="h-3 w-3" />
-            </Button>
+            <div className="relative">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsLanguageDropdownOpen(!isLanguageDropdownOpen)}
+                className="text-xs h-7 px-2 flex items-center gap-1"
+                title="切換語言"
+              >
+                <LanguagesIcon className="h-3 w-3" />
+                <span className="text-xs">
+                  {languages.find(lang => lang.code === language)?.name || '繁體中文'}
+                </span>
+              </Button>
+              {isLanguageDropdownOpen && (
+                <div className="absolute right-0 mt-1 w-32 bg-background border border-border rounded-md shadow-lg z-10 max-h-40 overflow-y-auto">
+                  {languages.map((lang) => (
+                    <button
+                      key={lang.code}
+                      className={`w-full text-left px-3 py-1.5 text-xs hover:bg-accent ${
+                        language === lang.code ? 'bg-accent' : ''
+                      }`}
+                      onClick={() => {
+                        console.log("[ControlPanel] 選擇語言:", lang.code);
+                        (setLanguage as (lang: string) => void)(lang.code);
+                        setIsLanguageDropdownOpen(false);
+                      }}
+                    >
+                      {lang.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}

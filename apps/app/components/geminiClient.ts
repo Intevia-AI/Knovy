@@ -23,6 +23,7 @@ export class GeminiClient {
   private streamingBuffer: string = "";
   private mode: 'transcription' | 'answer';
   private customPrompt: string | null = null;
+  private language?: string;
 
   constructor(
     onMessage: (text: string, turnComplete: boolean) => void,
@@ -31,7 +32,8 @@ export class GeminiClient {
     onAudioLevelChange: (level: number) => void,
     onTranscription: (text: string) => void,
     mode: 'transcription' | 'answer' = 'transcription',
-    customPrompt?: string
+    customPrompt?: string,
+    language?: string
   ) {
     // Security check: Ensure we're not running in production without proper proxy configuration
     if (process.env.NODE_ENV === "production" && !PROXY_SERVER_URL) {
@@ -47,62 +49,66 @@ export class GeminiClient {
     this.onTranscriptionCallback = onTranscription;
     this.mode = mode;
     this.customPrompt = customPrompt || null;
+    this.language = language;
   }
 
-  connect() {
+  async connect() {
     if (this.ws) {
       console.warn("[Gemini] WebSocket 已經連接");
       return;
     }
 
-    const wsUrl = process.env.NEXT_PUBLIC_GEMINI_WS_URL || "ws://localhost:4567";
-    this.ws = new WebSocket(wsUrl);
+    try {
+      console.log("[Gemini] 正在連接到代理服務器...");
+      this.ws = new WebSocket(PROXY_SERVER_URL);
 
-    this.ws.onopen = () => {
-      console.log("[Gemini] WebSocket 連接成功");
-      // 先發送自定義提示詞
-      if (this.customPrompt) {
-        console.log("[Gemini] Sending custom prompt:", this.customPrompt);
-        this.ws?.send(JSON.stringify({
-          type: "custom_prompt",
-          prompt: this.customPrompt
-        }));
-      }
-      // 再發送模式信息
-      console.log("[Gemini] 發送模式信息:", this.mode, this.customPrompt);
-      this.ws?.send(JSON.stringify({
-        type: "mode",
-        mode: this.mode
-      }));
-      this.onSetupCompleteCallback?.();
-      this.isConnected = true;
-      this.reconnectAttempts = 0;
-    };
-
-    this.ws.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        if (data.text) {
-          this.onMessageCallback?.(data.text, data.turnComplete || false);
-        } else if (data.setupComplete) {
-          this.isSetupComplete = true;
+      this.ws.onopen = () => {
+        console.log("[Gemini] WebSocket 連接成功");
+        // 發送自定義提示詞（如果有的話）
+        if (this.customPrompt) {
+          console.log("[Gemini] 發送自定義提示詞:", this.customPrompt);
+          this.ws?.send(JSON.stringify({ type: 'custom_prompt', prompt: this.customPrompt }));
         }
-      } catch (error) {
-        console.error("[Gemini] 處理消息時發生錯誤:", error);
-      }
-    };
+        // 發送語言設置（如果有的話）
+        if (this.language) {
+          console.log("[Gemini] 發送語言設置:", this.language);
+          this.ws?.send(JSON.stringify({ type: 'language', language: this.language }));
+        }
+        // 發送模式信息
+        console.log("[Gemini] 發送模式信息:", this.mode);
+        this.ws?.send(JSON.stringify({ type: 'mode', mode: this.mode }));
+        this.onSetupCompleteCallback?.();
+        this.isConnected = true;
+        this.reconnectAttempts = 0;
+      };
 
-    this.ws.onerror = (error) => {
-      console.error("[Gemini] WebSocket 錯誤:", error);
-      this.onError(new Error("WebSocket connection error"));
-    };
+      this.ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.text) {
+            this.onMessageCallback?.(data.text, data.turnComplete || false);
+          } else if (data.setupComplete) {
+            this.isSetupComplete = true;
+          }
+        } catch (error) {
+          console.error("[Gemini] 處理消息時發生錯誤:", error);
+        }
+      };
 
-    this.ws.onclose = () => {
-      console.log("[Gemini] WebSocket 已關閉");
-      this.isConnected = false;
-      this.onClose();
-      this.reconnect();
-    };
+      this.ws.onerror = (error) => {
+        console.error("[Gemini] WebSocket 錯誤:", error);
+        this.onError(new Error("WebSocket connection error"));
+      };
+
+      this.ws.onclose = () => {
+        console.log("[Gemini] WebSocket 已關閉");
+        this.isConnected = false;
+        this.onClose();
+        this.reconnect();
+      };
+    } catch (error) {
+      console.error("[Gemini] 連接到代理服務器時發生錯誤:", error);
+    }
   }
 
   private reconnect() {

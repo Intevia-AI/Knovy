@@ -12,6 +12,7 @@ interface RealTimeAnalysisProps {
   systemAudioStream?: MediaStream; // 系統音訊流 (可選)
   isScreenSharing: boolean; // 是否正在進行螢幕分享
   customPrompt?: string; // Add customPrompt prop
+  language?: string;
 }
 
 export default function RealTimeAnalysis({
@@ -20,6 +21,7 @@ export default function RealTimeAnalysis({
   systemAudioStream,
   isScreenSharing,
   customPrompt, // Add customPrompt to destructuring
+  language,
 }: RealTimeAnalysisProps) {
   const [isActive, setIsActive] = useState(false); // 是否正在分析
   const [isProcessing, setIsProcessing] = useState(false); // 是否正在處理中 (例如：啟動/停止)
@@ -34,32 +36,39 @@ export default function RealTimeAnalysis({
   const textBufferRef = useRef("");
 
   useEffect(() => {
-    // 初始化 GeminiClient
-    geminiClientRef.current = new GeminiClient(
-      (text, turnComplete) => {
-        console.log("[即時問答] 收到回答:", text);
-        if (onTextResponse) {
-          // 使用 requestAnimationFrame 來延遲調用 onTextResponse
-          requestAnimationFrame(() => {
-            onTextResponse(text, turnComplete);
-          });
-        }
-      },
-      () => {
-        console.log("[即時問答] WebSocket 連線已建立");
-        setIsConnected(true);
-        shouldSendAudioRef.current = true;
-      },
-      (isPlaying) => {
-        console.log("[即時問答] 播放狀態變更:", isPlaying);
-      },
-      (level) => {
-        setAudioLevel(level);
-      },
-      () => {},
-      'answer',
-      customPrompt
-    );
+    if (isScreenSharing && systemAudioStream) {
+      console.log("[RealTimeAnalysis] 初始化 GeminiClient, language:", language);
+      geminiClientRef.current = new GeminiClient(
+        (text, turnComplete) => {
+          console.log("[即時問答] 收到回答:", text);
+          if (onTextResponse) {
+            // 使用 requestAnimationFrame 來延遲調用 onTextResponse
+            requestAnimationFrame(() => {
+              onTextResponse(text, turnComplete);
+            });
+          }
+        },
+        () => {
+          console.log("[即時問答] WebSocket 連線已建立");
+          setIsConnected(true);
+          shouldSendAudioRef.current = true;
+        },
+        (isPlaying) => {
+          console.log("[即時問答] 播放狀態變更:", isPlaying);
+        },
+        (level) => {
+          console.log("[RealTimeAnalysis] 音訊等級變更:", level);
+          setAudioLevel(level);
+        },
+        (text) => {
+          console.log("[即時問答] 收到轉錄:", text);
+          textBufferRef.current = text;
+        },
+        'answer',
+        customPrompt,
+        language
+      );
+    }
 
     return () => {
       console.log("[即時問答] 清理 WebSocket...");
@@ -79,7 +88,7 @@ export default function RealTimeAnalysis({
       shouldSendAudioRef.current = false;
       textBufferRef.current = "";
     };
-  }, [onTextResponse, onKeywords, customPrompt]);
+  }, [onTextResponse, onKeywords, customPrompt, language, isScreenSharing, systemAudioStream]);
 
   useEffect(() => {
     if (isActive && systemAudioStream) {

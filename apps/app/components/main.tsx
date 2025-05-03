@@ -21,6 +21,7 @@ import type { Segment, ElectronSource } from '@/types';
 // =============================================================
 export function Main() {
   // --- Hooks ----------------------------------------------------
+  const [language, setLanguage] = useState('zh-TW');
 
   // Electron Interactions
   const {
@@ -65,13 +66,13 @@ export function Main() {
     keywords,
     selectedKeyword,
     sendContextToAI,
-    handleTranscriptionResponse, // For RealTimeSubtitle
-    handleTranscriptionKeywords, // For RealTimeSubtitle
-    handleAnswerResponse, // For RealTimeAnalysis
-    handleAnswerKeywords, // For RealTimeAnalysis
-    handleKeywordClick, // Pass to ControlPanel
-    messagesContainerRef, // Pass to ChatPanel
-    resetChat, // To reset AI state on starting share
+    handleTranscriptionResponse,
+    handleTranscriptionKeywords,
+    handleAnswerResponse,
+    handleAnswerKeywords,
+    handleKeywordClick,
+    messagesContainerRef,
+    resetChat,
     messages,
     handleSendMessage,
     setSubtitleVisibility,
@@ -97,15 +98,7 @@ export function Main() {
 
   const onAnswerResponse = (text: string, turnComplete: boolean) => {
     console.log("[Main] 收到回答:", text);
-    // 將回答添加到消息列表中
-    setAiMessages((prev: CustomMessage[]) => [
-      ...prev,
-      {
-        id: Date.now().toString(),
-        role: "assistant",
-        content: text,
-      },
-    ]);
+    handleSendMessage("answer", text);
   };
 
   // --- Render -------------------------------------------------
@@ -156,6 +149,8 @@ export function Main() {
           currentSystemAudioStream={currentSystemAudioStream}
           customPrompt={customPrompt}
           setCustomPrompt={setCustomPrompt}
+          language={language}
+          setLanguage={setLanguage}
           onToggleScreenShare={toggleScreenShare}
           onAiAction={sendContextToAI}
           onKeywordClick={handleKeywordClick}

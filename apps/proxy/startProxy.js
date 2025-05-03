@@ -59,7 +59,8 @@ class GeminiProxyServer {
         ip: clientIp,
         geminiWs: null,
         isSetupComplete: false,
-        lastActivity: Date.now()
+        lastActivity: Date.now(),
+        language: 'zh-TW'
       };
 
       this.clients.set(clientId, clientConnection);
@@ -112,7 +113,7 @@ class GeminiProxyServer {
       console.log(`[Proxy] Client ${clientId} set mode to: ${data.mode}`);
       client.mode = data.mode;
       if (client.geminiWs) {
-        this.sendInitialSetup(client.geminiWs, data.mode);
+        this.sendInitialSetup(client.geminiWs, data.mode, client.customPrompt, client.language);
       }
       return;
     }
@@ -121,7 +122,16 @@ class GeminiProxyServer {
       console.log(`[Proxy] Client ${clientId} set custom prompt`);
       client.customPrompt = data.prompt;
       if (client.geminiWs) {
-        this.sendInitialSetup(client.geminiWs, client.mode, data.prompt);
+        this.sendInitialSetup(client.geminiWs, client.mode, client.customPrompt, client.language);
+      }
+      return;
+    }
+
+    if (data.type === "language") {
+      console.log(`[Proxy] Client ${clientId} set language to: ${data.language}`);
+      client.language = data.language;
+      if (client.geminiWs) {
+        this.sendInitialSetup(client.geminiWs, client.mode, client.customPrompt, client.language);
       }
       return;
     }
@@ -148,7 +158,7 @@ class GeminiProxyServer {
 
       geminiWs.on('open', () => {
         console.log(`[Proxy] Gemini connection opened for client ${client.id}`);
-        this.sendInitialSetup(geminiWs, client.mode, client.customPrompt);
+        this.sendInitialSetup(geminiWs, client.mode || 'transcription', client.customPrompt || null, client.language || 'zh-TW');
       });
 
       geminiWs.on('message', (data) => {
@@ -172,14 +182,14 @@ class GeminiProxyServer {
     }
   }
 
-  sendInitialSetup(ws, mode = 'transcription', customPrompt = null) {
-    console.log(`[Proxy] Sending initial setup for mode: ${mode}, customPrompt: ${customPrompt}`);
+  sendInitialSetup(ws, mode = 'transcription', customPrompt = null, language = 'zh-TW') {
+    console.log(`[Proxy] Sending initial setup for mode: ${mode}, customPrompt: ${customPrompt}, language: ${language}`);
     let systemInstruction;
     
     if (mode === 'transcription') {
       systemInstruction = `You are a real-time transcription assistant. For each audio input, respond in the following format:
 
-TRANSCRIPTION: [transcribe the audio content here, please answer in traditional chinese]
+TRANSCRIPTION: [transcribe the audio content here, please answer in ${language}]
 KEYWORDS: [list any technical terms, specialized vocabulary, or complex concepts that might be difficult for a general audience to understand, separated by commas. If none, leave empty]
 
 Example:
@@ -190,7 +200,7 @@ If there are no difficult terms, respond with empty keywords:
 TRANSCRIPTION: The weather is nice today.
 KEYWORDS:
 
-Please always answer in traditional chinese instead of simplified chinese !!!!!
+Please always answer in ${language} !!!!!
 `;
     } else {
       systemInstruction = `
@@ -219,7 +229,7 @@ Assistant: [SCREEN] 可以看到我的螢幕嗎？
 User: 英偉達的股價是多少？
 Assistant: [WEB] 英偉達的股價是多少？
 
-Please always answer in traditional chinese instead of simplified chinese !!!!!
+Please answer in ${language} !!!!!
 Please always follow the additional instruction strictly, and if it has conflict with the rules, follow the additional instructions with highest priority.`;
     }
 

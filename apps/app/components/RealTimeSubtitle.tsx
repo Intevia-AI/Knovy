@@ -13,6 +13,7 @@ interface RealTimeSubtitleProps {
   systemAudioStream?: MediaStream | null; // 系統音訊流 (可選)
   isScreenSharing?: boolean; // 新增螢幕分享狀態
   setSubtitleVisibility: (visibility: boolean) => void;  // 新增 prop
+  language?: string; // 新增語言參數
 }
 
 export default function RealTimeSubtitle({
@@ -21,6 +22,7 @@ export default function RealTimeSubtitle({
   systemAudioStream,
   isScreenSharing = false, // 預設值為 false
   setSubtitleVisibility,  // 新增 prop
+  language = 'zh-TW', // 新增語言參數，默認為繁體中文
 }: RealTimeSubtitleProps) {
   const [isActive, setIsActive] = useState(false); // 是否正在分析
   const [isProcessing, setIsProcessing] = useState(false); // 是否正在處理中 (例如：啟動/停止)
@@ -106,7 +108,10 @@ export default function RealTimeSubtitle({
       (level) => {
         setAudioLevel(level);
       },
-      () => {}
+      () => {},
+      'transcription',
+      undefined,
+      language
     );
 
     return () => {
@@ -127,7 +132,7 @@ export default function RealTimeSubtitle({
       shouldSendAudioRef.current = false;
       textBufferRef.current = "";
     };
-  }, [onTextResponse, onKeywords]);
+  }, [onTextResponse, onKeywords, language]);
 
   useEffect(() => {
     if (isActive && systemAudioStream) {
