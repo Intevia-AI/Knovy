@@ -32,7 +32,7 @@ const createWindow = () => {
   });
 
   // Set content protection - prevents screen capture of the app window itself
-  // mainWindow.setContentProtection(true);
+  mainWindow.setContentProtection(true);
 
   if (isDev) {
     // Development: Load from Next.js dev server
