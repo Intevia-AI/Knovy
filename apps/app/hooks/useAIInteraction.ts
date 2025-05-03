@@ -27,31 +27,13 @@ interface AIContextData {
   screenshot?: string;
 }
 
-interface UseAIInteractionProps {
-  micSegments: Segment[]; // Array of completed mic segments
-  systemAudioSegments: Segment[]; // Array of completed system segments
-  currentMicChunksRef: React.RefObject<Blob[]>; // Ref to current mic chunks
-  systemAudioChunksRef: React.RefObject<Blob[]>; // Ref to current system chunks
-  micMimeType: string;
-  systemAudioMimeType: string;
-  isScreenSharing: boolean;
-}
-
 interface CustomMessage extends AIMessage {
   visible?: boolean;
 }
 
 export type { CustomMessage };
 
-export function useAIInteraction({
-  micSegments,
-  systemAudioSegments,
-  currentMicChunksRef,
-  systemAudioChunksRef,
-  micMimeType,
-  systemAudioMimeType,
-  isScreenSharing,
-}: UseAIInteractionProps) {
+export function useAIInteraction() {
   const [aiMessages, setAiMessages] = useState<CustomMessage[]>([]);
   const [transcriptions, setTranscriptions] = useState<TranscriptionMessage[]>(
     [],
@@ -607,7 +589,6 @@ export function useAIInteraction({
     messagesContainerRef,
     resetChat,
     setSubtitleVisibility,
-    messages: aiMessages,
     handleSendMessage: sendContextToAI,
   };
 }

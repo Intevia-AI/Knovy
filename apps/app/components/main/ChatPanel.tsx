@@ -64,7 +64,7 @@ export default function ChatPanel({
               m.role === "user"
                 ? "bg-primary ml-auto text-primary-foreground"
                 : "bg-muted mr-auto text-foreground",
-              (m.content.startsWith("[即時轉錄]") && !m.visible && "hidden") ||
+              (m.content.startsWith("[即時轉錄]") && m.visible !== false && "hidden") ||
                 m.content.includes("search web")
             )}
           >
