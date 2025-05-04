@@ -43,8 +43,8 @@ interface ControlPanelProps {
   setLanguage?: (language: string) => void;
 
   onToggleScreenShare: () => void;
-  onAiAction: (action: "answer" | "summary" | "search" | "find-clue") => void;
-  onKeywordClick: (keyword: string) => void;
+  onAiAction: (action: "answer" | "summary" | "search" | "find-clue", query?: string, screenshot?: string, language?: string) => void;
+  onKeywordClick: (keyword: string, language?: string) => void;
   onTranscriptionResponse: (text: string) => void; // For RealTimeSubtitle
   onTranscriptionKeywords: (keywords: string[]) => void; // For RealTimeSubtitle
   onAnswerResponse: (text: string, turnComplete: boolean) => void; // For RealTimeAnalysis
@@ -197,20 +197,7 @@ export function ControlPanel({
       {/* Status and Control */}
       <div className="p-2 space-y-1.5 border-b border-border/30">
         {/* Screen Preview */}
-        {isScreenSharing && ( // Only show preview section when sharing
-          <div className="p-4 space-y-2 border-t border-border/30">
-            <h3 className="text-base font-semibold text-card-foreground">
-              螢幕預覽
-            </h3>
-            <video
-              ref={screenPreviewRef}
-              className="w-full aspect-video rounded border border-border/30 bg-muted"
-              autoPlay
-              playsInline
-              muted // Preview should always be muted
-            />
-          </div>
-        )}
+
         <div className="flex items-center justify-between gap-1">
           <span className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
             <span
@@ -266,7 +253,7 @@ export function ControlPanel({
                   key={`${keyword}-${index}`}
                   variant="secondary"
                   size="sm"
-                  onClick={() => onKeywordClick(keyword)}
+                  onClick={() => onKeywordClick(keyword, language)}
                   disabled={isLoading && selectedKeyword === keyword}
                   className="flex items-center gap-0.5 text-xs h-4 px-1"
                   title={`解釋 "${keyword}"`}
@@ -314,7 +301,7 @@ export function ControlPanel({
               variant="outline"
               size="sm"
               disabled={isLoading || !isScreenSharing}
-              onClick={() => onAiAction(action)}
+              onClick={() => onAiAction(action, undefined, undefined, language)}
               className="flex items-center justify-center gap-0.5 text-xs px-1 h-7"
               title={`${label} (快捷鍵: ${modifierKey}+${shortcut})`} // Updated tooltip display
             >
@@ -328,6 +315,20 @@ export function ControlPanel({
         </div>
       </div>
 
+      {isScreenSharing && ( // Only show preview section when sharing
+          <div className="p-4 space-y-2 border-t border-border/30">
+            <h3 className="text-base font-semibold text-card-foreground">
+              螢幕預覽
+            </h3>
+            <video
+              ref={screenPreviewRef}
+              className="w-full aspect-video rounded border border-border/30 bg-muted"
+              autoPlay
+              playsInline
+              muted // Preview should always be muted
+            />
+          </div>
+      )}
       {/* --- Collapsible Advanced Settings --- */}
       <div className="border-b border-border/30">
         <div

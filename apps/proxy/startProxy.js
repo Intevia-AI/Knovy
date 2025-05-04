@@ -189,7 +189,7 @@ class GeminiProxyServer {
     if (mode === 'transcription') {
       systemInstruction = `You are a real-time transcription assistant. For each audio input, respond in the following format:
 
-TRANSCRIPTION: [transcribe the audio content here, please answer in ${language}]
+TRANSCRIPTION: [transcribe the audio content here. If the language is different from ${language}, please translate to ${language}.]
 KEYWORDS: [list any technical terms, specialized vocabulary, or complex concepts that might be difficult for a general audience to understand, separated by commas. If none, leave empty]
 
 Example:
