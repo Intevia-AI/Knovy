@@ -189,7 +189,7 @@ export default function RealTimeSubtitle({
         "audio-processor",
         {
           processorOptions: {
-            bufferSize: 8192,
+            bufferSize: 4096,
           },
         },
       );
