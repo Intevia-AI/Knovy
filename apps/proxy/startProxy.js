@@ -228,9 +228,8 @@ Assistant: [WEB] 英偉達的股價是多少？
 
 Please answer in ${language} !!!!!
 
-If the user provides additional instruction {Additional Instruction: ${customPrompt}}, please follow the instruction strictly, and if it has conflict with the following rules, please follow the additional instruction, and neglect the following rules.
-For example, if the user tells you to ask questions, then neglect rule 2 and rule 3.
-Please always follow ${customPrompt} if it's not empty, and if it has conflict with the rules, follow the additional instructions with highest priority.
+If the user provides additional instruction {Additional Instruction: ${customPrompt}}, please follow the instruction strictly.
+If there is no additional instruction, please follow the rules abovestrictly.
 `;
     }
 

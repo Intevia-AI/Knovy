@@ -77,15 +77,15 @@ export default function ChatPanel({
           </div>
         )}
       </div>
-      <div className="flex-none p-4 border-t border-border/30">
-        <form onSubmit={handleSubmit} className="flex gap-2">
+      <div className="flex-none p-2 border-t border-border/30">
+        <form onSubmit={handleSubmit} className="flex gap-1.5">
           <Input
             value={customPrompt}
             onChange={(e) => setCustomPrompt(e.target.value)}
             placeholder={
               isScreenSharing ? "輸入自訂提示或問題…" : "請先開始分享螢幕"
             }
-            className="flex-grow"
+            className="flex-grow h-7 text-xs"
             disabled={isLoading || !isScreenSharing}
             aria-label="Custom prompt input"
           />
@@ -94,10 +94,10 @@ export default function ChatPanel({
             variant="default"
             size="icon"
             disabled={isLoading || !isScreenSharing || !customPrompt.trim()}
-            className="bg-primary hover:bg-primary/90 text-primary-foreground h-9"
+            className="bg-primary hover:bg-primary/90 text-primary-foreground h-7 w-7"
             aria-label="Send custom prompt"
           >
-            <ArrowUpRight className="h-4 w-4" />
+            <ArrowUpRight className="h-3 w-3" />
           </Button>
         </form>
       </div>

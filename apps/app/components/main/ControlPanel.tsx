@@ -24,6 +24,8 @@ import { formatTime } from "@/lib/utils"; // Adjust path if needed
 import RealTimeSubtitle from "@/components/RealTimeSubtitle";
 import { Textarea } from "@workspace/ui/components/textarea"; // Add Textarea component
 import { Label } from "@workspace/ui/components/label"; // Add Label component
+import ScreenPreviewWindow from "./ScreenPreviewWindow";
+import AdvancedSettingsWindow from "./AdvancedSettingsWindow";
 
 interface ControlPanelProps {
   isScreenSharing: boolean;
@@ -35,7 +37,7 @@ interface ControlPanelProps {
   systemAnalyserNode: AnalyserNode | null;
   micLevel: number; // Add micLevel prop
   systemLevel: number; // Add systemLevel prop
-  screenPreviewRef: React.RefObject<HTMLVideoElement | null>; // Allow null
+  screenStreamRef: React.RefObject<MediaStream | null>; // Change to screenStreamRef
   currentSystemAudioStream: MediaStream | null; // For RealTimeAnalysis
   customPrompt?: string; // Add custom prompt prop
   setCustomPrompt?: (prompt: string) => void; // Add setter for custom prompt
@@ -62,7 +64,7 @@ export function ControlPanel({
   systemAnalyserNode,
   micLevel, // Destructure micLevel
   systemLevel, // Destructure systemLevel
-  screenPreviewRef,
+  screenStreamRef,
   currentSystemAudioStream,
   customPrompt, // Add custom prompt to destructuring
   setCustomPrompt, // Add setter to destructuring
@@ -85,6 +87,7 @@ export function ControlPanel({
   const [draftPrompt, setDraftPrompt] = useState<string>(customPrompt || "");
   const [isAdvancedSettingsOpen, setIsAdvancedSettingsOpen] = useState(false); // State for expansion
   const asideRef = useRef<HTMLElement>(null); // Ref for the aside element
+  const [isScreenPreviewOpen, setIsScreenPreviewOpen] = useState(false);
 
   const aiActions = [
     { action: "answer", label: "深度回答", icon: MicIcon, shortcut: "1" }, // Keep shortcut as number for key check
@@ -195,53 +198,53 @@ export function ControlPanel({
 
   return (
     <aside ref={asideRef} className="flex flex-col h-full overflow-y-auto">
+
       {/* Status and Control */}
       <div className="p-2 space-y-1.5 border-b border-border/30">
         {/* Screen Preview */}
-
-        <div className="flex items-center justify-between gap-1">
-          <span className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
-            <span
-              className={`flex h-2.5 w-2.5 rounded-full ${
-                isScreenSharing
-                  ? isLoading
-                    ? "bg-yellow-400 animate-pulse"
-                    : "bg-destructive animate-pulse"
-                  : "bg-muted/50"
-              }`}
-              title={
-                isLoading
-                  ? "AI 處理中"
-                  : isScreenSharing
-                  ? "分享/錄製中"
-                  : "已停止"
-              }
-            ></span>
-            {isLoading ? "處理中..." : isScreenSharing ? "分享中" : "已停止"}
-          </span>
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <span className="flex items-center gap-1 text-[10px] font-medium text-muted-foreground">
+              <span
+                className={`flex h-2 w-2 rounded-full ${
+                  isScreenSharing
+                    ? isLoading
+                      ? "bg-yellow-400 animate-pulse"
+                      : "bg-destructive animate-pulse"
+                    : "bg-muted/50"
+                }`}
+                title={
+                  isLoading
+                    ? "AI 處理中"
+                    : isScreenSharing
+                    ? "分享/錄製中"
+                    : "已停止"
+                }
+              ></span>
+              {isLoading ? "處理中..." : isScreenSharing ? "分享中" : "已停止"}
+            </span>
+            <Button
+              variant={isScreenSharing ? "destructive" : "default"}
+              size="sm"
+              onClick={onToggleScreenShare}
+              disabled={isLoading && isScreenSharing}
+              aria-pressed={isScreenSharing}
+              className="text-xs h-6.5 w-90"
+            >
+              {isScreenSharing ? (
+                <MonitorOffIcon className="h-3 w-3 mr-0.5" />
+              ) : (
+                <MonitorIcon className="h-3 w-3 mr-0.5" />
+              )}
+              {isScreenSharing ? "停止" : "分享"}
+            </Button>
+          </div>
           {isScreenSharing && (
-            <span className="text-xs font-semibold tabular-nums text-foreground">
-              <ClockIcon className="inline h-3 w-3 mr-0.5 align-[-2px]" />
+            <span className="text-[10px] font-semibold tabular-nums text-foreground">
+              <ClockIcon className="inline h-2.5 w-2.5 mr-0.5 align-[-2px]" />
               {formatTime(recordingDuration)}
             </span>
           )}
-        </div>
-        <div className="flex gap-1">
-          <Button
-            variant={isScreenSharing ? "destructive" : "default"}
-            size="sm"
-            onClick={onToggleScreenShare}
-            disabled={isLoading && isScreenSharing}
-            aria-pressed={isScreenSharing}
-            className="flex-1 text-xs h-7"
-          >
-            {isScreenSharing ? (
-              <MonitorOffIcon className="h-3 w-3 mr-0.5" />
-            ) : (
-              <MonitorIcon className="h-3 w-3 mr-0.5" />
-            )}
-            {isScreenSharing ? "停止" : "分享"}
-          </Button>
         </div>
 
         {/* Keywords Section */}
@@ -315,159 +318,59 @@ export function ControlPanel({
           ))}
         </div>
       </div>
-
-      {isScreenSharing && ( // Only show preview section when sharing
-          <div className="p-4 space-y-2 border-t border-border/30">
-            <h3 className="text-base font-semibold text-card-foreground">
-              螢幕預覽
-            </h3>
-            <video
-              ref={screenPreviewRef}
-              className="w-full aspect-video rounded border border-border/30 bg-muted"
-              autoPlay
-              playsInline
-              muted // Preview should always be muted
-            />
-          </div>
-      )}
-      {/* --- Collapsible Advanced Settings --- */}
+      
+      {/* Screen Preview Button */}
       <div className="border-b border-border/30">
         <div
           className="flex items-center justify-between p-2 cursor-pointer bg-muted/10 hover:bg-muted/50"
-          onClick={() => setIsAdvancedSettingsOpen(!isAdvancedSettingsOpen)}
+          onClick={() => {
+            if (!isScreenSharing) {
+              onToggleScreenShare();
+            }
+            setIsScreenPreviewOpen(true);
+          }}
           role="button"
-          aria-expanded={isAdvancedSettingsOpen}
-          aria-controls="advanced-settings-content"
+        >
+          <h4 className="text-xs font-medium text-foreground">螢幕預覽</h4>
+          <MonitorIcon className="h-3 w-3 text-muted-foreground" />
+        </div>
+      </div>
+
+      {/* Advanced Settings Button */}
+      <div className="border-b border-border/30">
+        <div
+          className="flex items-center justify-between p-2 cursor-pointer bg-muted/10 hover:bg-muted/50"
+          onClick={() => setIsAdvancedSettingsOpen(true)}
+          role="button"
         >
           <h4 className="text-xs font-medium text-foreground">進階設定</h4>
-          {isAdvancedSettingsOpen ? (
-            <ChevronUpIcon className="h-4 w-4 text-muted-foreground" />
-          ) : (
-            <ChevronDownIcon className="h-4 w-4 text-muted-foreground" />
-          )}
+          <LanguagesIcon className="h-3 w-3 text-muted-foreground" />
         </div>
-
-        {isAdvancedSettingsOpen && (
-          <div id="advanced-settings-content" className="space-y-1.5">
-            {/* Language Selection */}
-            {setLanguage && (
-              <div className="p-2 space-y-1.5 border-t border-border/30">
-                <div className="flex items-center justify-between">
-                  <Label className="text-xs font-medium text-foreground">
-                    語言選擇
-                  </Label>
-                  <Select
-                    value={language || "zh-TW"}
-                    onValueChange={handleLanguageChange}
-                  >
-                    <SelectTrigger className="w-[120px] h-7! text-xs px-2 bg-background!">
-                      <LanguagesIcon className="h-3 w-3 mr-1" />
-                      <SelectValue placeholder="選擇語言" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {languages.map((lang) => (
-                        <SelectItem
-                          key={lang.code}
-                          value={lang.code}
-                          className="text-xs"
-                        >
-                          {lang.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            )}
-
-            {/* Custom Prompt Input */}
-            {setCustomPrompt && !confirmedPrompt && (
-              <div className="p-2 space-y-1.5 border-t border-border/30">
-                <Label
-                  htmlFor="custom-prompt"
-                  className="text-xs font-medium text-foreground"
-                >
-                  客製化模型要求
-                </Label>
-                <Textarea
-                  id="custom-prompt"
-                  placeholder="輸入自定義提示詞後按 Enter..."
-                  value={draftPrompt}
-                  onChange={(e) => setDraftPrompt(e.target.value)}
-                  onKeyDown={handleCustomPromptConfirm}
-                  className="h-7 text-xs border-border/30 bg-muted/50 focus-visible:ring-0 focus-visible:border-primary focus-visible:outline-none"
-                />
-              </div>
-            )}
-
-            {/* Confirmed Prompt Display */}
-            {confirmedPrompt && (
-              <div className="p-2 space-y-1.5 border-t border-border/30">
-                <div className="flex items-center justify-between">
-                  <Label className="text-xs font-medium text-foreground">
-                    當前模型要求
-                  </Label>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleClearCustomPrompt}
-                    className="h-6 text-xs"
-                  >
-                    清除
-                  </Button>
-                </div>
-                <div className="text-xs text-muted-foreground break-words">
-                  {confirmedPrompt}
-                </div>
-              </div>
-            )}
-
-            {/* Mic Audio Visualizer - Commented out */}
-            {/*
-            <div className="p-4 space-y-3 border-t border-border/30">
-              <h3 className="text-base font-semibold text-card-foreground">
-                即時分析 (麥克風)
-              </h3>
-              <div className="py-2 w-full h-[56px] flex items-center justify-center">
-                {isScreenSharing && micAnalyserNode ? (
-                   <AudioVisualizer analyserNode={micAnalyserNode} height={40} />
-                ) : (
-                   <p className="text-xs text-muted-foreground">麥克風未啟用</p>
-                )}
-              </div>
-              {isScreenSharing && (
-                <div className="space-y-1">
-                  <Progress value={micLevel} className="h-2" />
-                  <span className="text-xs text-muted-foreground text-right block">音量: {micLevel.toFixed(0)}%</span>
-                </div>
-              )}
-            </div>
-            */}
-
-            {/* System Audio Visualizer - Commented out */}
-            {/*
-            <div className="p-1.5 space-y-1 border-t border-border/30">
-              <div className="flex items-center justify-between">
-                <h4 className="text-xs font-medium text-foreground">系統音訊</h4>
-                {isScreenSharing && (
-                  <span className="text-xs text-muted-foreground">
-                    {systemLevel.toFixed(0)}%
-                  </span>
-                )}
-              </div>
-              <div className="w-full h-[4px] flex items-center">
-                {isScreenSharing && systemAnalyserNode ? (
-                  <AudioVisualizer analyserNode={systemAnalyserNode} height={4} />
-                ) : (
-                  <div className="w-full h-full bg-muted rounded-full" />
-                )}
-              </div>
-            </div>
-            */}
-          </div>
-        )}
       </div>
-      {/* --- End Collapsible Advanced Settings --- */}
+
+      {/* Screen Preview Window */}
+      <ScreenPreviewWindow
+        isOpen={isScreenPreviewOpen}
+        onClose={() => {
+          setIsScreenPreviewOpen(false);
+        }}
+        isScreenSharing={isScreenSharing}
+        screenStreamRef={screenStreamRef}
+        systemAnalyserNode={systemAnalyserNode}
+        systemLevel={systemLevel}
+      />
+
+      {/* Advanced Settings Window */}
+      <AdvancedSettingsWindow
+        isOpen={isAdvancedSettingsOpen}
+        onClose={() => setIsAdvancedSettingsOpen(false)}
+        language={language}
+        setLanguage={setLanguage}
+        customPrompt={customPrompt}
+        setCustomPrompt={setCustomPrompt}
+        isScreenSharing={isScreenSharing}
+        onToggleScreenShare={onToggleScreenShare}
+      />
     </aside>
   );
 }
