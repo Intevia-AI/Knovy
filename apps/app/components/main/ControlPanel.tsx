@@ -323,12 +323,7 @@ export function ControlPanel({
       <div className="border-b border-border/30">
         <div
           className="flex items-center justify-between p-2 cursor-pointer bg-muted/10 hover:bg-muted/50"
-          onClick={() => {
-            if (!isScreenSharing) {
-              onToggleScreenShare();
-            }
-            setIsScreenPreviewOpen(true);
-          }}
+          onClick={() => setIsScreenPreviewOpen(true)}
           role="button"
         >
           <h4 className="text-xs font-medium text-foreground">螢幕預覽</h4>
