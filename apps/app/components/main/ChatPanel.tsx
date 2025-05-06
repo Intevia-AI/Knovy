@@ -2,7 +2,7 @@ import React, { useRef, useState, useEffect } from "react";
 import { Message as AIMessage } from "ai";
 import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
-import { ArrowUpRight, Sparkles } from "lucide-react";
+import { ArrowUpRight, Sparkles, ArrowDown } from "lucide-react";
 import { Markdown } from "@/components/markdown"; // Adjust path if needed
 import { cn } from "@workspace/ui/lib/utils"; // Adjust path if needed
 import { useI18n } from "@/hooks/useI18n";
@@ -40,9 +40,7 @@ const FloatingMenu: React.FC<{
         variant="ghost"
         size="sm"
         onClick={onAskAI}
-        className="flex items-center gap-1 text-xs h-7 px-2"
       >
-        <Sparkles className="h-3 w-3" />
         {t("askAIButton")}
       </Button>
     </div>
@@ -61,6 +59,7 @@ export default function ChatPanel({
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const [selectedText, setSelectedText] = useState("");
   const [menuPosition, setMenuPosition] = useState<{ x: number; y: number } | null>(null);
+  const [showScrollToBottom, setShowScrollToBottom] = useState(false);
   const { t } = useI18n();
 
   useEffect(() => {
@@ -72,6 +71,7 @@ export default function ChatPanel({
       if (isScrolledToBottom) {
         container.scrollTop = container.scrollHeight;
       }
+      setShowScrollToBottom(!isScrolledToBottom);
     }
   }, [messages]);
 
@@ -124,6 +124,29 @@ export default function ChatPanel({
     };
   }, [menuPosition]);
 
+  useEffect(() => {
+    const container = messagesContainerRef.current;
+    const handleScroll = () => {
+      if (container) {
+        const isScrolledToBottom =
+          container.scrollHeight - container.clientHeight <=
+          container.scrollTop + 10;
+        setShowScrollToBottom(!isScrolledToBottom);
+      }
+    };
+
+    if (container) {
+      container.addEventListener("scroll", handleScroll);
+      handleScroll();
+    }
+
+    return () => {
+      if (container) {
+        container.removeEventListener("scroll", handleScroll);
+      }
+    };
+  }, []);
+
   const handleAskAI = () => {
     console.log(`[ChatPanel] handleAskAI called. Current selectedText: "${selectedText}"`);
     if (selectedText.trim()) {
@@ -142,8 +165,14 @@ export default function ChatPanel({
     onSendMessage("custom", customPrompt);
   };
 
+  const scrollToBottom = () => {
+    if (messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+    }
+  };
+
   return (
-    <aside className="flex flex-col h-full overflow-y-auto shrink-0 bg-card/10">
+    <aside className="flex flex-col h-full overflow-y-auto shrink-0 bg-card/10 relative">
       <div
         ref={messagesContainerRef}
         className="flex-1 overflow-y-auto p-4 space-y-4"
@@ -178,6 +207,17 @@ export default function ChatPanel({
           y={menuPosition.y}
           onAskAI={handleAskAI}
         />
+      )}
+      {showScrollToBottom && (
+        <Button
+          variant="outline"
+          size="icon"
+          className="absolute bottom-20 right-4 rounded-full h-10 w-10 border-border/50 bg-background/80 hover:bg-background"
+          onClick={scrollToBottom}
+          aria-label="Scroll to bottom"
+        >
+          <ArrowDown className="h-5 w-5" />
+        </Button>
       )}
       <div className="flex-none p-4 border-t border-border/30">
         <form onSubmit={handleSubmit} className="flex gap-2">
