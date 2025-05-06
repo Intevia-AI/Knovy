@@ -53,6 +53,10 @@ const createWindow = () => {
     }
   });
 
+  mainWindow.webContents.on('did-finish-load', () => {
+    mainWindow.webContents.send('electronAPI:forceDarkMode');
+  });
+
   // Set content protection - prevents screen capture of the app window itself
   mainWindow.setContentProtection(true);
 

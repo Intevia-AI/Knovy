@@ -2,9 +2,10 @@ import React, { useRef, useState, useEffect } from "react";
 import { Message as AIMessage } from "ai";
 import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
-import { ArrowUpRight } from "lucide-react";
+import { ArrowUpRight, Sparkles } from "lucide-react";
 import { Markdown } from "@/components/markdown"; // Adjust path if needed
 import { cn } from "@workspace/ui/lib/utils"; // Adjust path if needed
+import { useI18n } from "@/hooks/useI18n";
 
 interface CustomMessage extends AIMessage {
   visible?: boolean;
@@ -21,6 +22,33 @@ interface ChatPanelProps {
   isSubtitleVisible?: boolean;
 }
 
+const FloatingMenu: React.FC<{
+  x: number;
+  y: number;
+  onAskAI: () => void;
+}> = ({ x, y, onAskAI }) => {
+  const { t } = useI18n();
+  return (
+    <div
+      className="fixed z-50 bg-background border border-border/30 rounded-lg shadow-lg p-1 chat-selection-menu-container"
+      style={{
+        left: x - 10,
+        top: y - 60,
+      }}
+    >
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={onAskAI}
+        className="flex items-center gap-1 text-xs h-7 px-2"
+      >
+        <Sparkles className="h-3 w-3" />
+        {t("askAIButton")}
+      </Button>
+    </div>
+  );
+};
+
 export default function ChatPanel({
   messages,
   isLoading,
@@ -31,25 +59,87 @@ export default function ChatPanel({
   isSubtitleVisible,
 }: ChatPanelProps) {
   const messagesContainerRef = useRef<HTMLDivElement>(null);
-  const [input, setInput] = useState("");
+  const [selectedText, setSelectedText] = useState("");
+  const [menuPosition, setMenuPosition] = useState<{ x: number; y: number } | null>(null);
+  const { t } = useI18n();
 
   useEffect(() => {
     const container = messagesContainerRef.current;
     if (container) {
       const isScrolledToBottom =
         container.scrollHeight - container.clientHeight <=
-        container.scrollTop + 100; // Add a threshold
+        container.scrollTop + 100;
       if (isScrolledToBottom) {
         container.scrollTop = container.scrollHeight;
       }
     }
   }, [messages]);
 
+  const handleTextSelection = (event: React.MouseEvent<HTMLDivElement>) => {
+    const targetElement = event.target as Element;
+    if (targetElement.closest('.chat-selection-menu-container')) {
+      return;
+    }
+
+    const selection = window.getSelection();
+    if (!selection || selection.toString().trim() === "") {
+      if (menuPosition) console.log("[ChatPanel] Selection cleared or empty, hiding menu.");
+      setMenuPosition(null);
+      setSelectedText("");
+      return;
+    }
+    
+    const range = selection.getRangeAt(0);
+    const messagesDiv = messagesContainerRef.current;
+
+    if (messagesDiv && messagesDiv.contains(range.commonAncestorContainer)) {
+        const currentSelectedText = selection.toString();
+        console.log(`[ChatPanel] Text selected: "${currentSelectedText}"`);
+        setSelectedText(currentSelectedText);
+        const rect = range.getBoundingClientRect();
+        setMenuPosition({
+          x: rect.left + rect.width / 2,
+          y: rect.top,
+        });
+    } else {
+        if (menuPosition || selectedText) console.log("[ChatPanel] Selection outside messages or invalid, clearing selection.");
+        setMenuPosition(null);
+        setSelectedText("");
+    }
+  };
+  
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const targetElement = event.target as Element;
+      if (menuPosition && !targetElement.closest('.chat-selection-menu-container')) {
+        console.log("[ChatPanel] Click outside menu, clearing selection and hiding menu.");
+        setMenuPosition(null);
+        setSelectedText(""); 
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [menuPosition]);
+
+  const handleAskAI = () => {
+    console.log(`[ChatPanel] handleAskAI called. Current selectedText: "${selectedText}"`);
+    if (selectedText.trim()) {
+      console.log(`[ChatPanel] selectedText is valid, sending to AI: "${selectedText}"`);
+      onSendMessage("custom", selectedText);
+      setMenuPosition(null);
+      setSelectedText("");
+    } else {
+      console.warn(`[ChatPanel] handleAskAI: selectedText is empty or whitespace. Value: "${selectedText}"`);
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!customPrompt.trim() || isLoading || !isScreenSharing) return;
     onSendMessage("custom", customPrompt);
-    // Input clearing is handled by the hook now
   };
 
   return (
@@ -57,6 +147,7 @@ export default function ChatPanel({
       <div
         ref={messagesContainerRef}
         className="flex-1 overflow-y-auto p-4 space-y-4"
+        onMouseUp={handleTextSelection}
       >
         {messages.map((m) => (
           <div
@@ -81,13 +172,20 @@ export default function ChatPanel({
           </div>
         )}
       </div>
+      {menuPosition && selectedText.trim() && (
+        <FloatingMenu
+          x={menuPosition.x}
+          y={menuPosition.y}
+          onAskAI={handleAskAI}
+        />
+      )}
       <div className="flex-none p-4 border-t border-border/30">
         <form onSubmit={handleSubmit} className="flex gap-2">
           <Input
             value={customPrompt}
             onChange={(e) => setCustomPrompt(e.target.value)}
             placeholder={
-              isScreenSharing ? "輸入自訂提示或問題…" : "請先開始分享螢幕"
+              isScreenSharing ? t("chatPlaceholderSharing") : t("chatPlaceholderNotSharing")
             }
             className="flex-grow"
             disabled={isLoading || !isScreenSharing}
@@ -99,7 +197,7 @@ export default function ChatPanel({
             size="icon"
             disabled={isLoading || !isScreenSharing || !customPrompt.trim()}
             className="bg-primary hover:bg-primary/90 text-primary-foreground h-9"
-            aria-label="Send custom prompt"
+            aria-label={t("sendChatButtonLabel")}
           >
             <ArrowUpRight className="h-4 w-4" />
           </Button>

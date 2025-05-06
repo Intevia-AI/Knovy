@@ -42,6 +42,7 @@ export const translations = {
     chatPlaceholderSharing: "Enter custom prompt or question...",
     chatPlaceholderNotSharing: "Please start screen sharing first",
     sendChatButtonLabel: "Send custom prompt",
+    askAIButton: "Ask AI",
     // RealTimeSubtitle
     showSubtitlesLabel: "Show Subtitles",
     hideSubtitlesLabel: "Hide Subtitles",
@@ -94,6 +95,7 @@ export const translations = {
     chatPlaceholderSharing: "輸入自訂提示或問題…",
     chatPlaceholderNotSharing: "請先開始分享螢幕",
     sendChatButtonLabel: "發送自訂提示",
+    askAIButton: "詢問 AI",
     // RealTimeSubtitle
     showSubtitlesLabel: "顯示字幕",
     hideSubtitlesLabel: "隱藏字幕",
@@ -146,6 +148,7 @@ export const translations = {
     chatPlaceholderSharing: "[ja]Enter prompt...",
     chatPlaceholderNotSharing: "[ja]Start sharing first",
     sendChatButtonLabel: "[ja]Send prompt",
+    askAIButton: "[ja]Ask AI",
     // RealTimeSubtitle (Placeholders)
     showSubtitlesLabel: "[ja]Show Subtitles",
     hideSubtitlesLabel: "[ja]Hide Subtitles",
@@ -200,6 +203,7 @@ export type TranslationKey =
   | "chatPlaceholderSharing"
   | "chatPlaceholderNotSharing"
   | "sendChatButtonLabel"
+  | "askAIButton"
   // RealTimeSubtitle
   | "showSubtitlesLabel"
   | "hideSubtitlesLabel"

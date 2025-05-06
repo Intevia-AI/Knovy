@@ -283,11 +283,10 @@ export function ControlPanel({
               {keywords.map((keyword, index) => (
                 <Button
                   key={`${keyword}-${index}`}
-                  variant="secondary"
                   size="sm"
                   onClick={() => onKeywordClick(keyword)}
                   disabled={isLoading && selectedKeyword === keyword}
-                  className="flex items-center gap-0.5 text-xs h-4 px-1"
+                  className="flex items-center gap-0.5 text-xs h-4 px-1.5 py-2"
                   title={`${t("explainKeywordTooltipPrefix")} "${keyword}"`}
                 >
                   {keyword}

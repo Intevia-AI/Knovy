@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useI18n } from "@/hooks/useI18n";
+import { Logo } from "../logo";
 
 interface HeaderBarProps {
   isAlwaysOnTop: boolean;
@@ -32,7 +33,11 @@ export function HeaderBar({
       <div
         className="flex-grow h-full"
         style={{ WebkitAppRegion: "drag" } as React.CSSProperties}
-      ></div>
+      >
+        <span className="text-xs px-2">
+          Intevia AI
+          </span>
+      </div>
       {/* Window Controls */}
       <div
         className="flex items-center h-full mr-1"
