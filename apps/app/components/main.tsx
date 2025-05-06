@@ -84,6 +84,9 @@ export function Main() {
     isSubtitleVisible,
   } = useAIInteraction();
 
+  // --- State for Layout Direction ------------------------------
+  const [layoutDirection, setLayoutDirection] = useState<"horizontal" | "vertical">("vertical");
+
   // --- Effects ------------------------------------------------
 
   // Reset AI state when starting a new screen share session
@@ -98,6 +101,13 @@ export function Main() {
     setTheme("dark");
   }, []);
 
+  // --- Helper Functions ---------------------------------------
+  const toggleLayoutDirection = () => {
+    setLayoutDirection((prevDirection) =>
+      prevDirection === "vertical" ? "horizontal" : "vertical",
+    );
+  };
+
   // --- Render -------------------------------------------------
   return (
     // Added padding-top to account for fixed header height (h-6 = pt-6)
@@ -108,6 +118,8 @@ export function Main() {
         toggleAlwaysOnTop={toggleAlwaysOnTop}
         minimizeWindow={minimizeWindow}
         closeWindow={closeWindow}
+        layoutDirection={layoutDirection}
+        toggleLayoutDirection={toggleLayoutDirection}
       />
 
       {/* Source Picker Modal */}
@@ -120,8 +132,8 @@ export function Main() {
 
       {/* Main Content Area using ResizablePanelGroup */}
       <ResizablePanelGroup
-        direction="vertical"
-        className="flex flex-1 overflow-hidden shadow-lg rounded-b-lg" // Added border and rounded-b-lg
+        direction={layoutDirection}
+        className="flex flex-1 overflow-hidden shadow-lg rounded-b-lg"
       >
         {/* Control Panel (Sidebar) - Moved to the left */}
         <ResizablePanel defaultSize={40} minSize={30} className="border-none">

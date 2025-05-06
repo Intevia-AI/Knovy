@@ -7,6 +7,10 @@ import {
   PinOffIcon,
   SunIcon,
   MoonIcon,
+  Maximize,
+  Minimize,
+  Rows,
+  Columns,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useI18n } from "@/hooks/useI18n";
@@ -17,6 +21,8 @@ interface HeaderBarProps {
   toggleAlwaysOnTop: () => void;
   minimizeWindow: () => void;
   closeWindow: () => void;
+  layoutDirection: "horizontal" | "vertical";
+  toggleLayoutDirection: () => void;
 }
 
 export function HeaderBar({
@@ -24,25 +30,40 @@ export function HeaderBar({
   toggleAlwaysOnTop,
   minimizeWindow,
   closeWindow,
+  layoutDirection,
+  toggleLayoutDirection,
 }: HeaderBarProps) {
   const { t } = useI18n();
 
   return (
-    <header className="fixed h-6 bg-muted/10 overflow-hidden rounded-t-lg top-0 left-0 right-0 z-10 border-b border-border/30 flex items-center justify-between">
+    <header className="fixed h-7 bg-muted/10 overflow-hidden rounded-t-lg top-0 left-0 right-0 z-10 border-b border-border/30 flex items-center justify-between">
       {/* Draggable Region */}
       <div
         className="flex-grow h-full"
         style={{ WebkitAppRegion: "drag" } as React.CSSProperties}
       >
-        <span className="text-xs px-2">
+        <span className="text-xs px-2 font-medium">
           Intevia AI
-          </span>
+        </span>
       </div>
       {/* Window Controls */}
       <div
         className="flex items-center h-full mr-1"
         style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
       >
+        <Button
+          onClick={toggleLayoutDirection}
+          variant="ghost"
+          size="icon"
+          className="h-5 w-5 rounded-sm hover:bg-muted-foreground/20"
+          title={layoutDirection === "vertical" ? "Switch to Horizontal Layout" : "Switch to Vertical Layout"}
+        >
+          {layoutDirection === "vertical" ? (
+            <Columns size={12} />
+          ) : (
+            <Rows size={12} />
+          )}
+        </Button>
         <Button
           variant="ghost"
           size="icon"
@@ -56,9 +77,9 @@ export function HeaderBar({
           }
         >
           {isAlwaysOnTop ? (
-            <PinOffIcon className="h-3 w-3" />
+            <PinOffIcon size={12} />
           ) : (
-            <PinIcon className="h-3 w-3" />
+            <PinIcon size={12} />
           )}
         </Button>
         <Button
@@ -69,7 +90,7 @@ export function HeaderBar({
           aria-label="Minimize window"
           title={t("minimizeWindowTooltip")}
         >
-          <MinusIcon className="h-3 w-3" />
+          <MinusIcon size={12} />
         </Button>
         <Button
           variant="ghost"
@@ -79,7 +100,7 @@ export function HeaderBar({
           aria-label="Close window"
           title={t("closeWindowTooltip")}
         >
-          <XIcon className="h-3 w-3" />
+          <XIcon size={12} />
         </Button>
       </div>
     </header>
