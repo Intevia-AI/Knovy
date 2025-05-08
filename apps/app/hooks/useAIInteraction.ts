@@ -41,30 +41,30 @@ export function useAIInteraction() {
   const [isSubtitleVisible, setIsSubtitleVisible] = useState(true);
 
   // Log transcriptions every 10 seconds
-  // useEffect(() => {
-  //   const logTranscriptions = () => {
-  //     if (transcriptions.length > 0) {
-  //       console.log("\n=== 轉錄對話記錄 ===");
-  //       console.log(`總共 ${transcriptions.length} 條轉錄`);
-  //       console.log("-------------------");
-  //       transcriptions.forEach((t, index) => {
-  //         const time = new Date(t.timestamp).toLocaleTimeString();
-  //         console.log(`[${index + 1}] [${time}] ${t.content}`);
-  //       });
-  //       console.log("===================\n");
-  //     }
-  //   };
+  useEffect(() => {
+    const logTranscriptions = () => {
+      if (transcriptions.length > 0) {
+        console.log("\n=== 轉錄對話記錄 ===");
+        console.log(`總共 ${transcriptions.length} 條轉錄`);
+        console.log("-------------------");
+        transcriptions.forEach((t, index) => {
+          const time = new Date(t.timestamp).toLocaleTimeString();
+          console.log(`[${index + 1}] [${time}] ${t.content}`);
+        });
+        console.log("===================\n");
+      }
+    };
 
-  //   // 立即執行一次
-  //   logTranscriptions();
+    // 立即執行一次
+    logTranscriptions();
 
-  //   // 設置定時器
-  //   const interval = setInterval(logTranscriptions, 10000);
+    // 設置定時器
+    const interval = setInterval(logTranscriptions, 10000);
 
-  //   return () => {
-  //     clearInterval(interval);
-  //   };
-  // }, [transcriptions]);
+    return () => {
+      clearInterval(interval);
+    };
+  }, [transcriptions]);
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -118,10 +118,10 @@ export function useAIInteraction() {
 
   // Function to send context and prompt to the AI backend
   const sendContextToAI = useCallback(
-    async (action: AIAction, query?: string, screenshot?: string, language?: string) => {
+    async (action: AIAction, query?: string, screenshot?: string) => {
       setIsLoading(true);
       console.log(
-        `Sending AI request. Action: ${action}, Custom Query: ${query}, Language: ${language}, Screenshot: ${screenshot}`,
+        `Sending AI request. Action: ${action}, Custom Query: ${query}`,
       );
 
       let context: AIContextData;
@@ -270,7 +270,6 @@ export function useAIInteraction() {
         finalDisplayMsgContent = baseDisplayPromptMap[action];
         console.log(
           "[AIInteraction] Context-based action. Context text:",
-
           context.text,
         );
       }
@@ -553,10 +552,9 @@ export function useAIInteraction() {
   }, []);
 
   const handleKeywordClick = useCallback(
-    async (keyword: string, language?: string) => {
+    async (keyword: string) => {
       if (isLoading) return;
       setSelectedKeyword(keyword);
-      setIsLoading(true);
 
       try {
         // 最多重試5次
@@ -575,7 +573,7 @@ export function useAIInteraction() {
             // 使用 search 動作，並加入轉錄內容作為上下文
             await sendContextToAI(
               "search",
-              `請一定要用${language}這個語言來回答，不要講多餘的話，只有單純的名詞解釋，連第一句對於請求的回覆也不要，請用簡單易懂的方式解釋這個專業術語，不超過50字：${keyword}\n\n上下文：\n${contextText}`,
+              `請用簡單易懂的方式解釋這個專業術語：${keyword}\n\n上下文：\n${contextText}`,
             );
             return; // 如果成功，直接返回
           } catch (error) {

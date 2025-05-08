@@ -29,8 +29,6 @@ import { SupportedLanguage, TranslationKey } from "@/lib/translations"; // Impor
 
 // Explicitly reference the global Window type to help TS
 // This might not be strictly necessary if TS config is correct, but can help resolve issues.
-import ScreenPreviewWindow from "./ScreenPreviewWindow";
-import AdvancedSettingsWindow from "./AdvancedSettingsWindow";
 
 interface ControlPanelProps {
   isScreenSharing: boolean;
@@ -42,13 +40,13 @@ interface ControlPanelProps {
   systemAnalyserNode: AnalyserNode | null;
   micLevel: number; // Add micLevel prop
   systemLevel: number; // Add systemLevel prop
-  screenStreamRef: React.RefObject<MediaStream | null>; // Change to screenStreamRef
+  screenPreviewRef: React.RefObject<HTMLVideoElement | null>; // Allow null
   currentSystemAudioStream: MediaStream | null; // For RealTimeAnalysis
   customPrompt?: string; // Add custom prompt prop
   setCustomPrompt?: (prompt: string) => void; // Add setter for custom prompt
   onToggleScreenShare: () => void;
-  onAiAction: (action: "answer" | "summary" | "search" | "find-clue", query?: string, screenshot?: string, language?: string) => void;
-  onKeywordClick: (keyword: string, language?: string) => void;
+  onAiAction: (action: "answer" | "summary" | "search" | "find-clue") => void;
+  onKeywordClick: (keyword: string) => void;
   onTranscriptionResponse: (text: string) => void; // For RealTimeSubtitle
   onTranscriptionKeywords: (keywords: string[]) => void; // For RealTimeSubtitle
   onAnswerResponse: (text: string, turnComplete: boolean) => void; // For RealTimeAnalysis
@@ -66,7 +64,7 @@ export function ControlPanel({
   systemAnalyserNode,
   micLevel, // Destructure micLevel
   systemLevel, // Destructure systemLevel
-  screenStreamRef,
+  screenPreviewRef,
   currentSystemAudioStream,
   customPrompt, // Add custom prompt to destructuring
   setCustomPrompt, // Add setter to destructuring
@@ -128,7 +126,6 @@ export function ControlPanel({
       }
     }
   };
-  const [isScreenPreviewOpen, setIsScreenPreviewOpen] = useState(false);
 
   const aiActions = [
     {
@@ -151,7 +148,6 @@ export function ControlPanel({
     { code: "zh-TW", name: "繁體中文" },
     { code: "en-US", name: "English" },
     { code: "ja-JP", name: "日本語" },
-    { code: "original", name: "原始語言" },
   ];
 
   // Scroll to bottom when advanced settings are opened
@@ -208,53 +204,9 @@ export function ControlPanel({
   if (!isSettingsLoaded) {
     return null; // Or a loading indicator
   }
-  // 處理語言選擇
-  const handleLanguageChange = (value: string) => {
-    console.log("[ControlPanel] 選擇語言:", value);
-    if (setLanguage) {
-      // 如果正在螢幕分享，先停止分享
-      if (isScreenSharing) {
-        console.log("[ControlPanel] 正在螢幕分享，先停止分享");
-        onToggleScreenShare();
-      }
-      setLanguage(value);
-    }
-  };
-
-  // 處理 custom prompt 確認
-  const handleCustomPromptConfirm = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      // 如果正在螢幕分享，先停止分享
-      if (isScreenSharing) {
-        console.log("[ControlPanel] 正在螢幕分享，先停止分享");
-        onToggleScreenShare();
-      }
-      // 確認提示詞
-      setConfirmedPrompt(draftPrompt);
-      if (setCustomPrompt) {
-        setCustomPrompt(draftPrompt);
-      }
-      e.currentTarget.blur();
-    }
-  };
-
-  // 處理清除 custom prompt
-  const handleClearCustomPrompt = () => {
-    // 如果正在螢幕分享，先停止分享
-    if (isScreenSharing) {
-      console.log("[ControlPanel] 正在螢幕分享，先停止分享");
-      onToggleScreenShare();
-    }
-    setConfirmedPrompt(undefined);
-    if (setCustomPrompt) {
-      setCustomPrompt('');
-    }
-    setDraftPrompt('');
-  };
 
   return (
     <aside ref={asideRef} className="flex flex-col h-full overflow-y-auto">
-
       {/* Status and Control */}
       <div className="p-2 space-y-1.5 border-b border-border/30">
         {/* Screen Preview */}
@@ -296,10 +248,9 @@ export function ControlPanel({
                 ? t("statusSharingShort")
                 : t("statusStoppedShort")}
           </span>
-
           {isScreenSharing && (
-            <span className="text-[10px] font-semibold tabular-nums text-foreground">
-              <ClockIcon className="inline h-2.5 w-2.5 mr-0.5 align-[-2px]" />
+            <span className="text-xs font-semibold tabular-nums text-foreground">
+              <ClockIcon className="inline h-3 w-3 mr-0.5 align-[-2px]" />
               {formatTime(recordingDuration)}
             </span>
           )}
@@ -322,7 +273,6 @@ export function ControlPanel({
           </Button>
         </div>
 
-
         {/* Keywords Section */}
         {keywords.length > 0 && (
           <div className="pt-1.5 space-y-1">
@@ -334,7 +284,7 @@ export function ControlPanel({
                 <Button
                   key={`${keyword}-${index}`}
                   size="sm"
-                  onClick={() => onKeywordClick(keyword, language)}
+                  onClick={() => onKeywordClick(keyword)}
                   disabled={isLoading && selectedKeyword === keyword}
                   className="flex items-center gap-0.5 text-xs h-4 px-1.5 py-2"
                   title={`${t("explainKeywordTooltipPrefix")} "${keyword}"`}
@@ -384,7 +334,7 @@ export function ControlPanel({
               variant="outline"
               size="sm"
               disabled={isLoading || !isScreenSharing}
-              onClick={() => onAiAction(action, undefined, undefined, language)}
+              onClick={() => onAiAction(action)}
               className="flex items-center justify-center gap-0.5 text-xs px-1 h-7"
               title={`${t(labelKey as TranslationKey)} (${t(
                 "shortcutKeyTooltip",
@@ -399,55 +349,168 @@ export function ControlPanel({
           ))}
         </div>
       </div>
-      
-      {/* Screen Preview Button */}
+
+      {/* --- Collapsible Advanced Settings --- */}
       <div className="border-b border-border/30">
         <div
           className="flex items-center justify-between p-2 cursor-pointer bg-muted/10 hover:bg-muted/50"
-          onClick={() => setIsScreenPreviewOpen(true)}
+          onClick={() => setIsAdvancedSettingsOpen(!isAdvancedSettingsOpen)}
           role="button"
+          aria-expanded={isAdvancedSettingsOpen}
+          aria-controls="advanced-settings-content"
         >
-          <h4 className="text-xs font-medium text-foreground">螢幕預覽</h4>
-          <MonitorIcon className="h-3 w-3 text-muted-foreground" />
+          <h4 className="text-xs font-medium text-foreground">
+            {t("advancedSettingsTitle")}
+          </h4>
+          {isAdvancedSettingsOpen ? (
+            <ChevronUpIcon className="h-4 w-4 text-muted-foreground" />
+          ) : (
+            <ChevronDownIcon className="h-4 w-4 text-muted-foreground" />
+          )}
         </div>
+
+        {isAdvancedSettingsOpen && (
+          <div id="advanced-settings-content" className="space-y-1.5">
+            {/* Custom Prompt Input - Show only if NO prompt is confirmed */}
+            {setCustomPrompt && !confirmedPrompt && (
+              <div className="p-2 space-y-1.5 border-t border-border/30">
+                <Label
+                  htmlFor="custom-prompt"
+                  className="text-xs font-medium text-foreground"
+                >
+                  {t("customPromptLabel")}
+                </Label>
+                <Textarea
+                  id="custom-prompt"
+                  placeholder={t("customPromptPlaceholder")}
+                  value={draftPrompt}
+                  onChange={(e) => setDraftPrompt(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (
+                      e.key === "Enter" &&
+                      !e.shiftKey &&
+                      draftPrompt.trim()
+                    ) {
+                      // Confirm and save the prompt
+                      setConfirmedPromptState(draftPrompt);
+                      setCustomPrompt(draftPrompt); // Update AI hook state
+                      savePromptSetting(draftPrompt); // Save to settings
+                      e.currentTarget.blur();
+                      e.preventDefault(); // Prevent newline in textarea
+                    }
+                  }}
+                  className="h-7 text-xs border-border/30 bg-muted/50 focus-visible:ring-0 focus-visible:border-primary focus-visible:outline-none"
+                />
+              </div>
+            )}
+
+            {/* Confirmed Prompt Display - Show only if a prompt IS confirmed */}
+            {confirmedPrompt && (
+              <div className="p-2 space-y-1.5 border-t border-border/30">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-medium text-foreground">
+                    {t("currentPromptLabel")}
+                  </Label>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setConfirmedPromptState(undefined); // Clear UI state
+                      setDraftPrompt(""); // Clear draft
+                      if (setCustomPrompt) {
+                        setCustomPrompt(""); // Clear AI hook state
+                      }
+                      savePromptSetting(undefined); // Clear saved setting
+                    }}
+                    className="h-6 text-xs"
+                  >
+                    {t("clearButton")}
+                  </Button>
+                </div>
+                <div className="text-xs text-muted-foreground break-words">
+                  {confirmedPrompt}
+                </div>
+              </div>
+            )}
+
+            {/* Language Selection */}
+            <div className="p-2 space-y-1.5 border-t border-border/30">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-medium text-foreground">
+                  {t("languageSelectLabel")}
+                </Label>
+                <Select
+                  value={language}
+                  onValueChange={(value) => {
+                    console.log("[ControlPanel] 選擇語言:", value);
+                    setLanguage(value as SupportedLanguage);
+                  }}
+                >
+                  <SelectTrigger className="w-[120px] h-7! text-xs px-2 bg-background!">
+                    <LanguagesIcon className="h-3 w-3 mr-1" />
+                    <SelectValue placeholder={t("languageSelectPlaceholder")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {supportedLanguagesData.map((lang) => (
+                      <SelectItem
+                        key={lang.code}
+                        value={lang.code}
+                        className="text-xs"
+                      >
+                        {lang.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Mic Audio Visualizer - Commented out */}
+            {/*
+            <div className="p-4 space-y-3 border-t border-border/30">
+              <h3 className="text-base font-semibold text-card-foreground">
+                即時分析 (麥克風)
+              </h3>
+              <div className="py-2 w-full h-[56px] flex items-center justify-center">
+                {isScreenSharing && micAnalyserNode ? (
+                   <AudioVisualizer analyserNode={micAnalyserNode} height={40} />
+                ) : (
+                   <p className="text-xs text-muted-foreground">麥克風未啟用</p>
+                )}
+              </div>
+              {isScreenSharing && (
+                <div className="space-y-1">
+                  <Progress value={micLevel} className="h-2" />
+                  <span className="text-xs text-muted-foreground text-right block">音量: {micLevel.toFixed(0)}%</span>
+                </div>
+              )}
+            </div>
+            */}
+
+            {/* System Audio Visualizer - Commented out */}
+            {/*
+            <div className="p-1.5 space-y-1 border-t border-border/30">
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-medium text-foreground">系統音訊</h4>
+                {isScreenSharing && (
+                  <span className="text-xs text-muted-foreground">
+                    {systemLevel.toFixed(0)}%
+                  </span>
+                )}
+              </div>
+              <div className="w-full h-[4px] flex items-center">
+                {isScreenSharing && systemAnalyserNode ? (
+                  <AudioVisualizer analyserNode={systemAnalyserNode} height={4} />
+                ) : (
+                  <div className="w-full h-full bg-muted rounded-full" />
+                )}
+              </div>
+            </div>
+            */}
+          </div>
+        )}
       </div>
-
-      {/* Advanced Settings Button */}
-      <div className="border-b border-border/30">
-        <div
-          className="flex items-center justify-between p-2 cursor-pointer bg-muted/10 hover:bg-muted/50"
-          onClick={() => setIsAdvancedSettingsOpen(true)}
-          role="button"
-        >
-          <h4 className="text-xs font-medium text-foreground">進階設定</h4>
-          <LanguagesIcon className="h-3 w-3 text-muted-foreground" />
-        </div>
-      </div>
-
-
-      {/* Screen Preview Window */}
-      <ScreenPreviewWindow
-        isOpen={isScreenPreviewOpen}
-        onClose={() => {
-          setIsScreenPreviewOpen(false);
-        }}
-        isScreenSharing={isScreenSharing}
-        screenStreamRef={screenStreamRef}
-        systemAnalyserNode={systemAnalyserNode}
-        systemLevel={systemLevel}
-      />
-
-      {/* Advanced Settings Window */}
-      <AdvancedSettingsWindow
-        isOpen={isAdvancedSettingsOpen}
-        onClose={() => setIsAdvancedSettingsOpen(false)}
-        language={language}
-        setLanguage={setLanguage}
-        customPrompt={customPrompt}
-        setCustomPrompt={setCustomPrompt}
-        isScreenSharing={isScreenSharing}
-        onToggleScreenShare={onToggleScreenShare}
-      />
+      {/* --- End Collapsible Advanced Settings --- */}
     </aside>
   );
 }

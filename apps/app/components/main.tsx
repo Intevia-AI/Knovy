@@ -54,7 +54,6 @@ export function Main() {
     screenPreviewRef, // Ref for video element in ControlPanel
     currentMicChunksRef, // <<< Get this ref
     systemAudioChunksRef, // <<< Get this ref
-    screenStreamRef,
   } = useScreenShare();
 
   // Audio Analysis (Visualizers)
@@ -137,7 +136,7 @@ export function Main() {
         className="flex flex-1 overflow-hidden shadow-lg rounded-b-lg"
       >
         {/* Control Panel (Sidebar) - Moved to the left */}
-        <ResizablePanel defaultSize={25} minSize={20} className="border-none">
+        <ResizablePanel defaultSize={40} minSize={30} className="border-none">
           <ControlPanel
             isScreenSharing={isScreenSharing}
             isLoading={isLoading}
@@ -148,7 +147,7 @@ export function Main() {
             systemAnalyserNode={systemAnalyserNode}
             micLevel={micLevel}
             systemLevel={systemLevel}
-            screenStreamRef={screenStreamRef}
+            screenPreviewRef={screenPreviewRef}
             currentSystemAudioStream={currentSystemAudioStream}
             customPrompt={customPrompt}
             setCustomPrompt={setCustomPrompt}
@@ -166,7 +165,7 @@ export function Main() {
         <ResizableHandle withHandle className="bg-border/70" />
 
         {/* Chat Panel - Moved to the right */}
-        <ResizablePanel defaultSize={80} minSize={20} className="border-none">
+        <ResizablePanel defaultSize={60} minSize={20} className="border-none">
           <ChatPanel
             messages={aiMessages}
             isLoading={isLoading}

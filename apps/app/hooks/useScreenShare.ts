@@ -175,49 +175,24 @@ export function useScreenShare() {
 
   // Screen preview effect
   useEffect(() => {
-    console.log("[ScreenShare] Screen preview effect triggered:", {
-      isScreenSharing,
-      hasVideoTracks: screenStreamRef.current?.getVideoTracks().length,
-      screenPreviewRef: screenPreviewRef.current,
-    });
-
     if (
       isScreenSharing &&
       screenPreviewRef.current &&
       screenStreamRef.current?.getVideoTracks().length
     ) {
-      console.log("[ScreenShare] Setting up video preview...");
       const videoStream = new MediaStream(
         screenStreamRef.current.getVideoTracks(),
       );
-      console.log("[ScreenShare] Created video stream:", videoStream);
-      
-      // Ensure the video element is ready
-      if (screenPreviewRef.current) {
-        screenPreviewRef.current.srcObject = videoStream;
-        screenPreviewRef.current.muted = true;
-        
-        // Add event listeners for debugging
-        screenPreviewRef.current.onloadedmetadata = () => {
-          console.log("[ScreenShare] Video metadata loaded");
-        };
-        
-        screenPreviewRef.current.onerror = (e) => {
-          console.error("[ScreenShare] Video error:", e);
-        };
-        
-        screenPreviewRef.current.play()
-          .then(() => console.log("[ScreenShare] Video started playing"))
-          .catch((e) => console.error("[ScreenShare] Video play error:", e));
-      }
+      screenPreviewRef.current.srcObject = videoStream;
+      screenPreviewRef.current.muted = true; // Ensure preview is muted
+      screenPreviewRef.current
+        .play()
+        .catch((e) => console.error("Video play error:", e));
     } else if (!isScreenSharing && screenPreviewRef.current) {
-      console.log("[ScreenShare] Clearing video preview");
       screenPreviewRef.current.srcObject = null;
     }
-    
-    // Cleanup function
+    // Cleanup srcObject when component unmounts or isScreenSharing becomes false
     return () => {
-      console.log("[ScreenShare] Cleaning up video preview");
       if (screenPreviewRef.current) {
         screenPreviewRef.current.srcObject = null;
       }
@@ -403,16 +378,15 @@ export function useScreenShare() {
   return {
     isScreenSharing,
     recordingDuration,
-    micStream,
+    micStream, // from useSegmentRecorder
     currentSystemAudioStream,
-    micSegments,
-    systemAudioSegments,
-    micMimeType,
+    micSegments, // from state updated by event listener
+    systemAudioSegments, // from state updated by system audio logic
+    micMimeType, // from useSegmentRecorder
     systemAudioMimeType,
-    screenStreamRef,
-    screenPreviewRef,
-    currentMicChunksRef,
-    systemAudioChunksRef,
     toggleScreenShare,
+    screenPreviewRef, // Ref for the video element
+    currentMicChunksRef, // Pass mic chunks ref
+    systemAudioChunksRef, // Pass system chunks ref
   };
 }
