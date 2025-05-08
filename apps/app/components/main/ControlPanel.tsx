@@ -387,7 +387,7 @@ export function ControlPanel({
                   onChange={(e) => setDraftPrompt(e.target.value)}
                   onKeyDown={(e) => {
                     if (
-                      e.key === "Enter" &&
+                      e.key === "Enter" && 
                       !e.shiftKey &&
                       draftPrompt.trim()
                     ) {
