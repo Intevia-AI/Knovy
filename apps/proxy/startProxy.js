@@ -6,7 +6,7 @@ import path from 'path';
 // Load environment variables from .env.local
 dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
 
-const MODEL = "models/gemini-2.0-flash-exp";
+const MODEL = "models/gemini-2.0-flash-live-001";
 const API_KEY = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
 const HOST = "generativelanguage.googleapis.com";
 const WS_URL = `wss://${HOST}/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent?key=${API_KEY}`;
@@ -187,9 +187,9 @@ class GeminiProxyServer {
     let systemInstruction;
     
     if (mode === 'transcription') {
-      systemInstruction = `You are a real-time transcription assistant. For each audio input, respond in the following format:
+      systemInstruction = `You are a real-time transcription assistant. For each audio input, respond in the following format, please respond as fast as possible:
 
-TRANSCRIPTION: [transcribe the audio content here, please answer in ${language}]
+TRANSCRIPTION: [transcribe the audio content here. If the language is different from ${language}, please translate to ${language}. But if the language is original, please only do transcription.]
 KEYWORDS: [list any technical terms, specialized vocabulary, or complex concepts that might be difficult for a general audience to understand, separated by commas. If none, leave empty]
 
 Example:
@@ -199,13 +199,9 @@ KEYWORDS: quantum entanglement, non-local correlations
 If there are no difficult terms, respond with empty keywords:
 TRANSCRIPTION: The weather is nice today.
 KEYWORDS:
-
-Please always answer in ${language} !!!!!
 `;
     } else {
       systemInstruction = `
-If the user provides additional instruction {Additional Instruction: ${customPrompt}}, please follow the instruction strictly, and if it has conflict with the following rules, please follow the additional instruction, and neglect the following rules.
-For example, if the user tells you to ask questions, then neglect rule 2 and rule 3.
 
 You are an AI assistant in a meeting. Your job is to listen silently and only respond when truly necessary, with natural spoken-style answers that the user can directly read out loud. Follow these strict rules:
 
@@ -216,6 +212,7 @@ You are an AI assistant in a meeting. Your job is to listen silently and only re
    - Contains a request for help or request for information
    - Includes a complex or technical question
    - Shows confusion or ambiguity that needs clarification
+   - If someone is asking for clarification or information about previous audio segments.
 5. Please respond at least 50 words.
 6. If none of these are detected, respond with: NULL
 7. Please answer the question detailed, business-oriented, professional and academically.
@@ -230,7 +227,10 @@ User: 英偉達的股價是多少？
 Assistant: [WEB] 英偉達的股價是多少？
 
 Please answer in ${language} !!!!!
-Please always follow the additional instruction strictly, and if it has conflict with the rules, follow the additional instructions with highest priority.`;
+
+If the user provides additional instruction {Additional Instruction: ${customPrompt}}, please follow the instruction strictly.
+If there is no additional instruction, please follow the rules abovestrictly.
+`;
     }
 
     console.log(`[Proxy] System instruction: ${systemInstruction}`);

@@ -221,13 +221,14 @@ export default function ChatPanel({
       )}
       <div className="flex-none p-4 border-t border-border/30">
         <form onSubmit={handleSubmit} className="flex gap-2">
+
           <Input
             value={customPrompt}
             onChange={(e) => setCustomPrompt(e.target.value)}
             placeholder={
               isScreenSharing ? t("chatPlaceholderSharing") : t("chatPlaceholderNotSharing")
             }
-            className="flex-grow"
+            className="flex-grow h-7 text-xs"
             disabled={isLoading || !isScreenSharing}
             aria-label="Custom prompt input"
           />
@@ -238,8 +239,9 @@ export default function ChatPanel({
             disabled={isLoading || !isScreenSharing || !customPrompt.trim()}
             className="bg-primary hover:bg-primary/90 text-primary-foreground h-9"
             aria-label={t("sendChatButtonLabel")}
+
           >
-            <ArrowUpRight className="h-4 w-4" />
+            <ArrowUpRight className="h-3 w-3" />
           </Button>
         </form>
       </div>
