@@ -1,36 +1,14 @@
 const { app, BrowserWindow, ipcMain, desktopCapturer, session, systemPreferences, globalShortcut } = require("electron");
 const serve = require("electron-serve");
 const path = require("path");
-const fs = require("fs").promises; // Use promises version of fs
 
 const isDev = !app.isPackaged;
 const outputDir = path.join(__dirname, "../out");
 
-// Settings file path
-const settingsPath = path.join(app.getPath('userData'), 'settings.json');
-
-// Function to load settings
-async function loadSettings() {
-  try {
-    await fs.access(settingsPath); // Check if file exists
-    const data = await fs.readFile(settingsPath, 'utf-8');
-    return JSON.parse(data);
-  } catch (error) {
-    // If file doesn't exist or other error, return default settings
-    console.log("Settings file not found or error reading, returning defaults.", error.code);
-    return { language: 'zh-TW', customPrompt: '' }; // Default settings
-  }
-}
-
-// Function to save settings
-async function saveSettings(settings) {
-  try {
-    await fs.writeFile(settingsPath, JSON.stringify(settings, null, 2)); // Pretty print JSON
-    console.log("Settings saved to:", settingsPath);
-  } catch (error) {
-    console.error("Error saving settings:", error);
-  }
-}
+// Initialize electron-serve only in production
+const appServe = !isDev ? serve({
+  directory: outputDir
+}) : null;
 
 let mainWindow; // Keep a reference to the main window
 let pendingMediaRequest = null; // Keep track of the callback for the media request
@@ -51,10 +29,6 @@ const createWindow = () => {
       contextIsolation: true, // Recommended for security
       nodeIntegration: false, // Recommended for security
     }
-  });
-
-  mainWindow.webContents.on('did-finish-load', () => {
-    mainWindow.webContents.send('electronAPI:forceDarkMode');
   });
 
   // Set content protection - prevents screen capture of the app window itself
@@ -246,19 +220,6 @@ app.on("ready", async () => {
         return mainWindow?.isAlwaysOnTop() ?? false;
     });
 
-    // Handle settings loading
-    ipcMain.handle('electronAPI:getSettings', async () => {
-        return await loadSettings();
-    });
-
-    // Handle settings saving
-    ipcMain.handle('electronAPI:setSettings', async (event, settingsToUpdate) => {
-        const currentSettings = await loadSettings();
-        const newSettings = { ...currentSettings, ...settingsToUpdate };
-        await saveSettings(newSettings);
-        // Optionally return the saved settings or success status
-        return newSettings;
-    });
 });
 
 app.on("window-all-closed", () => {

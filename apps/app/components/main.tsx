@@ -6,7 +6,6 @@ import { useElectron } from "@/hooks/useElectron";
 import { useScreenShare } from "@/hooks/useScreenShare";
 import { useAudioAnalysis } from "@/hooks/useAudioAnalysis";
 import { useAIInteraction } from "@/hooks/useAIInteraction";
-import { useLanguage } from "@/context/LanguageContext";
 
 // Components
 import { HeaderBar } from "./main/HeaderBar";
@@ -26,7 +25,7 @@ import {
 export function Main() {
   // --- Hooks ----------------------------------------------------
   const { setTheme } = useTheme();
-  const { language, setLanguage } = useLanguage();
+  const [language, setLanguage] = useState("zh-TW");
 
   // Electron Interactions
   const {
@@ -61,7 +60,7 @@ export function Main() {
   const { micAnalyserNode, systemAnalyserNode, micLevel, systemLevel } =
     useAudioAnalysis(
       isScreenSharing ? micStream : null, // Pass stream only when sharing
-      isScreenSharing ? currentSystemAudioStream : null, // Pass stream only when sharing
+      isScreenSharing ? currentSystemAudioStream : null // Pass stream only when sharing
     );
 
   // AI Interaction Logic
@@ -82,11 +81,7 @@ export function Main() {
     resetChat,
     handleSendMessage,
     setSubtitleVisibility,
-    isSubtitleVisible,
   } = useAIInteraction();
-
-  // --- State for Layout Direction ------------------------------
-  const [layoutDirection, setLayoutDirection] = useState<"horizontal" | "vertical">("vertical");
 
   // --- Effects ------------------------------------------------
 
@@ -102,13 +97,6 @@ export function Main() {
     setTheme("dark");
   }, []);
 
-  // --- Helper Functions ---------------------------------------
-  const toggleLayoutDirection = () => {
-    setLayoutDirection((prevDirection) =>
-      prevDirection === "vertical" ? "horizontal" : "vertical",
-    );
-  };
-
   // --- Render -------------------------------------------------
   return (
     // Added padding-top to account for fixed header height (h-6 = pt-6)
@@ -119,8 +107,6 @@ export function Main() {
         toggleAlwaysOnTop={toggleAlwaysOnTop}
         minimizeWindow={minimizeWindow}
         closeWindow={closeWindow}
-        layoutDirection={layoutDirection}
-        toggleLayoutDirection={toggleLayoutDirection}
       />
 
       {/* Source Picker Modal */}
@@ -133,8 +119,8 @@ export function Main() {
 
       {/* Main Content Area using ResizablePanelGroup */}
       <ResizablePanelGroup
-        direction={layoutDirection}
-        className="flex flex-1 overflow-hidden shadow-lg rounded-b-lg"
+        direction="vertical"
+        className="flex flex-1 overflow-hidden shadow-lg rounded-b-lg" // Added border and rounded-b-lg
       >
         {/* Control Panel (Sidebar) - Moved to the left */}
         <ResizablePanel defaultSize={25} minSize={20} className="border-none">
@@ -152,6 +138,8 @@ export function Main() {
             currentSystemAudioStream={currentSystemAudioStream}
             customPrompt={customPrompt}
             setCustomPrompt={setCustomPrompt}
+            language={language}
+            setLanguage={setLanguage}
             onToggleScreenShare={toggleScreenShare}
             onAiAction={sendContextToAI}
             onKeywordClick={handleKeywordClick}
@@ -163,7 +151,7 @@ export function Main() {
           />
         </ResizablePanel>
 
-        <ResizableHandle withHandle className="bg-border/70" />
+        <ResizableHandle withHandle className="bg-border/70"/>
 
         {/* Chat Panel - Moved to the right */}
         <ResizablePanel defaultSize={80} minSize={20} className="border-none">
@@ -175,7 +163,6 @@ export function Main() {
             setCustomPrompt={setCustomPrompt}
             onSendMessage={handleSendMessage}
             messagesContainerRef={messagesContainerRef}
-            isSubtitleVisible={isSubtitleVisible}
           />
         </ResizablePanel>
       </ResizablePanelGroup>
