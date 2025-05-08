@@ -1,8 +1,6 @@
 const { contextBridge, ipcRenderer } = require("electron");
 
-console.log('[Preload] Script loaded.'); // Log: Script start
-
-const api = {
+contextBridge.exposeInMainWorld("electronAPI", {
     // --- Screen Capture ---
     selectSource: (sourceId) => ipcRenderer.invoke('electronAPI:selectSource', sourceId),
     cancelSourceSelection: () => ipcRenderer.invoke('electronAPI:cancelSourceSelection'),
@@ -12,10 +10,6 @@ const api = {
     closeWindow: () => ipcRenderer.send('electronAPI:closeWindow'),
     toggleAlwaysOnTop: (isAlwaysOnTop) => ipcRenderer.send('electronAPI:toggleAlwaysOnTop', isAlwaysOnTop),
     getInitialAlwaysOnTop: () => ipcRenderer.invoke('electronAPI:getInitialAlwaysOnTop'),
-
-    // --- Settings --- 
-    getSettings: () => ipcRenderer.invoke('electronAPI:getSettings'),
-    setSettings: (settings) => ipcRenderer.invoke('electronAPI:setSettings', settings),
 
     // --- IPC Event Listener ---
     on: (channel, callback) => {
@@ -31,17 +25,8 @@ const api = {
             // Return a function to remove the listener
             return () => ipcRenderer.removeListener(channel, subscription);
         }
-        console.warn(`[Preload] Attempted to listen on invalid channel: ${channel}`);
+        console.warn(`Attempted to listen on invalid channel: ${channel}`);
         return () => {}; // Return a no-op function
     },
     // Removed generic 'send' for security, use specific methods above
-};
-
-console.log('[Preload] Exposing API keys:', Object.keys(api)); // Log: Keys being exposed
-
-try {
-    contextBridge.exposeInMainWorld("electronAPI", api);
-    console.log('[Preload] contextBridge.exposeInMainWorld executed successfully.'); // Log: Success
-} catch (error) {
-    console.error('[Preload] Error exposing API via contextBridge:', error); // Log: Error
-}
+});

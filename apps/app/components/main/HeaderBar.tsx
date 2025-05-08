@@ -1,28 +1,13 @@
 import React from "react";
 import { Button } from "@workspace/ui/components/button";
-import {
-  MinusIcon,
-  XIcon,
-  PinIcon,
-  PinOffIcon,
-  SunIcon,
-  MoonIcon,
-  Maximize,
-  Minimize,
-  Rows,
-  Columns,
-} from "lucide-react";
+import { MinusIcon, XIcon, PinIcon, PinOffIcon, SunIcon, MoonIcon } from "lucide-react";
 import { useTheme } from "next-themes";
-import { useI18n } from "@/hooks/useI18n";
-import { Logo } from "../logo";
 
 interface HeaderBarProps {
   isAlwaysOnTop: boolean;
   toggleAlwaysOnTop: () => void;
   minimizeWindow: () => void;
   closeWindow: () => void;
-  layoutDirection: "horizontal" | "vertical";
-  toggleLayoutDirection: () => void;
 }
 
 export function HeaderBar({
@@ -30,56 +15,33 @@ export function HeaderBar({
   toggleAlwaysOnTop,
   minimizeWindow,
   closeWindow,
-  layoutDirection,
-  toggleLayoutDirection,
 }: HeaderBarProps) {
-  const { t } = useI18n();
-
   return (
-    <header className="fixed h-7 bg-muted/10 overflow-hidden rounded-t-lg top-0 left-0 right-0 z-10 border-b border-border/30 flex items-center justify-between">
+    <header className="fixed h-6 bg-muted/10 overflow-hidden rounded-t-lg top-0 left-0 right-0 z-10 border-b border-border/30 flex items-center justify-between">
       {/* Draggable Region */}
       <div
         className="flex-grow h-full"
         style={{ WebkitAppRegion: "drag" } as React.CSSProperties}
-      >
-        <span className="text-xs px-2 font-medium">
-          Intevia AI
-        </span>
-      </div>
+      ></div>
       {/* Window Controls */}
       <div
         className="flex items-center h-full mr-1"
         style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
       >
         <Button
-          onClick={toggleLayoutDirection}
-          variant="ghost"
-          size="icon"
-          className="h-5 w-5 rounded-sm hover:bg-muted-foreground/20"
-          title={layoutDirection === "vertical" ? "Switch to Horizontal Layout" : "Switch to Vertical Layout"}
-        >
-          {layoutDirection === "vertical" ? (
-            <Columns size={12} />
-          ) : (
-            <Rows size={12} />
-          )}
-        </Button>
-        <Button
           variant="ghost"
           size="icon"
           className="h-5 w-5 rounded-sm hover:bg-muted-foreground/20"
           onClick={toggleAlwaysOnTop}
           aria-label={
-            isAlwaysOnTop ? t("unpinWindowTooltip") : t("pinWindowTooltip")
+            isAlwaysOnTop ? "Disable always on top" : "Enable always on top"
           }
-          title={
-            isAlwaysOnTop ? t("unpinWindowTooltip") : t("pinWindowTooltip")
-          }
+          title={isAlwaysOnTop ? "取消置頂" : "視窗置頂"} // Tooltip
         >
           {isAlwaysOnTop ? (
-            <PinOffIcon size={12} />
+            <PinOffIcon className="h-3 w-3" />
           ) : (
-            <PinIcon size={12} />
+            <PinIcon className="h-3 w-3" />
           )}
         </Button>
         <Button
@@ -88,9 +50,9 @@ export function HeaderBar({
           className="h-5 w-5 rounded-sm hover:bg-muted-foreground/20"
           onClick={minimizeWindow}
           aria-label="Minimize window"
-          title={t("minimizeWindowTooltip")}
+          title="最小化" // Tooltip
         >
-          <MinusIcon size={12} />
+          <MinusIcon className="h-3 w-3" />
         </Button>
         <Button
           variant="ghost"
@@ -98,9 +60,9 @@ export function HeaderBar({
           className="h-5 w-5 rounded-sm hover:bg-destructive/80 hover:text-destructive-foreground"
           onClick={closeWindow}
           aria-label="Close window"
-          title={t("closeWindowTooltip")}
+          title="關閉" // Tooltip
         >
-          <XIcon size={12} />
+          <XIcon className="h-3 w-3" />
         </Button>
       </div>
     </header>
