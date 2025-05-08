@@ -19,7 +19,6 @@ import {
   SelectValue,
 } from "@workspace/ui/components/select"; // Import Select components
 import RealTimeAnalysis from "@/components/RealTimeAnalysis"; // Adjust path if needed
-import AudioVisualizer from "@/components/AudioVisualizer"; // Adjust path if needed
 import { formatTime } from "@/lib/utils"; // Adjust path if needed
 import RealTimeSubtitle from "@/components/RealTimeSubtitle";
 import { Textarea } from "@workspace/ui/components/textarea"; // Add Textarea component
@@ -30,8 +29,6 @@ import { SupportedLanguage, TranslationKey } from "@/lib/translations"; // Impor
 
 // Explicitly reference the global Window type to help TS
 // This might not be strictly necessary if TS config is correct, but can help resolve issues.
-import ScreenPreviewWindow from "./ScreenPreviewWindow";
-import AdvancedSettingsWindow from "./AdvancedSettingsWindow";
 
 interface ControlPanelProps {
   isScreenSharing: boolean;
@@ -47,9 +44,6 @@ interface ControlPanelProps {
   currentSystemAudioStream: MediaStream | null; // For RealTimeAnalysis
   customPrompt?: string; // Add custom prompt prop
   setCustomPrompt?: (prompt: string) => void; // Add setter for custom prompt
-  language?: string;
-  setLanguage?: (language: string) => void;
-
   onToggleScreenShare: () => void;
   onAiAction: (action: "answer" | "summary" | "search" | "find-clue") => void;
   onKeywordClick: (keyword: string) => void;
@@ -74,8 +68,6 @@ export function ControlPanel({
   currentSystemAudioStream,
   customPrompt, // Add custom prompt to destructuring
   setCustomPrompt, // Add setter to destructuring
-  language,
-  setLanguage,
   onToggleScreenShare,
   onAiAction,
   onKeywordClick,
@@ -85,12 +77,15 @@ export function ControlPanel({
   onAnswerKeywords,
   setSubtitleVisibility,
 }: ControlPanelProps) {
-  // 追踪確認的提示詞
-  const [confirmedPrompt, setConfirmedPrompt] = useState<string | undefined>(
-    customPrompt
-  );
-  // 追踪輸入中的提示詞
-  const [draftPrompt, setDraftPrompt] = useState<string>(customPrompt || "");
+  const { t, language } = useI18n(); // Use the hook
+  const { setLanguage } = useLanguage(); // Get setLanguage from context
+
+  // State for the *currently displayed* prompt in the UI
+  const [confirmedPrompt, setConfirmedPromptState] = useState<
+    string | undefined
+  >(undefined);
+  // State for the draft/input value
+  const [draftPrompt, setDraftPrompt] = useState<string>("");
   const [isAdvancedSettingsOpen, setIsAdvancedSettingsOpen] = useState(false); // State for expansion
   const asideRef = useRef<HTMLElement>(null); // Ref for the aside element
   const [isSettingsLoaded, setIsSettingsLoaded] = useState(false); // Track settings loading
@@ -131,15 +126,25 @@ export function ControlPanel({
       }
     }
   };
-  const [isScreenPreviewOpen, setIsScreenPreviewOpen] = useState(false);
 
   const aiActions = [
-    { action: "answer", label: "深度回答", icon: MicIcon, shortcut: "1" }, // Keep shortcut as number for key check
-    { action: "summary", label: "產生摘要", icon: ListCollapseIcon, shortcut: "2" }, // Keep shortcut as number for key check
+    {
+      action: "answer",
+      labelKey: "aiActionAnswer",
+      icon: MicIcon,
+      shortcut: "1",
+    },
+    {
+      action: "summary",
+      labelKey: "aiActionSummary",
+      icon: ListCollapseIcon,
+      shortcut: "2",
+    },
     // { action: "search", label: "搜尋主題", icon: SearchIcon },
   ] as const; // Use const assertion
 
-  const languages = [
+  // Define languages within the component or import from a shared location
+  const supportedLanguagesData = [
     { code: "zh-TW", name: "繁體中文" },
     { code: "en-US", name: "English" },
     { code: "ja-JP", name: "日本語" },
@@ -199,91 +204,24 @@ export function ControlPanel({
   if (!isSettingsLoaded) {
     return null; // Or a loading indicator
   }
-  // 處理語言選擇
-  const handleLanguageChange = (value: string) => {
-    console.log("[ControlPanel] 選擇語言:", value);
-    if (setLanguage) {
-      // 如果正在螢幕分享，先停止分享
-      if (isScreenSharing) {
-        console.log("[ControlPanel] 正在螢幕分享，先停止分享");
-        onToggleScreenShare();
-      }
-      setLanguage(value);
-    }
-  };
-
-  // 處理 custom prompt 確認
-  const handleCustomPromptConfirm = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      // 如果正在螢幕分享，先停止分享
-      if (isScreenSharing) {
-        console.log("[ControlPanel] 正在螢幕分享，先停止分享");
-        onToggleScreenShare();
-      }
-      // 確認提示詞
-      setConfirmedPrompt(draftPrompt);
-      if (setCustomPrompt) {
-        setCustomPrompt(draftPrompt);
-      }
-      e.currentTarget.blur();
-    }
-  };
-
-  // 處理清除 custom prompt
-  const handleClearCustomPrompt = () => {
-    // 如果正在螢幕分享，先停止分享
-    if (isScreenSharing) {
-      console.log("[ControlPanel] 正在螢幕分享，先停止分享");
-      onToggleScreenShare();
-    }
-    setConfirmedPrompt(undefined);
-    if (setCustomPrompt) {
-      setCustomPrompt('');
-    }
-    setDraftPrompt('');
-  };
 
   return (
     <aside ref={asideRef} className="flex flex-col h-full overflow-y-auto">
       {/* Status and Control */}
       <div className="p-2 space-y-1.5 border-b border-border/30">
         {/* Screen Preview */}
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <span className="flex items-center gap-1 text-[10px] font-medium text-muted-foreground">
-              <span
-                className={`flex h-2 w-2 rounded-full ${
-                  isScreenSharing
-                    ? isLoading
-                      ? "bg-yellow-400 animate-pulse"
-                      : "bg-destructive animate-pulse"
-                    : "bg-muted/50"
-                }`}
-                title={
-                  isLoading
-                    ? "AI 處理中"
-                    : isScreenSharing
-                    ? "分享/錄製中"
-                    : "已停止"
-                }
-              ></span>
-              {isLoading ? "處理中..." : isScreenSharing ? "分享中" : "已停止"}
-            </span>
-            <Button
-              variant={isScreenSharing ? "destructive" : "default"}
-              size="sm"
-              onClick={onToggleScreenShare}
-              disabled={isLoading && isScreenSharing}
-              aria-pressed={isScreenSharing}
-              className="text-xs h-6.5 w-90"
-            >
-              {isScreenSharing ? (
-                <MonitorOffIcon className="h-3 w-3 mr-0.5" />
-              ) : (
-                <MonitorIcon className="h-3 w-3 mr-0.5" />
-              )}
-              {isScreenSharing ? "停止" : "分享"}
-            </Button>
+        {isScreenSharing && ( // Only show preview section when sharing
+          <div className="p-4 space-y-2 border-t border-border/30">
+            <h3 className="text-base font-semibold text-card-foreground">
+              {t("screenPreviewTitle")}
+            </h3>
+            <video
+              ref={screenPreviewRef}
+              className="w-full aspect-video rounded border border-border/30 bg-muted"
+              autoPlay
+              playsInline
+              muted // Preview should always be muted
+            />
           </div>
         )}
         <div className="flex items-center justify-between gap-1">
@@ -338,17 +276,18 @@ export function ControlPanel({
         {/* Keywords Section */}
         {keywords.length > 0 && (
           <div className="pt-1.5 space-y-1">
-            <h4 className="text-xs font-medium text-foreground">關鍵字</h4>
+            <h4 className="text-xs font-medium text-foreground">
+              {t("keywordsTitle")}
+            </h4>
             <div className="flex flex-wrap gap-1.5 max-h-[80px] overflow-y-auto pr-1">
               {keywords.map((keyword, index) => (
                 <Button
                   key={`${keyword}-${index}`}
-                  variant="secondary"
                   size="sm"
                   onClick={() => onKeywordClick(keyword)}
                   disabled={isLoading && selectedKeyword === keyword}
-                  className="flex items-center gap-0.5 text-xs h-4 px-1"
-                  title={`解釋 "${keyword}"`}
+                  className="flex items-center gap-0.5 text-xs h-4 px-1.5 py-2"
+                  title={`${t("explainKeywordTooltipPrefix")} "${keyword}"`}
                 >
                   {keyword}
                   {isLoading && selectedKeyword === keyword && (
@@ -385,9 +324,11 @@ export function ControlPanel({
 
       {/* AI Actions */}
       <div className="p-2 space-y-1.5 border-b border-border/30">
-        <h4 className="text-xs font-medium text-foreground">AI 動作</h4>
+        <h4 className="text-xs font-medium text-foreground">
+          {t("aiActionsTitle")}
+        </h4>
         <div className="grid grid-cols-2 gap-1">
-          {aiActions.map(({ action, label, icon: Icon, shortcut }) => (
+          {aiActions.map(({ action, labelKey, icon: Icon, shortcut }) => (
             <Button
               key={action}
               variant="outline"
@@ -395,10 +336,12 @@ export function ControlPanel({
               disabled={isLoading || !isScreenSharing}
               onClick={() => onAiAction(action)}
               className="flex items-center justify-center gap-0.5 text-xs px-1 h-7"
-              title={`${label} (快捷鍵: ${modifierKey}+${shortcut})`} // Updated tooltip display
+              title={`${t(labelKey as TranslationKey)} (${t(
+                "shortcutKeyTooltip",
+              )} ${modifierKey}+${shortcut})`}
             >
               <Icon className="h-2.5 w-2.5" />
-              <span className="truncate">{label}</span>
+              <span className="truncate">{t(labelKey as TranslationKey)}</span>
               <span className="ml-1 text-[10px] text-muted-foreground/80 border border-muted/50 rounded-sm px-0.5">
                 {modifierKey}+{shortcut}
               </span>
@@ -543,17 +486,6 @@ export function ControlPanel({
               )}
             </div>
             */}
-      {/* Screen Preview Window */}
-      <ScreenPreviewWindow
-        isOpen={isScreenPreviewOpen}
-        onClose={() => {
-          setIsScreenPreviewOpen(false);
-        }}
-        isScreenSharing={isScreenSharing}
-        screenStreamRef={screenStreamRef}
-        systemAnalyserNode={systemAnalyserNode}
-        systemLevel={systemLevel}
-      />
 
             {/* System Audio Visualizer - Commented out */}
             {/*

@@ -24,6 +24,14 @@ declare global {
       on: (channel: string, callback: (...args: any[]) => void) => () => void; // Returns a cleanup function
       selectSource: (sourceId: string) => void;
       cancelSourceSelection: () => void;
+      getSettings: () => Promise<{
+        customPrompt: string;
+        language: string;
+      }>;
+      setSettings: (settings: {
+        customPrompt?: string;
+        language?: string;
+      }) => Promise<void>;
     };
   }
 }
