@@ -77,26 +77,6 @@ export default function ChatPanel({
           </div>
         )}
       </div>
-      {menuPosition && selectedText.trim() && (
-        <FloatingMenu
-          x={menuPosition.x}
-          y={menuPosition.y}
-          onAskAI={handleAskAI}
-        />
-      )}
-      {showScrollToBottom && (
-        <Button
-          variant="outline"
-          size="icon"
-          className="absolute bottom-20 right-4 rounded-full h-10 w-10 border-border/50 bg-background/80 hover:bg-background"
-          onClick={scrollToBottom}
-          aria-label="Scroll to bottom"
-        >
-          <ArrowDown className="h-5 w-5" />
-        </Button>
-      )}
-      <div className="flex-none p-4 border-t border-border/30">
-        <form onSubmit={handleSubmit} className="flex gap-2">
       <div className="flex-none p-2 border-t border-border/30">
         <form onSubmit={handleSubmit} className="flex gap-1.5">
           <Input
@@ -105,7 +85,7 @@ export default function ChatPanel({
             placeholder={
               isScreenSharing ? "輸入自訂提示或問題…" : "請先開始分享螢幕"
             }
-            className="flex-grow"
+            className="flex-grow h-7 text-xs"
             disabled={isLoading || !isScreenSharing}
             aria-label="Custom prompt input"
           />
@@ -114,10 +94,10 @@ export default function ChatPanel({
             variant="default"
             size="icon"
             disabled={isLoading || !isScreenSharing || !customPrompt.trim()}
-            className="bg-primary hover:bg-primary/90 text-primary-foreground h-9"
-            aria-label={t("sendChatButtonLabel")}
+            className="bg-primary hover:bg-primary/90 text-primary-foreground h-7 w-7"
+            aria-label="Send custom prompt"
           >
-            <ArrowUpRight className="h-4 w-4" />
+            <ArrowUpRight className="h-3 w-3" />
           </Button>
         </form>
       </div>

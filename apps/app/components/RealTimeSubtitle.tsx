@@ -189,7 +189,7 @@ export default function RealTimeSubtitle({
         "audio-processor",
         {
           processorOptions: {
-            bufferSize: 8192,
+            bufferSize: 4096,
           },
         },
       );
@@ -273,7 +273,7 @@ export default function RealTimeSubtitle({
   };
 
   return (
-    <div className="flex items-center justify-between space-x-2 w-full max-w-2xl mx-auto p-2 border rounded-md bg-muted/30 border-border">
+    <div className="flex items-center justify-between space-x-2 w-full max-w-2xl mx-auto p-1.5 border rounded-md bg-muted/30 border-border">
       <h4 className="text-xs font-medium text-foreground">
         {isSubtitleVisible ? "顯示字幕" : "隱藏字幕"}
       </h4>
