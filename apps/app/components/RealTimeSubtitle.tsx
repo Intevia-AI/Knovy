@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { GeminiClient } from "./geminiClient";
 import { Switch } from "@workspace/ui/components/switch";
+import { useI18n } from "@/hooks/useI18n";
 
 interface RealTimeSubtitleProps {
   onTextResponse?: (text: string) => void; // 當收到文字回應時的回呼
@@ -33,6 +34,8 @@ export default function RealTimeSubtitle({
   const systemAudioSourceRef = useRef<MediaStreamAudioSourceNode | null>(null); // 系統音訊來源節點
   const shouldSendAudioRef = useRef(false); // 是否應該發送音訊數據
   const textBufferRef = useRef(""); // 用於緩存收到的文字片段
+
+  const { t } = useI18n();
 
   // 監聽螢幕分享狀態變化
   useEffect(() => {
@@ -275,15 +278,18 @@ export default function RealTimeSubtitle({
   return (
     <div className="flex items-center justify-between space-x-2 w-full max-w-2xl mx-auto p-1.5 border rounded-md bg-muted/30 border-border">
       <h4 className="text-xs font-medium text-foreground">
-        {isSubtitleVisible ? "顯示字幕" : "隱藏字幕"}
+        {isSubtitleVisible ? t("showSubtitlesLabel") : t("hideSubtitlesLabel")}
       </h4>
       <Switch
         id="subtitle-switch"
         checked={isSubtitleVisible}
         onCheckedChange={handleCheckedChange}
         disabled={isProcessing}
-        aria-label={isSubtitleVisible ? "Hide subtitles" : "Show subtitles"}
-        className="h-4 w-7"
+        aria-label={
+          isSubtitleVisible
+            ? t("hideSubtitlesAriaLabel")
+            : t("showSubtitlesAriaLabel")
+        }
       />
     </div>
   );

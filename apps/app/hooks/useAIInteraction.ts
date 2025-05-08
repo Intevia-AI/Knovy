@@ -27,14 +27,8 @@ interface AIContextData {
   screenshot?: string;
 }
 
-interface CustomMessage extends AIMessage {
-  visible?: boolean;
-}
-
-export type { CustomMessage };
-
 export function useAIInteraction() {
-  const [aiMessages, setAiMessages] = useState<CustomMessage[]>([]);
+  const [aiMessages, setAiMessages] = useState<AIMessage[]>([]);
   const [transcriptions, setTranscriptions] = useState<TranscriptionMessage[]>(
     [],
   );
@@ -131,32 +125,114 @@ export function useAIInteraction() {
       );
 
       let context: AIContextData;
+      let finalUserMsgContent: string;
+      let finalDisplayMsgContent: string;
 
-      if (action === "screen") {
+      // Define base prompt templates
+      const basePromptMap = {
+        "real-time":
+          "分析最新的轉錄內容，並識別其中提到的關鍵點、關鍵字或待辦事項。",
+        answer_template:
+          "附上的轉錄內容是一個會議全部的對話，請根據整個會議的對話，詳細回答最後提出的問題: ", // append context.text
+        summary_template: "根據以下的轉錄內容，提供簡明摘要: ", // append context.text
+        search_template:
+          "Please search the web for the following query, and answer the question directly and answer in Chinese: ", // append query
+        findclue_template:
+          "根據以下的轉錄內容，找出其中可能存在的線索、疑點或需要進一步探討的資訊：\n\n", // append context.text
+        custom_template:
+          '請針對以下文字內容進行分析或回答：\n\n"{{query_text}}"',
+        screen_template:
+          "請你分析截圖，並回答以下問題：\n\n{{query_text}}",
+      };
+
+      const baseDisplayPromptMap: Record<AIAction, string> = {
+        "real-time": "即時分析",
+        answer: "根據轉錄內容回答出現或是潛在的問題，請針對最後出現的問題回答",
+        summary: "根據轉錄內容產生摘要",
+        search: "搜尋請求", // Will be overridden by query
+        "find-clue": "根據轉錄內容找尋線索",
+        custom: "自訂請求", // Will be overridden by query
+        screen: "截圖分析", // Will be overridden
+      };
+
+      if (action === "custom") {
+        if (!query) {
+          console.warn(
+            "AI request 'custom' action cancelled: No query provided.",
+          );
+          setAiMessages((prev) => [
+            ...prev,
+            {
+              id: `err-no-query-${Date.now()}`,
+              role: "assistant",
+              content: "[提示] 沒有提供查詢內容。",
+            },
+          ]);
+          setIsLoading(false);
+          return;
+        }
         context = {
-          text: query || "",
+          text: query, // For "custom", the query (selectedText or input prompt) is the primary context
+          timestamp: Date.now(),
+        };
+        finalUserMsgContent = basePromptMap.custom_template.replace(
+          "{{query_text}}",
+          query,
+        );
+        finalDisplayMsgContent = query; // Display the actual selected text or custom prompt
+        console.log(
+          "[AIInteraction] Custom action. Context text (from query):",
+          context.text,
+        );
+      } else if (action === "screen") {
+        context = {
+          text: query || "", // Query here is the instruction for the screenshot
           screenshot: screenshot || "",
           timestamp: Date.now(),
         };
-        console.log(
-          "[AIInteraction] Using screenshot as context for screen analysis:",
-          context.text,
+        finalUserMsgContent = basePromptMap.screen_template.replace(
+          "{{query_text}}",
+          query || "這張截圖",
         );
-      }
-      // 如果是 web search，直接使用 query 作為 context
-      else if (action === "search") {
+        finalDisplayMsgContent = `截圖分析: ${query || "目前畫面"}`;
+        console.log(
+          "[AIInteraction] Screen action. Query:",
+          query,
+        );
+      } else if (action === "search") {
+        if (!query) {
+          console.warn(
+            "AI request 'search' action cancelled: No query provided.",
+          );
+          setAiMessages((prev) => [
+            ...prev,
+            {
+              id: `err-no-query-search-${Date.now()}`,
+              role: "assistant",
+              content: "[提示] 沒有提供搜尋關鍵字。",
+            },
+          ]);
+          setIsLoading(false);
+          return;
+        }
         context = {
-          text: query || "",
+          text: query, // For "search", the query is the primary context
           timestamp: Date.now(),
         };
+        finalUserMsgContent = basePromptMap.search_template + query;
+        finalDisplayMsgContent = `搜尋: ${query}`;
         console.log(
-          "[AIInteraction] Using query as context for web search:",
-          context,
+          "[AIInteraction] Search action. Context text (from query):",
+          context.text,
         );
       } else {
+        // For "answer", "summary", "find-clue", "real-time"
         const gatheredContext = await gatherContext(action);
-        if (!gatheredContext?.text) {
-          console.warn("AI request cancelled: No context gathered.");
+        if (!gatheredContext?.text && action !== "real-time") {
+          console.warn(
+            "AI request cancelled: No context gathered for action:",
+            action,
+          );
           setAiMessages((prev) => [
             ...prev,
             {
@@ -168,58 +244,61 @@ export function useAIInteraction() {
           setIsLoading(false);
           return;
         }
-        context = gatheredContext;
+        context = gatheredContext || { text: "", timestamp: Date.now() };
+
+        switch (action) {
+          case "answer":
+            finalUserMsgContent = basePromptMap.answer_template + context.text;
+            break;
+          case "summary":
+            finalUserMsgContent = basePromptMap.summary_template + context.text;
+            break;
+          case "find-clue":
+            finalUserMsgContent =
+              basePromptMap.findclue_template + context.text;
+            break;
+          case "real-time":
+            finalUserMsgContent = basePromptMap["real-time"];
+            break;
+          default:
+            finalUserMsgContent = "";
+            console.error(
+              "Unhandled AI action for prompt construction:",
+              action,
+            );
+        }
+        finalDisplayMsgContent = baseDisplayPromptMap[action];
+        console.log(
+          "[AIInteraction] Context-based action. Context text:",
+
+          context.text,
+        );
       }
 
-      console.log("[AIInteraction] Sending context to AI:", context);
+      console.log("[AIInteraction] Final context for AI:", context);
+      console.log(
+        "[AIInteraction] Final user message for API:",
+        finalUserMsgContent,
+      );
+      console.log(
+        "[AIInteraction] Final display message for chat:",
+        finalDisplayMsgContent,
+      );
 
-      const promptMap: Record<AIAction, string> = {
-        "real-time":
-          "分析最新的轉錄內容，並識別其中提到的關鍵點、關鍵字或待辦事項。",
-        answer:
-          "附上的轉錄內容是一個會議全部的對話，請根據整個會議的對話，詳細回答最後提出的問題: " +
-          context.text + "\n\n" + "請用" + language + "這個語言來回答",
-        summary: "根據以下的轉錄內容，提供簡明摘要: " + context.text + "\n\n" + "請用" + language + "這個語言來回答",
-        search:
-          "Please search the web for the following query, and answer the question directly and answer in Chinese: " +
-          context.text,
-        "find-clue":
-          "根據以下的轉錄內容，找出其中可能存在的線索、疑點或需要進一步探討的資訊：\n\n" +
-          context.text,
-        custom: query || "根據以下要求分析最近轉錄內容。請用中文回答。",
-        screen: "請你分析截圖，並回答以下問題：\n\n" + context.text,
-      };
-
-      const displayPromptMap: Record<AIAction, string> = {
-        "real-time": "即時分析",
-        answer: "根據轉錄內容回答出現或是潛在的問題，請針對最後出現的問題回答",
-        summary: "根據轉錄內容產生摘要",
-        search: "根據轉錄內容搜尋主題",
-        "find-clue": "根據轉錄內容找尋線索",
-        custom: customPrompt || "自訂請求",
-        screen: "截圖分析",
-      };
-
-      const userMsgContent =
-        action === "custom" ? customPrompt : promptMap[action];
-      const displayMsgContent =
-        action === "custom" ? customPrompt : displayPromptMap[action];
-
-      const userMsg: CustomMessage = {
+      const userMsg: AIMessage = {
         id: `user-${Date.now()}`,
         role: "user",
-        content: userMsgContent,
+        content: finalUserMsgContent,
       };
-      const displayMsg: CustomMessage = {
+      const displayMsg: AIMessage = {
         id: `disp-${userMsg.id}`,
         role: "user",
-        content: displayMsgContent,
+        content: finalDisplayMsgContent,
       };
 
       if (action !== "real-time") {
         setAiMessages((prev) => [...prev, displayMsg]);
       }
-      if (action === "custom") setCustomPrompt("");
 
       try {
         console.log("Sending request to AI API:", API_URL);
@@ -242,7 +321,7 @@ export function useAIInteraction() {
           throw new Error(`AI API Error (${res.status}): ${errorText}`);
         }
 
-        const aiResponse: CustomMessage = await res.json();
+        const aiResponse: AIMessage = await res.json();
         console.log("Received AI response:", aiResponse);
         setAiMessages((prev) => [
           ...prev,
@@ -310,7 +389,6 @@ export function useAIInteraction() {
             id: `realtime-${Date.now()}`,
             role: "assistant",
             content: `[即時轉錄] ${text}`,
-            visible: isSubtitleVisible,
           },
         ];
       }
@@ -416,14 +494,6 @@ export function useAIInteraction() {
           return;
         }
 
-        // // 如果是 "search web" 消息，只處理不顯示
-        // if (accumulatedTextRef.current === "") {
-        //   console.log('[Answer] 處理 search web 消息但不顯示');
-        //   // 重置累積文本
-        //   accumulatedTextRef.current = "";
-        //   return;
-        // }
-
         // 更新聊天消息
         setAiMessages((prev) => {
           const lastMessage = prev[prev.length - 1];
@@ -487,6 +557,7 @@ export function useAIInteraction() {
       if (isLoading) return;
       setSelectedKeyword(keyword);
       setIsLoading(true);
+
       try {
         // 最多重試5次
         let retries = 0;
@@ -559,15 +630,6 @@ export function useAIInteraction() {
   // 新增函數來控制字幕可見性
   const setSubtitleVisibility = (visible: boolean) => {
     setIsSubtitleVisible(visible);
-    // 更新所有轉錄訊息的可見性
-    setAiMessages((prev) =>
-      prev.map((msg) => {
-        if (msg.content.startsWith("[即時轉錄]")) {
-          return { ...msg, visible };
-        }
-        return msg;
-      }),
-    );
   };
 
   return {
@@ -587,6 +649,7 @@ export function useAIInteraction() {
     handleKeywordClick,
     messagesContainerRef,
     resetChat,
+    isSubtitleVisible,
     setSubtitleVisibility,
     handleSendMessage: sendContextToAI,
   };
