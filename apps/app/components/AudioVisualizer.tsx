@@ -17,7 +17,7 @@ const AudioVisualizer: React.FC<AudioVisualizerProps> = ({
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationFrameId = useRef<number | null>(null);
-
+// 
   useEffect(() => {
     const canvas = canvasRef.current;
     const canvasCtx = canvas?.getContext("2d");

@@ -384,6 +384,7 @@ export function useScreenShare() {
     systemAudioSegments, // from state updated by system audio logic
     micMimeType, // from useSegmentRecorder
     systemAudioMimeType,
+    screenStreamRef, // Ref for the video element
     toggleScreenShare,
     screenPreviewRef, // Ref for the video element
     currentMicChunksRef, // Pass mic chunks ref

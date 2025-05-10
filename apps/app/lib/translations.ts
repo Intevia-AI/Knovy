@@ -4,6 +4,7 @@ export const translations = {
     greeting: "Hello",
     // ControlPanel Status
     screenPreviewTitle: "Screen Preview",
+    systemAudioLabel: "System Audio",
     statusLoading: "AI Processing",
     statusSharing: "Sharing/Recording",
     statusStopped: "Stopped",
@@ -51,12 +52,21 @@ export const translations = {
     // Markdown
     copyCodeButton: "Copy",
     copyCodeSuccessToast: "Copied successfully",
+    // Textarea Hints
+    textareaHint: "Press Enter to confirm, Shift + Enter for new line",
+    "noQueryProvided": "[Hint] No query content provided.",
+    "currentScreen": "this screenshot",
+    "screenshotAnalysis": "Screenshot Analysis",
+    "noSearchQueryProvided": "[Hint] No search keywords provided.",
+    "search": "Search",
+    "insufficientTranscription": "[Hint] Insufficient transcription content for analysis.",
   },
   "zh-TW": {
     // Add Traditional Chinese translations here
     greeting: "您好",
     // ControlPanel Status
     screenPreviewTitle: "螢幕預覽",
+    systemAudioLabel: "系統音訊",
     statusLoading: "AI 處理中",
     statusSharing: "分享/錄製中",
     statusStopped: "已停止",
@@ -104,59 +114,76 @@ export const translations = {
     // Markdown
     copyCodeButton: "複製",
     copyCodeSuccessToast: "複製成功",
+    // Textarea Hints
+    textareaHint: "按 Enter 確認，Shift + Enter 換行",
+    "noQueryProvided": "[提示] 沒有提供查詢內容。",
+    "currentScreen": "這張截圖",
+    "screenshotAnalysis": "截圖分析",
+    "noSearchQueryProvided": "[提示] 沒有提供搜尋關鍵字。",
+    "search": "搜尋",
+    "insufficientTranscription": "[提示] 沒有足夠的轉錄內容可供分析。",
   },
   "ja-JP": {
     // Add Japanese translations here
     greeting: "こんにちは",
-    // ControlPanel Status (Placeholders)
-    screenPreviewTitle: "[ja]Screen Preview",
-    statusLoading: "[ja]AI Processing",
-    statusSharing: "[ja]Sharing/Recording",
-    statusStopped: "[ja]Stopped",
-    statusLoadingShort: "[ja]Processing...",
-    statusSharingShort: "[ja]Sharing",
-    statusStoppedShort: "[ja]Stopped",
-    stopSharingButton: "[ja]Stop",
-    startSharingButton: "[ja]Share",
-    // ControlPanel Keywords (Placeholders)
-    keywordsTitle: "[ja]Keywords",
-    explainKeywordTooltipPrefix: "[ja]Explain",
-    // ControlPanel AI Actions (Placeholders)
-    aiActionsTitle: "[ja]AI Actions",
-    aiActionAnswer: "[ja]Deep Answer",
-    aiActionSummary: "[ja]Generate Summary",
-    shortcutKeyTooltip: "[ja]Shortcut:",
-    // ControlPanel Advanced Settings (Placeholders)
-    advancedSettingsTitle: "[ja]Advanced Settings",
-    customPromptLabel: "[ja]Custom Model Instruction",
-    customPromptPlaceholder: "[ja]Enter custom prompt...",
-    currentPromptLabel: "[ja]Current Model Instruction",
-    clearButton: "[ja]Clear",
-    languageSelectLabel: "[ja]Language Selection",
-    languageSelectPlaceholder: "[ja]Select language",
-    // HeaderBar (Placeholders)
-    pinWindowTooltip: "[ja]Pin window",
-    unpinWindowTooltip: "[ja]Unpin window",
-    minimizeWindowTooltip: "[ja]Minimize",
-    closeWindowTooltip: "[ja]Close",
-    // SourcePickerModal (Placeholders)
-    sourcePickerTitle: "[ja]Select Source to Share",
-    sourcePickerSearching: "[ja]Searching...",
-    sourcePickerShareSourceTooltipPrefix: "[ja]Share",
-    cancelButton: "[ja]Cancel",
-    // ChatPanel (Placeholders)
-    chatPlaceholderSharing: "[ja]Enter prompt...",
-    chatPlaceholderNotSharing: "[ja]Start sharing first",
-    sendChatButtonLabel: "[ja]Send prompt",
-    askAIButton: "[ja]Ask AI",
-    // RealTimeSubtitle (Placeholders)
-    showSubtitlesLabel: "[ja]Show Subtitles",
-    hideSubtitlesLabel: "[ja]Hide Subtitles",
-    showSubtitlesAriaLabel: "[ja]Show subtitles",
-    hideSubtitlesAriaLabel: "[ja]Hide subtitles",
-    // Markdown (Placeholders)
-    copyCodeButton: "[ja]Copy",
-    copyCodeSuccessToast: "[ja]Copied",
+    // ControlPanel Status
+    screenPreviewTitle: "画面プレビュー",
+    systemAudioLabel: "システム音声",
+    statusLoading: "AI処理中",
+    statusSharing: "共有/録画中",
+    statusStopped: "停止中",
+    statusLoadingShort: "処理中...",
+    statusSharingShort: "共有中",
+    statusStoppedShort: "停止",
+    stopSharingButton: "停止",
+    startSharingButton: "共有",
+    // ControlPanel Keywords
+    keywordsTitle: "キーワード",
+    explainKeywordTooltipPrefix: "説明",
+    // ControlPanel AI Actions
+    aiActionsTitle: "AIアクション",
+    aiActionAnswer: "詳細回答",
+    aiActionSummary: "要約生成",
+    shortcutKeyTooltip: "ショートカット:",
+    // ControlPanel Advanced Settings
+    advancedSettingsTitle: "詳細設定",
+    customPromptLabel: "カスタムモデル指示",
+    customPromptPlaceholder: "カスタムプロンプトを入力してEnterを押してください...",
+    currentPromptLabel: "現在のモデル指示",
+    clearButton: "クリア",
+    languageSelectLabel: "言語選択",
+    languageSelectPlaceholder: "言語を選択",
+    // HeaderBar
+    pinWindowTooltip: "ウィンドウを固定",
+    unpinWindowTooltip: "固定を解除",
+    minimizeWindowTooltip: "最小化",
+    closeWindowTooltip: "閉じる",
+    // SourcePickerModal
+    sourcePickerTitle: "共有するソースを選択",
+    sourcePickerSearching: "利用可能なソースを検索中...",
+    sourcePickerShareSourceTooltipPrefix: "共有",
+    cancelButton: "キャンセル",
+    // ChatPanel
+    chatPlaceholderSharing: "カスタムプロンプトまたは質問を入力...",
+    chatPlaceholderNotSharing: "まず画面共有を開始してください",
+    sendChatButtonLabel: "カスタムプロンプトを送信",
+    askAIButton: "AIに質問",
+    // RealTimeSubtitle
+    showSubtitlesLabel: "字幕を表示",
+    hideSubtitlesLabel: "字幕を非表示",
+    showSubtitlesAriaLabel: "字幕を表示",
+    hideSubtitlesAriaLabel: "字幕を非表示",
+    // Markdown
+    copyCodeButton: "コピー",
+    copyCodeSuccessToast: "コピーしました",
+    // Textarea Hints
+    textareaHint: "Enter で確定、Shift + Enter で改行",
+    "noQueryProvided": "[ヒント] クエリ内容が提供されていません。",
+    "currentScreen": "このスクリーンショット",
+    "screenshotAnalysis": "スクリーンショット分析",
+    "noSearchQueryProvided": "[ヒント] 検索キーワードが提供されていません。",
+    "search": "検索",
+    "insufficientTranscription": "[ヒント] 分析に十分な文字起こし内容がありません。",
   },
 };
 
@@ -165,6 +192,7 @@ export type TranslationKey =
   | "greeting"
   // ControlPanel Status
   | "screenPreviewTitle"
+  | "systemAudioLabel"
   | "statusLoading"
   | "statusSharing"
   | "statusStopped"
@@ -211,7 +239,15 @@ export type TranslationKey =
   | "hideSubtitlesAriaLabel"
   // Markdown
   | "copyCodeButton"
-  | "copyCodeSuccessToast";
+  | "copyCodeSuccessToast"
+  // Textarea Hints
+  | "textareaHint"
+  | "noQueryProvided"
+  | "currentScreen"
+  | "screenshotAnalysis"
+  | "noSearchQueryProvided"
+  | "search"
+  | "insufficientTranscription";
 // ... add other keys here
 
 // Define supported languages type

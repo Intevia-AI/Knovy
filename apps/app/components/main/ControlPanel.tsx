@@ -8,8 +8,7 @@ import {
   MonitorIcon,
   MonitorOffIcon,
   LanguagesIcon,
-  ChevronDownIcon, // Add icon
-  ChevronUpIcon, // Add icon
+  SettingsIcon,
 } from "lucide-react";
 import {
   Select,
@@ -26,7 +25,13 @@ import { Label } from "@workspace/ui/components/label"; // Add Label component
 import { useI18n } from "@/hooks/useI18n"; // Import useI18n
 import { useLanguage } from "@/context/LanguageContext"; // Import useLanguage
 import { SupportedLanguage, TranslationKey } from "@/lib/translations"; // Import translations and SupportedLanguage
-
+import ScreenPreviewWindow from "./ScreenPreviewWindow";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@workspace/ui/components/dialog";
 // Explicitly reference the global Window type to help TS
 // This might not be strictly necessary if TS config is correct, but can help resolve issues.
 
@@ -40,6 +45,7 @@ interface ControlPanelProps {
   systemAnalyserNode: AnalyserNode | null;
   micLevel: number; // Add micLevel prop
   systemLevel: number; // Add systemLevel prop
+  screenStreamRef: React.RefObject<MediaStream | null>; 
   screenPreviewRef: React.RefObject<HTMLVideoElement | null>; // Allow null
   currentSystemAudioStream: MediaStream | null; // For RealTimeAnalysis
   customPrompt?: string; // Add custom prompt prop
@@ -64,6 +70,7 @@ export function ControlPanel({
   systemAnalyserNode,
   micLevel, // Destructure micLevel
   systemLevel, // Destructure systemLevel
+  screenStreamRef,
   screenPreviewRef,
   currentSystemAudioStream,
   customPrompt, // Add custom prompt to destructuring
@@ -89,7 +96,7 @@ export function ControlPanel({
   const [isAdvancedSettingsOpen, setIsAdvancedSettingsOpen] = useState(false); // State for expansion
   const asideRef = useRef<HTMLElement>(null); // Ref for the aside element
   const [isSettingsLoaded, setIsSettingsLoaded] = useState(false); // Track settings loading
-
+  const [isScreenPreviewOpen, setIsScreenPreviewOpen] = useState(false);
   // Load settings on mount
   useEffect(() => {
     const loadInitialPrompt = async () => {
@@ -210,7 +217,7 @@ export function ControlPanel({
       {/* Status and Control */}
       <div className="p-2 space-y-1.5 border-b border-border/30">
         {/* Screen Preview */}
-        {isScreenSharing && ( // Only show preview section when sharing
+        {/* {isScreenSharing && ( // Only show preview section when sharing
           <div className="p-4 space-y-2 border-t border-border/30">
             <h3 className="text-base font-semibold text-card-foreground">
               {t("screenPreviewTitle")}
@@ -223,7 +230,7 @@ export function ControlPanel({
               muted // Preview should always be muted
             />
           </div>
-        )}
+        )} */}
         <div className="flex items-center justify-between gap-1">
           <span className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
             <span
@@ -262,7 +269,7 @@ export function ControlPanel({
             onClick={onToggleScreenShare}
             disabled={isLoading && isScreenSharing}
             aria-pressed={isScreenSharing}
-            className="flex-1 text-xs h-7"
+            className="flex-1 text-xs h-6"
           >
             {isScreenSharing ? (
               <MonitorOffIcon className="h-3 w-3 mr-0.5" />
@@ -350,91 +357,52 @@ export function ControlPanel({
         </div>
       </div>
 
-      {/* --- Collapsible Advanced Settings --- */}
+      {/* Screen Preview Button */}
+      <div className="border-b border-border/30">
+        <div
+          className="flex items-center justify-between p-2 cursor-pointer bg-muted/10 hover:bg-muted/50"
+          onClick={() => setIsScreenPreviewOpen(true)}
+          role="button"
+        >
+          <h4 className="text-xs font-medium text-foreground">{t("screenPreviewTitle")}</h4>
+          <MonitorIcon className="h-3 w-3 text-muted-foreground" />
+        </div>
+      </div>
+
+      <ScreenPreviewWindow
+        isOpen={isScreenPreviewOpen}
+        onClose={() => {
+          setIsScreenPreviewOpen(false);
+        }}
+        isScreenSharing={isScreenSharing}
+        screenStreamRef={screenStreamRef}
+        systemAnalyserNode={systemAnalyserNode}
+        systemLevel={systemLevel}
+      />
+
+      {/* Advanced Settings Button */}
       <div className="border-b border-border/30">
         <div
           className="flex items-center justify-between p-2 cursor-pointer bg-muted/10 hover:bg-muted/50"
           onClick={() => setIsAdvancedSettingsOpen(!isAdvancedSettingsOpen)}
           role="button"
-          aria-expanded={isAdvancedSettingsOpen}
-          aria-controls="advanced-settings-content"
         >
           <h4 className="text-xs font-medium text-foreground">
             {t("advancedSettingsTitle")}
           </h4>
-          {isAdvancedSettingsOpen ? (
-            <ChevronUpIcon className="h-4 w-4 text-muted-foreground" />
-          ) : (
-            <ChevronDownIcon className="h-4 w-4 text-muted-foreground" />
-          )}
+          <SettingsIcon className="h-3 w-3 text-muted-foreground" />
         </div>
+      </div>
 
-        {isAdvancedSettingsOpen && (
-          <div id="advanced-settings-content" className="space-y-1.5">
-            {/* Custom Prompt Input - Show only if NO prompt is confirmed */}
-            {setCustomPrompt && !confirmedPrompt && (
-              <div className="p-2 space-y-1.5 border-t border-border/30">
-                <Label
-                  htmlFor="custom-prompt"
-                  className="text-xs font-medium text-foreground"
-                >
-                  {t("customPromptLabel")}
-                </Label>
-                <Textarea
-                  id="custom-prompt"
-                  placeholder={t("customPromptPlaceholder")}
-                  value={draftPrompt}
-                  onChange={(e) => setDraftPrompt(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (
-                      e.key === "Enter" && 
-                      !e.shiftKey &&
-                      draftPrompt.trim()
-                    ) {
-                      // Confirm and save the prompt
-                      setConfirmedPromptState(draftPrompt);
-                      setCustomPrompt(draftPrompt); // Update AI hook state
-                      savePromptSetting(draftPrompt); // Save to settings
-                      e.currentTarget.blur();
-                      e.preventDefault(); // Prevent newline in textarea
-                    }
-                  }}
-                  className="h-7 text-xs border-border/30 bg-muted/50 focus-visible:ring-0 focus-visible:border-primary focus-visible:outline-none"
-                />
-              </div>
-            )}
-
-            {/* Confirmed Prompt Display - Show only if a prompt IS confirmed */}
-            {confirmedPrompt && (
-              <div className="p-2 space-y-1.5 border-t border-border/30">
-                <div className="flex items-center justify-between">
-                  <Label className="text-xs font-medium text-foreground">
-                    {t("currentPromptLabel")}
-                  </Label>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setConfirmedPromptState(undefined); // Clear UI state
-                      setDraftPrompt(""); // Clear draft
-                      if (setCustomPrompt) {
-                        setCustomPrompt(""); // Clear AI hook state
-                      }
-                      savePromptSetting(undefined); // Clear saved setting
-                    }}
-                    className="h-6 text-xs"
-                  >
-                    {t("clearButton")}
-                  </Button>
-                </div>
-                <div className="text-xs text-muted-foreground break-words">
-                  {confirmedPrompt}
-                </div>
-              </div>
-            )}
-
+      {/* Advanced Settings Dialog */}
+      <Dialog open={isAdvancedSettingsOpen} onOpenChange={setIsAdvancedSettingsOpen}>
+        <DialogContent className="w-[425px] p-6 !max-w-[425px]">
+          <DialogHeader className="pb-2">
+            <DialogTitle className="text-xs">{t("advancedSettingsTitle")}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
             {/* Language Selection */}
-            <div className="p-2 space-y-1.5 border-t border-border/30">
+            <div className="space-y-1">
               <div className="flex items-center justify-between">
                 <Label className="text-xs font-medium text-foreground">
                   {t("languageSelectLabel")}
@@ -465,52 +433,73 @@ export function ControlPanel({
               </div>
             </div>
 
-            {/* Mic Audio Visualizer - Commented out */}
-            {/*
-            <div className="p-4 space-y-3 border-t border-border/30">
-              <h3 className="text-base font-semibold text-card-foreground">
-                即時分析 (麥克風)
-              </h3>
-              <div className="py-2 w-full h-[56px] flex items-center justify-center">
-                {isScreenSharing && micAnalyserNode ? (
-                   <AudioVisualizer analyserNode={micAnalyserNode} height={40} />
-                ) : (
-                   <p className="text-xs text-muted-foreground">麥克風未啟用</p>
-                )}
+            {/* Custom Prompt Input - Show only if NO prompt is confirmed */}
+            {setCustomPrompt && !confirmedPrompt && (
+              <div className="space-y-1">
+                <Label
+                  htmlFor="custom-prompt"
+                  className="text-xs font-medium text-foreground"
+                >
+                  {t("customPromptLabel")}
+                </Label>
+                <Textarea
+                  id="custom-prompt"
+                  placeholder={t("customPromptPlaceholder")}
+                  value={draftPrompt}
+                  onChange={(e) => setDraftPrompt(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (
+                      e.key === "Enter" && 
+                      !e.shiftKey &&
+                      draftPrompt.trim()
+                    ) {
+                      // Confirm and save the prompt
+                      setConfirmedPromptState(draftPrompt);
+                      setCustomPrompt(draftPrompt); // Update AI hook state
+                      savePromptSetting(draftPrompt); // Save to settings
+                      e.currentTarget.blur();
+                      e.preventDefault(); // Prevent newline in textarea
+                    }
+                  }}
+                  className="h-7 text-xs border-border/30 bg-muted/50 focus-visible:ring-0 focus-visible:border-primary focus-visible:outline-none"
+                />
+                <p className="text-[10px] text-muted-foreground">
+                  {t("textareaHint")}
+                </p>
               </div>
-              {isScreenSharing && (
-                <div className="space-y-1">
-                  <Progress value={micLevel} className="h-2" />
-                  <span className="text-xs text-muted-foreground text-right block">音量: {micLevel.toFixed(0)}%</span>
-                </div>
-              )}
-            </div>
-            */}
+            )}
 
-            {/* System Audio Visualizer - Commented out */}
-            {/*
-            <div className="p-1.5 space-y-1 border-t border-border/30">
-              <div className="flex items-center justify-between">
-                <h4 className="text-xs font-medium text-foreground">系統音訊</h4>
-                {isScreenSharing && (
-                  <span className="text-xs text-muted-foreground">
-                    {systemLevel.toFixed(0)}%
-                  </span>
-                )}
+            {/* Confirmed Prompt Display - Show only if a prompt IS confirmed */}
+            {confirmedPrompt && (
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-medium text-foreground">
+                    {t("currentPromptLabel")}
+                  </Label>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setConfirmedPromptState(undefined); // Clear UI state
+                      setDraftPrompt(""); // Clear draft
+                      if (setCustomPrompt) {
+                        setCustomPrompt(""); // Clear AI hook state
+                      }
+                      savePromptSetting(undefined); // Clear saved setting
+                    }}
+                    className="h-6 text-xs"
+                  >
+                    {t("clearButton")}
+                  </Button>
+                </div>
+                <div className="text-xs text-muted-foreground break-words">
+                  {confirmedPrompt}
+                </div>
               </div>
-              <div className="w-full h-[4px] flex items-center">
-                {isScreenSharing && systemAnalyserNode ? (
-                  <AudioVisualizer analyserNode={systemAnalyserNode} height={4} />
-                ) : (
-                  <div className="w-full h-full bg-muted rounded-full" />
-                )}
-              </div>
-            </div>
-            */}
+            )}
           </div>
-        )}
-      </div>
-      {/* --- End Collapsible Advanced Settings --- */}
+        </DialogContent>
+      </Dialog>
     </aside>
   );
 }

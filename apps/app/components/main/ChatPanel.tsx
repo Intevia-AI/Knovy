@@ -219,7 +219,7 @@ export default function ChatPanel({
           <ArrowDown className="h-5 w-5" />
         </Button>
       )}
-      <div className="flex-none p-4 border-t border-border/30">
+      <div className="flex-none p-2 border-t border-border/30">
         <form onSubmit={handleSubmit} className="flex gap-2">
           <Input
             value={customPrompt}
@@ -227,7 +227,7 @@ export default function ChatPanel({
             placeholder={
               isScreenSharing ? t("chatPlaceholderSharing") : t("chatPlaceholderNotSharing")
             }
-            className="flex-grow"
+            className="flex-grow h-7 text-xs"
             disabled={isLoading || !isScreenSharing}
             aria-label="Custom prompt input"
           />
@@ -236,10 +236,10 @@ export default function ChatPanel({
             variant="default"
             size="icon"
             disabled={isLoading || !isScreenSharing || !customPrompt.trim()}
-            className="bg-primary hover:bg-primary/90 text-primary-foreground h-9"
+            className="bg-primary hover:bg-primary/90 text-primary-foreground h-7 w-7"
             aria-label={t("sendChatButtonLabel")}
           >
-            <ArrowUpRight className="h-4 w-4" />
+            <ArrowUpRight className="h-3 w-3" />
           </Button>
         </form>
       </div>
