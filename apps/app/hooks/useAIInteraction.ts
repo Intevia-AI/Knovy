@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { Message as AIMessage } from "ai";
 import type { Segment } from "@/types";
 import html2canvas from "html2canvas-pro";
+import { useI18n } from "@/hooks/useI18n";
 
 // Constants
 const API_URL =
@@ -14,7 +15,8 @@ type AIAction =
   | "search"
   | "custom"
   | "find-clue"
-  | "screen";
+  | "screen"
+  | "screenshot";
 
 interface TranscriptionMessage extends AIMessage {
   timestamp: number;
@@ -27,14 +29,8 @@ interface AIContextData {
   screenshot?: string;
 }
 
-interface CustomMessage extends AIMessage {
-  visible?: boolean;
-}
-
-export type { CustomMessage };
-
 export function useAIInteraction() {
-  const [aiMessages, setAiMessages] = useState<CustomMessage[]>([]);
+  const [aiMessages, setAiMessages] = useState<AIMessage[]>([]);
   const [transcriptions, setTranscriptions] = useState<TranscriptionMessage[]>(
     [],
   );
@@ -45,32 +41,9 @@ export function useAIInteraction() {
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const accumulatedTextRef = useRef("");
   const [isSubtitleVisible, setIsSubtitleVisible] = useState(true);
+  const { t, language = "en-US" } = useI18n();
+  const currentLanguage = language as "en-US" | "zh-TW" | "ja-JP";
 
-  // Log transcriptions every 10 seconds
-  // useEffect(() => {
-  //   const logTranscriptions = () => {
-  //     if (transcriptions.length > 0) {
-  //       console.log("\n=== 轉錄對話記錄 ===");
-  //       console.log(`總共 ${transcriptions.length} 條轉錄`);
-  //       console.log("-------------------");
-  //       transcriptions.forEach((t, index) => {
-  //         const time = new Date(t.timestamp).toLocaleTimeString();
-  //         console.log(`[${index + 1}] [${time}] ${t.content}`);
-  //       });
-  //       console.log("===================\n");
-  //     }
-  //   };
-
-  //   // 立即執行一次
-  //   logTranscriptions();
-
-  //   // 設置定時器
-  //   const interval = setInterval(logTranscriptions, 10000);
-
-  //   return () => {
-  //     clearInterval(interval);
-  //   };
-  // }, [transcriptions]);
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -131,95 +104,252 @@ export function useAIInteraction() {
       );
 
       let context: AIContextData;
+      let finalUserMsgContent: string;
+      let finalDisplayMsgContent: string;
 
-      if (action === "screen") {
-        context = {
-          text: query || "",
-          screenshot: screenshot || "",
-          timestamp: Date.now(),
-        };
-        console.log(
-          "[AIInteraction] Using screenshot as context for screen analysis:",
-          context.text,
-        );
-      }
-      // 如果是 web search，直接使用 query 作為 context
-      else if (action === "search") {
-        context = {
-          text: query || "",
-          timestamp: Date.now(),
-        };
-        console.log(
-          "[AIInteraction] Using query as context for web search:",
-          context,
-        );
-      } else {
-        const gatheredContext = await gatherContext(action);
-        if (!gatheredContext?.text) {
-          console.warn("AI request cancelled: No context gathered.");
+      // Define base prompt templates
+      const basePromptMap = {
+        "real-time": {
+          "en-US": "Analyze the latest transcription content and identify key points, keywords, or action items mentioned.",
+          "zh-TW": "分析最新的轉錄內容，並識別其中提到的關鍵點、關鍵字或待辦事項。",
+          "ja-JP": "最新の文字起こし内容を分析し、言及された重要なポイント、キーワード、またはアクションアイテムを特定してください。"
+        },
+        answer_template: {
+          "en-US": "Based on the attached transcription of the entire meeting, please provide a detailed answer to the last question asked: ",
+          "zh-TW": "附上的轉錄內容是一個會議全部的對話，請根據整個會議的對話，詳細回答最後提出的問題: ",
+          "ja-JP": "添付された会議全体の文字起こしに基づいて、最後に質問された内容について詳細に回答してください: "
+        },
+        summary_template: {
+          "en-US": "Please provide a concise summary based on the following transcription: ",
+          "zh-TW": "根據以下的轉錄內容，提供簡明摘要: ",
+          "ja-JP": "以下の文字起こしに基づいて、簡潔な要約を提供してください: "
+        },
+        search_template: {
+          "en-US": "Please search the web for the following query, and answer the question directly: ",
+          "zh-TW": "請搜尋以下查詢，並直接回答問題: ",
+          "ja-JP": "以下のクエリを検索し、質問に直接回答してください: "
+        },
+        findclue_template: {
+          "en-US": "Based on the following transcription, identify any potential clues, points of interest, or information that needs further exploration:\n\n",
+          "zh-TW": "根據以下的轉錄內容，找出其中可能存在的線索、疑點或需要進一步探討的資訊：\n\n",
+          "ja-JP": "以下の文字起こしに基づいて、潜在的な手がかり、注目点、またはさらに調査が必要な情報を特定してください：\n\n"
+        },
+        custom_template: {
+          "en-US": 'Please analyze or answer the following text:\n\n"{{query_text}}"',
+          "zh-TW": '請針對以下文字內容進行分析或回答：\n\n"{{query_text}}"',
+          "ja-JP": '以下のテキストを分析または回答してください：\n\n"{{query_text}}"'
+        },
+        screen_template: {
+          "en-US": "Please analyze the screenshot and answer the following question:\n\n{{query_text}}",
+          "zh-TW": "請你分析截圖，並回答以下問題：\n\n{{query_text}}",
+          "ja-JP": "スクリーンショットを分析し、以下の質問に回答してください：\n\n{{query_text}}"
+        }
+      } as const;
+
+      const baseDisplayPromptMap = {
+        "real-time": {
+          "en-US": "Real-time Analysis",
+          "zh-TW": "即時分析",
+          "ja-JP": "リアルタイム分析"
+        },
+        answer: {
+          "en-US": "Answer based on transcription",
+          "zh-TW": "根據轉錄內容回答出現或是潛在的問題，請針對最後出現的問題回答",
+          "ja-JP": "文字起こしに基づいて回答"
+        },
+        summary: {
+          "en-US": "Generate summary from transcription",
+          "zh-TW": "根據轉錄內容產生摘要",
+          "ja-JP": "文字起こしから要約を生成"
+        },
+        search: {
+          "en-US": "Search request",
+          "zh-TW": "搜尋請求",
+          "ja-JP": "検索リクエスト"
+        },
+        "find-clue": {
+          "en-US": "Find clues in transcription",
+          "zh-TW": "根據轉錄內容找尋線索",
+          "ja-JP": "文字起こしから手がかりを探す"
+        },
+        custom: {
+          "en-US": "Custom request",
+          "zh-TW": "自訂請求",
+          "ja-JP": "カスタムリクエスト"
+        },
+        screen: {
+          "en-US": "Screenshot analysis",
+          "zh-TW": "截圖分析",
+          "ja-JP": "スクリーンショット分析"
+        },
+        screenshot: {
+          "en-US": "Screenshot analysis",
+          "zh-TW": "截圖分析",
+          "ja-JP": "スクリーンショット分析"
+        }
+      } as const;
+
+      const currentAction = action as AIAction;
+
+      if (action === "custom") {
+        if (!query) {
+          console.warn(
+            "AI request 'custom' action cancelled: No query provided.",
+          );
           setAiMessages((prev) => [
             ...prev,
             {
-              id: `err-no-ctx-${Date.now()}`,
+              id: `err-no-query-${Date.now()}`,
               role: "assistant",
-              content: "[提示] 沒有足夠的轉錄內容可供分析。",
+              content: t("noQueryProvided"),
             },
           ]);
           setIsLoading(false);
           return;
         }
-        context = gatheredContext;
+        context = {
+          text: query,
+          timestamp: Date.now(),
+        };
+        finalUserMsgContent = basePromptMap.custom_template[currentLanguage].replace(
+          "{{query_text}}",
+          query,
+        );
+        finalDisplayMsgContent = query;
+        console.log(
+          "[AIInteraction] Custom action. Context text (from query):",
+          context.text,
+        );
+      } else if (action === "screen") {
+        context = {
+          text: query || "",
+          screenshot: screenshot || "",
+          timestamp: Date.now(),
+        };
+        finalUserMsgContent = basePromptMap.screen_template[currentLanguage].replace(
+          "{{query_text}}",
+          query || t("currentScreen"),
+        );
+        finalDisplayMsgContent = `${t("screenshotAnalysis")}: ${query || t("currentScreen")}`;
+        console.log(
+          "[AIInteraction] Screen action. Query:",
+          query,
+        );
+      } else if (action === "screenshot") {
+        context = {
+          text: query || "",
+          screenshot: screenshot || "",
+          timestamp: Date.now(),
+        };
+        finalUserMsgContent = basePromptMap.screen_template[currentLanguage].replace(
+          "{{query_text}}",
+          query || t("screenshotAnalysis"),
+        );
+        finalDisplayMsgContent = `${t("screenshotAnalysis")}: ${query || t("screenshotAnalysis")}`;
+        console.log(
+          "[AIInteraction] Screenshot action. Query:",
+          query,
+          "Screenshot:",
+          screenshot,
+        );
+      } else if (action === "search") {
+        if (!query) {
+          console.warn(
+            "AI request 'search' action cancelled: No query provided.",
+          );
+          setAiMessages((prev) => [
+            ...prev,
+            {
+              id: `err-no-query-search-${Date.now()}`,
+              role: "assistant",
+              content: t("noSearchQueryProvided"),
+            },
+          ]);
+          setIsLoading(false);
+          return;
+        }
+        context = {
+          text: query,
+          timestamp: Date.now(),
+        };
+        finalUserMsgContent = basePromptMap.search_template[currentLanguage] + query;
+        finalDisplayMsgContent = `${t("search")}: ${query}`;
+        console.log(
+          "[AIInteraction] Search action. Context text (from query):",
+          context.text,
+        );
+      } else {
+        const gatheredContext = await gatherContext(action);
+        if (!gatheredContext?.text && action !== "real-time") {
+          console.warn(
+            "AI request cancelled: No context gathered for action:",
+            action,
+          );
+          setAiMessages((prev) => [
+            ...prev,
+            {
+              id: `err-no-ctx-${Date.now()}`,
+              role: "assistant",
+              content: t("insufficientTranscription"),
+            },
+          ]);
+          setIsLoading(false);
+          return;
+        }
+        context = gatheredContext || { text: "", timestamp: Date.now() };
+
+        switch (action) {
+          case "answer":
+            finalUserMsgContent = basePromptMap.answer_template[currentLanguage] + context.text;
+            break;
+          case "summary":
+            finalUserMsgContent = basePromptMap.summary_template[currentLanguage] + context.text;
+            break;
+          case "find-clue":
+            finalUserMsgContent = basePromptMap.findclue_template[currentLanguage] + context.text;
+            break;
+          case "real-time":
+            finalUserMsgContent = basePromptMap["real-time"][currentLanguage];
+            break;
+          default:
+            finalUserMsgContent = "";
+            console.error(
+              "Unhandled AI action for prompt construction:",
+              action,
+            );
+        }
+        finalDisplayMsgContent = baseDisplayPromptMap[currentAction][currentLanguage];
+        console.log(
+          "[AIInteraction] Context-based action. Context text:",
+
+          context.text,
+        );
       }
 
-      console.log("[AIInteraction] Sending context to AI:", context);
+      console.log("[AIInteraction] Final context for AI:", context);
+      console.log(
+        "[AIInteraction] Final user message for API:",
+        finalUserMsgContent,
+      );
+      console.log(
+        "[AIInteraction] Final display message for chat:",
+        finalDisplayMsgContent,
+      );
 
-      const promptMap: Record<AIAction, string> = {
-        "real-time":
-          "分析最新的轉錄內容，並識別其中提到的關鍵點、關鍵字或待辦事項。",
-        answer:
-          "附上的轉錄內容是一個會議全部的對話，請根據整個會議的對話，詳細回答最後提出的問題: " +
-          context.text + "\n\n" + "請用" + language + "這個語言來回答",
-        summary: "根據以下的轉錄內容，提供簡明摘要: " + context.text + "\n\n" + "請用" + language + "這個語言來回答",
-        search:
-          "Please search the web for the following query, and answer the question directly and answer in Chinese: " +
-          context.text,
-        "find-clue":
-          "根據以下的轉錄內容，找出其中可能存在的線索、疑點或需要進一步探討的資訊：\n\n" +
-          context.text,
-        custom: query || "根據以下要求分析最近轉錄內容。請用中文回答。",
-        screen: "請你分析截圖，並回答以下問題：\n\n" + context.text,
-      };
-
-      const displayPromptMap: Record<AIAction, string> = {
-        "real-time": "即時分析",
-        answer: "根據轉錄內容回答出現或是潛在的問題，請針對最後出現的問題回答",
-        summary: "根據轉錄內容產生摘要",
-        search: "根據轉錄內容搜尋主題",
-        "find-clue": "根據轉錄內容找尋線索",
-        custom: customPrompt || "自訂請求",
-        screen: "截圖分析",
-      };
-
-      const userMsgContent =
-        action === "custom" ? customPrompt : promptMap[action];
-      const displayMsgContent =
-        action === "custom" ? customPrompt : displayPromptMap[action];
-
-      const userMsg: CustomMessage = {
+      const userMsg: AIMessage = {
         id: `user-${Date.now()}`,
         role: "user",
-        content: userMsgContent,
+        content: finalUserMsgContent,
       };
-      const displayMsg: CustomMessage = {
+      const displayMsg: AIMessage = {
         id: `disp-${userMsg.id}`,
         role: "user",
-        content: displayMsgContent,
+        content: finalDisplayMsgContent,
       };
 
       if (action !== "real-time") {
         setAiMessages((prev) => [...prev, displayMsg]);
       }
-      if (action === "custom") setCustomPrompt("");
 
       try {
         console.log("Sending request to AI API:", API_URL);
@@ -242,7 +372,7 @@ export function useAIInteraction() {
           throw new Error(`AI API Error (${res.status}): ${errorText}`);
         }
 
-        const aiResponse: CustomMessage = await res.json();
+        const aiResponse: AIMessage = await res.json();
         console.log("Received AI response:", aiResponse);
         setAiMessages((prev) => [
           ...prev,
@@ -267,7 +397,7 @@ export function useAIInteraction() {
         console.log("AI request finished.");
       }
     },
-    [gatherContext, customPrompt],
+    [gatherContext, customPrompt, t, language],
   );
 
   const handleTranscriptionResponse = useCallback((text: string) => {
@@ -310,7 +440,6 @@ export function useAIInteraction() {
             id: `realtime-${Date.now()}`,
             role: "assistant",
             content: `[即時轉錄] ${text}`,
-            visible: isSubtitleVisible,
           },
         ];
       }
@@ -416,14 +545,6 @@ export function useAIInteraction() {
           return;
         }
 
-        // // 如果是 "search web" 消息，只處理不顯示
-        // if (accumulatedTextRef.current === "") {
-        //   console.log('[Answer] 處理 search web 消息但不顯示');
-        //   // 重置累積文本
-        //   accumulatedTextRef.current = "";
-        //   return;
-        // }
-
         // 更新聊天消息
         setAiMessages((prev) => {
           const lastMessage = prev[prev.length - 1];
@@ -486,7 +607,7 @@ export function useAIInteraction() {
     async (keyword: string, language?: string) => {
       if (isLoading) return;
       setSelectedKeyword(keyword);
-      setIsLoading(true);
+
       try {
         // 最多重試5次
         let retries = 0;
@@ -559,16 +680,68 @@ export function useAIInteraction() {
   // 新增函數來控制字幕可見性
   const setSubtitleVisibility = (visible: boolean) => {
     setIsSubtitleVisible(visible);
-    // 更新所有轉錄訊息的可見性
-    setAiMessages((prev) =>
-      prev.map((msg) => {
-        if (msg.content.startsWith("[即時轉錄]")) {
-          return { ...msg, visible };
-        }
-        return msg;
-      }),
-    );
   };
+
+  const handleScreenshot = useCallback(
+    async (screenshotPath: string) => {
+      console.log("[AIInteraction] handleScreenshot called with path:", screenshotPath);
+      // 強制只用相對路徑
+      let relativePath = screenshotPath.startsWith('/screenshots/')
+        ? screenshotPath
+        : `/screenshots/${screenshotPath.split('/screenshots/').pop()}`;
+      console.log("[AIInteraction] Using relative path for fetch:", relativePath);
+      try {
+        const response = await fetch(relativePath);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch screenshot: ${response.statusText}`);
+        }
+        const blob = await response.blob();
+        
+        // 將 blob 轉換為 base64
+        const reader = new FileReader();
+        reader.readAsDataURL(blob);
+        
+        reader.onloadend = () => {
+          const base64data = reader.result as string;
+          // 保持完整的 data URL 格式
+          const base64Image = base64data;
+          
+          // 根據當前語言設置問題
+          let question = "";
+          switch (currentLanguage) {
+            case "zh-TW":
+              question = "請分析這張截圖的內容，並提供詳細的描述。";
+              break;
+            case "ja-JP":
+              question = "このスクリーンショットの内容を分析し、詳細な説明を提供してください。";
+              break;
+            default:
+              question = "Please analyze the content of this screenshot and provide a detailed description.";
+          }
+          
+          console.log("[AIInteraction] Sending screenshot to AI with question:", question);
+          console.log("[AIInteraction] Image data format:", base64Image.substring(0, 50) + "...");
+          sendContextToAI("screenshot", question, base64Image);
+        };
+
+        reader.onerror = () => {
+          console.error("[AIInteraction] Error reading screenshot file");
+          throw new Error("Failed to read screenshot file");
+        };
+      } catch (error) {
+        console.error("[AIInteraction] Error processing screenshot:", error);
+        setAiMessages((prev) => [
+          ...prev,
+          {
+            id: `err-screenshot-${Date.now()}`,
+            role: "assistant",
+            content: `[錯誤] 無法處理截圖: ${error instanceof Error ? error.message : String(error)}`,
+          },
+        ]);
+      }
+    },
+    [sendContextToAI, currentLanguage, setAiMessages]
+  );
 
   return {
     aiMessages,
@@ -587,7 +760,9 @@ export function useAIInteraction() {
     handleKeywordClick,
     messagesContainerRef,
     resetChat,
+    isSubtitleVisible,
     setSubtitleVisibility,
     handleSendMessage: sendContextToAI,
+    handleScreenshot,
   };
 }

@@ -409,10 +409,8 @@ export function useScreenShare() {
     systemAudioSegments,
     micMimeType,
     systemAudioMimeType,
-    screenStreamRef,
-    screenPreviewRef,
-    currentMicChunksRef,
-    systemAudioChunksRef,
+    screenStreamRef, // Ref for the video element
+
     toggleScreenShare,
   };
 }
