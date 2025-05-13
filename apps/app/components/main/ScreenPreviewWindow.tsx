@@ -3,6 +3,7 @@ import { MonitorIcon, XIcon } from "lucide-react";
 import AudioVisualizer from "@/components/AudioVisualizer";
 import { useI18n } from "@/hooks/useI18n";
 
+
 interface ScreenPreviewWindowProps {
   isOpen: boolean;
   onClose: () => void;
@@ -22,6 +23,7 @@ export default function ScreenPreviewWindow({
 }: ScreenPreviewWindowProps) {
   const screenPreviewRef = useRef<HTMLVideoElement>(null);
   const { t } = useI18n();
+
 
   useEffect(() => {
     console.log("[ScreenPreviewWindow] Effect triggered:", {
@@ -107,6 +109,7 @@ export default function ScreenPreviewWindow({
               <div className="flex items-center gap-1.5">
                 <div className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse" />
                 <span className="text-[10px] font-medium text-white">{t("systemAudioLabel")}</span>
+
               </div>
               {isScreenSharing && (
                 <span className="text-[10px] font-medium text-blue-500">

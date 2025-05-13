@@ -97,10 +97,10 @@ export function useAIInteraction() {
 
   // Function to send context and prompt to the AI backend
   const sendContextToAI = useCallback(
-    async (action: AIAction, query?: string, screenshot?: string) => {
+    async (action: AIAction, query?: string, screenshot?: string, language?: string) => {
       setIsLoading(true);
       console.log(
-        `Sending AI request. Action: ${action}, Custom Query: ${query}`,
+        `Sending AI request. Action: ${action}, Custom Query: ${query}, Language: ${language}, Screenshot: ${screenshot}`,
       );
 
       let context: AIContextData;
@@ -321,6 +321,7 @@ export function useAIInteraction() {
         finalDisplayMsgContent = baseDisplayPromptMap[currentAction][currentLanguage];
         console.log(
           "[AIInteraction] Context-based action. Context text:",
+
           context.text,
         );
       }
@@ -603,7 +604,7 @@ export function useAIInteraction() {
   }, []);
 
   const handleKeywordClick = useCallback(
-    async (keyword: string) => {
+    async (keyword: string, language?: string) => {
       if (isLoading) return;
       setSelectedKeyword(keyword);
 
@@ -624,7 +625,7 @@ export function useAIInteraction() {
             // 使用 search 動作，並加入轉錄內容作為上下文
             await sendContextToAI(
               "search",
-              `請用簡單易懂的方式解釋這個專業術語：${keyword}\n\n上下文：\n${contextText}`,
+              `請一定要用${language}這個語言來回答，不要講多餘的話，只有單純的名詞解釋，連第一句對於請求的回覆也不要，請用簡單易懂的方式解釋這個專業術語，不超過50字：${keyword}\n\n上下文：\n${contextText}`,
             );
             return; // 如果成功，直接返回
           } catch (error) {

@@ -219,6 +219,7 @@ export default function ChatPanel({
           <ArrowDown className="h-5 w-5" />
         </Button>
       )}
+
       <div className="flex-none p-2 border-t border-border/30">
         <form onSubmit={handleSubmit} className="flex gap-2">
           <Input
@@ -238,6 +239,7 @@ export default function ChatPanel({
             disabled={isLoading || !isScreenSharing || !customPrompt.trim()}
             className="bg-primary hover:bg-primary/90 text-primary-foreground h-7 w-7"
             aria-label={t("sendChatButtonLabel")}
+
           >
             <ArrowUpRight className="h-3 w-3" />
           </Button>

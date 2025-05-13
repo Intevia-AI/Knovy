@@ -36,6 +36,7 @@ import {
 // Explicitly reference the global Window type to help TS
 // This might not be strictly necessary if TS config is correct, but can help resolve issues.
 
+
 interface ControlPanelProps {
   isScreenSharing: boolean;
   isLoading: boolean; // AI loading state
@@ -48,12 +49,14 @@ interface ControlPanelProps {
   systemLevel: number; // Add systemLevel prop
   screenStreamRef: React.RefObject<MediaStream | null>; 
   screenPreviewRef: React.RefObject<HTMLVideoElement | null>; // Allow null
+
   currentSystemAudioStream: MediaStream | null; // For RealTimeAnalysis
   customPrompt?: string; // Add custom prompt prop
   setCustomPrompt?: (prompt: string) => void; // Add setter for custom prompt
   onToggleScreenShare: () => void;
   onAiAction: (action: "answer" | "summary" | "search" | "find-clue" | "screenshot") => void;
   onKeywordClick: (keyword: string) => void;
+
   onTranscriptionResponse: (text: string) => void; // For RealTimeSubtitle
   onTranscriptionKeywords: (keywords: string[]) => void; // For RealTimeSubtitle
   onAnswerResponse: (text: string, turnComplete: boolean) => void; // For RealTimeAnalysis
@@ -74,6 +77,7 @@ export function ControlPanel({
   systemLevel, // Destructure systemLevel
   screenStreamRef,
   screenPreviewRef,
+
   currentSystemAudioStream,
   customPrompt, // Add custom prompt to destructuring
   setCustomPrompt, // Add setter to destructuring
@@ -137,6 +141,7 @@ export function ControlPanel({
     }
   };
 
+
   const aiActions = [
     {
       action: "answer",
@@ -163,6 +168,7 @@ export function ControlPanel({
     { code: "zh-TW", name: "繁體中文" },
     { code: "en-US", name: "English" },
     { code: "ja-JP", name: "日本語" },
+    { code: "original", name: "原始語言" },
   ];
 
   // Scroll to bottom when advanced settings are opened
@@ -236,6 +242,7 @@ export function ControlPanel({
         }
       };
 
+
       // 設置事件監聽器
       const cleanupScreenshot = window.electronAPI.on('electronAPI:screenshotTaken', handleScreenshotEvent);
 
@@ -266,6 +273,7 @@ export function ControlPanel({
 
   return (
     <aside ref={asideRef} className="flex flex-col h-full overflow-y-auto">
+
       {/* Status and Control */}
       <div className="p-2 space-y-1.5 border-b border-border/30">
         {/* Screen Preview */}
@@ -307,9 +315,10 @@ export function ControlPanel({
                 ? t("statusSharingShort")
                 : t("statusStoppedShort")}
           </span>
+
           {isScreenSharing && (
-            <span className="text-xs font-semibold tabular-nums text-foreground">
-              <ClockIcon className="inline h-3 w-3 mr-0.5 align-[-2px]" />
+            <span className="text-[10px] font-semibold tabular-nums text-foreground">
+              <ClockIcon className="inline h-2.5 w-2.5 mr-0.5 align-[-2px]" />
               {formatTime(recordingDuration)}
             </span>
           )}
@@ -333,6 +342,7 @@ export function ControlPanel({
         </div>
 
 
+
         {/* Keywords Section */}
         {keywords.length > 0 && (
           <div className="pt-1.5 space-y-1">
@@ -344,7 +354,7 @@ export function ControlPanel({
                 <Button
                   key={`${keyword}-${index}`}
                   size="sm"
-                  onClick={() => onKeywordClick(keyword)}
+                  onClick={() => onKeywordClick(keyword, language)}
                   disabled={isLoading && selectedKeyword === keyword}
                   className="flex items-center gap-0.5 text-xs h-4 px-1.5 py-2"
                   title={`${t("explainKeywordTooltipPrefix")} "${keyword}"`}
@@ -401,6 +411,7 @@ export function ControlPanel({
                   onAiAction(action);
                 }
               }}
+
               className="flex items-center justify-center gap-0.5 text-xs px-1 h-7"
               title={`${t(labelKey as TranslationKey)} (${t(
                 "shortcutKeyTooltip",
@@ -440,10 +451,11 @@ export function ControlPanel({
       />
 
       {/* Advanced Settings Button */}
+
       <div className="border-b border-border/30">
         <div
           className="flex items-center justify-between p-2 cursor-pointer bg-muted/10 hover:bg-muted/50"
-          onClick={() => setIsAdvancedSettingsOpen(!isAdvancedSettingsOpen)}
+          onClick={() => setIsScreenPreviewOpen(true)}
           role="button"
         >
           <h4 className="text-xs font-medium text-foreground">
@@ -559,6 +571,7 @@ export function ControlPanel({
           </div>
         </DialogContent>
       </Dialog>
+
     </aside>
   );
 }
