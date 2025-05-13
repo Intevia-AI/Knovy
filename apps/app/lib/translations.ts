@@ -22,6 +22,7 @@ export const translations = {
     aiActionSummary: "Generate Summary",
     shortcutKeyTooltip: "Shortcut:",
     aiActionScreenshot: "Screenshot & Ask",
+    aiActionUpload: "Upload File",
     // ControlPanel Advanced Settings
     advancedSettingsTitle: "Advanced Settings",
     customPromptLabel: "Custom Model Instruction",
@@ -95,6 +96,7 @@ export const translations = {
     aiActionSummary: "產生摘要",
     shortcutKeyTooltip: "快捷鍵:",
     aiActionScreenshot: "截圖提問",
+    aiActionUpload: "上傳檔案",
     // ControlPanel Advanced Settings
     advancedSettingsTitle: "進階設定",
     customPromptLabel: "客製化模型要求",
@@ -164,10 +166,11 @@ export const translations = {
     explainKeywordTooltipPrefix: "説明",
     // ControlPanel AI Actions
     aiActionsTitle: "AIアクション",
-    aiActionAnswer: "詳細回答",
-    aiActionSummary: "要約生成",
+    aiActionAnswer: "深度回答",
+    aiActionSummary: "產生摘要",
     shortcutKeyTooltip: "ショートカット:",
-    aiActionScreenshot: "スクリーンショット & 質問",
+    aiActionScreenshot: "スクリーンショット",
+    aiActionUpload: "ファイルをアップロード",
     // ControlPanel Advanced Settings
     advancedSettingsTitle: "詳細設定",
     customPromptLabel: "カスタムモデル指示",
@@ -243,6 +246,7 @@ export type TranslationKey =
   | "aiActionSummary"
   | "shortcutKeyTooltip"
   | "aiActionScreenshot"
+  | "aiActionUpload"
   // ControlPanel Advanced Settings
   | "advancedSettingsTitle"
   | "customPromptLabel"

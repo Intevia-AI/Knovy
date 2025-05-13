@@ -11,6 +11,7 @@ import {
   SettingsIcon,
   CameraIcon,
   AlertTriangleIcon,
+  UploadIcon,
 } from "lucide-react";
 import {
   Select,
@@ -97,6 +98,7 @@ export function ControlPanel({
 
   const { user, session, isLoading: isAuthLoading } = useAuth(); // Auth state
   const isAuthenticated = !!user && !!session;
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // State for the *currently displayed* prompt in the UI
   const [confirmedPrompt, setConfirmedPromptState] = useState<
@@ -164,6 +166,12 @@ export function ControlPanel({
       labelKey: "aiActionScreenshot",
       icon: CameraIcon,
       shortcut: "3",
+    },
+    {
+      action: "upload",
+      labelKey: "aiActionUpload",
+      icon: UploadIcon,
+      shortcut: "4",
     },
   ] as const; // Use const assertion
 
@@ -285,6 +293,22 @@ export function ControlPanel({
     }
   };
 
+  const handleFileUpload = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
+  const handleFileSelected = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      console.log("Selected file:", file.name);
+      // TODO: Handle the selected file
+    }
+    // Reset the input value so the same file can be selected again
+    event.target.value = "";
+  };
+
   // Don't render until settings are loaded
   if (!isSettingsLoaded) {
     return null; // Or a loading indicator
@@ -292,6 +316,14 @@ export function ControlPanel({
 
   return (
     <aside ref={asideRef} className="flex flex-col h-full overflow-y-auto">
+      {/* Hidden file input */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileSelected}
+        className="hidden"
+        accept=".txt,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
+      />
 
       {/* Status and Control */}
       <div className="p-2 space-y-1.5 border-b border-border/30">
@@ -416,13 +448,13 @@ export function ControlPanel({
         <h4 className="text-xs font-medium text-foreground">
           {t("aiActionsTitle")}
         </h4>
-        <div className="grid grid-cols-3 gap-1">
+        <div className="grid grid-cols-2 gap-1">
           {aiActions.map(({ action, labelKey, icon: Icon, shortcut }) => (
             <Button
               key={action}
               variant="outline"
               size="sm"
-              disabled={(isAuthLoading || (!isAuthenticated && isScreenSharing)) || isAiLoading || !isScreenSharing}
+              disabled={isAuthLoading || !isAuthenticated || isAiLoading || !isScreenSharing}
               onClick={() => handleAiAction(action)}
               className="flex items-center justify-center gap-0.5 text-xs px-1 h-7"
               title={`${t(labelKey as TranslationKey)} (${t(

@@ -41,44 +41,80 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     );
 
     // Listen for the OAuth callback from the main Electron process
-    const handleOAuthCallback = (url: string) => {
-      console.log('[AuthContext] Received OAuth callback URL:', url);
+    const handleOAuthCallback = async (url: string) => {
+      console.log('[AuthContext] Received OAuth callback URL from main process:', url);
       try {
-        // The URL from Electron will be like: intevia-ai://auth/callback#access_token=XXX&refresh_token=YYY&...
-        const hash = new URL(url.replace('intevia-ai://', 'http://localhost/')).hash;
-        if (hash) {
-          const params = new URLSearchParams(hash.substring(1)); // remove #
-          const accessToken = params.get('access_token');
-          const refreshToken = params.get('refresh_token');
-          // We might also get 'provider_token' and 'provider_refresh_token' for some providers
+        const urlObj = new URL(url.replace('intevia-ai://', 'http://localhost/')); // Make it a parseable URL
+        const code = urlObj.searchParams.get('code');
+        const errorParam = urlObj.searchParams.get('error');
+        const errorDescription = urlObj.searchParams.get('error_description');
 
-          if (accessToken && refreshToken) {
-            console.log('[AuthContext] Extracted tokens, setting session.');
-            supabase.auth.setSession({
-              access_token: accessToken,
-              refresh_token: refreshToken,
-            }).then(({ error }) => {
-              if (error) {
-                console.error('[AuthContext] Error setting session from callback:', error);
-              } else {
-                console.log('[AuthContext] Session set successfully from callback.');
-                // onAuthStateChange should handle updating user and session state
-              }
-            });
-          } else {
-            console.warn('[AuthContext] Could not extract tokens from callback URL fragment.');
+        if (errorParam) {
+          console.error(`[AuthContext] OAuth Error in callback URL: ${errorParam} - ${errorDescription}`);
+          setIsLoading(false); // Stop loading, show error to user potentially
+          return;
+        }
+
+        if (code) {
+          console.log('[AuthContext] Authorization code found in URL:', code);
+          console.log('[AuthContext] Attempting to exchange code for session...');
+          try {
+            const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+
+            if (error) {
+              console.error('[AuthContext] Error exchanging code for session:', error.message);
+              // Handle error: maybe set an error state, setIsLoading(false)
+              setIsLoading(false);
+            } else {
+              console.log('[AuthContext] Successfully exchanged code for session. Session data:', data.session);
+              // The onAuthStateChange listener should now take over and update the
+              // user and session state in the context.
+              // setIsLoading(false); // onAuthStateChange should handle this if it reliably fires quickly
+            }
+          } catch (exchangeError) {
+            console.error('[AuthContext] Exception during code exchange:', exchangeError);
+            setIsLoading(false);
           }
         } else {
-          console.warn('[AuthContext] No hash fragment found in callback URL.');
+          console.warn('[AuthContext] No authorization code found in callback URL. URL was:', url);
+          // Fallback to old logic if it's a hash-based token URL (less likely now)
+          const hash = urlObj.hash;
+          if (hash) {
+            const params = new URLSearchParams(hash.substring(1)); // remove #
+            const accessToken = params.get('access_token');
+            const refreshToken = params.get('refresh_token');
+
+            if (accessToken && refreshToken) {
+              console.log('[AuthContext] Extracted tokens from HASH, setting session.');
+              const { error: setError } = await supabase.auth.setSession({
+                access_token: accessToken,
+                refresh_token: refreshToken,
+              });
+              if (setError) {
+                console.error('[AuthContext] Error setting session from HASH callback:', setError);
+              } else {
+                console.log('[AuthContext] Session set successfully from HASH callback.');
+              }
+            } else {
+              console.warn('[AuthContext] Could not extract tokens from HASH callback URL fragment.');
+            }
+          } else {
+            console.warn('[AuthContext] No hash fragment and no code found in callback URL.');
+          }
+          setIsLoading(false);
         }
       } catch (e) {
         console.error('[AuthContext] Error processing OAuth callback URL:', e);
+        setIsLoading(false);
       }
     };
 
     let unsubscribeElectronListener: (() => void) | undefined;
     if (window.electronAPI && typeof window.electronAPI.on === 'function') {
-      unsubscribeElectronListener = window.electronAPI.on('oauth-callback', handleOAuthCallback);
+      unsubscribeElectronListener = window.electronAPI.on('oauth-callback', (url: string) => {
+        console.log('[AuthContext] Received oauth-callback event from main process with URL:', url);
+        handleOAuthCallback(url);
+      });
       console.log('[AuthContext] Subscribed to oauth-callback from Electron.');
     } else {
       console.warn('[AuthContext] window.electronAPI.on not available. OAuth callback might not work.');
@@ -99,9 +135,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
+          skipBrowserRedirect: true,
           redirectTo: 'intevia-ai://auth/callback', // Must match main.js and Supabase dashboard config
           // For PKCE flow, skipBrowserRedirect might be an option if not automatically handled
-          // queryParams: { access_type: 'offline', prompt: 'consent' }, // Example for Google
+          queryParams: { access_type: 'offline', prompt: 'consent' }, // Example for Google
         },
       });
 

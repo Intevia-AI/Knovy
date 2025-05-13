@@ -36,6 +36,7 @@ let mainWindow; // Keep a reference to the main window
 let selectionWindow;
 let pendingMediaRequest = null; // Keep track of the callback for the media request
 const PROTOCOL = 'intevia-ai'; // Define protocol here to be accessible by handlers
+let oauthCallbackUrlOnStartup = null; // Variable to store the URL if app starts via protocol
 
 // Single instance lock
 const gotTheLock = app.requestSingleInstanceLock();
@@ -46,17 +47,31 @@ if (!gotTheLock) {
   app.on('second-instance', (event, commandLine, workingDirectory) => {
     // Someone tried to run a second instance, we should focus our window.
     // And handle the OAuth callback if it's one.
-    if (mainWindow) {
-      if (mainWindow.isMinimized()) mainWindow.restore();
-      mainWindow.focus();
-    }
 
-    // Check if the command line contains our custom protocol URL
     const url = commandLine.find(arg => arg.startsWith(`${PROTOCOL}://`));
     if (url) {
-      console.log(`[second-instance] OAuth callback URL: ${url}`);
-      // Send the URL to the renderer process
-      mainWindow?.webContents.send('oauth-callback', url);
+      console.log(`[main.js second-instance] Received URL: ${url}`);
+      if (mainWindow && mainWindow.webContents && !mainWindow.webContents.isLoading()) { // Check isLoading
+        if (mainWindow.isMinimized()) mainWindow.restore();
+        mainWindow.focus();
+        console.log('[main.js second-instance] MainWindow ready, sending URL to renderer.');
+        mainWindow.webContents.send('oauth-callback', url);
+        oauthCallbackUrlOnStartup = null; // Clear if it was somehow set
+      } else {
+        console.warn('[main.js second-instance] MainWindow not fully ready or not existing. Storing URL.');
+        oauthCallbackUrlOnStartup = url; // Store URL to be sent later
+        // If window exists, focus it. The URL will be sent on did-finish-load if it's still loading.
+        if (mainWindow) {
+            if (mainWindow.isMinimized()) mainWindow.restore();
+            mainWindow.focus();
+        }
+      }
+    } else {
+      // Standard second-instance behavior (focus existing window)
+      if (mainWindow) {
+        if (mainWindow.isMinimized()) mainWindow.restore();
+        mainWindow.focus();
+      }
     }
   });
 }
@@ -64,17 +79,22 @@ if (!gotTheLock) {
 // Handle `open-url` event for macOS, this is triggered when the custom protocol link is clicked
 app.on('open-url', (event, url) => {
   event.preventDefault(); // Prevent default action
-  console.log(`[open-url] OAuth callback URL: ${url}`);
+  console.log(`[main.js open-url] Received URL: ${url}`);
   // Send the URL to the renderer process
-  // Ensure mainWindow and its webContents are available
-  if (mainWindow && mainWindow.webContents) {
+  // Ensure mainWindow and its webContents are available and not loading
+  if (app.isReady() && mainWindow && mainWindow.webContents && !mainWindow.webContents.isLoading()) {
+    console.log('[main.js open-url] MainWindow ready, sending URL to renderer.');
     mainWindow.webContents.send('oauth-callback', url);
+    oauthCallbackUrlOnStartup = null; // Clear it once sent
   } else {
-    // If the window isn't ready yet, you might need to queue this URL
-    // and process it once the window is loaded.
-    console.warn('[open-url] MainWindow or webContents not available. URL not sent.');
-    // For simplicity, we'll rely on second-instance or the window being ready.
-    // A more robust solution might store the URL and send it when did-finish-load fires.
+    // If the window isn't ready yet, queue this URL
+    console.warn('[main.js open-url] MainWindow not ready or still loading. Storing URL to send after window loads.');
+    oauthCallbackUrlOnStartup = url; // Store URL to be sent later
+    // If window exists, try to focus it. did-finish-load will handle sending.
+    if (mainWindow) {
+        if (mainWindow.isMinimized()) mainWindow.restore();
+        mainWindow.focus();
+    }
   }
 });
 
@@ -97,7 +117,15 @@ const createWindow = () => {
   });
 
   mainWindow.webContents.on('did-finish-load', () => {
+    console.log('[main.js createWindow] WebContents did-finish-load.');
     mainWindow.webContents.send('electronAPI:forceDarkMode');
+
+    // Check if there was an OAuth URL received on startup/while loading
+    if (oauthCallbackUrlOnStartup) {
+      console.log('[main.js createWindow] Found stored OAuth URL, sending to renderer:', oauthCallbackUrlOnStartup);
+      mainWindow.webContents.send('oauth-callback', oauthCallbackUrlOnStartup);
+      oauthCallbackUrlOnStartup = null; // Clear it after sending
+    }
   });
 
   // Set content protection - prevents screen capture of the app window itself
@@ -461,6 +489,14 @@ app.on("ready", async () => {
         selectionWindow.close();
       }
     });
+
+    if (process.platform !== 'darwin' && gotTheLock) { 
+      const cmdLineUrl = process.argv.find(arg => arg.startsWith(`${PROTOCOL}://`));
+      if (cmdLineUrl) {
+          console.log(`[main.js app.ready] Initial command line OAuth URL for Windows/Linux: ${cmdLineUrl}`);
+          oauthCallbackUrlOnStartup = cmdLineUrl; // Store for did-finish-load
+      }
+    }
 });
 
 app.on("window-all-closed", () => {
