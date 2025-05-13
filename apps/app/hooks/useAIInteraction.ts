@@ -13,10 +13,9 @@ type AIAction =
   | "answer"
   | "summary"
   | "search"
+  | "keyword_search"
   | "custom"
-  | "find-clue"
   | "screen"
-  | "screenshot";
 
 interface TranscriptionMessage extends AIMessage {
   timestamp: number;
@@ -129,10 +128,10 @@ export function useAIInteraction() {
           "zh-TW": "請搜尋以下查詢，並直接回答問題: ",
           "ja-JP": "以下のクエリを検索し、質問に直接回答してください: "
         },
-        findclue_template: {
-          "en-US": "Based on the following transcription, identify any potential clues, points of interest, or information that needs further exploration:\n\n",
-          "zh-TW": "根據以下的轉錄內容，找出其中可能存在的線索、疑點或需要進一步探討的資訊：\n\n",
-          "ja-JP": "以下の文字起こしに基づいて、潜在的な手がかり、注目点、またはさらに調査が必要な情報を特定してください：\n\n"
+        keyword_search_template: {
+          "en-US": "Please search the web for the following query, and answer the question directly: ",
+          "zh-TW": "請搜尋以下查詢，並直接回答問題: ",
+          "ja-JP": "以下のクエリを検索し、質問に直接回答してください: "
         },
         custom_template: {
           "en-US": 'Please analyze or answer the following text:\n\n"{{query_text}}"',
@@ -167,10 +166,10 @@ export function useAIInteraction() {
           "zh-TW": "搜尋請求",
           "ja-JP": "検索リクエスト"
         },
-        "find-clue": {
-          "en-US": "Find clues in transcription",
-          "zh-TW": "根據轉錄內容找尋線索",
-          "ja-JP": "文字起こしから手がかりを探す"
+        keyword_search: {
+          "en-US": "Keyword search",
+          "zh-TW": "關鍵字搜尋",
+          "ja-JP": "キーワード検索"
         },
         custom: {
           "en-US": "Custom request",
@@ -182,11 +181,6 @@ export function useAIInteraction() {
           "zh-TW": "截圖分析",
           "ja-JP": "スクリーンショット分析"
         },
-        screenshot: {
-          "en-US": "Screenshot analysis",
-          "zh-TW": "截圖分析",
-          "ja-JP": "スクリーンショット分析"
-        }
       } as const;
 
       const currentAction = action as AIAction;
@@ -235,23 +229,6 @@ export function useAIInteraction() {
           "[AIInteraction] Screen action. Query:",
           query,
         );
-      } else if (action === "screenshot") {
-        context = {
-          text: query || "",
-          screenshot: screenshot || "",
-          timestamp: Date.now(),
-        };
-        finalUserMsgContent = basePromptMap.screen_template[currentLanguage].replace(
-          "{{query_text}}",
-          query || t("screenshotAnalysis"),
-        );
-        finalDisplayMsgContent = `${t("screenshotAnalysis")}: ${query || t("screenshotAnalysis")}`;
-        console.log(
-          "[AIInteraction] Screenshot action. Query:",
-          query,
-          "Screenshot:",
-          screenshot,
-        );
       } else if (action === "search") {
         if (!query) {
           console.warn(
@@ -276,6 +253,33 @@ export function useAIInteraction() {
         finalDisplayMsgContent = `${t("search")}: ${query}`;
         console.log(
           "[AIInteraction] Search action. Context text (from query):",
+          context.text,
+        );
+      } else if (action === "keyword_search") {
+        if (!query) {
+          console.warn(
+            "AI request 'keyword_search' action cancelled: No query provided.",
+          );
+          setAiMessages((prev) => [
+            ...prev,
+            {
+              id: `err-no-query-keyword_search-${Date.now()}`,
+              role: "assistant",
+              content: t("noQueryProvided"),
+            },
+          ]);
+          setIsLoading(false);
+          return;
+        }
+        const gatheredContext = await gatherContext(action);
+        context = {
+          text: `請一定要用${currentLanguage}這個語言來回答，不要講多餘的話，只有單純的名詞解釋，連第一句對於請求的回覆也不要，請用簡單易懂的方式解釋這個專業術語，不超過50字：${query}\n\n上下文：\n${gatheredContext?.text}`,
+          timestamp: Date.now(),
+        };
+        finalUserMsgContent = basePromptMap.keyword_search_template[currentLanguage] + query;
+        finalDisplayMsgContent = baseDisplayPromptMap.keyword_search[currentLanguage];
+        console.log(
+          "[AIInteraction] Keyword search action. Context text (from query):",
           context.text,
         );
       } else {
@@ -304,9 +308,6 @@ export function useAIInteraction() {
             break;
           case "summary":
             finalUserMsgContent = basePromptMap.summary_template[currentLanguage] + context.text;
-            break;
-          case "find-clue":
-            finalUserMsgContent = basePromptMap.findclue_template[currentLanguage] + context.text;
             break;
           case "real-time":
             finalUserMsgContent = basePromptMap["real-time"][currentLanguage];
@@ -624,8 +625,8 @@ export function useAIInteraction() {
           try {
             // 使用 search 動作，並加入轉錄內容作為上下文
             await sendContextToAI(
-              "search",
-              `請一定要用${language}這個語言來回答，不要講多餘的話，只有單純的名詞解釋，連第一句對於請求的回覆也不要，請用簡單易懂的方式解釋這個專業術語，不超過50字：${keyword}\n\n上下文：\n${contextText}`,
+              "keyword_search",
+              keyword,
             );
             return; // 如果成功，直接返回
           } catch (error) {
@@ -721,7 +722,7 @@ export function useAIInteraction() {
           
           console.log("[AIInteraction] Sending screenshot to AI with question:", question);
           console.log("[AIInteraction] Image data format:", base64Image.substring(0, 50) + "...");
-          sendContextToAI("screenshot", question, base64Image);
+          sendContextToAI("screen", question, base64Image);
         };
 
         reader.onerror = () => {
