@@ -9,6 +9,7 @@ import {
   MonitorOffIcon,
   LanguagesIcon,
   SettingsIcon,
+  CameraIcon,
 } from "lucide-react";
 import {
   Select,
@@ -51,13 +52,14 @@ interface ControlPanelProps {
   customPrompt?: string; // Add custom prompt prop
   setCustomPrompt?: (prompt: string) => void; // Add setter for custom prompt
   onToggleScreenShare: () => void;
-  onAiAction: (action: "answer" | "summary" | "search" | "find-clue") => void;
+  onAiAction: (action: "answer" | "summary" | "search" | "find-clue" | "screenshot") => void;
   onKeywordClick: (keyword: string) => void;
   onTranscriptionResponse: (text: string) => void; // For RealTimeSubtitle
   onTranscriptionKeywords: (keywords: string[]) => void; // For RealTimeSubtitle
   onAnswerResponse: (text: string, turnComplete: boolean) => void; // For RealTimeAnalysis
   onAnswerKeywords: (keywords: string[]) => void; // For RealTimeAnalysis
   setSubtitleVisibility: (visibility: boolean) => void; // For RealTimeSubtitle
+  handleScreenshot: (screenshotPath: string) => void; // Update handleScreenshot prop type
 }
 
 export function ControlPanel({
@@ -83,6 +85,7 @@ export function ControlPanel({
   onAnswerResponse,
   onAnswerKeywords,
   setSubtitleVisibility,
+  handleScreenshot,
 }: ControlPanelProps) {
   const { t, language } = useI18n(); // Use the hook
   const { setLanguage } = useLanguage(); // Get setLanguage from context
@@ -147,7 +150,12 @@ export function ControlPanel({
       icon: ListCollapseIcon,
       shortcut: "2",
     },
-    // { action: "search", label: "搜尋主題", icon: SearchIcon },
+    {
+      action: "screenshot",
+      labelKey: "aiActionScreenshot",
+      icon: CameraIcon,
+      shortcut: "3",
+    },
   ] as const; // Use const assertion
 
   // Define languages within the component or import from a shared location
@@ -207,6 +215,50 @@ export function ControlPanel({
   const modifierKey =
     navigator.platform.toUpperCase().indexOf("MAC") >= 0 ? "⌘" : "Ctrl";
 
+  const startScreenshot = () => {
+    console.log('[ControlPanel] startScreenshot called');
+    if (window.electronAPI?.startScreenshot) {
+      console.log('[ControlPanel] Starting screenshot...');
+      
+      // 使用 Promise 來處理截圖事件
+      const handleScreenshotEvent = (screenshotPath: string) => {
+        console.log('[ControlPanel] Screenshot taken event received:', screenshotPath);
+        // 直接發送截圖給 AI
+        console.log('[ControlPanel] Calling handleScreenshot with path:', screenshotPath);
+        if (typeof handleScreenshot === 'function') {
+          // console.log('[ControlPanel] handleScreenshot is a function, calling it...');
+          handleScreenshot(screenshotPath);
+          // 調用 onAiAction 來觸發 AI 分析
+          // console.log('[ControlPanel] Calling onAiAction with screenshot action');
+          // onAiAction("screenshot");
+        } else {
+          console.error('[ControlPanel] handleScreenshot is not a function:', handleScreenshot);
+        }
+      };
+
+      // 設置事件監聽器
+      const cleanupScreenshot = window.electronAPI.on('electronAPI:screenshotTaken', handleScreenshotEvent);
+
+      // 設置錯誤監聽器
+      const cleanupError = window.electronAPI.on('electronAPI:screenshotError', (error: unknown) => {
+        console.error('[ControlPanel] Screenshot error event received:', error);
+      });
+
+      // 啟動截圖
+      console.log('[ControlPanel] Calling window.electronAPI.startScreenshot()');
+      window.electronAPI.startScreenshot();
+
+      // 設置一個超時，如果 10 秒內沒有收到截圖事件，就清理監聽器
+      setTimeout(() => {
+        cleanupScreenshot();
+        cleanupError();
+        console.log('[ControlPanel] Cleaned up screenshot listeners after timeout');
+      }, 10000);
+    } else {
+      console.error('[ControlPanel] window.electronAPI.startScreenshot is not available');
+    }
+  };
+
   // Don't render until settings are loaded
   if (!isSettingsLoaded) {
     return null; // Or a loading indicator
@@ -231,7 +283,7 @@ export function ControlPanel({
             />
           </div>
         )} */}
-        <div className="flex items-center justify-between gap-1">
+       <div className="flex items-center justify-between gap-1">
           <span className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
             <span
               className={`flex h-2.5 w-2.5 rounded-full ${
@@ -279,6 +331,7 @@ export function ControlPanel({
             {isScreenSharing ? t("stopSharingButton") : t("startSharingButton")}
           </Button>
         </div>
+
 
         {/* Keywords Section */}
         {keywords.length > 0 && (
@@ -334,14 +387,20 @@ export function ControlPanel({
         <h4 className="text-xs font-medium text-foreground">
           {t("aiActionsTitle")}
         </h4>
-        <div className="grid grid-cols-2 gap-1">
+        <div className="grid grid-cols-3 gap-1">
           {aiActions.map(({ action, labelKey, icon: Icon, shortcut }) => (
             <Button
               key={action}
               variant="outline"
               size="sm"
               disabled={isLoading || !isScreenSharing}
-              onClick={() => onAiAction(action)}
+              onClick={() => {
+                if (action === "screenshot") {
+                  startScreenshot();
+                } else {
+                  onAiAction(action);
+                }
+              }}
               className="flex items-center justify-center gap-0.5 text-xs px-1 h-7"
               title={`${t(labelKey as TranslationKey)} (${t(
                 "shortcutKeyTooltip",

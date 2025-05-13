@@ -149,10 +149,10 @@ export class GeminiClient {
 
   sendMediaChunk(data: string, mimeType: string) {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      console.log(
-        "[GeminiClient] Sending media chunk, data size:",
-        data.length,
-      );
+      // console.log(
+      //   "[GeminiClient] Sending media chunk, data size:",
+      //   data.length,
+      // );
       const message = {
         type: "media_chunk",
         mimeType,
@@ -160,7 +160,7 @@ export class GeminiClient {
       };
       try {
         this.ws.send(JSON.stringify(message));
-        console.log("[GeminiClient] Media chunk sent successfully");
+        // console.log("[GeminiClient] Media chunk sent successfully");
       } catch (error) {
         console.error("[GeminiClient] Error sending media chunk:", error);
       }

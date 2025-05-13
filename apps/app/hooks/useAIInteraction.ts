@@ -15,7 +15,8 @@ type AIAction =
   | "search"
   | "custom"
   | "find-clue"
-  | "screen";
+  | "screen"
+  | "screenshot";
 
 interface TranscriptionMessage extends AIMessage {
   timestamp: number;
@@ -43,31 +44,6 @@ export function useAIInteraction() {
   const { t, language = "en-US" } = useI18n();
   const currentLanguage = language as "en-US" | "zh-TW" | "ja-JP";
 
-  // Log transcriptions every 10 seconds
-  useEffect(() => {
-    const logTranscriptions = () => {
-      if (transcriptions.length > 0) {
-        console.log("\n=== 轉錄對話記錄 ===");
-        console.log(`總共 ${transcriptions.length} 條轉錄`);
-        console.log("-------------------");
-        transcriptions.forEach((t, index) => {
-          const time = new Date(t.timestamp).toLocaleTimeString();
-          console.log(`[${index + 1}] [${time}] ${t.content}`);
-        });
-        console.log("===================\n");
-      }
-    };
-
-    // 立即執行一次
-    logTranscriptions();
-
-    // 設置定時器
-    const interval = setInterval(logTranscriptions, 10000);
-
-    return () => {
-      clearInterval(interval);
-    };
-  }, [transcriptions]);
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -205,6 +181,11 @@ export function useAIInteraction() {
           "en-US": "Screenshot analysis",
           "zh-TW": "截圖分析",
           "ja-JP": "スクリーンショット分析"
+        },
+        screenshot: {
+          "en-US": "Screenshot analysis",
+          "zh-TW": "截圖分析",
+          "ja-JP": "スクリーンショット分析"
         }
       } as const;
 
@@ -253,6 +234,23 @@ export function useAIInteraction() {
         console.log(
           "[AIInteraction] Screen action. Query:",
           query,
+        );
+      } else if (action === "screenshot") {
+        context = {
+          text: query || "",
+          screenshot: screenshot || "",
+          timestamp: Date.now(),
+        };
+        finalUserMsgContent = basePromptMap.screen_template[currentLanguage].replace(
+          "{{query_text}}",
+          query || t("screenshotAnalysis"),
+        );
+        finalDisplayMsgContent = `${t("screenshotAnalysis")}: ${query || t("screenshotAnalysis")}`;
+        console.log(
+          "[AIInteraction] Screenshot action. Query:",
+          query,
+          "Screenshot:",
+          screenshot,
         );
       } else if (action === "search") {
         if (!query) {
@@ -683,6 +681,67 @@ export function useAIInteraction() {
     setIsSubtitleVisible(visible);
   };
 
+  const handleScreenshot = useCallback(
+    async (screenshotPath: string) => {
+      console.log("[AIInteraction] handleScreenshot called with path:", screenshotPath);
+      // 強制只用相對路徑
+      let relativePath = screenshotPath.startsWith('/screenshots/')
+        ? screenshotPath
+        : `/screenshots/${screenshotPath.split('/screenshots/').pop()}`;
+      console.log("[AIInteraction] Using relative path for fetch:", relativePath);
+      try {
+        const response = await fetch(relativePath);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch screenshot: ${response.statusText}`);
+        }
+        const blob = await response.blob();
+        
+        // 將 blob 轉換為 base64
+        const reader = new FileReader();
+        reader.readAsDataURL(blob);
+        
+        reader.onloadend = () => {
+          const base64data = reader.result as string;
+          // 保持完整的 data URL 格式
+          const base64Image = base64data;
+          
+          // 根據當前語言設置問題
+          let question = "";
+          switch (currentLanguage) {
+            case "zh-TW":
+              question = "請分析這張截圖的內容，並提供詳細的描述。";
+              break;
+            case "ja-JP":
+              question = "このスクリーンショットの内容を分析し、詳細な説明を提供してください。";
+              break;
+            default:
+              question = "Please analyze the content of this screenshot and provide a detailed description.";
+          }
+          
+          console.log("[AIInteraction] Sending screenshot to AI with question:", question);
+          console.log("[AIInteraction] Image data format:", base64Image.substring(0, 50) + "...");
+          sendContextToAI("screenshot", question, base64Image);
+        };
+
+        reader.onerror = () => {
+          console.error("[AIInteraction] Error reading screenshot file");
+          throw new Error("Failed to read screenshot file");
+        };
+      } catch (error) {
+        console.error("[AIInteraction] Error processing screenshot:", error);
+        setAiMessages((prev) => [
+          ...prev,
+          {
+            id: `err-screenshot-${Date.now()}`,
+            role: "assistant",
+            content: `[錯誤] 無法處理截圖: ${error instanceof Error ? error.message : String(error)}`,
+          },
+        ]);
+      }
+    },
+    [sendContextToAI, currentLanguage, setAiMessages]
+  );
+
   return {
     aiMessages,
     setAiMessages,
@@ -703,5 +762,6 @@ export function useAIInteraction() {
     isSubtitleVisible,
     setSubtitleVisibility,
     handleSendMessage: sendContextToAI,
+    handleScreenshot,
   };
 }

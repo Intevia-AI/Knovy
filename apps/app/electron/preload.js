@@ -17,12 +17,29 @@ const api = {
     getSettings: () => ipcRenderer.invoke('electronAPI:getSettings'),
     setSettings: (settings) => ipcRenderer.invoke('electronAPI:setSettings', settings),
 
+    // --- Screenshot ---
+    startScreenshot: () => ipcRenderer.send('electronAPI:startScreenshot'),
+    captureArea: (bounds) => ipcRenderer.send('electronAPI:captureArea', bounds),
+    cancelScreenshot: () => ipcRenderer.send('electronAPI:cancelScreenshot'),
+    onScreenshotTaken: (callback) => {
+        const subscription = (event, path) => callback(path);
+        ipcRenderer.on('electronAPI:screenshotTaken', subscription);
+        return () => ipcRenderer.removeListener('electronAPI:screenshotTaken', subscription);
+    },
+    onScreenshotError: (callback) => {
+        const subscription = (event, error) => callback(error);
+        ipcRenderer.on('electronAPI:screenshotError', subscription);
+        return () => ipcRenderer.removeListener('electronAPI:screenshotError', subscription);
+    },
+
     // --- IPC Event Listener ---
     on: (channel, callback) => {
         // Whitelist channels to prevent arbitrary channel listening
         const validChannels = [
             'electronAPI:alwaysOnTopChanged',
-            'electronAPI:availableSources' // Add channel for receiving sources
+            'electronAPI:availableSources', // Add channel for receiving sources
+            'electronAPI:screenshotTaken',
+            'electronAPI:screenshotError'
         ];
         if (validChannels.includes(channel)) {
             // Deliberately strip event as it includes `sender`

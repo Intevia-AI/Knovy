@@ -83,6 +83,7 @@ export function Main() {
     handleSendMessage,
     setSubtitleVisibility,
     isSubtitleVisible,
+    handleScreenshot,
   } = useAIInteraction();
 
   // --- State for Layout Direction ------------------------------
@@ -161,6 +162,7 @@ export function Main() {
             onAnswerResponse={handleAnswerResponse}
             onAnswerKeywords={handleAnswerKeywords}
             setSubtitleVisibility={setSubtitleVisibility}
+            handleScreenshot={handleScreenshot}
           />
         </ResizablePanel>
 

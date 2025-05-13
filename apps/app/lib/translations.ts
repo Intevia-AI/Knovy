@@ -21,6 +21,7 @@ export const translations = {
     aiActionAnswer: "Deep Answer",
     aiActionSummary: "Generate Summary",
     shortcutKeyTooltip: "Shortcut:",
+    aiActionScreenshot: "Screenshot & Ask",
     // ControlPanel Advanced Settings
     advancedSettingsTitle: "Advanced Settings",
     customPromptLabel: "Custom Model Instruction",
@@ -60,6 +61,7 @@ export const translations = {
     "noSearchQueryProvided": "[Hint] No search keywords provided.",
     "search": "Search",
     "insufficientTranscription": "[Hint] Insufficient transcription content for analysis.",
+    "screenshotButton": "Screenshot",
   },
   "zh-TW": {
     // Add Traditional Chinese translations here
@@ -83,6 +85,7 @@ export const translations = {
     aiActionAnswer: "深度回答",
     aiActionSummary: "產生摘要",
     shortcutKeyTooltip: "快捷鍵:",
+    aiActionScreenshot: "截圖提問",
     // ControlPanel Advanced Settings
     advancedSettingsTitle: "進階設定",
     customPromptLabel: "客製化模型要求",
@@ -122,6 +125,7 @@ export const translations = {
     "noSearchQueryProvided": "[提示] 沒有提供搜尋關鍵字。",
     "search": "搜尋",
     "insufficientTranscription": "[提示] 沒有足夠的轉錄內容可供分析。",
+    "screenshotButton": "截圖",
   },
   "ja-JP": {
     // Add Japanese translations here
@@ -145,6 +149,7 @@ export const translations = {
     aiActionAnswer: "詳細回答",
     aiActionSummary: "要約生成",
     shortcutKeyTooltip: "ショートカット:",
+    aiActionScreenshot: "スクリーンショット & 質問",
     // ControlPanel Advanced Settings
     advancedSettingsTitle: "詳細設定",
     customPromptLabel: "カスタムモデル指示",
@@ -184,6 +189,7 @@ export const translations = {
     "noSearchQueryProvided": "[ヒント] 検索キーワードが提供されていません。",
     "search": "検索",
     "insufficientTranscription": "[ヒント] 分析に十分な文字起こし内容がありません。",
+    "screenshotButton": "スクリーンショット",
   },
 };
 
@@ -209,6 +215,7 @@ export type TranslationKey =
   | "aiActionAnswer"
   | "aiActionSummary"
   | "shortcutKeyTooltip"
+  | "aiActionScreenshot"
   // ControlPanel Advanced Settings
   | "advancedSettingsTitle"
   | "customPromptLabel"
@@ -247,7 +254,8 @@ export type TranslationKey =
   | "screenshotAnalysis"
   | "noSearchQueryProvided"
   | "search"
-  | "insufficientTranscription";
+  | "insufficientTranscription"
+  | "screenshotButton";
 // ... add other keys here
 
 // Define supported languages type
