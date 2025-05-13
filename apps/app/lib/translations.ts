@@ -62,6 +62,15 @@ export const translations = {
     "search": "Search",
     "insufficientTranscription": "[Hint] Insufficient transcription content for analysis.",
     "screenshotButton": "Screenshot",
+    // New Auth-related translations (English placeholders)
+    "loginToShareScreenToast": "Login Required",
+    "loginToShareScreenDescriptionToast": "Please log in to start screen sharing.",
+    "loginToTakeScreenshotToast": "Login Required",
+    "loginToTakeScreenshotDescriptionToast": "Please log in to take a screenshot.",
+    "loginToUseAiActionsToast": "Login Required",
+    "loginToUseAiActionsDescriptionToast": "Please log in to use AI actions with screen content.",
+    "statusAuthLoading": "Authenticating...",
+    "statusAuthLoadingShort": "Auth...",
   },
   "zh-TW": {
     // Add Traditional Chinese translations here
@@ -126,6 +135,15 @@ export const translations = {
     "search": "搜尋",
     "insufficientTranscription": "[提示] 沒有足夠的轉錄內容可供分析。",
     "screenshotButton": "截圖",
+    // Add zh-TW translations for new keys here
+    "loginToShareScreenToast": "請先登入",
+    "loginToShareScreenDescriptionToast": "請登入以開始分享螢幕。",
+    "loginToTakeScreenshotToast": "請先登入",
+    "loginToTakeScreenshotDescriptionToast": "請登入以擷取螢幕畫面。",
+    "loginToUseAiActionsToast": "請先登入",
+    "loginToUseAiActionsDescriptionToast": "請登入以使用螢幕內容相關的 AI 功能。",
+    "statusAuthLoading": "驗證中...",
+    "statusAuthLoadingShort": "驗證...",
   },
   "ja-JP": {
     // Add Japanese translations here
@@ -190,6 +208,15 @@ export const translations = {
     "search": "検索",
     "insufficientTranscription": "[ヒント] 分析に十分な文字起こし内容がありません。",
     "screenshotButton": "スクリーンショット",
+    // Add ja-JP translations for new keys here
+    "loginToShareScreenToast": "ログインが必要です",
+    "loginToShareScreenDescriptionToast": "画面共有を開始するにはログインしてください。",
+    "loginToTakeScreenshotToast": "ログインが必要です",
+    "loginToTakeScreenshotDescriptionToast": "スクリーンショットを撮るにはログインしてください。",
+    "loginToUseAiActionsToast": "ログインが必要です",
+    "loginToUseAiActionsDescriptionToast": "画面コンテンツを使用するAI機能を利用するにはログインしてください。",
+    "statusAuthLoading": "認証中...",
+    "statusAuthLoadingShort": "認証...",
   },
 };
 
@@ -255,7 +282,16 @@ export type TranslationKey =
   | "noSearchQueryProvided"
   | "search"
   | "insufficientTranscription"
-  | "screenshotButton";
+  | "screenshotButton"
+  // New Auth-related keys
+  | "loginToShareScreenToast"
+  | "loginToShareScreenDescriptionToast"
+  | "loginToTakeScreenshotToast"
+  | "loginToTakeScreenshotDescriptionToast"
+  | "loginToUseAiActionsToast"
+  | "loginToUseAiActionsDescriptionToast"
+  | "statusAuthLoading"
+  | "statusAuthLoadingShort";
 // ... add other keys here
 
 // Define supported languages type

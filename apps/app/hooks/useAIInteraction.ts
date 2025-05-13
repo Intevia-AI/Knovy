@@ -8,7 +8,7 @@ import { useI18n } from "@/hooks/useI18n";
 const API_URL =
   process.env.NEXT_PUBLIC_AI_API_URL || "http://localhost:3000/api/ai";
 
-type AIAction =
+export type AIAction =
   | "real-time"
   | "answer"
   | "summary"

@@ -3,15 +3,6 @@
 import { useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 
-declare global {
-  interface Window {
-    electronAPI: {
-      captureArea: (bounds: { x: number; y: number; width: number; height: number }) => void;
-      cancelScreenshot: () => void;
-    };
-  }
-}
-
 export default function SelectionPage() {
   const overlayRef = useRef<HTMLDivElement>(null);
   const selectionRef = useRef<HTMLDivElement>(null);
@@ -98,7 +89,9 @@ export default function SelectionPage() {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         console.log('[Selection] Escape pressed, cancelling screenshot');
-        window.electronAPI.cancelScreenshot();
+        if (window.electronAPI?.cancelScreenshot) {
+          window.electronAPI.cancelScreenshot();
+        }
         router.push('/');
       } else if (e.key === 'Enter' || e.key === 'Return') {
         console.log('[Selection] Enter pressed, finishing selection');

@@ -50,6 +50,9 @@ importers:
       '@picovoice/web-voice-processor':
         specifier: ^4.0.9
         version: 4.0.9
+      '@supabase/supabase-js':
+        specifier: ^2.49.4
+        version: 2.49.4
       '@types/dotenv':
         specifier: ^8.2.3
         version: 8.2.3

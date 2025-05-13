@@ -410,7 +410,7 @@ export function useScreenShare() {
     micMimeType,
     systemAudioMimeType,
     screenStreamRef, // Ref for the video element
-
+    screenPreviewRef,
     toggleScreenShare,
   };
 }

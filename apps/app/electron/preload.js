@@ -3,6 +3,9 @@ const { contextBridge, ipcRenderer } = require("electron");
 console.log('[Preload] Script loaded.'); // Log: Script start
 
 const api = {
+    // --- Supabase Auth ---
+    supabaseSignInWithOAuth: (provider) => ipcRenderer.invoke('supabase:signInWithOAuth', provider),
+
     // --- Screen Capture ---
     selectSource: (sourceId) => ipcRenderer.invoke('electronAPI:selectSource', sourceId),
     cancelSourceSelection: () => ipcRenderer.invoke('electronAPI:cancelSourceSelection'),
@@ -39,7 +42,8 @@ const api = {
             'electronAPI:alwaysOnTopChanged',
             'electronAPI:availableSources', // Add channel for receiving sources
             'electronAPI:screenshotTaken',
-            'electronAPI:screenshotError'
+            'electronAPI:screenshotError',
+            'oauth-callback' // Add channel for OAuth callback from main process
         ];
         if (validChannels.includes(channel)) {
             // Deliberately strip event as it includes `sender`

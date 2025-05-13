@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, desktopCapturer, session, systemPreferences, globalShortcut, screen } = require("electron");
+const { app, BrowserWindow, ipcMain, desktopCapturer, session, systemPreferences, globalShortcut, screen, shell } = require("electron");
 const serve = require("electron-serve");
 const path = require("path");
 const fs = require("fs").promises; // Use promises version of fs
@@ -35,6 +35,48 @@ async function saveSettings(settings) {
 let mainWindow; // Keep a reference to the main window
 let selectionWindow;
 let pendingMediaRequest = null; // Keep track of the callback for the media request
+const PROTOCOL = 'intevia-ai'; // Define protocol here to be accessible by handlers
+
+// Single instance lock
+const gotTheLock = app.requestSingleInstanceLock();
+
+if (!gotTheLock) {
+  app.quit();
+} else {
+  app.on('second-instance', (event, commandLine, workingDirectory) => {
+    // Someone tried to run a second instance, we should focus our window.
+    // And handle the OAuth callback if it's one.
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.focus();
+    }
+
+    // Check if the command line contains our custom protocol URL
+    const url = commandLine.find(arg => arg.startsWith(`${PROTOCOL}://`));
+    if (url) {
+      console.log(`[second-instance] OAuth callback URL: ${url}`);
+      // Send the URL to the renderer process
+      mainWindow?.webContents.send('oauth-callback', url);
+    }
+  });
+}
+
+// Handle `open-url` event for macOS, this is triggered when the custom protocol link is clicked
+app.on('open-url', (event, url) => {
+  event.preventDefault(); // Prevent default action
+  console.log(`[open-url] OAuth callback URL: ${url}`);
+  // Send the URL to the renderer process
+  // Ensure mainWindow and its webContents are available
+  if (mainWindow && mainWindow.webContents) {
+    mainWindow.webContents.send('oauth-callback', url);
+  } else {
+    // If the window isn't ready yet, you might need to queue this URL
+    // and process it once the window is loaded.
+    console.warn('[open-url] MainWindow or webContents not available. URL not sent.');
+    // For simplicity, we'll rely on second-instance or the window being ready.
+    // A more robust solution might store the URL and send it when did-finish-load fires.
+  }
+});
 
 const createWindow = () => {
   mainWindow = new BrowserWindow({ // Assign to mainWindow
@@ -141,6 +183,20 @@ function createSelectionWindow() {
 
 // Make the ready handler async to use await
 app.on("ready", async () => {
+    // Define your app's custom protocol - MOVED TO TOP LEVEL for accessibility by second-instance
+    // const PROTOCOL = 'intevia-ai'; // Based on your appId: com.example.intevia-ai
+
+    // Register the custom protocol client
+    // process.execPath will be the path to your packaged Electron app
+    // The arguments array can be used to pass data, here we use '--auth-callback'
+    if (process.defaultApp) {
+      if (process.argv.length >= 2) {
+        app.setAsDefaultProtocolClient(PROTOCOL, process.execPath, [path.resolve(process.argv[1])]);
+      }
+    } else {
+      app.setAsDefaultProtocolClient(PROTOCOL, process.execPath, ['--auth-callback']);
+    }
+
     // --- Hide Dock Icon (macOS) ---
     if (process.platform === 'darwin' && app.dock) {
       app.dock.hide();
@@ -184,6 +240,39 @@ app.on("ready", async () => {
       console.log('Global shortcut "CommandOrControl+Shift+I" registered successfully');
     }
     // --- End Global Shortcut Registration ---
+
+    // IPC handler for initiating OAuth flow
+    ipcMain.handle('supabase:signInWithOAuth', async (event, provider) => {
+      // Note: The Supabase client in the renderer should generate the provider-specific URL.
+      // This handler is simplified: assuming the renderer sends the URL to open.
+      // Or, if Supabase client were in main, it would be like:
+      // const { data, error } = await supabase.auth.signInWithOAuth({
+      //   provider: provider,
+      //   options: {
+      //     redirectTo: `${PROTOCOL}://auth/callback`,
+      //   },
+      // });
+      // if (error) return { error: error.message };
+      // if (data.url) {
+      //   await shell.openExternal(data.url);
+      //   return { success: true };
+      // }
+      // return { error: 'No URL returned from Supabase' };
+      // For now, we expect the renderer to ask to open a pre-constructed URL
+      // This part will be simplified later if the renderer handles URL construction.
+      console.log(`[main] Received request to sign in with ${provider.urlToOpen}`);
+      if (provider.urlToOpen) {
+        try {
+          await shell.openExternal(provider.urlToOpen);
+          return { success: true };
+        } catch (e) {
+          console.error('Failed to open external URL:', e);
+          return { error: e.message };
+        }
+      } else {
+        return { error: 'No URL provided to open.' };
+      }
+    });
 
     // --- Set up DisplayMediaRequestHandler ---
     session.defaultSession.setDisplayMediaRequestHandler((request, callback) => {

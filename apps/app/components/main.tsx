@@ -46,14 +46,8 @@ export function Main() {
     recordingDuration,
     micStream, // Needed for mic analysis
     currentSystemAudioStream, // Needed for system analysis & RealTimeAnalysis component
-    micSegments, // Needed for AI context
-    systemAudioSegments, // Needed for AI context
-    micMimeType, // Needed for AI context
-    systemAudioMimeType, // Needed for AI context
     toggleScreenShare,
     screenPreviewRef, // Ref for video element in ControlPanel
-    currentMicChunksRef, // <<< Get this ref
-    systemAudioChunksRef, // <<< Get this ref
     screenStreamRef, // Ref for the video element
   } = useScreenShare();
 

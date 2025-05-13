@@ -1,17 +1,17 @@
-import { Geist, Geist_Mono } from "next/font/google";
-
+import type { Metadata } from "next";
+import { Inter } from "next/font/google";
 import "@workspace/ui/globals.css";
 import { Providers } from "@/components/providers";
+import { Toaster } from "@workspace/ui/components/sonner";
+import { LanguageProvider } from "@/context/LanguageContext";
+import { AuthProvider } from '../context/AuthContext';
 
-const fontSans = Geist({
-  subsets: ["latin"],
-  variable: "--font-sans",
-});
+const inter = Inter({ subsets: ["latin"] });
 
-const fontMono = Geist_Mono({
-  subsets: ["latin"],
-  variable: "--font-mono",
-});
+export const metadata: Metadata = {
+  title: "Intevia AI",
+  description: "Intevia AI a real-time AI transcription and translation app",
+};
 
 export default function RootLayout({
   children,
@@ -20,10 +20,15 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body
-        className={`${fontSans.variable} ${fontMono.variable} font-sans antialiased bg-transparent`}
-      >
-        <Providers>{children}</Providers>
+      <body className={inter.className}>
+        <Providers>
+          <LanguageProvider>
+            <AuthProvider>
+              {children}
+              <Toaster />
+            </AuthProvider>
+          </LanguageProvider>
+        </Providers>
       </body>
     </html>
   );

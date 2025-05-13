@@ -17,6 +17,7 @@
     "@picovoice/porcupine-react": "^3.0.3",
     "@picovoice/porcupine-web": "^3.0.3",
     "@picovoice/web-voice-processor": "^4.0.9",
+    "@supabase/supabase-js": "^2.49.4",
     "@types/dotenv": "^8.2.3",
     "@types/wav": "^1.0.4",
     "@types/ws": "^8.18.1",

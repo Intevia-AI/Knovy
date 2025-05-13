@@ -10,6 +10,7 @@ import {
   LanguagesIcon,
   SettingsIcon,
   CameraIcon,
+  AlertTriangleIcon,
 } from "lucide-react";
 import {
   Select,
@@ -33,13 +34,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@workspace/ui/components/dialog";
-// Explicitly reference the global Window type to help TS
-// This might not be strictly necessary if TS config is correct, but can help resolve issues.
-
+import { useAuth } from "@/context/AuthContext"; // Import useAuth
+import { toast } from "sonner"; // Corrected import for toast from sonner itself
+import { AIAction } from "@/hooks/useAIInteraction";
 
 interface ControlPanelProps {
   isScreenSharing: boolean;
-  isLoading: boolean; // AI loading state
+  isLoading: boolean; // AI loading state (distinct from auth loading state)
   recordingDuration: number;
   keywords: string[];
   selectedKeyword: string | null;
@@ -54,7 +55,7 @@ interface ControlPanelProps {
   customPrompt?: string; // Add custom prompt prop
   setCustomPrompt?: (prompt: string) => void; // Add setter for custom prompt
   onToggleScreenShare: () => void;
-  onAiAction: (action: "answer" | "summary" | "search" | "find-clue" | "screenshot") => void;
+  onAiAction: (action: AIAction) => void;
   onKeywordClick: (keyword: string) => void;
 
   onTranscriptionResponse: (text: string) => void; // For RealTimeSubtitle
@@ -67,7 +68,7 @@ interface ControlPanelProps {
 
 export function ControlPanel({
   isScreenSharing,
-  isLoading,
+  isLoading: isAiLoading, // Rename to avoid conflict with auth isLoading
   recordingDuration,
   keywords,
   selectedKeyword,
@@ -81,8 +82,8 @@ export function ControlPanel({
   currentSystemAudioStream,
   customPrompt, // Add custom prompt to destructuring
   setCustomPrompt, // Add setter to destructuring
-  onToggleScreenShare,
-  onAiAction,
+  onToggleScreenShare: originalOnToggleScreenShare, // Rename original prop
+  onAiAction: originalOnAiAction, // Rename original prop
   onKeywordClick,
   onTranscriptionResponse,
   onTranscriptionKeywords,
@@ -93,6 +94,9 @@ export function ControlPanel({
 }: ControlPanelProps) {
   const { t, language } = useI18n(); // Use the hook
   const { setLanguage } = useLanguage(); // Get setLanguage from context
+
+  const { user, session, isLoading: isAuthLoading } = useAuth(); // Auth state
+  const isAuthenticated = !!user && !!session;
 
   // State for the *currently displayed* prompt in the UI
   const [confirmedPrompt, setConfirmedPromptState] = useState<
@@ -202,9 +206,9 @@ export function ControlPanel({
 
       const actionMapping = aiActions.find((a) => a.shortcut === event.key);
 
-      if (actionMapping && !isLoading && isScreenSharing) {
+      if (actionMapping && !isAiLoading && isScreenSharing) {
         event.preventDefault(); // Prevent default browser behavior (like opening bookmarks)
-        onAiAction(actionMapping.action);
+        originalOnAiAction(actionMapping.action);
       }
     };
 
@@ -214,54 +218,70 @@ export function ControlPanel({
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [isLoading, isScreenSharing, onAiAction, aiActions]); // Add dependencies
+  }, [isAiLoading, isScreenSharing, originalOnAiAction, aiActions]); // Add dependencies
 
   // Determine modifier key display based on OS (simple check)
   const modifierKey =
     navigator.platform.toUpperCase().indexOf("MAC") >= 0 ? "⌘" : "Ctrl";
 
-  const startScreenshot = () => {
-    console.log('[ControlPanel] startScreenshot called');
+  const handleToggleScreenShare = () => {
+    if (!isAuthenticated && !isScreenSharing) { // Check only when trying to START sharing
+      toast.warning(t("loginToShareScreenToast"), {
+        description: t("loginToShareScreenDescriptionToast"),
+        icon: <AlertTriangleIcon className="h-4 w-4" />
+      });
+      return;
+    }
+    originalOnToggleScreenShare(); // Call the original function from props
+  };
+
+  const protectedStartScreenshot = () => {
+    if (!isAuthenticated) {
+      toast.warning(t("loginToTakeScreenshotToast"), {
+        description: t("loginToTakeScreenshotDescriptionToast"),
+        icon: <AlertTriangleIcon className="h-4 w-4" />
+      });
+      return;
+    }
+    console.log('[ControlPanel] protectedStartScreenshot called');
     if (window.electronAPI?.startScreenshot) {
-      console.log('[ControlPanel] Starting screenshot...');
-      
-      // 使用 Promise 來處理截圖事件
+      console.log('[ControlPanel] Starting screenshot via electronAPI...');
       const handleScreenshotEvent = (screenshotPath: string) => {
         console.log('[ControlPanel] Screenshot taken event received:', screenshotPath);
-        // 直接發送截圖給 AI
-        console.log('[ControlPanel] Calling handleScreenshot with path:', screenshotPath);
         if (typeof handleScreenshot === 'function') {
-          // console.log('[ControlPanel] handleScreenshot is a function, calling it...');
-          handleScreenshot(screenshotPath);
-          // 調用 onAiAction 來觸發 AI 分析
-          // console.log('[ControlPanel] Calling onAiAction with screenshot action');
-          // onAiAction("screenshot");
+          handleScreenshot(screenshotPath); // This prop is from useAIInteraction hook
         } else {
-          console.error('[ControlPanel] handleScreenshot is not a function:', handleScreenshot);
+          console.error('[ControlPanel] handleScreenshot prop is not a function:', handleScreenshot);
         }
       };
-
-
-      // 設置事件監聽器
       const cleanupScreenshot = window.electronAPI.on('electronAPI:screenshotTaken', handleScreenshotEvent);
-
-      // 設置錯誤監聽器
       const cleanupError = window.electronAPI.on('electronAPI:screenshotError', (error: unknown) => {
         console.error('[ControlPanel] Screenshot error event received:', error);
       });
-
-      // 啟動截圖
-      console.log('[ControlPanel] Calling window.electronAPI.startScreenshot()');
-      window.electronAPI.startScreenshot();
-
-      // 設置一個超時，如果 10 秒內沒有收到截圖事件，就清理監聽器
+      window.electronAPI.startScreenshot(); // Actually trigger the screenshot
       setTimeout(() => {
-        cleanupScreenshot();
-        cleanupError();
-        console.log('[ControlPanel] Cleaned up screenshot listeners after timeout');
+        console.log('[ControlPanel] Attempting to clean up screenshot listeners after timeout.');
+        if (typeof cleanupScreenshot === 'function') cleanupScreenshot();
+        if (typeof cleanupError === 'function') cleanupError();
       }, 10000);
     } else {
       console.error('[ControlPanel] window.electronAPI.startScreenshot is not available');
+    }
+  };
+
+  const handleAiAction = (action: "answer" | "summary" | "search" | "find-clue" | "screenshot") => {
+    if (action === "screenshot") {
+      protectedStartScreenshot();
+    } else {
+      // If other AI actions also require login (e.g., if they process shared screen content)
+      if (!isAuthenticated && isScreenSharing) {
+        toast.warning(t("loginToUseAiActionsToast"), {
+           description: t("loginToUseAiActionsDescriptionToast"),
+           icon: <AlertTriangleIcon className="h-4 w-4" />
+        });
+        return;
+      }
+      originalOnAiAction(action);
     }
   };
 
@@ -295,20 +315,20 @@ export function ControlPanel({
             <span
               className={`flex h-2.5 w-2.5 rounded-full ${
                 isScreenSharing
-                  ? isLoading
+                  ? isAiLoading
                     ? "bg-yellow-400 animate-pulse"
                     : "bg-destructive animate-pulse"
                   : "bg-muted/50"
               }`}
               title={
-                isLoading
+                isAiLoading
                   ? t("statusLoading")
                   : isScreenSharing
                     ? t("statusSharing")
                     : t("statusStopped")
               }
             ></span>
-            {isLoading
+            {isAiLoading
               ? t("statusLoadingShort")
               : isScreenSharing
                 ? t("statusSharingShort")
@@ -326,8 +346,8 @@ export function ControlPanel({
           <Button
             variant={isScreenSharing ? "destructive" : "default"}
             size="sm"
-            onClick={onToggleScreenShare}
-            disabled={isLoading && isScreenSharing}
+            onClick={handleToggleScreenShare}
+            disabled={(isAiLoading && isScreenSharing) || isAuthLoading}
             aria-pressed={isScreenSharing}
             className="flex-1 text-xs h-6"
           >
@@ -354,12 +374,12 @@ export function ControlPanel({
                   key={`${keyword}-${index}`}
                   size="sm"
                   onClick={() => onKeywordClick(keyword)}
-                  disabled={isLoading && selectedKeyword === keyword}
+                  disabled={(isAiLoading && selectedKeyword === keyword) || isAuthLoading || !isAuthenticated}
                   className="flex items-center gap-0.5 text-xs h-4 px-1.5 py-2"
                   title={`${t("explainKeywordTooltipPrefix")} "${keyword}"`}
                 >
                   {keyword}
-                  {isLoading && selectedKeyword === keyword && (
+                  {isAiLoading && selectedKeyword === keyword && (
                     <Loader2Icon className="h-2.5 w-2.5 animate-spin ml-0.5" />
                   )}
                 </Button>
@@ -402,15 +422,8 @@ export function ControlPanel({
               key={action}
               variant="outline"
               size="sm"
-              disabled={isLoading || !isScreenSharing}
-              onClick={() => {
-                if (action === "screenshot") {
-                  startScreenshot();
-                } else {
-                  onAiAction(action);
-                }
-              }}
-
+              disabled={(isAuthLoading || (!isAuthenticated && isScreenSharing)) || isAiLoading || !isScreenSharing}
+              onClick={() => handleAiAction(action)}
               className="flex items-center justify-center gap-0.5 text-xs px-1 h-7"
               title={`${t(labelKey as TranslationKey)} (${t(
                 "shortcutKeyTooltip",
