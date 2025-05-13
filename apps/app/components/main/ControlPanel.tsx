@@ -168,7 +168,6 @@ export function ControlPanel({
     { code: "zh-TW", name: "繁體中文" },
     { code: "en-US", name: "English" },
     { code: "ja-JP", name: "日本語" },
-    { code: "original", name: "原始語言" },
   ];
 
   // Scroll to bottom when advanced settings are opened
@@ -455,7 +454,7 @@ export function ControlPanel({
       <div className="border-b border-border/30">
         <div
           className="flex items-center justify-between p-2 cursor-pointer bg-muted/10 hover:bg-muted/50"
-          onClick={() => setIsScreenPreviewOpen(true)}
+          onClick={() => setIsAdvancedSettingsOpen(true)}
           role="button"
         >
           <h4 className="text-xs font-medium text-foreground">
