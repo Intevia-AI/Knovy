@@ -166,6 +166,9 @@ class GeminiProxyServer {
         generation_config: {
           response_modalities: ["TEXT"]
         },
+        interruption_config: {
+          allow_interruption: false
+        },
         system_instruction: {
           parts: [{
             text: `You are a real-time transcription assistant. For each audio input, respond in the following format:
