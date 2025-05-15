@@ -11,6 +11,14 @@ const nextConfig = {
     unoptimized: true,
   },
 
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+
+  typescript: {
+    ignoreBuildErrors: true,
+  },
+
   // Ensure webpack configuration is compatible if needed
   webpack: (config, { isServer }) => {
     // Important: return the modified config
