@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, desktopCapturer, session, systemPreferences, globalShortcut, screen, shell } = require("electron");
+const { app, BrowserWindow, ipcMain, desktopCapturer, session, systemPreferences, globalShortcut, screen, shell, nativeTheme } = require("electron");
 const serve = require("electron-serve");
 const path = require("path");
 const fs = require("fs").promises; // Use promises version of fs
@@ -211,6 +211,9 @@ function createSelectionWindow() {
 
 // Make the ready handler async to use await
 app.on("ready", async () => {
+    // Force dark mode
+    nativeTheme.themeSource = 'dark';
+
     // Define your app's custom protocol - MOVED TO TOP LEVEL for accessibility by second-instance
     // const PROTOCOL = 'intevia-ai'; // Based on your appId: com.example.intevia-ai
 

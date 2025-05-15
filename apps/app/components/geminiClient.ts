@@ -5,7 +5,7 @@ dotenv.config();
 
 // const PROXY_SERVER_URL = process.env.PROXY_SERVER_URL || `ws://${process.env.PROXY_HOST || 'localhost'}:${process.env.PROXY_PORT || '4567'}`;
 // const PROXY_SERVER_URL = "wss://intevia-api.adastra.tw";
-const PROXY_SERVER_URL =
+const PROXY_SERVER_URL = 
   process.env.NEXT_PUBLIC_GEMINI_WS_URL || "ws://localhost:4567";
 console.log(PROXY_SERVER_URL);
 
