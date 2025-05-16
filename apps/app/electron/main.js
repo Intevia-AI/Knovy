@@ -1,10 +1,17 @@
-const { app, BrowserWindow, ipcMain, desktopCapturer, session, systemPreferences, globalShortcut, screen, shell, nativeTheme } = require("electron");
-const serve = require("electron-serve");
-const path = require("path");
-const fs = require("fs").promises; // Use promises version of fs
+import { app, BrowserWindow, ipcMain, desktopCapturer, session, systemPreferences, globalShortcut, screen, shell, nativeTheme } from "electron";
+import serve from "electron-serve";
+import path from "path";
+import { promises as fs } from "fs";
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const isDev = !app.isPackaged;
 const outputDir = path.join(__dirname, "../out");
+
+// Initialize electron-serve
+const appServe = serve({ directory: outputDir });
 
 // Settings file path
 const settingsPath = path.join(app.getPath('userData'), 'settings.json');
@@ -98,7 +105,7 @@ app.on('open-url', (event, url) => {
   }
 });
 
-const createWindow = () => {
+const createWindow = async () => {
   mainWindow = new BrowserWindow({ // Assign to mainWindow
     width: 480,
     height: 400,
@@ -145,15 +152,13 @@ const createWindow = () => {
     });
   } else {
     // Production: Serve static files using electron-serve
-    appServe(mainWindow).then(() => {
+    try {
+      await appServe(mainWindow);
       console.log(`Loading production build from app://-/index.html`);
-      // Explicitly load index.html via the custom protocol
-      mainWindow.loadURL("app://-/index.html")
-        .then(() => console.log('Successfully loaded app://-/index.html'))
-        .catch(err => console.error('Failed to load URL app://-/index.html:', err));
-    }).catch(err => {
-        console.error('Electron-serve setup failed:', err);
-    });
+      mainWindow.loadURL("app://-/index.html");
+    } catch (err) {
+      console.error('Failed to load production build:', err);
+    }
   }
 
   mainWindow.on('closed', () => {
@@ -260,7 +265,7 @@ app.on("ready", async () => {
     }
     // --- End Permission Check ---
 
-    createWindow();
+    await createWindow();
 
     // --- Register Global Shortcut ---
     const ret = globalShortcut.register('CommandOrControl+K', toggleWindow);

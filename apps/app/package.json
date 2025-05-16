@@ -2,6 +2,7 @@
   "name": "app",
   "version": "0.0.1",
   "private": true,
+  "type": "module",
   "main": "electron/main.js",
   "scripts": {
     "dev": "concurrently -n \"NEXT,ELECTRON\" -c \"yellow,blue\" --kill-others \"next dev\" \"electron .\"",
@@ -67,25 +68,45 @@
     "typescript": "^5.8.3"
   },
   "build": {
-    "appId": "com.example.intevia-ai",
+    "appId": "app.intevia.ai",
     "productName": "Intevia AI",
     "files": [
       "electron/**/*",
       "out/**/*",
-      "package.json"
+      "package.json",
+      "node_modules/**/*",
+      "public/**/*"
     ],
     "directories": {
       "buildResources": "assets",
       "output": "dist"
     },
     "mac": {
-      "target": "dmg"
+      "target": ["dmg", "zip"],
+      "category": "public.app-category.productivity",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "./entitlements.mac.plist",
+      "entitlementsInherit": "./entitlements.mac.plist"
     },
     "win": {
-      "target": "nsis"
+      "target": ["nsis", "portable"],
+      "artifactName": "${productName}-Setup-${version}.${ext}"
     },
     "linux": {
-      "target": "AppImage"
-    }
+      "target": ["AppImage", "deb"],
+      "category": "Utility",
+      "artifactName": "${productName}-${version}.${ext}"
+    },
+    "asar": true,
+    "asarUnpack": [
+      "node_modules/ffmpeg-static/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "assets",
+        "to": "assets"
+      }
+    ]
   }
 }
