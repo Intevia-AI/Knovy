@@ -161,18 +161,18 @@ export function ControlPanel({
       icon: ListCollapseIcon,
       shortcut: "2",
     },
-    {
-      action: "screenshot",
-      labelKey: "aiActionScreenshot",
-      icon: CameraIcon,
-      shortcut: "3",
-    },
-    {
-      action: "upload",
-      labelKey: "aiActionUpload",
-      icon: UploadIcon,
-      shortcut: "4",
-    },
+    // {
+    //   action: "screenshot",
+    //   labelKey: "aiActionScreenshot",
+    //   icon: CameraIcon,
+    //   shortcut: "3",
+    // },
+    // {
+    //   action: "upload",
+    //   labelKey: "aiActionUpload",
+    //   icon: UploadIcon,
+    //   shortcut: "4",
+    // },
   ] as const; // Use const assertion
 
   // Define languages within the component or import from a shared location
