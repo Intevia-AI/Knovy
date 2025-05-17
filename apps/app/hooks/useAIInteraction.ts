@@ -16,6 +16,8 @@ export type AIAction =
   | "keyword_search"
   | "custom"
   | "screen"
+  | "screenshot"
+  | "upload";
 
 interface TranscriptionMessage extends AIMessage {
   timestamp: number;
@@ -181,6 +183,16 @@ export function useAIInteraction() {
           "zh-TW": "截圖分析",
           "ja-JP": "スクリーンショット分析"
         },
+        screenshot: {
+          "en-US": "Screenshot",
+          "zh-TW": "截圖",
+          "ja-JP": "スクリーンショット"
+        },
+        upload: {
+          "en-US": "Upload File",
+          "zh-TW": "上傳檔案",
+          "ja-JP": "ファイルアップロード"
+        }
       } as const;
 
       const currentAction = action as AIAction;

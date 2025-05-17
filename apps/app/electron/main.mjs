@@ -117,10 +117,14 @@ const createWindow = async () => {
 
     backgroundMaterial: 'acrylic', // on Windows 11
     webPreferences: {
-      preload: path.join(__dirname, "preload.js"),
+      preload: path.join(__dirname, "preload.mjs"),
       contextIsolation: true, // Recommended for security
       nodeIntegration: false, // Recommended for security
     }
+  });
+
+  mainWindow.webContents.on('preload-error', (event, preloadPath, error) => {
+    console.error(`[main.mjs] Failed to load preload script '${preloadPath}':`, error);
   });
 
   mainWindow.webContents.on('did-finish-load', () => {
@@ -199,7 +203,7 @@ function createSelectionWindow() {
     frame: false,
     alwaysOnTop: true,
     webPreferences: {
-      preload: path.join(__dirname, "preload.js"),
+      preload: path.join(__dirname, "preload.mjs"),
       contextIsolation: true,
       nodeIntegration: false,
     }
@@ -207,6 +211,9 @@ function createSelectionWindow() {
 
   if (isDev) {
     selectionWindow.loadURL("http://localhost:3000/selection");
+    selectionWindow.webContents.on('preload-error', (event, preloadPath, error) => {
+      console.error(`[main.mjs] Failed to load preload script for selectionWindow '${preloadPath}':`, error);
+    });
   } else {
     selectionWindow.loadURL("app://-/selection.html");
   }

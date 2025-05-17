@@ -97,7 +97,7 @@ export function ControlPanel({
   const { setLanguage } = useLanguage(); // Get setLanguage from context
 
   const { user, session, isLoading: isAuthLoading } = useAuth(); // Auth state
-  const isAuthenticated = !!user && !!session;
+  const isAuthenticated = true; // !!user && !!session; // Allow usage without login for testing
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // State for the *currently displayed* prompt in the UI
@@ -233,24 +233,24 @@ export function ControlPanel({
     navigator.platform.toUpperCase().indexOf("MAC") >= 0 ? "⌘" : "Ctrl";
 
   const handleToggleScreenShare = () => {
-    if (!isAuthenticated && !isScreenSharing) { // Check only when trying to START sharing
-      toast.warning(t("loginToShareScreenToast"), {
-        description: t("loginToShareScreenDescriptionToast"),
-        icon: <AlertTriangleIcon className="h-4 w-4" />
-      });
-      return;
-    }
+    // if (!isAuthenticated && !isScreenSharing) { // Check only when trying to START sharing
+    //   toast.warning(t("loginToShareScreenToast"), {
+    //     description: t("loginToShareScreenDescriptionToast"),
+    //     icon: <AlertTriangleIcon className="h-4 w-4" />
+    //   });
+    //   return;
+    // }
     originalOnToggleScreenShare(); // Call the original function from props
   };
 
   const protectedStartScreenshot = () => {
-    if (!isAuthenticated) {
-      toast.warning(t("loginToTakeScreenshotToast"), {
-        description: t("loginToTakeScreenshotDescriptionToast"),
-        icon: <AlertTriangleIcon className="h-4 w-4" />
-      });
-      return;
-    }
+    // if (!isAuthenticated) {
+    //   toast.warning(t("loginToTakeScreenshotToast"), {
+    //     description: t("loginToTakeScreenshotDescriptionToast"),
+    //     icon: <AlertTriangleIcon className="h-4 w-4" />
+    //   });
+    //   return;
+    // }
     console.log('[ControlPanel] protectedStartScreenshot called');
     if (window.electronAPI?.startScreenshot) {
       console.log('[ControlPanel] Starting screenshot via electronAPI...');
@@ -277,18 +277,18 @@ export function ControlPanel({
     }
   };
 
-  const handleAiAction = (action: "answer" | "summary" | "search" | "find-clue" | "screenshot") => {
+  const handleAiAction = (action: AIAction) => {
     if (action === "screenshot") {
       protectedStartScreenshot();
     } else {
       // If other AI actions also require login (e.g., if they process shared screen content)
-      if (!isAuthenticated && isScreenSharing) {
-        toast.warning(t("loginToUseAiActionsToast"), {
-           description: t("loginToUseAiActionsDescriptionToast"),
-           icon: <AlertTriangleIcon className="h-4 w-4" />
-        });
-        return;
-      }
+      // if (!isAuthenticated && isScreenSharing) {
+      //   toast.warning(t("loginToUseAiActionsToast"), {
+      //      description: t("loginToUseAiActionsDescriptionToast"),
+      //      icon: <AlertTriangleIcon className="h-4 w-4" />
+      //   });
+      //   return;
+      // }
       originalOnAiAction(action);
     }
   };
@@ -406,7 +406,7 @@ export function ControlPanel({
                   key={`${keyword}-${index}`}
                   size="sm"
                   onClick={() => onKeywordClick(keyword)}
-                  disabled={(isAiLoading && selectedKeyword === keyword) || isAuthLoading || !isAuthenticated}
+                  disabled={(isAiLoading && selectedKeyword === keyword) || isAuthLoading /*|| !isAuthenticated*/}
                   className="flex items-center gap-0.5 text-xs h-4 px-1.5 py-2"
                   title={`${t("explainKeywordTooltipPrefix")} "${keyword}"`}
                 >
@@ -454,7 +454,7 @@ export function ControlPanel({
               key={action}
               variant="outline"
               size="sm"
-              disabled={isAuthLoading || !isAuthenticated || isAiLoading || !isScreenSharing}
+              disabled={isAuthLoading /*|| !isAuthenticated*/ || isAiLoading || !isScreenSharing}
               onClick={() => handleAiAction(action)}
               className="flex items-center justify-center gap-0.5 text-xs px-1 h-7"
               title={`${t(labelKey as TranslationKey)} (${t(
