@@ -36,3 +36,6 @@ npm-debug.log*
 *.pem
 
 **/private_keys/
+
+# Misc
+.vscode/

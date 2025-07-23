@@ -5,6 +5,11 @@ import { Providers } from "@/components/providers";
 import { Toaster } from "@workspace/ui/components/sonner";
 import { LanguageProvider } from "@/context/LanguageContext";
 import { AuthProvider } from '../context/AuthContext';
+import { validateEnv } from "@/lib/validateEnv";
+
+// Validate environment variables on application startup
+// This runs server-side during Next.js initialization
+validateEnv();
 
 const inter = Inter({ subsets: ["latin"] });
 

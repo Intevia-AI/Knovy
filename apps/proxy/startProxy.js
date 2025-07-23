@@ -3,18 +3,57 @@ import dotenv from 'dotenv';
 import { WebSocket } from 'ws';
 import path from 'path';
 
-// Load environment variables from .env.local
-dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
+// Load environment variables from .env file
+dotenv.config({ path: path.resolve(process.cwd(), '.env') });
+// Also try .env.local as fallback for backward compatibility
+if (!process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
+  dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
+}
 
 const MODEL = "models/gemini-2.0-flash-live-001";
 const API_KEY = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
 const HOST = "generativelanguage.googleapis.com";
 const WS_URL = `wss://${HOST}/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent?key=${API_KEY}`;
 
-// Security checks
-if (!API_KEY) {
-  throw new Error('GOOGLE_GENERATIVE_AI_API_KEY is not set in environment variables. Please check your .env.local file.');
+/**
+ * Validates required environment variables
+ * Throws clear error messages if any required variables are missing
+ */
+function validateEnvironment() {
+  const requiredVars = [
+    {
+      name: 'GOOGLE_GENERATIVE_AI_API_KEY',
+      description: 'Google Generative AI API Key for Gemini integration',
+      hint: 'Obtain from Google AI Studio (https://aistudio.google.com/app/apikey)'
+    }
+  ];
+
+  const missingVars = requiredVars.filter(
+    variable => !process.env[variable.name]
+  );
+
+  if (missingVars.length > 0) {
+    console.error('\n❌ Environment Validation Error ❌');
+    console.error('The following required environment variables are missing:');
+    
+    missingVars.forEach(variable => {
+      console.error(`\n  → ${variable.name}`);
+      console.error(`    Description: ${variable.description}`);
+      console.error(`    Hint: ${variable.hint}`);
+    });
+    
+    console.error('\nPlease check your .env file and ensure all required variables are set.');
+    console.error('You can copy the .env.example file to .env to get started:\n');
+    console.error('  cp .env.example .env\n');
+    
+    throw new Error('Missing required environment variables');
+  }
+  
+  return true;
 }
+
+// Validate environment variables
+validateEnvironment();
 
 // Rate limiting configuration
 const RATE_LIMIT = {
