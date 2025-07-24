@@ -1,44 +1,126 @@
 # =========================================================================
-# Dockerfile for Intevia AI Proxy Server
+# Dockerfile for Intevia AI WebSocket Proxy Server
 # =========================================================================
-# This Dockerfile builds a container for the WebSocket proxy server that
-# connects clients to Google's Gemini AI API for real-time audio transcription.
-# 
-# The container is based on Node.js 18 Alpine for a small footprint and
-# exposes port 4567 for WebSocket connections.
+# This Dockerfile builds a lightweight container for the WebSocket proxy server
+# that facilitates real-time communication between client applications and
+# Google's Gemini AI API for audio transcription and AI interactions.
+#
+# Architecture:
+# Client App ↔ WebSocket Proxy ↔ Google Gemini AI API
+#
+# Key Features:
+# - WebSocket server for real-time bidirectional communication
+# - Proxy layer for API key management and request routing
+# - Lightweight Alpine Linux base for minimal attack surface
+# - Production-optimized with minimal dependencies
 # =========================================================================
 
-# Use an official Node.js runtime as a parent image
-# Alpine version is chosen for its small footprint and security benefits
+# -------------------------------------------------------------------------
+# Base Image Selection
+# -------------------------------------------------------------------------
+# Use Node.js 18 Alpine as the base image
+# Alpine Linux benefits:
+# - Minimal size (~5MB base vs ~100MB+ for full Linux distributions)
+# - Enhanced security with reduced attack surface
+# - Package manager (apk) for additional dependencies if needed
+# - Musl libc instead of glibc for better performance in containers
 FROM node:18-alpine
 
-# Set the working directory in the container
-# All subsequent commands will run in this directory
+# -------------------------------------------------------------------------
+# Working Directory Setup
+# -------------------------------------------------------------------------
+# Set the working directory inside the container
+# All subsequent COPY, RUN, and CMD instructions will execute from this directory
+# Using /app as a standard convention for application code
 WORKDIR /app
 
-# Copy package.json and package-lock.json first to leverage Docker cache
-# This layer will only rebuild when package files change, not when code changes
+# -------------------------------------------------------------------------
+# Dependency Installation (Optimized Layer Caching)
+# -------------------------------------------------------------------------
+# Copy package files first to leverage Docker's layer caching mechanism
+# This optimization ensures that dependency installation only re-runs when
+# package.json or package-lock.json changes, not when source code changes
 COPY package*.json ./
 
-# Install app dependencies
-# Production flag ensures dev dependencies are not installed
-RUN npm install --production
-# Alternative for yarn users: RUN yarn install --frozen-lockfile --production
+# Install production dependencies only
+# --production flag excludes devDependencies to minimize image size
+# --ci flag uses package-lock.json for faster, reproducible installs
+# --only=production ensures no development tools are included
+RUN npm ci --only=production && \
+    npm cache clean --force
 
-# Bundle app source code
-# This copies all files from the current directory to the container
+# Alternative package managers (commented for reference):
+# For Yarn: RUN yarn install --frozen-lockfile --production
+# For PNPM: RUN pnpm install --frozen-lockfile --prod
+
+# -------------------------------------------------------------------------
+# Application Source Code
+# -------------------------------------------------------------------------
+# Copy the application source code to the container
+# This layer will rebuild whenever source code changes
+# Use .dockerignore to exclude unnecessary files (node_modules, .git, etc.)
 COPY . .
 
-# Make port 4567 available to the world outside this container
-# Note: This is informational; the actual port mapping happens in docker-compose.yml
+# -------------------------------------------------------------------------
+# Security Configuration
+# -------------------------------------------------------------------------
+# Create a non-root user for running the application
+# This follows security best practices by avoiding root privileges
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S proxy -u 1001 -G nodejs
+
+# Change ownership of application files to the non-root user
+RUN chown -R proxy:nodejs /app
+
+# Switch to the non-root user for all subsequent operations
+USER proxy
+
+# -------------------------------------------------------------------------
+# Network Configuration
+# -------------------------------------------------------------------------
+# Expose port 4567 for WebSocket connections
+# This is the default port for the proxy server
+# Note: This is declarative - actual port mapping is configured in
+# docker-compose.yml or docker run command
 EXPOSE 4567
 
-# Define environment variables with default values
-# These can be overridden at runtime via docker-compose.yml or docker run command
+# -------------------------------------------------------------------------
+# Environment Configuration
+# -------------------------------------------------------------------------
+# Set default environment variables
+# These can be overridden at runtime via:
+# - docker-compose.yml environment section
+# - docker run -e flag
+# - .env files mounted into the container
+
+# Set Node.js environment to production for optimizations
 ENV NODE_ENV=production
+
+# Set default proxy server port
 ENV PROXY_PORT=4567
 
-# Command to run when the container starts
-# Executes the proxy server using Node.js
-CMD [ "node", "startProxy.js" ]
+# Configure Node.js memory and performance settings
+ENV NODE_OPTIONS="--max-old-space-size=512"
+
+# -------------------------------------------------------------------------
+# Health Check Configuration
+# -------------------------------------------------------------------------
+# Add health check to monitor container status
+# This helps orchestration tools (Docker Compose, Kubernetes) determine
+# if the container is healthy and ready to receive traffic
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD node -e "require('http').get('http://localhost:${PROXY_PORT}/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) }).on('error', () => process.exit(1))"
+
+# -------------------------------------------------------------------------
+# Container Startup Command
+# -------------------------------------------------------------------------
+# Define the command to run when the container starts
+# Using exec form (JSON array) for better signal handling
+# This ensures proper process management and graceful shutdowns
+CMD ["node", "startProxy.js"]
+
+# Alternative startup options (commented for reference):
+# For development with auto-restart: CMD ["nodemon", "startProxy.js"]
+# For PM2 process management: CMD ["pm2-runtime", "start", "startProxy.js"]
+# For debugging: CMD ["node", "--inspect=0.0.0.0:9229", "startProxy.js"]
 

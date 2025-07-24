@@ -1,5 +1,8 @@
 # System Architecture Overview
 
+> [!IMPORTANT]
+> This document is AI generated. Please verify the information before using it.
+
 This document provides a comprehensive overview of the Intevia AI system architecture, explaining how the different components interact and work together.
 
 ## System Components

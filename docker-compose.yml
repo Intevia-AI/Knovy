@@ -1,22 +1,63 @@
+# =========================================================================
+# Docker Compose Configuration for Intevia AI Project
+# =========================================================================
+# This docker-compose.yml file defines the containerized services for the
+# Intevia AI project, including the web application and networking setup.
+# 
+# Services:
+# - web: Next.js web application with AI transcription capabilities
+# 
+# Networks:
+# - my_network: Bridge network for inter-service communication
+# =========================================================================
+
 services:
+  # -----------------------------------------------------------------------
+  # Web Application Service (Next.js)
+  # -----------------------------------------------------------------------
+  # The main web application that provides the AI transcription interface
+  # and handles real-time audio processing through the browser
   web:
+    # Build configuration
     build:
-      context: .
-      dockerfile: ./apps/web/Dockerfile
+      context: .                          # Build context is the project root
+      dockerfile: ./apps/web/Dockerfile   # Dockerfile location for web app
+    
+    # Port mapping: host:container
+    # Maps host port 3456 to container port 3000 (Next.js default)
     ports:
       - "3456:3000"
+    
+    # Environment variables passed to the container
     environment:
-      - NODE_ENV=production
+      - NODE_ENV=production               # Set production mode for optimizations
+    
+    # Restart policy: restart unless explicitly stopped
     restart: unless-stopped
+    
+    # Network configuration
     networks:
-      - my_network
+      - my_network                        # Connect to custom bridge network
+    
+    # Platform specification for cross-platform compatibility
+    # Ensures consistent behavior across different host architectures
     platform: linux/amd64
-    mem_limit: 4g
-    memswap_limit: 6g
+    
+    # Memory limits to prevent container from consuming excessive resources
+    mem_limit: 4g                         # Maximum memory usage: 4GB
+    memswap_limit: 6g                     # Maximum memory + swap: 6GB
+    
+    # Environment file containing sensitive configuration
+    # Contains API keys, database URLs, and other environment-specific settings
     env_file:
       - ./apps/web/.env
 
+# -----------------------------------------------------------------------
+# Network Configuration
+# -----------------------------------------------------------------------
+# Custom bridge network for secure inter-service communication
+# Allows services to communicate using service names as hostnames
 networks:
   my_network:
-    name: my_network
-    driver: bridge
+    name: my_network                      # Explicit network name
+    driver: bridge                        # Bridge driver for local networking

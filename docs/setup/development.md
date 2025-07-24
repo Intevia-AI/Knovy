@@ -1,5 +1,8 @@
 # Development Environment Setup
 
+> [!IMPORTANT]
+> This document is AI generated. Please verify the information before using it.
+
 This guide provides detailed instructions for setting up your development environment for the Intevia AI project.
 
 ## Prerequisites
