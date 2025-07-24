@@ -1,14 +1,74 @@
+/**
+ * @fileoverview useSegmentRecorder Hook - Audio recording with automatic segmentation
+ * @module useSegmentRecorder
+ * @description A React hook that provides audio recording functionality with automatic
+ * segmentation at regular intervals. Recorded segments are dispatched as custom events.
+ */
+
 import { useCallback, useRef, useState } from "react";
 
-export const SEGMENT_MS = 20_000; // segment length - Exported
-const CHUNK_MS = 1_000; // internal timeslice
+/**
+ * @constant {number} SEGMENT_MS - Duration of each audio segment in milliseconds (20 seconds)
+ * @description Controls how frequently complete audio segments are created and dispatched
+ */
+export const SEGMENT_MS = 20_000;
 
+/**
+ * @constant {number} CHUNK_MS - Internal timeslice for MediaRecorder in milliseconds (1 second)
+ * @description Controls how frequently the MediaRecorder provides data chunks
+ */
+const CHUNK_MS = 1_000;
+
+/**
+ * @hook useSegmentRecorder
+ * @description React hook for recording audio with automatic segmentation
+ * 
+ * @returns {Object} Recording control object
+ * @returns {boolean} recording - Whether recording is currently active
+ * @returns {function} start - Function to start recording, returns the MediaStream or null
+ * @returns {function} stop - Function to stop recording
+ * @returns {string} mimeType - MIME type of the recorded audio
+ * @returns {MediaStream|null} micStream - Current microphone MediaStream
+ * @returns {Blob[]} currentMicChunks - Current audio chunks being recorded
+ * 
+ * @example
+ * ```tsx
+ * const { recording, start, stop, mimeType } = useSegmentRecorder();
+ * 
+ * // Start recording
+ * const handleStart = async () => {
+ *   const stream = await start();
+ *   if (!stream) {
+ *     console.error("Failed to start recording");
+ *   }
+ * };
+ * 
+ * // Listen for segments
+ * useEffect(() => {
+ *   const handleSegment = (e) => {
+ *     const audioBlob = e.detail;
+ *     // Process the audio segment...
+ *   };
+ *   window.addEventListener("segment", handleSegment);
+ *   return () => window.removeEventListener("segment", handleSegment);
+ * }, []);
+ * ```
+ */
 export function useSegmentRecorder() {
-  const streamRef = useRef<MediaStream | null>(null); // Make streamRef accessible
-  const recRef = useRef<MediaRecorder | null>(null); // Allow null initially
-  const timerRef = useRef<NodeJS.Timeout | null>(null); // Allow null initially
+  /**
+   * @state {MediaStream|null} streamRef - Reference to the microphone MediaStream
+   * @state {MediaRecorder|null} recRef - Reference to the MediaRecorder instance
+   * @state {NodeJS.Timeout|null} timerRef - Reference to the segment timer interval
+   * @state {Blob[]} chunksRef - Reference to the current audio chunks being recorded
+   * @state {boolean} isStoppingRef - Flag indicating an intentional stop is in progress
+   * @state {boolean} recording - Whether recording is currently active
+   * @state {string} mimeType - MIME type of the recorded audio
+   */
+  const streamRef = useRef<MediaStream | null>(null);
+  const recRef = useRef<MediaRecorder | null>(null);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
   const chunksRef = useRef<Blob[]>([]);
-  const isStoppingRef = useRef<boolean>(false); // Flag for intentional stop
+  const isStoppingRef = useRef<boolean>(false);
   const [recording, setRecording] = useState(false);
   const [mimeType, setMime] = useState("audio/webm;codecs=opus");
 

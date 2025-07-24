@@ -1,3 +1,10 @@
+/**
+ * @fileoverview Markdown Component - Renders markdown content with custom styling
+ * @module Markdown
+ * @description A React component that renders markdown content with customized styling,
+ * code block highlighting, and copy functionality. Uses react-markdown with remark plugins.
+ */
+
 import Link from "next/link";
 import React, { memo } from "react";
 import ReactMarkdown from "react-markdown";
@@ -7,12 +14,26 @@ import remarkBreaks from "remark-breaks";
 import { toast } from "sonner";
 import { cn } from "@workspace/ui/lib/utils";
 
+/**
+ * @interface MarkdownProps
+ * @description Props for the Markdown component
+ * @property {string} children - The markdown string to render
+ * @property {boolean} [pure=false] - If true, uses default React Markdown styling instead of custom components
+ */
 interface MarkdownProps {
   children: string;
   pure?: boolean;
 }
 
-// Extracted CodeBlock component for better organization
+/**
+ * @component CodeBlock
+ * @description Renders code blocks with syntax highlighting and copy functionality
+ * @param {Object} props - Component props
+ * @param {boolean} props.inline - Whether the code block is inline or block
+ * @param {string} [props.className] - CSS class name, may include language-* prefix
+ * @param {React.ReactNode} props.children - The code content
+ * @returns {JSX.Element} Rendered code block
+ */
 const CodeBlock: React.FC<{
   inline: boolean;
   className?: string;
@@ -56,7 +77,11 @@ const CodeBlock: React.FC<{
   );
 };
 
-// Create our markdown components configuration
+/**
+ * @function createMarkdownComponents
+ * @description Creates a configuration object for custom markdown component rendering
+ * @returns {Partial<Components>} Object mapping markdown elements to React components
+ */
 const createMarkdownComponents = (): Partial<Components> => ({
   // @ts-ignore
   code: ({ node, inline = false, className, children, ...props }) => (
@@ -135,10 +160,29 @@ const createMarkdownComponents = (): Partial<Components> => ({
 });
 
 /**
- * Renders markdown content with customized styling
- *
- * @param children - The markdown string to render
- * @param pure - If true, uses default React Markdown styling instead of custom components
+ * @component NonMemoizedMarkdown
+ * @description Renders markdown content with customized styling
+ * @param {Object} props - Component props
+ * @param {string} props.children - The markdown string to render
+ * @param {boolean} [props.pure=false] - If true, uses default React Markdown styling instead of custom components
+ * 
+ * @example
+ * ```tsx
+ * // Basic usage with custom styling
+ * <Markdown>
+ *   # Heading
+ *   This is **bold** text with a [link](https://example.com).
+ *   
+ *   ```js
+ *   const code = "example";
+ *   ```
+ * </Markdown>
+ * 
+ * // Using default styling
+ * <Markdown pure>
+ *   Simple markdown content
+ * </Markdown>
+ * ```
  */
 const NonMemoizedMarkdown: React.FC<MarkdownProps> = ({
   children,
@@ -164,6 +208,11 @@ const NonMemoizedMarkdown: React.FC<MarkdownProps> = ({
   );
 };
 
+/**
+ * @component Markdown
+ * @description Memoized version of the markdown renderer that only re-renders when content changes
+ * This optimization prevents unnecessary re-renders when parent components update
+ */
 export const Markdown = memo(
   NonMemoizedMarkdown,
   (prevProps, nextProps) => prevProps.children === nextProps.children,

@@ -1,23 +1,53 @@
+/**
+ * @module GeminiProxyServer
+ * @description WebSocket proxy server for Google's Gemini AI model that handles real-time audio transcription and AI responses
+ * @requires ws
+ * @requires dotenv
+ * @requires path
+ * 
+ * This server acts as a bridge between client applications and Google's Gemini AI API.
+ * It handles WebSocket connections from clients, forwards audio data to Gemini,
+ * and streams back AI-generated responses. The server supports multiple concurrent
+ * client connections with rate limiting and automatic cleanup of inactive connections.
+ */
+
 import { WebSocketServer } from 'ws';
 import dotenv from 'dotenv';
 import { WebSocket } from 'ws';
 import path from 'path';
 
-// Load environment variables from .env file
+/**
+ * Load environment variables from .env file
+ * First tries the standard .env file, then falls back to .env.local for backward compatibility
+ * @description This ensures the application can find API keys and other configuration in different environments
+ */
 dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 // Also try .env.local as fallback for backward compatibility
 if (!process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
   dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
 }
 
+/**
+ * @constant {string} MODEL - The Gemini model identifier used for real-time audio processing
+ * @constant {string} API_KEY - Google Generative AI API key from environment variables
+ * @constant {string} HOST - Google's generative language API host
+ * @constant {string} WS_URL - WebSocket URL for connecting to the Gemini API with authentication
+ */
 const MODEL = "models/gemini-2.0-flash-live-001";
 const API_KEY = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
 const HOST = "generativelanguage.googleapis.com";
 const WS_URL = `wss://${HOST}/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent?key=${API_KEY}`;
 
 /**
- * Validates required environment variables
- * Throws clear error messages if any required variables are missing
+ * @function validateEnvironment
+ * @description Validates that all required environment variables are present
+ * @throws {Error} If any required environment variables are missing
+ * @returns {boolean} True if all required variables are present
+ * 
+ * @remarks
+ * This function checks for the presence of critical environment variables
+ * and provides detailed error messages with hints on how to obtain them
+ * if they are missing. This helps developers quickly resolve configuration issues.
  */
 function validateEnvironment() {
   const requiredVars = [
@@ -55,27 +85,58 @@ function validateEnvironment() {
 // Validate environment variables
 validateEnvironment();
 
-// Rate limiting configuration
+/**
+ * @constant {Object} RATE_LIMIT - Configuration for rate limiting client connections
+ * @property {number} windowMs - Time window in milliseconds for rate limiting (15 minutes)
+ * @property {number} maxConnections - Maximum number of connections allowed per IP in the time window
+ */
 const RATE_LIMIT = {
   windowMs: 15 * 60 * 1000, // 15 minutes
   maxConnections: 100, // limit each IP to 100 connections per windowMs
 };
 
+/**
+ * @type {Map<string, Array<number>>}
+ * @description Tracks connection timestamps by IP address for rate limiting
+ * Each IP maps to an array of connection timestamps within the rate limit window
+ */
 const connectionCounts = new Map();
 
+/**
+ * @class GeminiProxyServer
+ * @description WebSocket proxy server that handles connections between clients and Google's Gemini API
+ * @property {WebSocketServer} wss - The WebSocket server instance
+ * @property {Map<string, Object>} clients - Map of client connections by ID
+ */
 class GeminiProxyServer {
+  /**
+   * @constructor
+   * @description Creates a new GeminiProxyServer instance
+   * @param {number} port - The port number to listen on
+   */
   constructor(port) {
     this.wss = new WebSocketServer({ port });
     this.clients = new Map();
     this.setupServer();
   }
 
+  /**
+   * @method setupServer
+   * @description Sets up the WebSocket server and event handlers for client connections
+   * @private
+   * 
+   * This method configures the WebSocket server to:
+   * 1. Accept new client connections with rate limiting
+   * 2. Create a unique client ID and connection object
+   * 3. Set up activity monitoring to disconnect inactive clients
+   * 4. Handle client messages, connection closures, and errors
+   */
   setupServer() {
     this.wss.on('connection', (ws, req) => {
       // Get client IP
       const clientIp = req.socket.remoteAddress;
       
-      // Rate limiting
+      // Rate limiting - prevents abuse by limiting connections per IP
       const now = Date.now();
       const clientConnections = connectionCounts.get(clientIp) || [];
       const recentConnections = clientConnections.filter(time => now - time < RATE_LIMIT.windowMs);
@@ -92,6 +153,7 @@ class GeminiProxyServer {
       const clientId = this.generateClientId();
       console.log(`[Proxy] New client connected: ${clientId} from IP: ${clientIp}`);
 
+      // Create client connection object with default settings
       const clientConnection = {
         ws,
         id: clientId,
@@ -104,7 +166,7 @@ class GeminiProxyServer {
 
       this.clients.set(clientId, clientConnection);
 
-      // Set up activity monitoring
+      // Set up activity monitoring to disconnect inactive clients
       const activityInterval = setInterval(() => {
         const now = Date.now();
         if (now - clientConnection.lastActivity > 5 * 60 * 1000) { // 5 minutes inactivity
@@ -113,6 +175,7 @@ class GeminiProxyServer {
         }
       }, 60 * 1000); // Check every minute
 
+      // Handle incoming messages from the client
       ws.on('message', async (message) => {
         try {
           clientConnection.lastActivity = Date.now();
@@ -123,12 +186,14 @@ class GeminiProxyServer {
         }
       });
 
+      // Handle client disconnection
       ws.on('close', () => {
         console.log(`[Proxy] Client disconnected: ${clientId}`);
         clearInterval(activityInterval);
         this.cleanupClient(clientId);
       });
 
+      // Handle client errors
       ws.on('error', (error) => {
         console.error(`[Proxy] Client error:`, error);
         clearInterval(activityInterval);
@@ -137,10 +202,32 @@ class GeminiProxyServer {
     });
   }
 
+  /**
+   * @method generateClientId
+   * @description Generates a random unique identifier for a client connection
+   * @returns {string} A random string to use as client ID
+   * @private
+   */
   generateClientId() {
     return Math.random().toString(36).substring(2, 15);
   }
 
+  /**
+   * @method handleClientMessage
+   * @description Processes messages received from clients and takes appropriate actions
+   * @param {string} clientId - The ID of the client sending the message
+   * @param {Object} data - The message data
+   * @returns {Promise<void>}
+   * @private
+   * 
+   * @remarks
+   * Handles different types of client messages:
+   * - "mode": Changes the AI operation mode (transcription or conversation)
+   * - "custom_prompt": Sets a custom system prompt for the AI
+   * - "language": Sets the preferred language for responses
+   * - "media_chunk": Forwards audio data to Gemini
+   * - "disconnect": Cleans up the client connection
+   */
   async handleClientMessage(clientId, data) {
     const client = this.clients.get(clientId);
     if (!client) {
@@ -188,6 +275,20 @@ class GeminiProxyServer {
     }
   }
 
+  /**
+   * @method connectToGemini
+   * @description Establishes a WebSocket connection to the Gemini API for a client
+   * @param {Object} client - The client connection object
+   * @returns {Promise<void>}
+   * @private
+   * 
+   * @remarks
+   * Sets up event handlers for the Gemini WebSocket connection:
+   * - "open": Sends initial setup message to Gemini with client preferences
+   * - "message": Forwards responses from Gemini to the client
+   * - "close": Cleans up the connection
+   * - "error": Handles connection errors
+   */
   async connectToGemini(client) {
     if (client.geminiWs) return;
 
@@ -371,6 +472,16 @@ Please answer in ${language} !!!!!`;
   }
 }
 
-const PORT = process.env.PROXY_PORT || 4567; // Changed default port
+/**
+ * @constant {number} PORT - The port number the proxy server will listen on
+ * Uses the PROXY_PORT environment variable if set, otherwise defaults to 4567
+ */
+const PORT = process.env.PROXY_PORT || 4567;
+
+/**
+ * @instance
+ * @description Creates and starts the GeminiProxyServer instance
+ * This is the main entry point for the proxy server application
+ */
 const proxyServer = new GeminiProxyServer(PORT);
 console.log(`[Proxy] Server started on port ${PORT}`); // Log the actual port used

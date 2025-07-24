@@ -1,12 +1,62 @@
+/**
+ * @fileoverview Screen Sharing and Recording Hook
+ * @module useScreenShare
+ * @description React hook for capturing and recording screen content with audio
+ */
+
 import { useState, useRef, useCallback, useEffect } from "react";
 import { cleanupStream, cleanupRecorder } from "@/lib/utils";
 import { useSegmentRecorder, SEGMENT_MS } from "@/hooks/useSegmentRecorder"; // Import SEGMENT_MS
 import type { Segment } from "@/types";
 
-// Use the same segment duration for system audio
+/**
+ * @constant {number} SYSTEM_AUDIO_SEGMENT_MS - Duration of each system audio segment in milliseconds
+ * @description Controls how frequently complete system audio segments are created
+ */
 const SYSTEM_AUDIO_SEGMENT_MS = SEGMENT_MS;
+
+/**
+ * @constant {number} SYSTEM_AUDIO_CHUNK_MS - Internal timeslice for system audio MediaRecorder in milliseconds
+ * @description Controls how frequently the system audio MediaRecorder provides data chunks
+ */
 const SYSTEM_AUDIO_CHUNK_MS = 1000; // Internal chunk collection interval
 
+/**
+ * React hook for screen sharing and recording with audio
+ * 
+ * @returns {Object} Screen sharing controls and state
+ * @returns {boolean} isScreenSharing - Whether screen sharing is active
+ * @returns {number} recordingDuration - Current recording duration in seconds
+ * @returns {MediaStream|null} micStream - Current microphone MediaStream
+ * @returns {MediaStream|null} currentSystemAudioStream - Current system audio MediaStream
+ * @returns {Segment[]} micSegments - Array of recorded microphone audio segments
+ * @returns {Segment[]} systemAudioSegments - Array of recorded system audio segments
+ * @returns {string} micMimeType - MIME type of the recorded microphone audio
+ * @returns {string} systemAudioMimeType - MIME type of the recorded system audio
+ * @returns {React.RefObject<MediaStream|null>} screenStreamRef - Reference to the screen MediaStream
+ * @returns {React.RefObject<HTMLVideoElement>} screenPreviewRef - Reference to the video preview element
+ * @returns {function} toggleScreenShare - Function to toggle screen sharing on/off
+ * 
+ * @example
+ * ```tsx
+ * const { 
+ *   isScreenSharing, 
+ *   recordingDuration,
+ *   screenPreviewRef,
+ *   toggleScreenShare 
+ * } = useScreenShare();
+ * 
+ * return (
+ *   <div>
+ *     <video ref={screenPreviewRef} />
+ *     <button onClick={toggleScreenShare}>
+ *       {isScreenSharing ? 'Stop' : 'Start'} Screen Share
+ *     </button>
+ *     {isScreenSharing && <div>Recording: {recordingDuration}s</div>}
+ *   </div>
+ * );
+ * ```
+ */
 export function useScreenShare() {
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);

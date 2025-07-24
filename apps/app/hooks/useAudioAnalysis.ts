@@ -1,6 +1,23 @@
+/**
+ * @fileoverview Audio Analysis Hook for real-time audio level monitoring
+ * @module useAudioAnalysis
+ * @description A React hook that provides real-time audio level analysis for microphone and system audio
+ */
+
 import { useState, useEffect, useRef } from "react";
 
-// Helper function to calculate volume from frequency data
+/**
+ * Calculates volume level from frequency data
+ * 
+ * @param {AnalyserNode} analyser - Web Audio API analyser node
+ * @param {Uint8Array} dataArray - Array to store frequency data
+ * @returns {number} Volume level normalized to 0-100 scale
+ * 
+ * @private
+ * @description
+ * This helper function processes raw frequency data from an AnalyserNode
+ * and converts it to a normalized volume level between 0-100.
+ */
 function getVolumeFromFrequencyData(
   analyser: AnalyserNode,
   dataArray: Uint8Array,
@@ -18,6 +35,30 @@ function getVolumeFromFrequencyData(
   return Math.min(100, Math.max(0, (average / 128) * 100));
 }
 
+/**
+ * React hook for real-time audio level analysis
+ * 
+ * @param {MediaStream | null} micStream - Microphone audio stream to analyze
+ * @param {MediaStream | null} systemStream - System audio stream to analyze
+ * @returns {Object} Audio analysis state and nodes
+ * @returns {AnalyserNode | null} micAnalyserNode - Microphone audio analyzer node
+ * @returns {AnalyserNode | null} systemAnalyserNode - System audio analyzer node
+ * @returns {number} micLevel - Current microphone audio level (0-100)
+ * @returns {number} systemLevel - Current system audio level (0-100)
+ * 
+ * @example
+ * ```tsx
+ * const { micLevel, systemLevel } = useAudioAnalysis(microphoneStream, systemAudioStream);
+ * 
+ * // Display audio levels
+ * return (
+ *   <div>
+ *     <div>Mic Level: {micLevel}</div>
+ *     <div>System Audio Level: {systemLevel}</div>
+ *   </div>
+ * );
+ * ```
+ */
 export function useAudioAnalysis(
   micStream: MediaStream | null,
   systemStream: MediaStream | null,

@@ -1,3 +1,15 @@
+/**
+ * @fileoverview Application translation strings for internationalization
+ * @module translations
+ * @description Provides translation strings for all UI elements in multiple languages
+ */
+
+/**
+ * Translation dictionary containing all application strings in multiple languages
+ * Organized by language code and then by string key
+ * 
+ * @type {Record<string, Record<string, string>>}
+ */
 export const translations = {
   "en-US": {
     // Add English translations here
@@ -223,7 +235,12 @@ export const translations = {
   },
 };
 
-// Define a type for the translation keys for better type safety
+/**
+ * Type definition for all translation keys in the application
+ * Used for type safety when accessing translations
+ * 
+ * @typedef {string} TranslationKey
+ */
 export type TranslationKey =
   | "greeting"
   // ControlPanel Status
@@ -298,5 +315,10 @@ export type TranslationKey =
   | "statusAuthLoadingShort";
 // ... add other keys here
 
-// Define supported languages type
+/**
+ * Type definition for supported language codes in the application
+ * Currently supports: en-US, zh-TW, ja-JP
+ * 
+ * @typedef {string} SupportedLanguage
+ */
 export type SupportedLanguage = keyof typeof translations;

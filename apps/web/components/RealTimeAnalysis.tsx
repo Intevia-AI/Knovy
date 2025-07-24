@@ -1,3 +1,10 @@
+/**
+ * @fileoverview RealTimeAnalysis Component - Provides real-time audio analysis and transcription
+ * @module RealTimeAnalysis
+ * @description A React component that captures audio from microphone and system sources,
+ * processes it through the Gemini AI API, and provides real-time transcription and keyword extraction.
+ */
+
 "use client";
 
 import { useEffect, useRef, useState } from "react";
@@ -5,47 +12,86 @@ import { Button } from "@workspace/ui/components/button";
 import { Mic, MicOff, Pause } from "lucide-react";
 import { GeminiClient } from "../app/api/ai/proxy/geminiClient";
 
+/**
+ * @interface RealTimeAnalysisProps
+ * @description Props for the RealTimeAnalysis component
+ * @property {function} [onTextResponse] - Callback function triggered when text transcription is received
+ * @property {function} [onKeywords] - Callback function triggered when keywords are extracted
+ * @property {MediaStream} [systemAudioStream] - Optional system audio stream to analyze alongside microphone
+ */
 interface RealTimeAnalysisProps {
-  onTextResponse?: (text: string) => void; // 當收到文字回應時的回呼
-  onKeywords?: (keywords: string[]) => void; // 當收到關鍵字時的回呼
-  systemAudioStream?: MediaStream; // 系統音訊流 (可選)
+  onTextResponse?: (text: string) => void; // Callback when text response is received
+  onKeywords?: (keywords: string[]) => void; // Callback when keywords are extracted
+  systemAudioStream?: MediaStream; // Optional system audio stream
 }
 
+/**
+ * @component RealTimeAnalysis
+ * @description Component that provides real-time audio analysis and transcription using Gemini AI
+ * 
+ * @example
+ * ```tsx
+ * // Basic usage
+ * <RealTimeAnalysis 
+ *   onTextResponse={(text) => console.log("Transcription:", text)}
+ *   onKeywords={(keywords) => console.log("Keywords:", keywords)}
+ * />
+ * 
+ * // With system audio
+ * <RealTimeAnalysis 
+ *   onTextResponse={handleTranscription}
+ *   onKeywords={handleKeywords}
+ *   systemAudioStream={systemAudioStream}
+ * />
+ * ```
+ */
 export default function RealTimeAnalysis({
   onTextResponse,
   onKeywords,
   systemAudioStream,
 }: RealTimeAnalysisProps) {
-  const [isActive, setIsActive] = useState(false); // 是否正在分析
-  const [isProcessing, setIsProcessing] = useState(false); // 是否正在處理中 (例如：啟動/停止)
-  const [audioLevel, setAudioLevel] = useState(0); // 音量大小 (0-100)
-  const [isConnected, setIsConnected] = useState(false); // WebSocket 是否已連線
-  const geminiClientRef = useRef<GeminiClient | null>(null); // Gemini 客戶端實例
-  const audioContextRef = useRef<AudioContext | null>(null); // 音訊上下文
-  const audioWorkletNodeRef = useRef<AudioWorkletNode | null>(null); // 音訊 Worklet 節點
-  const mediaStreamRef = useRef<MediaStream | null>(null); // 麥克風音訊流
-  const systemAudioSourceRef = useRef<MediaStreamAudioSourceNode | null>(null); // 系統音訊來源節點
-  const shouldSendAudioRef = useRef(false); // 是否應該發送音訊數據
-  const textBufferRef = useRef(""); // 用於緩存收到的文字片段
+  // State for component operation
+  const [isActive, setIsActive] = useState(false); // Whether analysis is active
+  const [isProcessing, setIsProcessing] = useState(false); // Whether processing (starting/stopping)
+  const [audioLevel, setAudioLevel] = useState(0); // Audio volume level (0-100)
+  const [isConnected, setIsConnected] = useState(false); // WebSocket connection status
+  
+  // Refs for audio processing
+  const geminiClientRef = useRef<GeminiClient | null>(null); // Gemini client instance
+  const audioContextRef = useRef<AudioContext | null>(null); // Audio context
+  const audioWorkletNodeRef = useRef<AudioWorkletNode | null>(null); // Audio worklet node
+  const mediaStreamRef = useRef<MediaStream | null>(null); // Microphone audio stream
+  const systemAudioSourceRef = useRef<MediaStreamAudioSourceNode | null>(null); // System audio source node
+  const shouldSendAudioRef = useRef(false); // Whether to send audio data
+  const textBufferRef = useRef(""); // Buffer for received text fragments
 
+  /**
+   * Initialize the GeminiClient and set up event handlers
+   * Cleans up resources when the component unmounts
+   */
   useEffect(() => {
-    // 初始化 GeminiClient
+    // Initialize GeminiClient with callbacks
     geminiClientRef.current = new GeminiClient(
+      // Text response handler
       (text) => {
-        console.log("[即時分析] 收到文字:", text);
+        console.log("[RealTimeAnalysis] Received text:", text);
         textBufferRef.current += text;
 
+        // Parse the text for transcription and keywords when both markers are present
         if (
           textBufferRef.current.includes("TRANSCRIPTION:") &&
           textBufferRef.current.includes("KEYWORDS:")
         ) {
+          // Extract transcription using regex
           const transcriptionMatch = textBufferRef.current.match(
             /TRANSCRIPTION: (.*?)(?:\n|$)KEYWORDS:/s,
           );
+          // Extract keywords using regex
           const keywordsMatch = textBufferRef.current.match(
             /KEYWORDS: (.*?)(?:\n|$)/s,
           );
 
+          // Process transcription if found
           if (transcriptionMatch && transcriptionMatch[1]) {
             const transcription = transcriptionMatch[1].trim();
             const cleanTranscription = transcription
@@ -54,6 +100,7 @@ export default function RealTimeAnalysis({
             onTextResponse?.(cleanTranscription);
           }
 
+          // Process keywords if found
           if (keywordsMatch && keywordsMatch[1]) {
             const keywordsStr = keywordsMatch[1].trim();
             if (keywordsStr) {
@@ -65,6 +112,7 @@ export default function RealTimeAnalysis({
             }
           }
 
+          // Clear the buffer after processing
           textBufferRef.current = "";
         }
       },
@@ -130,18 +178,27 @@ export default function RealTimeAnalysis({
     }
   };
 
+  /**
+   * @function startAudio
+   * @description Starts audio capture and analysis
+   * 1. Connects to the Gemini WebSocket
+   * 2. Creates an AudioContext and AudioWorkletNode
+   * 3. Sets up microphone and system audio capture
+   * 4. Begins sending audio data to Gemini for analysis
+   * @returns {Promise<void>}
+   */
   const startAudio = async () => {
     try {
-      console.log("[即時分析] 開始音訊...");
+      console.log("[RealTimeAnalysis] Starting audio...");
       setIsProcessing(true);
 
-      console.log("[即時分析] 連接 WebSocket...");
+      console.log("[RealTimeAnalysis] Connecting to WebSocket...");
       if (!geminiClientRef.current) {
-        console.error("[即時分析] GeminiClient 實例為空!");
+        console.error("[RealTimeAnalysis] GeminiClient instance is null!");
         return;
       }
 
-      console.log("[即時分析] 在 GeminiClient 上呼叫 connect()...");
+      console.log("[RealTimeAnalysis] Calling connect() on GeminiClient...");
       geminiClientRef.current.connect();
 
       audioContextRef.current = new AudioContext({
@@ -207,29 +264,43 @@ export default function RealTimeAnalysis({
     }
   };
 
+  /**
+   * @function stopAudio
+   * @description Stops audio capture and analysis
+   * 1. Stops sending audio data
+   * 2. Disconnects and cleans up audio sources
+   * 3. Closes the AudioContext
+   * 4. Disconnects from the Gemini WebSocket
+   * 5. Updates component state
+   */
   const stopAudio = () => {
-    console.log("[即時分析] 停止音訊...");
+    console.log("[RealTimeAnalysis] Stopping audio...");
     shouldSendAudioRef.current = false;
 
+    // Clean up system audio source
     if (systemAudioSourceRef.current) {
       systemAudioSourceRef.current.disconnect();
       systemAudioSourceRef.current = null;
     }
 
+    // Stop all microphone tracks
     if (mediaStreamRef.current) {
       mediaStreamRef.current.getTracks().forEach((track) => track.stop());
       mediaStreamRef.current = null;
     }
 
+    // Close audio context
     if (audioContextRef.current) {
       audioContextRef.current.close();
       audioContextRef.current = null;
     }
 
+    // Disconnect from Gemini
     if (geminiClientRef.current) {
       geminiClientRef.current.disconnect();
     }
 
+    // Update state
     setIsActive(false);
     setIsConnected(false);
   };
