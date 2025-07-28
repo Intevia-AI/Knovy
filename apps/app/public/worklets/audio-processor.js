@@ -12,7 +12,7 @@ class AudioProcessor extends AudioWorkletProcessor {
     const input = inputs[0];
     if (input.length > 0) {
       const inputChannel = input[0];
-      
+
       // Calculate audio level
       let sum = 0;
       for (let i = 0; i < inputChannel.length; i++) {
@@ -27,7 +27,7 @@ class AudioProcessor extends AudioWorkletProcessor {
       // Fill the buffer
       for (let i = 0; i < inputChannel.length; i++) {
         this.buffer[this.bufferIndex++] = inputChannel[i];
-        
+
         if (this.bufferIndex >= this.bufferSize) {
           // 只有在非靜音狀態下才發送數據
           if (!this.isSilent) {
@@ -35,23 +35,26 @@ class AudioProcessor extends AudioWorkletProcessor {
             const pcmData = new Int16Array(this.bufferSize);
             for (let j = 0; j < this.bufferSize; j++) {
               const s = Math.max(-1, Math.min(1, this.buffer[j]));
-              pcmData[j] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+              pcmData[j] = s < 0 ? s * 0x8000 : s * 0x7fff;
             }
-            
+
             // Send the data to the main thread
-            this.port.postMessage({
-              pcmData: pcmData.buffer,
-              level: level * 100
-            }, [pcmData.buffer]);
+            this.port.postMessage(
+              {
+                pcmData: pcmData.buffer,
+                level: level * 100,
+              },
+              [pcmData.buffer]
+            );
           }
-          
+
           this.bufferIndex = 0;
         }
       }
     }
-    
+
     return true;
   }
 }
 
-registerProcessor('audio-processor', AudioProcessor); 
+registerProcessor("audio-processor", AudioProcessor);

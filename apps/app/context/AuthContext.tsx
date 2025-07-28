@@ -1,8 +1,24 @@
+/**
+ * @fileoverview Authentication context provider for Supabase OAuth integration.
+ * Manages user authentication state, OAuth flows, and session persistence
+ * in the Electron environment with custom protocol handling.
+ */
+
 "use client";
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { supabase } from '../lib/supabaseClient'; // Adjust path as necessary
 import type { Session, User } from '@supabase/supabase-js';
 
+/**
+ * Authentication context type definition.
+ * 
+ * @interface AuthContextType
+ * @property {Session | null} session - Current Supabase session
+ * @property {User | null} user - Current authenticated user
+ * @property {boolean} isLoading - Loading state during auth operations
+ * @property {Function} signInWithProvider - OAuth sign-in function
+ * @property {Function} signOut - Sign-out function
+ */
 interface AuthContextType {
   session: Session | null;
   user: User | null;
@@ -11,12 +27,28 @@ interface AuthContextType {
   signOut: () => Promise<void>;
 }
 
+/** @type {React.Context} Authentication context instance */
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+/**
+ * Props for the AuthProvider component.
+ * 
+ * @interface AuthProviderProps
+ * @property {ReactNode} children - Child components to wrap with auth context
+ */
 interface AuthProviderProps {
   children: ReactNode;
 }
 
+/**
+ * Authentication provider component that manages OAuth authentication state.
+ * Handles Supabase session management, OAuth callbacks via Electron's custom protocol,
+ * and provides authentication methods to child components.
+ * 
+ * @component
+ * @param {AuthProviderProps} props - Component props
+ * @returns {JSX.Element} Provider component wrapping children with auth context
+ */
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
@@ -129,6 +161,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     };
   }, []);
 
+  /**
+   * Initiates OAuth sign-in flow with the specified provider.
+   * Opens external browser for authentication and handles the callback
+   * through Electron's custom protocol system.
+   * 
+   * @async
+   * @function signInWithProvider
+   * @param {'google' | 'github'} provider - OAuth provider to use for authentication
+   * @returns {Promise<void>}
+   * @throws {Error} When OAuth URL is not available or Electron API is missing
+   */
   const signInWithProvider = async (provider: 'google' | 'github') => {
     setIsLoading(true);
     try {
@@ -170,6 +213,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // setIsLoading(false) will be handled by onAuthStateChange or if an error occurs
   };
 
+  /**
+   * Signs out the current user and clears the session.
+   * Updates the authentication state through the onAuthStateChange listener.
+   * 
+   * @async
+   * @function signOut
+   * @returns {Promise<void>}
+   */
   const signOut = async () => {
     setIsLoading(true);
     await supabase.auth.signOut();
@@ -187,6 +238,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
+/**
+ * Custom hook to access the authentication context.
+ * Must be used within an AuthProvider component tree.
+ * 
+ * @hook useAuth
+ * @returns {AuthContextType} Authentication context value
+ * @throws {Error} When used outside of AuthProvider
+ */
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {

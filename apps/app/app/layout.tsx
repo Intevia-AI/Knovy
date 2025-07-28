@@ -1,3 +1,8 @@
+/**
+ * @fileoverview Root layout component for the Intevia AI Electron application.
+ * Provides global providers, styling, and environment validation for the entire app.
+ */
+
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "@workspace/ui/globals.css";
@@ -11,13 +16,24 @@ import { validateEnv } from "@/lib/validateEnv";
 // This runs server-side during Next.js initialization
 validateEnv();
 
+/** @type {NextFont} Inter font configuration for consistent typography */
 const inter = Inter({ subsets: ["latin"] });
 
+/** @type {Metadata} Application metadata for SEO and browser display */
 export const metadata: Metadata = {
   title: "Intevia AI",
   description: "Intevia AI a real-time AI transcription and translation app",
 };
 
+/**
+ * Root layout component that wraps the entire application.
+ * Provides global context providers, styling, and notification system.
+ * 
+ * @component
+ * @param {Object} props - Component props
+ * @param {React.ReactNode} props.children - Child components to render
+ * @returns {JSX.Element} Root layout with providers and global styling
+ */
 export default function RootLayout({
   children,
 }: Readonly<{

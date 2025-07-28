@@ -63,7 +63,7 @@ cp .env.example .env
 # Edit the .env file with your configuration
 # Required variables:
 # - NEXT_PUBLIC_GEMINI_WS_URL: WebSocket URL for Gemini proxy
-# - NEXT_PUBLIC_AI_API_URL: API endpoint for AI interactions  
+# - NEXT_PUBLIC_AI_API_URL: API endpoint for AI interactions
 # - NEXT_PUBLIC_SUPABASE_URL: Your Supabase project URL
 # - NEXT_PUBLIC_SUPABASE_ANON_KEY: Supabase anonymous key
 ```
@@ -71,18 +71,21 @@ cp .env.example .env
 ### 3. Platform-Specific Setup
 
 #### macOS
+
 ```bash
 # Grant screen recording permissions
 # System Settings > Privacy & Security > Screen Recording > Enable for Terminal/IDE
 ```
 
 #### Windows
+
 ```bash
 # Install Visual Studio Build Tools (if not already installed)
 # Required for native Electron modules
 ```
 
 #### Linux
+
 ```bash
 # Install required system libraries
 sudo apt-get install libnss3-dev libatk-bridge2.0-dev libdrm2 libxcomposite1 libxdamage1 libxrandr2 libgbm1 libxss1 libasound2-dev
@@ -108,7 +111,7 @@ pnpm dev
 
 1. **UI Development**: Modify files in `app/`, `components/`, `hooks/` - changes auto-reload
 2. **Main Process Changes**: Modify `electron/main.mjs` or `electron/preload.mjs` - requires Electron restart
-3. **Debugging**: 
+3. **Debugging**:
    - Renderer process: Use Chrome DevTools (opens automatically in dev mode)
    - Main process: Use `console.log()` statements or attach Node.js debugger
 
@@ -134,6 +137,77 @@ apps/app/
 ├── public/              # Static assets
 └── package.json         # Dependencies and scripts
 ```
+
+### Detailed Architecture & Orchestration
+
+The application is organized in **three layers** that communicate via Electron's IPC mechanism:
+
+```
+┌──────────────────────────────┐
+│  Electron Main Process       │
+│  (electron/main.mjs)         │
+└──────────────┬───────────────┘
+               │  IPC (ipcMain)
+┌──────────────▼───────────────┐
+│  Preload Bridge              │
+│  (electron/preload.mjs)      │
+└──────────────┬───────────────┘
+               │  window.electronAPI
+┌──────────────▼───────────────┐
+│  Next.js Renderer (React UI) │
+│  (app/ + components/)        │
+└──────────────────────────────┘
+```
+
+1. **Electron Main Process** (`electron/main.mjs`)
+
+   - Creates the application window, registers global shortcuts, manages permissions, and handles heavy-weight native tasks (screenshot capture, settings persistence, OAuth callbacks).
+   - Exposes functionality to the renderer via `ipcMain` listeners (e.g.
+     `electronAPI:minimizeWindow`, `electronAPI:selectSource`).
+
+2. **Preload Script** (`electron/preload.mjs`)
+
+   - Runs in an isolated context and exposes a whitelisted API (`window.electronAPI`) to the React app using `contextBridge`.
+   - Forwards calls to the main process using `ipcRenderer` and streams events back to the UI.
+
+3. **Next.js Renderer** (everything under `app/`, `components/`, `hooks/`)
+   - Renders the UI, controls screen sharing, audio visualisers, and AI chat.
+   - Talks to the main process only through `window.electronAPI` and to the AI backend through the Next.js API route `/api/ai`.
+
+#### Startup Flow
+
+```text
+pnpm dev            # runs `next dev` + `electron .`
+      │
+      ├─▶ Next.js dev server starts on :3000 ➜ compiles React pages
+      └─▶ Electron launches BrowserWindow ➜ loads http://localhost:3000
+            │
+            └─▶ app/layout.tsx → app/page.tsx → <Main />
+```
+
+#### Key Files at a Glance
+
+| Area         | File                        | Role                                                       |
+| ------------ | --------------------------- | ---------------------------------------------------------- |
+| Main Process | `electron/main.mjs`         | Window management, global shortcuts, OAuth, screen capture |
+| Bridge       | `electron/preload.mjs`      | Secure API exposure (`window.electronAPI`)                 |
+| UI Shell     | `app/layout.tsx`            | Global providers, theming                                  |
+| Home Page    | `app/page.tsx`              | Entrypoint that renders `<Main />`                         |
+| Core UI      | `components/main.tsx`       | Orchestrates screen share, audio, AI chat                  |
+| Hooks        | `hooks/useElectron.ts`      | Electron window & capture controls                         |
+| Hooks        | `hooks/useAIInteraction.ts` | Chat state & `/api/ai` calls                               |
+| API          | `app/api/ai/route.ts`       | Serverless function → Google Gemini                        |
+| Validation   | `lib/validateEnv.ts`        | Checks `.env` variables on startup                         |
+
+#### Data Flow Example (Screenshot ➜ AI)
+
+1. User clicks **Screenshot** in UI (`<ControlPanel />`).
+2. `useElectron` calls `window.electronAPI.startScreenshot()`.
+3. Main process shows transparent overlay, captures the selected area, saves PNG, then emits `electronAPI:screenshotTaken` with the file path.
+4. `useAIInteraction` reads the PNG, posts `{ messages, data: { screenshot } }` to `/api/ai`.
+5. API route forwards to Google Gemini, returns AI response → chat panel updates.
+
+This section should give new contributors a quick mental model of how all parts fit together.
 
 ### Key Development Files
 
@@ -181,6 +255,7 @@ The build process is configured in `package.json` under the `build` section:
 For distribution, you'll need to configure code signing:
 
 #### macOS
+
 ```bash
 # Set up Apple Developer certificates
 # Configure in package.json build.mac section
@@ -188,6 +263,7 @@ For distribution, you'll need to configure code signing:
 ```
 
 #### Windows
+
 ```bash
 # Set up code signing certificate
 # Configure in package.json build.win section
@@ -240,6 +316,7 @@ pnpm build
 ### Auto-Updates (Optional)
 
 To implement auto-updates, consider integrating:
+
 - **electron-updater**: For automatic update checking and installation
 - **GitHub Releases**: For hosting update packages
 - **Update server**: Custom update distribution
@@ -249,6 +326,7 @@ To implement auto-updates, consider integrating:
 ### Common Issues
 
 #### Screen Recording Permission Denied (macOS)
+
 ```bash
 # Solution: Grant permission manually
 # System Settings > Privacy & Security > Screen Recording
@@ -256,6 +334,7 @@ To implement auto-updates, consider integrating:
 ```
 
 #### Electron App Won't Start
+
 ```bash
 # Check Node.js version
 node --version  # Should be v18+
@@ -266,6 +345,7 @@ pnpm install
 ```
 
 #### Build Failures
+
 ```bash
 # Clear build cache
 rm -rf .next out dist
@@ -275,6 +355,7 @@ pnpm build
 ```
 
 #### WebSocket Connection Issues
+
 ```bash
 # Verify proxy server is running
 # Check NEXT_PUBLIC_GEMINI_WS_URL in .env
