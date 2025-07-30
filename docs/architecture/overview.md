@@ -39,11 +39,12 @@ The web application provides a browser-based interface for users to interact wit
 - React Hooks for state management
 
 **Main Components:**
-- Landing page and marketing content
-- Authentication system (via Supabase)
-- Real-time audio processing
-- AI interaction interface
-- Feedback collection system
+- Landing page and marketing content (Hero section, Features, Team, Call-to-action)
+- Demo interface with screen sharing and audio recording
+- Real-time audio processing and visualization
+- AI interaction interface (chat panel, keyword extraction)
+- Feedback collection system (email form)
+- Authentication UI pages (login/register - UI only, no backend implementation)
 
 **Directory Structure:**
 ```
@@ -69,11 +70,14 @@ The desktop application provides a native experience with additional capabilitie
 - Native system APIs
 
 **Main Components:**
-- Screen sharing and recording
-- System tray integration
-- Native notifications
-- Offline capabilities
-- Audio processing
+- Screen sharing and recording with system-level permissions
+- System tray integration and native notifications
+- Real-time audio processing (microphone and system audio)
+- AI interaction interface with chat panel and keyword extraction
+- Screenshot capture with area selection
+- Settings persistence (language, custom prompts)
+- Global shortcuts and always-on-top mode
+- Cross-platform native experience
 
 **Directory Structure:**
 ```
