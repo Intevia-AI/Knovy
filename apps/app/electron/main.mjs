@@ -20,6 +20,10 @@ import serve from "electron-serve";
 import path from "path";
 import { promises as fs } from "fs";
 import { fileURLToPath } from "url";
+import {
+  installExtension,
+  REACT_DEVELOPER_TOOLS,
+} from "electron-devtools-installer";
 
 // ES module compatibility for __dirname
 const __filename = fileURLToPath(import.meta.url);
@@ -329,6 +333,11 @@ function createSelectionWindow() {
 
 // Make the ready handler async to use await
 app.on("ready", async () => {
+  if (isDev) {
+    await installExtension(REACT_DEVELOPER_TOOLS)
+      .then((ext) => console.log(`Added Extension:  ${ext.name}`))
+      .catch((err) => console.log("An error occurred: ", err));
+  }
   // Force dark mode
   nativeTheme.themeSource = "dark";
 
