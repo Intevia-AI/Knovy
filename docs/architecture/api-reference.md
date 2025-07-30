@@ -14,6 +14,9 @@ This document provides detailed information about the API endpoints available in
 
 ## AI Service
 
+> 【產品專用 | App Only】
+> 此區塊API僅供AI產品（Web App/Electron App）使用，負責與Google Gemini AI互動。
+
 The AI Service provides an interface to interact with Google's Gemini AI model.
 
 ### POST /api/ai
@@ -77,6 +80,9 @@ The endpoint supports CORS with the OPTIONS method for preflight requests.
 
 ## Process Audio
 
+> 【產品專用 | App Only】
+> 此區塊API僅供AI產品（Web App/Electron App）使用，負責音訊處理與格式轉換。
+
 The Process Audio service handles audio file processing, including trimming and format conversion.
 
 ### POST /api/process-audio
@@ -126,6 +132,9 @@ Processes audio files by trimming and converting to WAV format.
 
 ## Feedback
 
+> 【官網專用 | Web Only】
+> 此區塊API僅供公司首頁（官網）用戶回饋功能使用，與AI產品無關。
+
 The Feedback service handles user feedback submissions via email.
 
 ### POST /api/feedback
@@ -169,6 +178,9 @@ Submits user feedback via email.
 | 500         | Internal server error or email sending failure |
 
 ## WebSocket Proxy
+
+> 【產品專用 | App Only】
+> 此區塊API僅供AI產品（Web App/Electron App）使用，負責即時語音串流與AI互動。
 
 The WebSocket Proxy service provides real-time communication with Google's Gemini AI model for audio transcription and analysis.
 
