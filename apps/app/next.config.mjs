@@ -1,7 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: 'export', // <-- Add this line for static export
+  output: "export", // <-- Add this line for static export
   reactStrictMode: true,
+  devIndicators: false,
   transpilePackages: ["@workspace/ui"],
   // Optional: Add basePath if your Electron app loads from a subdirectory
   // basePath: '/app-build',
