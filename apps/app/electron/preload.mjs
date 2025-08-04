@@ -6,7 +6,7 @@
 
 const { contextBridge, ipcRenderer } = require("electron");
 
-console.log("[Preload] Script loaded."); // Log: Script start
+console.log("[Preload] Script loaded.");
 
 /**
  * Secure API object exposed to the renderer process via contextBridge.
@@ -190,7 +190,7 @@ const api = {
       "electronAPI:availableSources", // Add channel for receiving sources
       "electronAPI:screenshotTaken",
       "electronAPI:screenshotError",
-      "oauth-callback", // Add channel for OAuth callback from main process
+      "electronAPI:oauth-callback", // Add channel for OAuth callback from main process
     ];
     if (validChannels.includes(channel)) {
       // Deliberately strip event as it includes `sender`
@@ -204,16 +204,24 @@ const api = {
     );
     return () => {}; // Return a no-op function
   },
-  // Removed generic 'send' for security, use specific methods above
+  send: (channel, ...args) => {
+    // Restrict to whitelisted channels
+    const validChannels = ["renderer-auth-ready"];
+    if (!validChannels.includes(channel)) {
+      console.warn(
+        `[Preload] Attempted to send on invalid channel: ${channel}`
+      );
+      return;
+    }
+    ipcRenderer.send(channel, ...args);
+  },
 };
-
-console.log("[Preload] Exposing API keys:", Object.keys(api)); // Log: Keys being exposed
 
 try {
   contextBridge.exposeInMainWorld("electronAPI", api);
   console.log(
     "[Preload] contextBridge.exposeInMainWorld executed successfully."
-  ); // Log: Success
+  );
 } catch (error) {
-  console.error("[Preload] Error exposing API via contextBridge:", error); // Log: Error
+  console.error("[Preload] Error exposing API via contextBridge:", error);
 }

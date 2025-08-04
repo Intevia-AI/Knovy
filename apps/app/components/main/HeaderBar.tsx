@@ -65,18 +65,16 @@ export function HeaderBar({
           <Button variant="ghost" size="icon" className="h-5 w-5 rounded-sm animate-spin" disabled>
             <Loader2 size={12} />
           </Button>
-        ) : user && session ? (
-          <>
-            <Button
-              onClick={handleLogout}
-              variant="ghost"
-              size="icon"
-              className="h-5 w-5 rounded-sm hover:bg-muted-foreground/20"
-              title="Logout"
-            >
-              <LogOutIcon size={12} />
-            </Button>
-          </>
+        ) : user ? (
+          <Button
+            onClick={handleLogout}
+            variant="ghost"
+            size="icon"
+            className="h-5 w-5 rounded-sm hover:bg-muted-foreground/20"
+            title="Logout"
+          >
+            <LogOutIcon size={12} />
+          </Button>
         ) : (
           <Button
             onClick={handleLogin}

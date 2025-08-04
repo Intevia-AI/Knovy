@@ -10,14 +10,17 @@ This guide provides detailed instructions for setting up your development enviro
 Before you begin, ensure you have the following installed:
 
 - **Node.js**: Version 20.0.0 or later
+
   - [Download Node.js](https://nodejs.org/)
   - Verify with: `node --version`
 
 - **pnpm**: Version 10.0.0 or later
+
   - Install with: `npm install -g pnpm`
   - Verify with: `pnpm --version`
 
 - **Git**: Latest version recommended
+
   - [Download Git](https://git-scm.com/downloads)
   - Verify with: `git --version`
 
@@ -71,6 +74,23 @@ Before you begin, ensure you have the following installed:
 4. Add to `apps/app/.env`:
    - `NEXT_PUBLIC_SUPABASE_URL`
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+
+### OAuth Configuration for Desktop App
+
+To enable OAuth providers (like Google or GitHub) to work correctly with the Electron desktop application, you must configure the correct redirect URL in your Supabase project settings.
+
+1.  **Navigate to your Supabase Project.**
+2.  Go to **Authentication** -> **URL Configuration**.
+3.  In the **Redirect URLs** section, ensure the following URL is present:
+
+    ```
+    http://localhost:3000/auth/callback
+    ```
+
+4.  **Important**: Make sure to **remove** the old `intevia://auth/callback` URL if it exists. Only the `http://localhost:3001` URL should be used for the development environment.
+5.  Click **Save**.
+
+This URL points to the web-based callback page that handles the authentication flow and redirects back to the desktop app. It is a required step for the login process to function correctly.
 
 ### Gmail (For Feedback System)
 

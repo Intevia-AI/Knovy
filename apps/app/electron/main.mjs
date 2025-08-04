@@ -96,7 +96,7 @@ let selectionWindow;
 let pendingMediaRequest = null;
 
 /** @type {string} Custom protocol scheme for OAuth callbacks and deep linking */
-const PROTOCOL = "intevia-ai";
+const PROTOCOL = "intevia";
 
 /** @type {string|null} OAuth callback URL received during app startup */
 let oauthCallbackUrlOnStartup = null;
@@ -125,7 +125,7 @@ if (!gotTheLock) {
         console.log(
           "[main.js second-instance] MainWindow ready, sending URL to renderer."
         );
-        mainWindow.webContents.send("oauth-callback", url);
+        mainWindow.webContents.send("electronAPI:oauth-callback", url);
         oauthCallbackUrlOnStartup = null; // Clear if it was somehow set
       } else {
         console.warn(
@@ -150,32 +150,41 @@ if (!gotTheLock) {
 
 // Handle `open-url` event for macOS, this is triggered when the custom protocol link is clicked
 app.on("open-url", (event, url) => {
-  event.preventDefault(); // Prevent default action
+  event.preventDefault();
   console.log(`[main.js open-url] Received URL: ${url}`);
-  // Send the URL to the renderer process
-  // Ensure mainWindow and its webContents are available and not loading
-  if (
-    app.isReady() &&
-    mainWindow &&
-    mainWindow.webContents &&
-    !mainWindow.webContents.isLoading()
-  ) {
-    console.log(
-      "[main.js open-url] MainWindow ready, sending URL to renderer."
-    );
-    mainWindow.webContents.send("oauth-callback", url);
-    oauthCallbackUrlOnStartup = null; // Clear it once sent
-  } else {
-    // If the window isn't ready yet, queue this URL
-    console.warn(
-      "[main.js open-url] MainWindow not ready or still loading. Storing URL to send after window loads."
-    );
-    oauthCallbackUrlOnStartup = url; // Store URL to be sent later
-    // If window exists, try to focus it. did-finish-load will handle sending.
-    if (mainWindow) {
-      if (mainWindow.isMinimized()) mainWindow.restore();
-      mainWindow.focus();
+  oauthCallbackUrlOnStartup = url; // Always store the latest URL
+
+  if (mainWindow) {
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.show();
+    mainWindow.focus();
+    if (mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
+      console.log(
+        "[main.js open-url] MainWindow exists, sending URL to renderer."
+      );
+      mainWindow.webContents.send("electronAPI:oauth-callback", url);
+    } else {
+      console.warn(
+        "[main.js open-url] MainWindow webContents not ready. URL stored."
+      );
     }
+  } else {
+    console.warn("[main.js open-url] MainWindow not created yet. URL stored.");
+    // If the app is not running and is opened by URL, createWindow will be called
+    // and the URL will be handled by the did-finish-load event.
+  }
+});
+
+// Add a new IPC handler for when the renderer is ready
+ipcMain.on("renderer-auth-ready", (event) => {
+  console.log("[main.js] Renderer is ready for auth callback.");
+  if (oauthCallbackUrlOnStartup) {
+    console.log(
+      "[main.js] Sending stored OAuth URL to now-ready renderer:",
+      oauthCallbackUrlOnStartup
+    );
+    event.sender.send("electronAPI:oauth-callback", oauthCallbackUrlOnStartup);
+    oauthCallbackUrlOnStartup = null; // Clear after sending
   }
 });
 
@@ -224,7 +233,10 @@ const createWindow = async () => {
         "[main.js createWindow] Found stored OAuth URL, sending to renderer:",
         oauthCallbackUrlOnStartup
       );
-      mainWindow.webContents.send("oauth-callback", oauthCallbackUrlOnStartup);
+      mainWindow.webContents.send(
+        "electronAPI:oauth-callback",
+        oauthCallbackUrlOnStartup
+      );
       oauthCallbackUrlOnStartup = null; // Clear it after sending
     }
   });
@@ -234,7 +246,7 @@ const createWindow = async () => {
 
   if (isDev) {
     // Development: Load from Next.js dev server
-    mainWindow.loadURL("http://localhost:3000");
+    mainWindow.loadURL("http://localhost:3001");
     mainWindow.webContents.openDevTools();
     mainWindow.webContents.on("did-fail-load", (e, code, desc) => {
       console.warn("Development server failed to load, retrying...");
@@ -314,7 +326,7 @@ function createSelectionWindow() {
   });
 
   if (isDev) {
-    selectionWindow.loadURL("http://localhost:3000/selection");
+    selectionWindow.loadURL("http://localhost:3001/selection");
     selectionWindow.webContents.on(
       "preload-error",
       (event, preloadPath, error) => {
@@ -412,35 +424,21 @@ app.on("ready", async () => {
 
   // IPC handler for initiating OAuth flow
   ipcMain.handle("supabase:signInWithOAuth", async (event, provider) => {
-    // Note: The Supabase client in the renderer should generate the provider-specific URL.
-    // This handler is simplified: assuming the renderer sends the URL to open.
-    // Or, if Supabase client were in main, it would be like:
-    // const { data, error } = await supabase.auth.signInWithOAuth({
-    //   provider: provider,
-    //   options: {
-    //     redirectTo: `${PROTOCOL}://auth/callback`,
-    //   },
-    // });
-    // if (error) return { error: error.message };
-    // if (data.url) {
-    //   await shell.openExternal(data.url);
-    //   return { success: true };
-    // }
-    // return { error: 'No URL returned from Supabase' };
-    // For now, we expect the renderer to ask to open a pre-constructed URL
-    // This part will be simplified later if the renderer handles URL construction.
     console.log(
-      `[main] Received request to sign in with ${provider.urlToOpen}`
+      `[main] Received request to sign in with provider. URL: ${provider.urlToOpen}`
     );
     if (provider.urlToOpen) {
       try {
+        console.log("[main] Attempting to open external URL...");
         await shell.openExternal(provider.urlToOpen);
+        console.log("[main] Successfully opened external URL.");
         return { success: true };
       } catch (e) {
-        console.error("Failed to open external URL:", e);
+        console.error("[main] Failed to open external URL:", e);
         return { error: e.message };
       }
     } else {
+      console.error("[main] No URL provided to open for OAuth.");
       return { error: "No URL provided to open." };
     }
   });

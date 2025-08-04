@@ -9,7 +9,7 @@ import type { ElectronSource } from "@/types";
 
 /**
  * React hook for Electron desktop app integration
- * 
+ *
  * @returns {Object} Electron integration controls and state
  * @returns {boolean} isAlwaysOnTop - Whether the window is set to always be on top
  * @returns {function} toggleAlwaysOnTop - Function to toggle always-on-top state
@@ -21,16 +21,16 @@ import type { ElectronSource } from "@/types";
  * @returns {function} handleCancelSelect - Function to cancel source selection
  * @returns {function} setShowSourcePicker - Function to manually control source picker visibility
  * @returns {function} setAvailableSources - Function to manually set available sources
- * 
+ *
  * @example
  * ```tsx
- * const { 
- *   isAlwaysOnTop, 
- *   toggleAlwaysOnTop, 
+ * const {
+ *   isAlwaysOnTop,
+ *   toggleAlwaysOnTop,
  *   minimizeWindow,
- *   closeWindow 
+ *   closeWindow
  * } = useElectron();
- * 
+ *
  * return (
  *   <div>
  *     <button onClick={toggleAlwaysOnTop}>
@@ -45,7 +45,7 @@ import type { ElectronSource } from "@/types";
 export function useElectron() {
   const [isAlwaysOnTop, setIsAlwaysOnTop] = useState(false);
   const [availableSources, setAvailableSources] = useState<ElectronSource[]>(
-    [],
+    []
   );
   const [showSourcePicker, setShowSourcePicker] = useState(false);
 
@@ -71,10 +71,10 @@ export function useElectron() {
           (newState) => {
             console.log(
               "Always On Top state changed from main process:",
-              newState,
+              newState
             );
             setIsAlwaysOnTop(newState);
-          },
+          }
         );
 
         // Listener for available sources from main process
@@ -83,11 +83,11 @@ export function useElectron() {
           (sources: ElectronSource[]) => {
             console.log(
               "Received available sources from main:",
-              sources.length,
+              sources.length
             );
             setAvailableSources(sources);
             setShowSourcePicker(true); // Show the picker UI
-          },
+          }
         );
       } else {
         console.warn("Electron API not found. Running in browser mode?");
@@ -108,7 +108,7 @@ export function useElectron() {
       const newAlwaysOnTopState = !isAlwaysOnTop;
       console.log(
         "Toggling always on top via Electron API to:",
-        newAlwaysOnTopState,
+        newAlwaysOnTopState
       );
       window.electronAPI.toggleAlwaysOnTop(newAlwaysOnTopState);
       // State will be updated via the listener if successful

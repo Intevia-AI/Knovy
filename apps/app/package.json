@@ -5,7 +5,7 @@
   "type": "module",
   "main": "electron/main.mjs",
   "scripts": {
-    "dev": "concurrently -n \"NEXT,ELECTRON\" -c \"yellow,blue\" --kill-others \"next dev\" \"electron .\"",
+    "dev": "concurrently -n \"NEXT,ELECTRON\" -c \"yellow,blue\" --kill-others \"next dev -p 3001\" \"electron .\"",
     "build": "next build && electron-builder",
     "prepare": "rimraf node_modules/electron/dist && node node_modules/electron/install.js"
   },

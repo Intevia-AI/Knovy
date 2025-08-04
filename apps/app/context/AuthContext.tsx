@@ -76,80 +76,59 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const handleOAuthCallback = async (url: string) => {
       console.log('[AuthContext] Received OAuth callback URL from main process:', url);
       try {
-        const urlObj = new URL(url.replace('intevia-ai://', 'http://localhost/')); // Make it a parseable URL
-        const code = urlObj.searchParams.get('code');
-        const errorParam = urlObj.searchParams.get('error');
-        const errorDescription = urlObj.searchParams.get('error_description');
+        const hash = new URL(url.replace('intevia://', 'http://localhost/')).hash;
+        if (!hash) {
+            console.error('[AuthContext] No hash fragment found in callback URL.');
+            setIsLoading(false);
+            return;
+        }
 
-        if (errorParam) {
-          console.error(`[AuthContext] OAuth Error in callback URL: ${errorParam} - ${errorDescription}`);
-          setIsLoading(false); // Stop loading, show error to user potentially
-          return;
+        const params = new URLSearchParams(hash.substring(1));
+        const code = params.get('code');
+        const error = params.get('error');
+        const errorDescription = params.get('error_description');
+
+        if (error) {
+            console.error(`[AuthContext] OAuth Error in callback URL: ${error} - ${errorDescription}`);
+            setIsLoading(false);
+            return;
         }
 
         if (code) {
-          console.log('[AuthContext] Authorization code found in URL:', code);
-          console.log('[AuthContext] Attempting to exchange code for session...');
-          try {
-            const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+            console.log('[AuthContext] Extracted authorization code, exchanging for session.');
+            const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
 
-            if (error) {
-              console.error('[AuthContext] Error exchanging code for session:', error.message);
-              // Handle error: maybe set an error state, setIsLoading(false)
-              setIsLoading(false);
+            if (exchangeError) {
+                console.error('[AuthContext] Error exchanging code for session:', exchangeError);
             } else {
-              console.log('[AuthContext] Successfully exchanged code for session. Session data:', data.session);
-              // The onAuthStateChange listener should now take over and update the
-              // user and session state in the context.
-              // setIsLoading(false); // onAuthStateChange should handle this if it reliably fires quickly
+                console.log('[AuthContext] Session exchanged successfully.', data);
+                setSession(data.session);
+                setUser(data.user);
             }
-          } catch (exchangeError) {
-            console.error('[AuthContext] Exception during code exchange:', exchangeError);
-            setIsLoading(false);
-          }
         } else {
-          console.warn('[AuthContext] No authorization code found in callback URL. URL was:', url);
-          // Fallback to old logic if it's a hash-based token URL (less likely now)
-          const hash = urlObj.hash;
-          if (hash) {
-            const params = new URLSearchParams(hash.substring(1)); // remove #
-            const accessToken = params.get('access_token');
-            const refreshToken = params.get('refresh_token');
-
-            if (accessToken && refreshToken) {
-              console.log('[AuthContext] Extracted tokens from HASH, setting session.');
-              const { error: setError } = await supabase.auth.setSession({
-                access_token: accessToken,
-                refresh_token: refreshToken,
-              });
-              if (setError) {
-                console.error('[AuthContext] Error setting session from HASH callback:', setError);
-              } else {
-                console.log('[AuthContext] Session set successfully from HASH callback.');
-              }
-            } else {
-              console.warn('[AuthContext] Could not extract tokens from HASH callback URL fragment.');
-            }
-          } else {
-            console.warn('[AuthContext] No hash fragment and no code found in callback URL.');
-          }
-          setIsLoading(false);
+            console.warn('[AuthContext] Could not extract authorization code from callback URL fragment.');
         }
-      } catch (e) {
+    } catch (e) {
         console.error('[AuthContext] Error processing OAuth callback URL:', e);
-        setIsLoading(false);
-      }
+    } finally {
+        setTimeout(() => setIsLoading(false), 500);
+    }
     };
 
     let unsubscribeElectronListener: (() => void) | undefined;
-    if (window.electronAPI && typeof window.electronAPI.on === 'function') {
-      unsubscribeElectronListener = window.electronAPI.on('oauth-callback', (url: string) => {
+    if (window.electronAPI) {
+      unsubscribeElectronListener = window.electronAPI.on('electronAPI:oauth-callback', (url: string) => {
         console.log('[AuthContext] Received oauth-callback event from main process with URL:', url);
         handleOAuthCallback(url);
       });
       console.log('[AuthContext] Subscribed to oauth-callback from Electron.');
+      
+      // Signal to the main process that the renderer is ready to handle the auth callback
+      window.electronAPI.send('renderer-auth-ready');
+      console.log('[AuthContext] Sent renderer-auth-ready signal to main process.');
+
     } else {
-      console.warn('[AuthContext] window.electronAPI.on not available. OAuth callback might not work.');
+      console.warn('[AuthContext] window.electronAPI not available. OAuth callback might not work.');
     }
 
     return () => {
@@ -179,7 +158,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         provider,
         options: {
           skipBrowserRedirect: true,
-          redirectTo: 'intevia-ai://auth/callback', // Must match main.js and Supabase dashboard config
+          redirectTo: 'http://localhost:3000/auth/callback', // Redirect to the web app's callback page
           // For PKCE flow, skipBrowserRedirect might be an option if not automatically handled
           queryParams: { access_type: 'offline', prompt: 'consent' }, // Example for Google
         },

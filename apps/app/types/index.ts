@@ -33,7 +33,12 @@ declare global {
         language?: string;
       }) => Promise<void>;
       startScreenshot: () => void;
-      captureArea: (bounds: { x: number; y: number; width: number; height: number }) => void;
+      captureArea: (bounds: {
+        x: number;
+        y: number;
+        width: number;
+        height: number;
+      }) => void;
       cancelScreenshot: () => void;
     };
   }
