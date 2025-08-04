@@ -1,3 +1,7 @@
+/**
+ * @module ProcessAudioAPI
+ * @description API endpoint for processing audio files - trimming and converting to WAV format
+ */
 import { NextResponse } from "next/server";
 import ffmpeg from "fluent-ffmpeg";
 import fs from "fs/promises";
@@ -9,11 +13,19 @@ const tmpName = promisify(tmp.tmpName);
 const tmpCleanup = promisify(tmp.setGracefulCleanup); // Optional: better cleanup
 tmpCleanup(); // Call once to set up graceful cleanup
 
-// --- Constants -----------------------------------------------
+/**
+ * @constant {number} MAX_TRIM_SECONDS - Maximum number of seconds to keep from the end of the audio
+ * @constant {string} TARGET_MIME_TYPE - Target MIME type for processed audio (WAV format)
+ */
 const MAX_TRIM_SECONDS = 20;
 const TARGET_MIME_TYPE = "audio/wav";
 
-// Helper function to run ffmpeg command asynchronously
+/**
+ * @function runFfmpeg
+ * @description Helper function to run ffmpeg command asynchronously
+ * @param {ffmpeg.FfmpegCommand} command - The ffmpeg command to execute
+ * @returns {Promise<void>} Promise that resolves when processing is complete or rejects on error
+ */
 function runFfmpeg(command: ffmpeg.FfmpegCommand): Promise<void> {
   return new Promise((resolve, reject) => {
     command
@@ -29,7 +41,12 @@ function runFfmpeg(command: ffmpeg.FfmpegCommand): Promise<void> {
   });
 }
 
-// Helper function to get audio duration using ffprobe
+/**
+ * @function getAudioDuration
+ * @description Helper function to get audio duration using ffprobe
+ * @param {string} filePath - Path to the audio file
+ * @returns {Promise<number|null>} Promise that resolves with the duration in seconds, or null if duration cannot be determined
+ */
 function getAudioDuration(filePath: string): Promise<number | null> {
   // Return null on failure
   return new Promise((resolve) => {
@@ -57,11 +74,45 @@ function getAudioDuration(filePath: string): Promise<number | null> {
   });
 }
 
+/**
+ * @interface ProcessAudioRequest
+ * @description Interface representing the structure of an audio processing request
+ * @property {string} audioData - Base64 encoded audio blob
+ * @property {string} originalMimeType - MIME type of the original audio blob
+ */
 interface ProcessAudioRequest {
   audioData: string; // Base64 encoded audio blob
   originalMimeType: string; // Mime type of the original blob (useful for logging)
 }
 
+/**
+ * @function POST
+ * @description Handles POST requests to process audio files - trimming and converting to WAV format
+ * @route POST /api/process-audio
+ * @param {Request} req - The incoming HTTP request object
+ * 
+ * @requestBody {ProcessAudioRequest} - The request body containing audio data and MIME type
+ * @requestExample
+ * {
+ *   "audioData": "base64-encoded-audio-data",
+ *   "originalMimeType": "audio/webm"
+ * }
+ * 
+ * @responseBody {Object} - The processed audio data and MIME type
+ * @responseExample
+ * {
+ *   "processedAudioData": "base64-encoded-wav-data",
+ *   "processedMimeType": "audio/wav"
+ * }
+ * 
+ * @errorResponse {Object} - Error message when processing fails
+ * @errorExample
+ * {
+ *   "error": "Audio processing failed: Missing audioData"
+ * }
+ * 
+ * @returns {Promise<NextResponse>} JSON response with processed audio or error message
+ */
 export async function POST(req: Request) {
   let tempInputPath: string | null = null;
   let tempOutputPath: string | null = null;
@@ -73,6 +124,7 @@ export async function POST(req: Request) {
       `[Server Process] Received audio. Original type: ${originalMimeType}`,
     );
 
+    // Validate required fields
     if (!audioData) {
       return NextResponse.json({ error: "Missing audioData" }, { status: 400 });
     }

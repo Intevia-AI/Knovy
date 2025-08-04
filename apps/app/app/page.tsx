@@ -1,11 +1,25 @@
+/**
+ * @fileoverview Main page component for the Intevia AI Electron application.
+ * Handles initial loading state and renders the main application interface.
+ */
+
 "use client"; // Required for hooks like useAuth and client-side logic
 import { Main } from "@/components/main";
 import { useAuth } from "@/context/AuthContext"; // Import useAuth
 import { Loader2 } from "lucide-react"; // For a loading spinner
 
+/**
+ * Main page component that serves as the entry point for the application.
+ * Shows a loading spinner during authentication initialization, then renders
+ * the main application interface.
+ * 
+ * @component
+ * @returns {JSX.Element} Loading spinner or main application interface
+ */
 export default function Page() {
   const { isLoading } = useAuth(); // Only need isLoading here for the initial app load indication
 
+  // Show loading spinner while authentication context initializes
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center h-screen">

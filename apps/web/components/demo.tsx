@@ -1,3 +1,13 @@
+/**
+ * @fileoverview Demo Component - Main interactive demo interface for the Intevia AI application
+ * @module DemoComponent
+ * @description This component provides a comprehensive demo interface that allows users to:
+ * - Share their screen and record audio (microphone + system audio)
+ * - Get real-time AI analysis and transcription
+ * - Interact with AI through various actions (answer, summary, search)
+ * - View audio visualizations and keyword extraction
+ */
+
 import { useEffect, useRef, useState, useCallback } from "react";
 import { Button } from "@workspace/ui/components/button";
 import {
@@ -18,118 +28,150 @@ import AudioVisualizer from "./AudioVisualizer";
 import { cn } from "@workspace/ui/lib/utils";
 import { useSegmentRecorder, SEGMENT_MS } from "@/hooks/useSegmentRecorder";
 
-// --- Types ----------------------------------------------------
+/**
+ * @interface AIContextData
+ * @description Data structure for AI context containing audio inputs
+ * @property {Array} [audioInputs] - Array of audio input objects with data, mimeType, and label
+ */
 interface AIContextData {
-  audioInputs?: { data: string; mimeType: string; label: string }[];
+  audioInputs?: { data: string; mimeType: string; label: string; }[];
 }
 
+/**
+ * @interface Segment
+ * @description Represents an audio segment with its blob data and timestamp
+ * @property {Blob} blob - The audio blob data
+ * @property {number} timestamp - Unix timestamp when the segment was created
+ */
 interface Segment {
   blob: Blob;
   timestamp: number;
 }
 
-// =============================================================
+/**
+ * @component DemoComponent
+ * @description Main demo component that provides screen sharing, audio recording, and AI analysis functionality
+ * 
+ * @features
+ * - Screen sharing with system audio capture
+ * - Microphone recording with real-time analysis
+ * - AI-powered transcription and analysis
+ * - Keyword extraction and explanation
+ * - Audio visualization for both microphone and system audio
+ * - Multiple AI actions: answer questions, generate summaries, search topics
+ * - Custom prompt input for flexible AI interaction
+ * 
+ * @returns {JSX.Element} The complete demo interface
+ * 
+ * @example
+ * ```tsx
+ * <DemoComponent />
+ * ```
+ */
 export function DemoComponent() {
-  // --- Refs ----------------------------------------------------
-  const screenStreamRef = useRef<MediaStream | null>(null);
-  const screenAudioRecorderRef = useRef<MediaRecorder | null>(null);
-  const systemAudioChunksRef = useRef<Blob[]>([]);
-  const systemAudioTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const audioPlayerRef = useRef<HTMLAudioElement>(null);
-  const screenPreviewRef = useRef<HTMLVideoElement>(null);
-  const messagesContainerRef = useRef<HTMLDivElement>(null);
+  // --- Refs: Used to persist values across renders without causing re-renders ---
+  const screenStreamRef = useRef<MediaStream | null>(null); // Holds the screen share stream (video + system audio)
+  const screenAudioRecorderRef = useRef<MediaRecorder | null>(null); // MediaRecorder for system audio
+  const systemAudioChunksRef = useRef<Blob[]>([]); // Chunks of system audio for segmenting
+  const systemAudioTimerRef = useRef<NodeJS.Timeout | null>(null); // Timer for segmenting system audio
+  const audioPlayerRef = useRef<HTMLAudioElement>(null); // (Unused in main UI, for audio playback)
+  const screenPreviewRef = useRef<HTMLVideoElement>(null); // For showing screen preview
+  const messagesContainerRef = useRef<HTMLDivElement>(null); // For auto-scrolling chat/messages
+  // Ref to always have latest sendContextToAI function for event handlers
   const sendContextToAIRef = useRef<
     (
       action: "real-time" | "answer" | "summary" | "search" | "custom",
       customQuery?: string,
     ) => Promise<void>
-  >(async () => {});
+  >(async () => { });
+  // For mic audio visualization (Web Audio API context and source node)
   const micAudioContextRef = useRef<AudioContext | null>(null);
   const micSourceNodeRef = useRef<MediaStreamAudioSourceNode | null>(null);
 
-  // Add refs & state for system audio analyser
+  // System audio visualization (Web Audio API context and source node)
   const systemAudioContextRef = useRef<AudioContext | null>(null);
-  const systemAudioSourceNodeRef = useRef<MediaStreamAudioSourceNode | null>(
-    null,
-  );
-  const [systemAnalyserNode, setSystemAnalyserNode] =
-    useState<AnalyserNode | null>(null);
-  const [currentSystemAudioStream, setCurrentSystemAudioStream] =
-    useState<MediaStream | null>(null);
+  const systemAudioSourceNodeRef = useRef<MediaStreamAudioSourceNode | null>(null);
+  const [systemAnalyserNode, setSystemAnalyserNode] = useState<AnalyserNode | null>(null); // For system audio visualization
+  const [currentSystemAudioStream, setCurrentSystemAudioStream] = useState<MediaStream | null>(null); // For passing to visualizer
 
-  // --- State --------------------------------------------------
-  const [isLoading, setIsLoading] = useState(false);
-  const [segments, setSegments] = useState<Segment[]>([]);
-  const [systemAudioSegments, setSystemAudioSegments] = useState<Segment[]>([]);
-  const [recordingDuration, setRecordingDuration] = useState(0);
-  const [aiMessages, setAiMessages] = useState<Message[]>([]);
-  const [customPrompt, setCustomPrompt] = useState("");
-  const [isScreenSharing, setIsScreenSharing] = useState(false);
-  const [keywords, setKeywords] = useState<string[]>([]);
-  const [selectedKeyword, setSelectedKeyword] = useState<string | null>(null);
-  const [systemAudioMimeType, setSystemAudioMimeType] = useState<string>("");
-  const [micAnalyserNode, setMicAnalyserNode] = useState<AnalyserNode | null>(
-    null,
-  );
+  // --- State: React state for UI and logic ---
+  const [isLoading, setIsLoading] = useState(false); // True when waiting for AI response
+  const [segments, setSegments] = useState<Segment[]>([]); // Mic audio segments (for context)
+  const [systemAudioSegments, setSystemAudioSegments] = useState<Segment[]>([]); // System audio segments (for context)
+  const [recordingDuration, setRecordingDuration] = useState(0); // Elapsed time for UI
+  const [aiMessages, setAiMessages] = useState<Message[]>([]); // Chat/AI messages for display
+  const [customPrompt, setCustomPrompt] = useState(""); // User's custom prompt input
+  const [isScreenSharing, setIsScreenSharing] = useState(false); // True if currently sharing/recording
+  const [keywords, setKeywords] = useState<string[]>([]); // Extracted keywords from AI
+  const [selectedKeyword, setSelectedKeyword] = useState<string | null>(null); // For showing keyword explanation loading
+  const [systemAudioMimeType, setSystemAudioMimeType] = useState<string>(""); // Chosen mime type for system audio recording
+  const [micAnalyserNode, setMicAnalyserNode] = useState<AnalyserNode | null>(null); // For mic audio visualization
 
-  // --- Hook ---------------------------------------------------
+  // --- Custom hook for mic recording and chunking ---
+  // Provides start/stop, mimeType, micStream, and current chunks
   const {
     start: startMicRecording,
     stop: stopMicRecording,
     mimeType: micMimeType,
     micStream,
-    currentMicChunks, // <-- Add currentMicChunks
+    currentMicChunks, // Array of Blob parts for current mic segment
   } = useSegmentRecorder();
 
-  // --- Utils --------------------------------------------------
+  // --- Utility: Apply a low-pass filter to a MediaStream (removes high-frequency noise) ---
   const applyNoiseFilter = (stream: MediaStream): MediaStream => {
-    const audioCtx = new AudioContext();
-    const source = audioCtx.createMediaStreamSource(stream);
-    const filter = audioCtx.createBiquadFilter();
-    filter.type = "lowpass";
-    filter.frequency.setValueAtTime(3000, audioCtx.currentTime);
-    source.connect(filter);
-    const dest = audioCtx.createMediaStreamDestination();
-    filter.connect(dest);
-    return dest.stream;
+    const audioCtx = new AudioContext(); // Create a new audio context for processing
+    const source = audioCtx.createMediaStreamSource(stream); // Use the input stream as a source node
+    const filter = audioCtx.createBiquadFilter(); // Create a biquad filter node
+    filter.type = "lowpass"; // Set filter type to lowpass (attenuates high frequencies)
+    filter.frequency.setValueAtTime(3000, audioCtx.currentTime); // Set cutoff frequency to 3kHz
+    source.connect(filter); // Route input through the filter
+    const dest = audioCtx.createMediaStreamDestination(); // Create a destination node that outputs a MediaStream
+    filter.connect(dest); // Route filtered audio to the destination
+    return dest.stream; // Return the processed stream
   };
 
+  // --- Utility: Stop and clean up a MediaStream (stops all tracks) ---
   const cleanupStream = (ref: React.MutableRefObject<MediaStream | null>) => {
-    ref.current?.getTracks().forEach((t) => t.stop());
-    ref.current = null;
+    ref.current?.getTracks().forEach((t) => t.stop()); // Stop all tracks
+    ref.current = null; // Clear the ref
   };
 
+  // --- Utility: Stop and clean up a MediaRecorder ---
   const cleanupRecorder = (
     ref: React.MutableRefObject<MediaRecorder | null>,
   ) => {
     if (ref.current && ref.current.state !== "inactive") {
-      ref.current.ondataavailable = null;
+      ref.current.ondataavailable = null; // Remove event handlers
       ref.current.onstop = null;
       ref.current.onerror = null;
       try {
-        ref.current.stop();
+        ref.current.stop(); // Stop recording
       } catch (e) {
-        console.warn("Error stopping recorder during cleanup:", e);
+        // Ignore errors if already stopped
       }
     }
-    ref.current = null;
+    ref.current = null; // Clear the ref
   };
 
+  // --- Utility: Convert a Blob to a base64 string (for sending to API) ---
   const blobToBase64 = (b: Blob): Promise<string> =>
     new Promise((res, rej) => {
       const reader = new FileReader();
       reader.onload = () =>
         typeof reader.result === "string" ? res(reader.result) : rej();
       reader.onerror = rej;
-      reader.readAsDataURL(b);
+      reader.readAsDataURL(b); // Read as data URL (base64)
     });
 
+  // --- Utility: Format seconds as mm:ss for UI ---
   const formatTime = (s: number) =>
     `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, "0")}`;
 
-  const SEGMENT_MS = 20_000;
-  const ANSWER_SEGMENT_MS = 10_000; // 10 seconds for answer action
+  // --- Constants for segment durations ---
+  const SEGMENT_MS = 20_000; // 20 seconds for regular segments
+  const ANSWER_SEGMENT_MS = 10_000; // 10 seconds for "answer" action
 
+  // --- Main function to send context and prompt to AI backend ---
   const sendContextToAI = useCallback<
     (
       action: "real-time" | "answer" | "summary" | "search" | "custom",
@@ -137,31 +179,25 @@ export function DemoComponent() {
     ) => Promise<void>
   >(
     async (action, customQuery) => {
-      if (isLoading || !isScreenSharing) return;
+      if (isLoading || !isScreenSharing) return; // Prevent duplicate requests
       setIsLoading(true);
 
-      const ctx = await gatherContext();
-
+      const ctx = await gatherContext(); // Gather latest audio context (mic/system)
       if (!ctx) {
         setIsLoading(false);
         return;
       }
 
+      // Map action to prompt for the AI
       const promptMap: Record<typeof action, string> = {
-        "real-time":
-          "轉錄最新的語音內容，並識別其中提到的關鍵點、關鍵字或待辦事項。",
-        answer:
-          "根據最近音訊中的對話內容，回答音訊中最後提出的問題。因為會有兩種音訊，一種是麥克風音訊，一種是系統音訊，請先回答麥克風音訊再回答系統音訊的問題。有必要請上網查詢。",
-        summary:
-          "提供最近音訊片段中捕捉到的對話內容的簡明摘要。請用中文回答。若是麥克風音訊沒有可總結的對話內容，請不用針對該音訊回答。",
-        search:
-          "根據最近音訊片段中討論的主題，建議相關的搜尋關鍵字或查找相關資訊。請用中文回答。若是麥克風音訊沒有可搜尋的對話內容，請不用針對該音訊回答。",
-        custom:
-          customQuery ||
-          "根據以下要求分析最近音訊片段中捕捉到的對話內容。請用中文回答。",
+        "real-time": "轉錄最新的語音內容，並識別其中提到的關鍵點、關鍵字或待辦事項。",
+        answer: "根據最近音訊中的對話內容，回答音訊中最後提出的問題。因為會有兩種音訊，一種是麥克風音訊，一種是系統音訊，請先回答麥克風音訊再回答系統音訊的問題。有必要請上網查詢。",
+        summary: "提供最近音訊片段中捕捉到的對話內容的簡明摘要。請用中文回答。若是麥克風音訊沒有可總結的對話內容，請不用針對該音訊回答。",
+        search: "根據最近音訊片段中討論的主題，建議相關的搜尋關鍵字或查找相關資訊。請用中文回答。若是麥克風音訊沒有可搜尋的對話內容，請不用針對該音訊回答。",
+        custom: customQuery || "根據以下要求分析最近音訊片段中捕捉到的對話內容。請用中文回答。",
       } as const;
 
-      // 簡化的顯示用 prompt
+      // Map action to display prompt for UI
       const displayPromptMap: Record<typeof action, string> = {
         "real-time": "即時轉錄",
         answer: "根據語音內容回答問題",
@@ -170,28 +206,31 @@ export function DemoComponent() {
         custom: customPrompt,
       } as const;
 
+      // Compose user message for API and display
       const userMsg: Message = {
         id: `user-${Date.now()}`,
         role: "user",
         content: action === "custom" ? customPrompt : promptMap[action],
       };
 
-      // 使用簡化的 prompt 顯示
+      // Display a simplified prompt in the UI
       const displayMsg: Message = {
         id: `user-${Date.now()}`,
         role: "user",
         content: action === "custom" ? customPrompt : displayPromptMap[action],
       };
 
+      // Only show user message in chat for non-realtime actions
       if (action !== "real-time") setAiMessages((p) => [...p, displayMsg]);
 
       try {
+        // Send request to backend API with prompt and audio context
         const res = await fetch("/api/ai", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ messages: [userMsg], data: ctx }),
         });
-        if (!res.ok) throw new Error(await res.text()); // Keep throwing the original error for console logging
+        if (!res.ok) throw new Error(await res.text());
         const ai: Message = await res.json();
         setAiMessages((p) => [
           ...p,
@@ -202,9 +241,7 @@ export function DemoComponent() {
           },
         ]);
       } catch (e: unknown) {
-        // Log the actual error for debugging
-        console.error("AI request failed:", e);
-        // Display a generic error message to the user
+        // On error, show a generic error message in chat
         setAiMessages((p) => [
           ...p,
           {
@@ -215,7 +252,7 @@ export function DemoComponent() {
           },
         ]);
       } finally {
-        setIsLoading(false);
+        setIsLoading(false); // Always clear loading state
       }
     },
     [
@@ -229,7 +266,9 @@ export function DemoComponent() {
     ],
   );
 
-  // --- Effects ------------------------------------------------
+  // --- Effects: React lifecycle hooks for timers, analyzers, and UI updates ---
+
+  // Timer for recording duration (increments every second while sharing)
   useEffect(() => {
     let t: NodeJS.Timeout;
     if (isScreenSharing) {
@@ -241,6 +280,7 @@ export function DemoComponent() {
     return () => clearInterval(t);
   }, [isScreenSharing]);
 
+  // Listen for new mic audio segments (from custom event, e.g. from useSegmentRecorder)
   useEffect(() => {
     const h = (e: CustomEvent<Blob>) =>
       setSegments((p) => [...p, { blob: e.detail, timestamp: Date.now() }]);
@@ -248,10 +288,12 @@ export function DemoComponent() {
     return () => window.removeEventListener("segment", h as any);
   }, []);
 
+  // Keep sendContextToAIRef in sync with latest function (for use in event handlers)
   useEffect(() => {
     sendContextToAIRef.current = sendContextToAI;
   }, [sendContextToAI]);
 
+  // Show screen preview in video element when sharing
   useEffect(() => {
     if (
       isScreenSharing &&
@@ -271,30 +313,27 @@ export function DemoComponent() {
     }
   }, [isScreenSharing, screenStreamRef.current]);
 
+  // Setup/cleanup mic analyser for visualization
   useEffect(() => {
     if (isScreenSharing && micStream && !micAudioContextRef.current) {
-      console.log("Setting up mic analyser...");
       try {
-        const audioCtx = new window.AudioContext();
-        micAudioContextRef.current = audioCtx;
-        const source = audioCtx.createMediaStreamSource(micStream);
-        micSourceNodeRef.current = source;
-        const analyser = audioCtx.createAnalyser();
-        analyser.smoothingTimeConstant = 0.3;
-        analyser.fftSize = 256;
-        source.connect(analyser);
-        setMicAnalyserNode(analyser);
-        console.log("Mic analyser setup complete.");
+        const audioCtx = new window.AudioContext(); // Create a new audio context for processing
+        micAudioContextRef.current = audioCtx; // Set the current audio context
+        const source = audioCtx.createMediaStreamSource(micStream); // Create a source node from the mic stream
+        micSourceNodeRef.current = source; // Set the current source node
+        const analyser = audioCtx.createAnalyser(); // Create an analyser node for visualization
+        analyser.smoothingTimeConstant = 0.3; // Set the smoothing time constant
+        analyser.fftSize = 256; // Set the FFT size
+        source.connect(analyser); // Connect the source node to the analyser node
+        setMicAnalyserNode(analyser); // Set the current analyser node
       } catch (error) {
-        console.error("Error setting up mic analyser:", error);
-        micSourceNodeRef.current?.disconnect();
-        micSourceNodeRef.current = null;
-        micAudioContextRef.current?.close().catch(console.error);
-        micAudioContextRef.current = null;
+        micSourceNodeRef.current?.disconnect(); // Disconnect the source node
+        micSourceNodeRef.current = null; // Clear the source node ref
+        micAudioContextRef.current?.close().catch(console.error); // Close the audio context
+        micAudioContextRef.current = null; // Clear the audio context ref
         setMicAnalyserNode(null);
       }
     } else if ((!isScreenSharing || !micStream) && micAudioContextRef.current) {
-      console.log("Cleaning up mic analyser...");
       micSourceNodeRef.current?.disconnect();
       micSourceNodeRef.current = null;
       if (micAudioContextRef.current.state !== "closed") {
@@ -302,11 +341,8 @@ export function DemoComponent() {
       }
       micAudioContextRef.current = null;
       setMicAnalyserNode(null);
-      console.log("Mic analyser cleaned up.");
     }
-
     return () => {
-      console.log("Unmount cleanup for mic analyser...");
       if (
         micAudioContextRef.current &&
         micAudioContextRef.current.state !== "closed"
@@ -319,6 +355,7 @@ export function DemoComponent() {
     };
   }, [isScreenSharing, micStream]);
 
+  // Auto-scroll chat/messages to bottom when new message arrives
   useEffect(() => {
     if (messagesContainerRef.current) {
       messagesContainerRef.current.scrollTop =
@@ -328,6 +365,7 @@ export function DemoComponent() {
 
   // --- Context ------------------------------------------------
   const gatherContext = async (): Promise<AIContextData | null> => {
+    // Debug: log current state of audio buffers and segments
     console.log("Checking audio recording status...");
     console.log("Mic chunks length:", currentMicChunks.length);
     console.log("System chunks length:", systemAudioChunksRef.current.length);
@@ -342,7 +380,7 @@ export function DemoComponent() {
         : null,
     );
 
-    // Last completed segments
+    // Get the most recent completed mic and system audio segments
     const lastMicSegment =
       segments.length > 0 ? segments[segments.length - 1] : null;
     const lastSystemSegment =
@@ -350,11 +388,11 @@ export function DemoComponent() {
         ? systemAudioSegments[systemAudioSegments.length - 1]
         : null;
 
-    // Current recording chunks
+    // Get the current, in-progress audio chunks (not yet finalized as segments)
     const currentMicRecordingChunks = currentMicChunks; // From the hook
-    const currentSystemRecordingChunks = systemAudioChunksRef.current; // From component ref
+    const currentSystemRecordingChunks = systemAudioChunksRef.current; // From ref
 
-    // Create blobs from current chunks if they exist
+    // Convert current chunks to blobs if they exist
     const currentMicBlob =
       currentMicRecordingChunks.length > 0
         ? new Blob(currentMicRecordingChunks, { type: micMimeType })
@@ -367,14 +405,14 @@ export function DemoComponent() {
     console.log("Current mic blob size:", currentMicBlob?.size);
     console.log("Current system blob size:", currentSystemBlob?.size);
 
-    // Combine all potential audio sources
-    const blobsToProcess: { blob: Blob; type: string; label: string }[] = [];
+    // Collect all blobs to process (mic/system, segment/current)
+    const blobsToProcess: { blob: Blob; type: string; label: string; }[] = [];
 
-    // For answer action, only use the most recent 10 seconds
+    // For "answer" action: only use the most recent 10 seconds of audio
     if (lastMicSegment) {
       const currentTime = Date.now();
       const segmentAge = currentTime - lastMicSegment.timestamp;
-      // 如果最後一個片段小於 10 秒，就使用它
+      // If last segment is recent, use it
       if (segmentAge <= ANSWER_SEGMENT_MS) {
         blobsToProcess.push({
           blob: lastMicSegment.blob,
@@ -382,7 +420,7 @@ export function DemoComponent() {
           label: "microphone-last",
         });
       } else {
-        // 如果最後一個片段大於 10 秒，就只使用最後 10 秒
+        // If not, only use if timestamp is within last 10s
         const startTime = currentTime - ANSWER_SEGMENT_MS;
         if (lastMicSegment.timestamp >= startTime) {
           blobsToProcess.push({
@@ -407,7 +445,7 @@ export function DemoComponent() {
       }
     }
 
-    // 對於當前錄製的片段，只使用最後 10 秒
+    // Always include current, in-progress chunks if available
     if (currentMicRecordingChunks.length > 0) {
       const currentBlob = new Blob(currentMicRecordingChunks, {
         type: micMimeType,
@@ -428,8 +466,10 @@ export function DemoComponent() {
       });
     }
 
+    // If nothing to send, bail out
     if (!blobsToProcess.length) return null;
 
+    // Convert all blobs to base64 for API (async)
     const audioInputs = await Promise.all(
       blobsToProcess.map(async ({ blob, type, label }) => {
         try {
@@ -445,6 +485,7 @@ export function DemoComponent() {
       }),
     );
 
+    // Filter out any failed conversions
     const validAudioInputs = audioInputs.filter(Boolean) as {
       data: string;
       mimeType: string;
@@ -453,12 +494,14 @@ export function DemoComponent() {
 
     if (!validAudioInputs.length) return null;
 
+    // Return the context object for the AI API
     return { audioInputs: validAudioInputs };
   };
 
   const handleTextResponse = useCallback((text: string) => {
     setAiMessages((prev) => {
       const lastMessage = prev[prev.length - 1];
+      // If the last message is a real-time transcript, append to it
       if (
         lastMessage?.role === "assistant" &&
         lastMessage.content.startsWith("[即時轉錄]")
@@ -468,6 +511,7 @@ export function DemoComponent() {
           { ...lastMessage, content: lastMessage.content + text },
         ];
       } else {
+        // Otherwise, add a new real-time transcript message
         return [
           ...prev,
           {
@@ -482,16 +526,18 @@ export function DemoComponent() {
 
   const handleKeywords = useCallback((newKeywords: string[]) => {
     setKeywords((prev) => {
+      // Only add keywords that are not already present
       const uniqueNewKeywords = newKeywords.filter((k) => !prev.includes(k));
       return [...prev, ...uniqueNewKeywords];
     });
   }, []);
 
   const handleKeywordClick = useCallback(async (keyword: string) => {
-    setSelectedKeyword(keyword);
+    setSelectedKeyword(keyword); // Mark as loading in UI
     setIsLoading(true);
 
     try {
+      // Ask the AI backend to explain the keyword
       const response = await fetch("/api/ai", {
         method: "POST",
         headers: {
@@ -515,6 +561,7 @@ export function DemoComponent() {
       const data = await response.json();
       const explanation = data.content;
 
+      // Add the explanation to the chat
       setAiMessages((prev) => [
         ...prev,
         {
@@ -525,7 +572,7 @@ export function DemoComponent() {
       ]);
     } catch (error) {
       console.error("取得關鍵字解釋時發生錯誤:", error); // Log original error
-      // Display a generic error message
+      // Show a generic error message in chat
       setAiMessages((prev) => [
         ...prev,
         {
@@ -536,31 +583,38 @@ export function DemoComponent() {
       ]);
     } finally {
       setIsLoading(false);
-      setSelectedKeyword(null);
+      setSelectedKeyword(null); // Clear loading state
     }
   }, []);
 
   const toggleScreenShare = async () => {
-    if (isLoading) return;
+    if (isLoading) return; // Prevent toggling while busy
 
     if (isScreenSharing) {
+      // --- Stop all streams, recorders, and analyzers ---
       stopMicRecording();
 
+      // Stop system audio recording timer if it exists
       if (systemAudioTimerRef.current) {
         clearInterval(systemAudioTimerRef.current);
         systemAudioTimerRef.current = null;
       }
 
+      // Cleanup screen audio recorder
       cleanupRecorder(screenAudioRecorderRef);
+      // Clear system audio chunks
       systemAudioChunksRef.current = [];
-
+      // Cleanup screen stream
       cleanupStream(screenStreamRef);
 
+      // Clear screen preview
       if (screenPreviewRef.current) screenPreviewRef.current.srcObject = null;
 
-      // Cleanup system audio analyser
+      // Cleanup system audio source node
       systemAudioSourceNodeRef.current?.disconnect();
       systemAudioSourceNodeRef.current = null;
+
+      // Cleanup system audio context
       if (
         systemAudioContextRef.current &&
         systemAudioContextRef.current.state !== "closed"
@@ -574,6 +628,7 @@ export function DemoComponent() {
       setIsScreenSharing(false);
       setRecordingDuration(0);
     } else {
+      // --- Start screen sharing and audio recording ---
       setSegments([]);
       setSystemAudioSegments([]);
       systemAudioChunksRef.current = [];
@@ -586,14 +641,15 @@ export function DemoComponent() {
       let systemAudioStream: MediaStream | null = null;
 
       try {
-        // --- Step 1: Get Display Media (requires user gesture) ---
+        // 1. Get screen (display) stream with system audio
+        // Popup a permission request dialog in the browser to share the screen
         displayStream = await navigator.mediaDevices.getDisplayMedia({
           video: true,
           audio: true,
         });
         screenStreamRef.current = displayStream;
 
-        // --- Step 2: Get Microphone Media ---
+        // 2. Get mic stream
         capturedMicStream = await startMicRecording();
         if (!capturedMicStream) {
           console.error("Failed to start microphone recording.");
@@ -603,7 +659,7 @@ export function DemoComponent() {
           return;
         }
 
-        // --- Step 3: Process Audio Tracks ---
+        // 3. Extract system audio tracks from display stream
         const systemAudioTracks = displayStream.getAudioTracks();
         if (systemAudioTracks.length === 0) {
           console.warn("System audio track not found in screen share stream.");
@@ -616,7 +672,7 @@ export function DemoComponent() {
           setCurrentSystemAudioStream(systemAudioStream);
         }
 
-        // --- Step 4: Combine Streams and Setup Recorder ---
+        // 4. Combine mic + system audio for recording
         const audioTracksToRecord = [
           ...(systemAudioStream ? systemAudioStream.getAudioTracks() : []),
           ...capturedMicStream.getAudioTracks(),
@@ -634,7 +690,7 @@ export function DemoComponent() {
 
           cleanupRecorder(screenAudioRecorderRef);
 
-          // 為系統音訊設置 MediaRecorder
+          // Setup system audio recorder
           if (systemAudioStream) {
             const systemRecorder = new MediaRecorder(systemAudioStream, {
               mimeType: availableMime,
@@ -643,7 +699,7 @@ export function DemoComponent() {
             systemRecorder.ondataavailable = (e) => {
               if (e.data.size > 0) {
                 systemAudioChunksRef.current.push(e.data);
-                // 每次收到新的數據時，都檢查是否有足夠的內容
+                // On each chunk, update the system audio segments
                 const currentBlob = new Blob(systemAudioChunksRef.current, {
                   type: availableMime,
                 });
@@ -656,10 +712,10 @@ export function DemoComponent() {
               }
             };
 
-            systemRecorder.start(1000); // 每秒收集一次數據
+            systemRecorder.start(1000); // Collect data every second
             screenAudioRecorderRef.current = systemRecorder;
 
-            // 設置定時器，每 20 秒重新開始錄製
+            // Restart recording every 20s to segment
             if (systemAudioTimerRef.current) {
               clearInterval(systemAudioTimerRef.current);
             }
@@ -674,7 +730,7 @@ export function DemoComponent() {
           console.warn("No audio tracks available to record.");
         }
 
-        // --- Step 5: Setup System Audio Analyser (if system audio exists) ---
+        // 5. Setup system audio analyser for visualization
         if (systemAudioStream) {
           try {
             const audioCtx = new window.AudioContext();
@@ -698,9 +754,10 @@ export function DemoComponent() {
           setSystemAnalyserNode(null);
         }
 
-        // --- Step 6: Finalize State ---
+        // 6. Finalize state
         setIsScreenSharing(true);
       } catch (e) {
+        // On error, clean up everything
         console.error("Error starting screen share:", e);
         alert(
           `啟動分享時發生錯誤: ${e instanceof Error ? e.message : String(e)}`,
@@ -849,13 +906,12 @@ export function DemoComponent() {
             <div className="flex items-center justify-between gap-2">
               <span className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
                 <span
-                  className={`flex h-3 w-3 rounded-full ${
-                    isScreenSharing
+                  className={`flex h-3 w-3 rounded-full ${isScreenSharing
                       ? isLoading
                         ? "bg-yellow-400"
                         : "bg-destructive animate-pulse"
                       : "bg-muted"
-                  }`}
+                    }`}
                 ></span>
                 {isLoading
                   ? "處理中..."

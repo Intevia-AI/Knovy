@@ -1,5 +1,21 @@
+/**
+ * @fileoverview AudioVisualizer Component - Renders a real-time audio frequency visualization
+ * @module AudioVisualizer
+ * @description A React component that visualizes audio frequency data from an AnalyserNode
+ * using HTML5 Canvas. It creates a bar graph visualization that updates in real-time.
+ */
+
 import React, { useRef, useEffect } from "react";
 
+/**
+ * @interface AudioVisualizerProps
+ * @description Props for the AudioVisualizer component
+ * @property {AnalyserNode|null} analyserNode - Web Audio API AnalyserNode providing frequency data
+ * @property {number} [width=280] - Width of the canvas in pixels
+ * @property {number} [height=50] - Height of the canvas in pixels
+ * @property {string} [barColor="#3b82f6"] - Color of the frequency bars (CSS color)
+ * @property {string} [backgroundColor="#f3f4f6"] - Background color of the canvas (CSS color)
+ */
 interface AudioVisualizerProps {
   analyserNode: AnalyserNode | null;
   width?: number;
@@ -8,6 +24,25 @@ interface AudioVisualizerProps {
   backgroundColor?: string;
 }
 
+/**
+ * @component AudioVisualizer
+ * @description Renders a real-time audio frequency visualization using HTML5 Canvas
+ * 
+ * @example
+ * ```tsx
+ * // Basic usage with an analyser node
+ * <AudioVisualizer analyserNode={audioAnalyserNode} />
+ * 
+ * // Custom styling
+ * <AudioVisualizer 
+ *   analyserNode={audioAnalyserNode}
+ *   width={500}
+ *   height={100}
+ *   barColor="#ff0000"
+ *   backgroundColor="#000000"
+ * />
+ * ```
+ */
 const AudioVisualizer: React.FC<AudioVisualizerProps> = ({
   analyserNode,
   width = 280, // Default width
@@ -18,10 +53,19 @@ const AudioVisualizer: React.FC<AudioVisualizerProps> = ({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationFrameId = useRef<number | null>(null);
 
+  /**
+   * Effect hook that handles the canvas drawing and animation
+   * Sets up a requestAnimationFrame loop to continuously draw the audio visualization
+   * Cleans up by canceling the animation frame when the component unmounts
+   */
   useEffect(() => {
     const canvas = canvasRef.current;
     const canvasCtx = canvas?.getContext("2d");
 
+    /**
+     * Draw function that renders the audio visualization
+     * Gets called recursively via requestAnimationFrame to create animation
+     */
     const draw = () => {
       if (!analyserNode || !canvas || !canvasCtx) {
         // Clear canvas if analyserNode is null

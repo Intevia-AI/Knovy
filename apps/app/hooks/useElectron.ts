@@ -1,6 +1,47 @@
+/**
+ * @fileoverview Electron Integration Hook
+ * @module useElectron
+ * @description React hook for integrating with Electron desktop app features
+ */
+
 import { useState, useEffect, useCallback } from "react";
 import type { ElectronSource } from "@/types";
 
+/**
+ * React hook for Electron desktop app integration
+ * 
+ * @returns {Object} Electron integration controls and state
+ * @returns {boolean} isAlwaysOnTop - Whether the window is set to always be on top
+ * @returns {function} toggleAlwaysOnTop - Function to toggle always-on-top state
+ * @returns {function} minimizeWindow - Function to minimize the window
+ * @returns {function} closeWindow - Function to close the window
+ * @returns {ElectronSource[]} availableSources - List of available screen/window sources
+ * @returns {boolean} showSourcePicker - Whether to show the source picker UI
+ * @returns {function} handleSourceSelect - Function to handle source selection
+ * @returns {function} handleCancelSelect - Function to cancel source selection
+ * @returns {function} setShowSourcePicker - Function to manually control source picker visibility
+ * @returns {function} setAvailableSources - Function to manually set available sources
+ * 
+ * @example
+ * ```tsx
+ * const { 
+ *   isAlwaysOnTop, 
+ *   toggleAlwaysOnTop, 
+ *   minimizeWindow,
+ *   closeWindow 
+ * } = useElectron();
+ * 
+ * return (
+ *   <div>
+ *     <button onClick={toggleAlwaysOnTop}>
+ *       {isAlwaysOnTop ? 'Disable' : 'Enable'} Always on Top
+ *     </button>
+ *     <button onClick={minimizeWindow}>Minimize</button>
+ *     <button onClick={closeWindow}>Close</button>
+ *   </div>
+ * );
+ * ```
+ */
 export function useElectron() {
   const [isAlwaysOnTop, setIsAlwaysOnTop] = useState(false);
   const [availableSources, setAvailableSources] = useState<ElectronSource[]>(

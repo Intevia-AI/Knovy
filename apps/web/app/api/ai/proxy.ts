@@ -1,3 +1,10 @@
+/**
+ * @module GeminiProxyService
+ * @description WebSocket proxy server for Google's Gemini AI model
+ * @requires ws
+ * @requires @google/generative-ai
+ * @requires dotenv
+ */
 import { WebSocketServer, WebSocket } from "ws";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import dotenv from "dotenv";
@@ -14,6 +21,15 @@ if (!API_KEY) {
   throw new Error("GEMINI_API_KEY is not set in environment variables");
 }
 
+/**
+ * @interface ClientConnection
+ * @description Represents a client connection to the proxy server
+ * @property {WebSocket} ws - The WebSocket connection to the client
+ * @property {string} id - Unique identifier for the client connection
+ * @property {WebSocket|null} geminiWs - The WebSocket connection to the Gemini API
+ * @property {boolean} isSetupComplete - Whether the initial setup with Gemini is complete
+ * @property {number} lastActivity - Timestamp of the last activity from this client
+ */
 interface ClientConnection {
   ws: WebSocket;
   id: string;
@@ -22,6 +38,18 @@ interface ClientConnection {
   lastActivity: number;
 }
 
+/**
+ * @class GeminiProxyServer
+ * @description WebSocket proxy server that handles connections between clients and Google's Gemini API
+ * @property {WebSocketServer} wss - The WebSocket server instance
+ * @property {Map<string, ClientConnection>} clients - Map of client connections by ID
+ * @property {Map<string, WebSocket>} geminiConnections - Map of Gemini WebSocket connections by client ID
+ * @property {Map<string, number>} reconnectAttempts - Map of reconnection attempts by client ID
+ * @property {number} maxReconnectAttempts - Maximum number of reconnection attempts
+ * @property {number} reconnectTimeout - Base timeout in ms between reconnection attempts
+ * @property {number} healthCheckInterval - Interval in ms for health checks
+ * @property {Map<string, NodeJS.Timeout>} healthCheckTimers - Map of health check timers by client ID
+ */
 export class GeminiProxyServer {
   private wss: WebSocketServer;
   private clients: Map<string, ClientConnection> = new Map();
@@ -32,11 +60,22 @@ export class GeminiProxyServer {
   private healthCheckInterval: number = 30000; // 30 seconds
   private healthCheckTimers: Map<string, NodeJS.Timeout> = new Map();
 
+  /**
+   * @constructor
+   * @description Creates a new GeminiProxyServer instance
+   * @param {number} port - The port number to listen on
+   */
   constructor(port: number) {
     this.wss = new WebSocketServer({ port });
     this.setupServer();
   }
 
+  /**
+   * @method setupServer
+   * @private
+   * @description Sets up the WebSocket server and event handlers
+   * @returns {void}
+   */
   private setupServer() {
     this.wss.on("connection", (ws: WebSocket) => {
       const clientId = this.generateClientId();
@@ -130,6 +169,20 @@ export class GeminiProxyServer {
     return Math.random().toString(36).substring(2, 15);
   }
 
+  /**
+   * @method handleClientMessage
+   * @private
+   * @description Handles messages received from clients
+   * @param {string} clientId - The ID of the client sending the message
+   * @param {any} data - The message data
+   * @returns {Promise<void>}
+   * 
+   * @remarks
+   * Handles three types of messages:
+   * - "connect": Establishes a connection to the Gemini API
+   * - "media_chunk": Forwards audio data to the Gemini API
+   * - "disconnect": Cleans up the client connection
+   */
   private async handleClientMessage(clientId: string, data: any) {
     const client = this.clients.get(clientId);
     if (!client) return;
@@ -143,6 +196,21 @@ export class GeminiProxyServer {
     }
   }
 
+  /**
+   * @method connectToGemini
+   * @private
+   * @description Establishes a WebSocket connection to the Gemini API for a client
+   * @param {ClientConnection} client - The client connection
+   * @returns {Promise<void>}
+   * 
+   * @remarks
+   * Sets up event handlers for the Gemini WebSocket connection:
+   * - "open": Sends initial setup message to Gemini
+   * - "message": Forwards messages from Gemini to the client
+   * - "close": Cleans up the connection and attempts to reconnect
+   * - "error": Handles errors and attempts to reconnect
+   * - "ping"/"pong": Handles WebSocket ping/pong for connection health checks
+   */
   private async connectToGemini(client: ClientConnection) {
     if (client.geminiWs) return;
 

@@ -1,13 +1,26 @@
+/**
+ * @fileoverview AI Interaction Hook
+ * @module useAIInteraction
+ * @description React hook for managing AI interactions, transcriptions, and responses
+ */
+
 import { useState, useCallback, useRef, useEffect } from "react";
 import { Message as AIMessage } from "ai";
 import type { Segment } from "@/types";
 import html2canvas from "html2canvas-pro";
 import { useI18n } from "@/hooks/useI18n";
 
-// Constants
+/**
+ * @constant {string} API_URL - Endpoint URL for AI API interactions
+ * @description Uses environment variable or falls back to localhost
+ */
 const API_URL =
   process.env.NEXT_PUBLIC_AI_API_URL || "http://localhost:3000/api/ai";
 
+/**
+ * @typedef {string} AIAction
+ * @description Types of AI interaction actions supported by the system
+ */
 export type AIAction =
   | "real-time"
   | "answer"
@@ -19,17 +32,76 @@ export type AIAction =
   | "screenshot"
   | "upload";
 
+/**
+ * @interface TranscriptionMessage
+ * @extends AIMessage
+ * @description Message type for transcription data with timestamp
+ * @property {number} timestamp - Unix timestamp when the transcription was created
+ * @property {"transcription"} type - Identifies this as a transcription message
+ */
 interface TranscriptionMessage extends AIMessage {
   timestamp: number;
   type: "transcription";
 }
 
+/**
+ * @interface AIContextData
+ * @description Context data structure sent to AI for processing
+ * @property {string} [text] - Text content for context
+ * @property {number} [timestamp] - Unix timestamp of when the context was created
+ * @property {string} [screenshot] - Base64 encoded screenshot data
+ */
 interface AIContextData {
   text?: string;
   timestamp?: number;
   screenshot?: string;
 }
 
+/**
+ * React hook for AI interaction management
+ * 
+ * @returns {Object} AI interaction controls and state
+ * @returns {AIMessage[]} aiMessages - Array of AI conversation messages
+ * @returns {function} setAiMessages - Function to update AI messages
+ * @returns {TranscriptionMessage[]} transcriptions - Array of transcription messages
+ * @returns {boolean} isLoading - Whether an AI request is in progress
+ * @returns {string} customPrompt - Custom prompt text for AI
+ * @returns {function} setCustomPrompt - Function to update custom prompt
+ * @returns {string[]} keywords - Array of extracted keywords
+ * @returns {string|null} selectedKeyword - Currently selected keyword
+ * @returns {function} sendContextToAI - Function to send context to AI
+ * @returns {function} handleTranscriptionResponse - Handler for transcription responses
+ * @returns {function} handleTranscriptionKeywords - Handler for transcription keywords
+ * @returns {function} handleAnswerResponse - Handler for AI answer responses
+ * @returns {function} handleAnswerKeywords - Handler for AI answer keywords
+ * @returns {function} handleKeywordClick - Handler for keyword click events
+ * @returns {React.RefObject} messagesContainerRef - Reference to messages container
+ * @returns {function} resetChat - Function to reset chat state
+ * @returns {boolean} isSubtitleVisible - Whether subtitles are visible
+ * @returns {function} setSubtitleVisibility - Function to toggle subtitle visibility
+ * @returns {function} handleSendMessage - Alias for sendContextToAI
+ * @returns {function} handleScreenshot - Handler for screenshot processing
+ * 
+ * @example
+ * ```tsx
+ * const { 
+ *   aiMessages, 
+ *   isLoading,
+ *   sendContextToAI,
+ *   handleTranscriptionResponse
+ * } = useAIInteraction();
+ * 
+ * // Send a custom query to AI
+ * const handleSendQuery = () => {
+ *   sendContextToAI('custom', 'What is the capital of France?');
+ * };
+ * 
+ * // Process a transcription
+ * useEffect(() => {
+ *   handleTranscriptionResponse('This is a transcribed text');
+ * }, []);
+ * ```
+ */
 export function useAIInteraction() {
   const [aiMessages, setAiMessages] = useState<AIMessage[]>([]);
   const [transcriptions, setTranscriptions] = useState<TranscriptionMessage[]>(
