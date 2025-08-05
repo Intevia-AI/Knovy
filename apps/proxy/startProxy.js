@@ -4,17 +4,20 @@
  * @requires ws
  * @requires dotenv
  * @requires path
+ * @requires http
  * 
  * This server acts as a bridge between client applications and Google's Gemini AI API.
  * It handles WebSocket connections from clients, forwards audio data to Gemini,
  * and streams back AI-generated responses. The server supports multiple concurrent
  * client connections with rate limiting and automatic cleanup of inactive connections.
+ * It also includes an HTTP server for health checks.
  */
 
 import { WebSocketServer } from 'ws';
 import dotenv from 'dotenv';
 import { WebSocket } from 'ws';
 import path from 'path';
+import http from 'http';
 
 /**
  * Load environment variables from .env file
@@ -115,8 +118,23 @@ class GeminiProxyServer {
    * @param {number} port - The port number to listen on
    */
   constructor(port) {
-    this.wss = new WebSocketServer({ port });
+    const server = http.createServer((req, res) => {
+      if (req.url === '/health' && req.method === 'GET') {
+        res.writeHead(200, { 'Content-Type': 'text/plain' });
+        res.end('OK');
+      } else {
+        res.writeHead(404);
+        res.end();
+      }
+    });
+
+    this.wss = new WebSocketServer({ server });
     this.clients = new Map();
+    
+    server.listen(port, () => {
+      console.log(`[Proxy] Server started on port ${port}`);
+    });
+
     this.setupServer();
   }
 
@@ -483,5 +501,4 @@ const PORT = process.env.PROXY_PORT || 4567;
  * @description Creates and starts the GeminiProxyServer instance
  * This is the main entry point for the proxy server application
  */
-const proxyServer = new GeminiProxyServer(PORT);
-console.log(`[Proxy] Server started on port ${PORT}`); // Log the actual port used
+new GeminiProxyServer(PORT);

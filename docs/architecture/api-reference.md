@@ -14,8 +14,8 @@ This document provides detailed information about the API endpoints available in
 
 ## AI Service
 
-> 【產品專用 | App Only】
-> 此區塊API僅供AI產品（Web App/Electron App）使用，負責與Google Gemini AI互動。
+> [For Product Use | App Only]
+> This API section is for AI products (Web App/Electron App) only, responsible for interacting with Google Gemini AI.
 
 The AI Service provides an interface to interact with Google's Gemini AI model.
 
@@ -80,8 +80,8 @@ The endpoint supports CORS with the OPTIONS method for preflight requests.
 
 ## Process Audio
 
-> 【產品專用 | App Only】
-> 此區塊API僅供AI產品（Web App/Electron App）使用，負責音訊處理與格式轉換。
+> [For Product Use | App Only]
+> This API section is for AI products (Web App/Electron App) only, responsible for audio processing and format conversion.
 
 The Process Audio service handles audio file processing, including trimming and format conversion.
 
@@ -132,8 +132,8 @@ Processes audio files by trimming and converting to WAV format.
 
 ## Feedback
 
-> 【官網專用 | Web Only】
-> 此區塊API僅供公司首頁（官網）用戶回饋功能使用，與AI產品無關。
+> [For Website Use | Web Only]
+> This API section is for the company's website (official website) only, unrelated to AI products.
 
 The Feedback service handles user feedback submissions via email.
 
@@ -179,14 +179,14 @@ Submits user feedback via email.
 
 ## WebSocket Proxy
 
-> 【產品專用 | App Only】
-> 此區塊API僅供AI產品（Web App/Electron App）使用，負責即時語音串流與AI互動。
+> [For Product Use | App Only]
+> This API section is for AI products (Web App/Electron App) only, responsible for real-time audio streaming and AI interaction.
 
 The WebSocket Proxy service provides real-time communication with Google's Gemini AI model for audio transcription and analysis.
 
 ### WebSocket Connection
 
-Connect to the WebSocket proxy server at the configured URL (typically `wss://intevia-api.adastra.tw` or a local development URL).
+Connect to the WebSocket proxy server using the URL defined in your environment configuration. For local development, this is typically `ws://localhost:4567`. For production, this will be the URL of your deployed Google Cloud Run service (e.g., `wss://your-service-url.a.run.app`).
 
 #### Connection Messages
 

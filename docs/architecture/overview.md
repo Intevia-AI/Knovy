@@ -33,12 +33,14 @@ graph TD
 The web application provides a browser-based interface for users to interact with the AI capabilities.
 
 **Key Technologies:**
+
 - Next.js 14+ (React framework)
 - TypeScript
 - Tailwind CSS
 - React Hooks for state management
 
 **Main Components:**
+
 - Landing page and marketing content (Hero section, Features, Team, Call-to-action)
 - Demo interface with screen sharing and audio recording
 - Real-time audio processing and visualization
@@ -47,6 +49,7 @@ The web application provides a browser-based interface for users to interact wit
 - Authentication UI pages (login/register - UI only, no backend implementation)
 
 **Directory Structure:**
+
 ```
 apps/web/
 ├── app/              # Next.js App Router
@@ -64,12 +67,14 @@ apps/web/
 The desktop application provides a native experience with additional capabilities like screen sharing and system integration.
 
 **Key Technologies:**
+
 - Electron
 - Next.js (for UI)
 - TypeScript
 - Native system APIs
 
 **Main Components:**
+
 - Screen sharing and recording with system-level permissions
 - System tray integration and native notifications
 - Real-time audio processing (microphone and system audio)
@@ -80,6 +85,7 @@ The desktop application provides a native experience with additional capabilitie
 - Cross-platform native experience
 
 **Directory Structure:**
+
 ```
 apps/app/
 ├── app/              # Next.js App Router
@@ -95,17 +101,20 @@ apps/app/
 The proxy server handles real-time communication between the client applications and the Google Generative AI API, managing streaming responses and connection state.
 
 **Key Technologies:**
+
 - Node.js
 - WebSocket
 - Google Generative AI SDK
 
 **Main Responsibilities:**
+
 - Maintain persistent connections to clients
 - Handle authentication and rate limiting
 - Stream AI responses in real-time
 - Manage connection state and reconnection logic
 
 **Directory Structure:**
+
 ```
 apps/proxy/
 ├── startProxy.js     # Main server entry point
@@ -161,6 +170,31 @@ Located in `packages/eslint-config/`, this package provides shared linting rules
 - Web application deployed to a cloud provider (Vercel, AWS, etc.)
 - WebSocket proxy server deployed as a containerized service
 - Desktop application distributed through app stores or direct download
+
+## Deployment & Infrastructure Notes
+
+This section addresses common questions regarding the deployment and operational limits of the production environment.
+
+### Backend Deployment (`@apps/proxy`)
+
+- **Platform**: The WebSocket proxy server is designed to be deployed to **Google Cloud Run**.
+- **Why Cloud Run?**:
+  - **WebSocket Support**: Natively supports WebSockets, which is essential for real-time communication.
+  - **Long-Lived Connections**: Supports connections for up to **60 minutes**, accommodating the application's requirements.
+  - **Scalability**: Scales automatically with traffic, including scaling to zero for cost-effectiveness.
+  - **It's cheap**: We are poor, you know it.
+- **Deployment Artifact**: The `apps/proxy/Dockerfile` is the sole artifact required for deployment. It contains all instructions to build and run the container on Cloud Run.
+- **`docker-compose.yml`**: This file is for **local development only** and should not be used for production deployment.
+
+### Frontend Deployment (`@apps/web`)
+
+- **Platform**: The frontend is deployed to **Vercel**.
+- **WebSocket Connection Handling**: The WebSocket connection to the backend proxy is initiated directly from the **user's browser** (client-side). This connection is not proxied through or limited by Vercel's serverless function execution timeouts.
+
+### Connection Timeouts and Reconnection
+
+- **Cloud Run Timeout**: If a WebSocket connection to the proxy server exceeds the 60-minute limit, Cloud Run will terminate the instance, and the client's connection will be closed.
+- **Automatic Reconnection**: The client-side application (`apps/web/app/api/ai/proxy/geminiClient.ts`) includes an automatic reconnection mechanism. When a connection is closed unexpectedly, it will attempt to re-establish the connection, ensuring a seamless user experience.
 
 ## Security Considerations
 

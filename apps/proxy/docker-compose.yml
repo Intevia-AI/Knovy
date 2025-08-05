@@ -1,35 +1,14 @@
-version: '3.8'
-
 services:
   proxy-server:
-    build:
-      context: . # Use the current directory (apps/proxy) as the build context
-      dockerfile: Dockerfile # Specify the Dockerfile name
-      # Note: Package installation (e.g., npm install, yarn install, pip install)
-      # should be defined as steps within the Dockerfile referenced above.
-      # Docker Compose executes the Dockerfile build process automatically.
-    container_name: intevia-proxy-server
+    # Build the image from the Dockerfile in the current directory.
+    build: .
+    # Name the container for easier identification.
+    container_name: intevia-proxy-local
+    # Always restart the container unless it is stopped manually.
     restart: unless-stopped
+    # Load environment variables from a .env file in this directory.
+    env_file:
+      - .env
+    # Map the host port to the container port.
     ports:
-      # Map host port to container port. The container port is determined by PROXY_PORT in .env.local (default 4567)
-      # You might need to adjust the host port (left side) if needed.
-      # Example: Map host port 4567 to the container's PROXY_PORT
-      - "4567:4567" # Adjust the right side if your PROXY_PORT in .env.local is different
-    volumes:
-      # Mount the local source code into the container (useful for development)
-      - .:/app
-      # Mount the local .env.local file into the container's working directory
-      - ./.env.local:/app/.env.local:ro # Mount as read-only
-      # Use an anonymous volume for node_modules to avoid overwriting container modules
-      - /app/node_modules
-    # Environment variables are loaded from the mounted .env.local by the startProxy.js script (using dotenv)
-
-# Note: Ensure you have a .env.local file in this directory (/Users/yeyouming/Desktop/intevia-ai/apps/proxy/)
-# with the following content:
-#
-# GOOGLE_GENERATIVE_AI_API_KEY=YOUR_ACTUAL_GOOGLE_API_KEY
-# PROXY_PORT=4567 # Or your desired port for the proxy server to listen on inside the container
-#
-# This .env.local file will be mounted directly into the container.
-# Make sure this file is NOT committed to version control.
-
+      - "4567:4567"

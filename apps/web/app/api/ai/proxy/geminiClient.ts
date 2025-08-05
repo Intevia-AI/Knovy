@@ -8,8 +8,9 @@ import dotenv from "dotenv";
 // Load environment variables
 dotenv.config();
 
-// const PROXY_SERVER_URL = process.env.PROXY_SERVER_URL || `ws://${process.env.PROXY_HOST || 'localhost'}:${process.env.PROXY_PORT || '4567'}`;
-const PROXY_SERVER_URL = "wss://intevia-api.adastra.tw";
+const PROXY_SERVER_URL =
+  process.env.PROXY_SERVER_URL ||
+  `ws://${process.env.PROXY_HOST || "localhost"}:${process.env.PROXY_PORT || "4567"}`;
 
 /**
  * @class GeminiClient
@@ -56,12 +57,12 @@ export class GeminiClient {
     onSetupComplete: () => void,
     onPlayingStateChange: (isPlaying: boolean) => void,
     onAudioLevelChange: (level: number) => void,
-    onTranscription: (text: string) => void,
+    onTranscription: (text: string) => void
   ) {
     // Security check: Ensure we're not running in production without proper proxy configuration
     if (process.env.NODE_ENV === "production" && !PROXY_SERVER_URL) {
       throw new Error(
-        "Proxy server configuration is required in production environment",
+        "Proxy server configuration is required in production environment"
       );
     }
 
@@ -76,7 +77,7 @@ export class GeminiClient {
    * @method connect
    * @description Establishes a WebSocket connection to the proxy server
    * @returns {void}
-   * 
+   *
    * @remarks
    * Sets up event handlers for the WebSocket connection:
    * - "open": Sends initialization message to the proxy server
@@ -131,7 +132,7 @@ export class GeminiClient {
    * @private
    * @description Attempts to reconnect to the proxy server after a connection failure
    * @returns {void}
-   * 
+   *
    * @remarks
    * Implements an exponential backoff strategy for reconnection attempts.
    * Gives up after reaching the maximum number of reconnection attempts.
@@ -141,7 +142,7 @@ export class GeminiClient {
       this.reconnectAttempts++;
       setTimeout(() => {
         console.log(
-          `Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts})`,
+          `Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts})`
         );
         this.connect();
       }, this.reconnectTimeout * this.reconnectAttempts);
@@ -153,7 +154,7 @@ export class GeminiClient {
    * @description Sends raw audio data to the proxy server
    * @param {ArrayBuffer} data - The audio data to send
    * @returns {void}
-   * 
+   *
    * @remarks
    * Sends the raw ArrayBuffer data directly to the WebSocket if the connection is open.
    */
@@ -169,7 +170,7 @@ export class GeminiClient {
    * @description Handles WebSocket errors
    * @param {Error} error - The error that occurred
    * @returns {void}
-   * 
+   *
    * @remarks
    * Placeholder for error handling logic.
    */
@@ -182,7 +183,7 @@ export class GeminiClient {
    * @private
    * @description Handles WebSocket closure
    * @returns {void}
-   * 
+   *
    * @remarks
    * Placeholder for close handling logic.
    */
@@ -196,7 +197,7 @@ export class GeminiClient {
    * @param {string} data - Base64 encoded audio data
    * @param {string} mimeType - MIME type of the audio data
    * @returns {void}
-   * 
+   *
    * @remarks
    * Formats the data as a JSON message with type "media_chunk" and sends it to the proxy server.
    * Logs errors if the WebSocket is not ready or if sending fails.
@@ -205,7 +206,7 @@ export class GeminiClient {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       console.log(
         "[GeminiClient] Sending media chunk, data size:",
-        data.length,
+        data.length
       );
       const message = {
         type: "media_chunk",
@@ -221,7 +222,7 @@ export class GeminiClient {
     } else {
       console.error(
         "[GeminiClient] WebSocket not ready, state:",
-        this.ws?.readyState,
+        this.ws?.readyState
       );
     }
   }
@@ -230,7 +231,7 @@ export class GeminiClient {
    * @method disconnect
    * @description Closes the WebSocket connection to the proxy server
    * @returns {void}
-   * 
+   *
    * @remarks
    * Resets the setup state, closes the WebSocket connection, and updates the connection state.
    */
@@ -248,7 +249,7 @@ export class GeminiClient {
    * @description Processes text responses from the Gemini API
    * @param {string} text - The text response from Gemini
    * @returns {void}
-   * 
+   *
    * @remarks
    * Parses the streaming buffer for transcription and keyword data.
    * Extracts the transcription content using regex and formats it.
@@ -259,7 +260,7 @@ export class GeminiClient {
     if (this.streamingBuffer.includes("TRANSCRIPTION:")) {
       // 使用正則表達式提取實際內容，完全移除標籤
       const transcriptionMatch = this.streamingBuffer.match(
-        /TRANSCRIPTION:\s*(.*?)(?:\n|$)/s,
+        /TRANSCRIPTION:\s*(.*?)(?:\n|$)/s
       );
       if (transcriptionMatch && transcriptionMatch[1]) {
         const cleanTranscription = transcriptionMatch[1]
@@ -271,7 +272,7 @@ export class GeminiClient {
         let keywords = "";
         if (this.streamingBuffer.includes("KEYWORDS:")) {
           const keywordsMatch = this.streamingBuffer.match(
-            /KEYWORDS:\s*(.*?)(?:\n|$)/s,
+            /KEYWORDS:\s*(.*?)(?:\n|$)/s
           );
           if (keywordsMatch && keywordsMatch[1]) {
             keywords = keywordsMatch[1].trim();

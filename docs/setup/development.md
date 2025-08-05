@@ -141,6 +141,72 @@ cd apps/proxy
 pnpm start
 ```
 
+## Backend Deployment (Google Cloud Run)
+
+The WebSocket proxy server (`apps/proxy`) is designed for deployment to Google Cloud Run.
+
+### Prerequisites
+
+1.  **Google Cloud SDK**: Ensure the `gcloud` CLI is [installed and authenticated](httpss://cloud.google.com/sdk/docs/install).
+2.  **APIs**: Enable the **Cloud Build API** and **Cloud Run API** in your GCP project.
+3.  **Permissions**: Your GCP user or service account needs `roles/run.admin` and `roles/storage.admin` permissions.
+
+### Deployment Steps
+
+A deployment script is provided at `scripts/deploy-proxy.sh` to automate the process.
+
+1.  **Make the script executable:**
+
+    ```bash
+    # chmod means change mode, +x means make the script executable. Used to make the script executable.
+    chmod +x scripts/deploy-proxy.sh
+    ```
+
+2.  **Configure the script:**
+
+    Open `scripts/deploy-proxy.sh` and update the following variables:
+
+    - `PROJECT_ID`: Your Google Cloud Project ID.
+    - `SERVICE_NAME`: The desired name for your Cloud Run service (e.g., `intevia-proxy`).
+    - `REGION`: The GCP region for deployment (e.g., `us-central1`).
+    - `GOOGLE_GENERATIVE_AI_API_KEY`: Your Google AI API key.
+
+3.  **Run the deployment script:**
+
+    ```bash
+    ./scripts/deploy-proxy.sh
+    ```
+
+The script will build the Docker image using Cloud Build and deploy it to Cloud Run.
+
+### Using a Custom Domain (Recommended)
+
+For a professional setup, you should map a custom subdomain (e.g., `proxy.intevia.app`) to your Cloud Run service.
+
+1.  **Deploy the Service**: Complete the deployment steps above to get your service running.
+2.  **Map Custom Domain in GCP**:
+    - In the Google Cloud Console, navigate to **Cloud Run**.
+    - Click **"Manage custom domains"**.
+    - Click **"Add Mapping"**.
+    - Select your deployed service (e.g., `intevia-proxy`) and enter the subdomain you want to use (e.g., `proxy.intevia.app`).
+3.  **Update DNS Records**:
+    - Google will provide you with the necessary DNS records (e.g., `A`, `AAAA`, or `CNAME`).
+    - Add these records in your domain provider's DNS settings (e.g., Cloudflare).
+4.  **Wait for Propagation**: It may take a few minutes for the SSL certificate to be provisioned and for DNS changes to take effect.
+
+### Updating the Frontend
+
+Once your backend is deployed and the custom domain is mapped, you must update the frontend to use the new production URL.
+
+1.  Open the environment file for the web application: `apps/web/.env`.
+2.  Set the `PROXY_SERVER_URL` variable to your custom domain, making sure to use the secure WebSocket protocol (`wss://`):
+
+    ```env
+    PROXY_SERVER_URL=wss://proxy.intevia.app
+    ```
+
+3.  Redeploy your web application to Vercel for the changes to take effect.
+
 ## Development Workflow
 
 ### Running Tests
