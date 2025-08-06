@@ -494,7 +494,7 @@ Please answer in ${language} !!!!!`;
  * @constant {number} PORT - The port number the proxy server will listen on
  * Uses the PROXY_PORT environment variable if set, otherwise defaults to 4567
  */
-const PORT = process.env.PROXY_PORT || 4567;
+const PORT = process.env.PORT || process.env.PROXY_PORT || 4567;
 
 /**
  * @instance
