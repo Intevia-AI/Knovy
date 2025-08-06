@@ -4,7 +4,7 @@
 
 # --- Configuration ---
 # The GCP Project ID to deploy to.
-PROJECT_ID="your-gcp-project-id"
+PROJECT_ID="intevia"
 # The name of the Cloud Run service.
 SERVICE_NAME="intevia-proxy"
 # The region to deploy the service in.
@@ -34,7 +34,9 @@ gcloud run deploy ${SERVICE_NAME} \
   --region=${REGION} \
   --port=4567 \
   --allow-unauthenticated \
-  --set-env-vars="GOOGLE_GENERATIVE_AI_API_KEY=your-google-ai-api-key-here" \
+  # Mount the secret from Secret Manager as an environment variable.
+  # The secret name is 'intevia-google-ai-key' and we use the latest version.
+  --set-secrets="GOOGLE_GENERATIVE_AI_API_KEY=intevia-google-ai-key:latest" \
   --timeout=3600
 
 echo "Deployment complete."

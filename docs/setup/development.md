@@ -148,12 +148,23 @@ The WebSocket proxy server (`apps/proxy`) is designed for deployment to Google C
 ### Prerequisites
 
 1.  **Google Cloud SDK**: Ensure the `gcloud` CLI is [installed and authenticated](httpss://cloud.google.com/sdk/docs/install).
-2.  **APIs**: Enable the **Cloud Build API** and **Cloud Run API** in your GCP project.
-3.  **Permissions**: Your GCP user or service account needs `roles/run.admin` and `roles/storage.admin` permissions.
+2.  **APIs**: Enable the **Cloud Build API**, **Cloud Run API**, and **Secret Manager API** in your GCP project.
+3.  **Permissions**: Your GCP user or service account needs `roles/run.admin`, `roles/storage.admin`, and `roles/secretmanager.admin` permissions.
+
+### Storing the API Key Securely
+
+Before deploying, you must store your Google AI API key in **Google Secret Manager** for security.
+
+1.  **Navigate to Secret Manager** in the Google Cloud Console.
+2.  Click **"Create Secret"**.
+3.  **Name**: `intevia-google-ai-key` (this name is used in the deployment script).
+4.  **Secret value**: Paste your Google AI API key.
+5.  Click **"Create secret"**.
+6.  **Grant Access**: On the secret's details page, go to the **Permissions** tab and grant the **Compute Engine default service account** the **"Secret Manager Secret Accessor"** role.
 
 ### Deployment Steps
 
-A deployment script is provided at `scripts/deploy-proxy.sh` to automate the process.
+A deployment script is provided at `scripts/deploy-proxy.sh` to automate the process. This is the recommended method for the **initial deployment**.
 
 1.  **Make the script executable:**
 
@@ -178,6 +189,25 @@ A deployment script is provided at `scripts/deploy-proxy.sh` to automate the pro
     ```
 
 The script will build the Docker image using Cloud Build and deploy it to Cloud Run.
+
+### Automated Deployment with GitHub (CI/CD)
+
+For a more efficient workflow, you can set up continuous deployment to automatically update your service every time you push to your GitHub repository. This is the recommended approach for all subsequent deployments after the initial one.
+
+1.  **Navigate to your Service**: In the Google Cloud Console, go to your Cloud Run service (e.g., `intevia-proxy`).
+2.  **Edit and Deploy**: Click **"Edit & Deploy New Revision"**.
+3.  **Configure Source**:
+    *   Under the "Source" section, select **"Continuously deploy new revisions from a source repository"**.
+    *   Click **"Set up with Cloud Build"**.
+4.  **Connect Repository**:
+    *   Authenticate with your GitHub account and select the `intevia-ai` repository.
+    *   In the trigger settings, choose the branch that will trigger deployments (e.g., `main`).
+5.  **Configure Build Settings**:
+    *   **Build Type**: Select `Dockerfile`.
+    *   **Source Location**: This is critical for a monorepo. Set the path to your proxy's `Dockerfile` to: `/apps/proxy/Dockerfile`.
+6.  **Save**: Save the trigger configuration.
+
+Once saved, any new commits pushed to the specified branch will automatically build and deploy a new revision to your Cloud Run service.
 
 ### Using a Custom Domain (Recommended)
 
