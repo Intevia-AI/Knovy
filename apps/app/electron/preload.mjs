@@ -112,6 +112,14 @@ const api = {
     ipcRenderer.invoke("electronAPI:setSettings", settings),
 
   // ------------------------------------------------------------
+  // Database
+  // ------------------------------------------------------------
+  createSession: (session) => ipcRenderer.invoke("db:create-session", session),
+  addTranscript: (transcript) => ipcRenderer.invoke("db:add-transcript", transcript),
+  getSessions: () => ipcRenderer.invoke("db:get-sessions"),
+  getTranscripts: (sessionId) => ipcRenderer.invoke("db:get-transcripts", sessionId),
+
+  // ------------------------------------------------------------
   // Screenshot Capture
   // ------------------------------------------------------------
   /**
@@ -206,7 +214,7 @@ const api = {
   },
   send: (channel, ...args) => {
     // Restrict to whitelisted channels
-    const validChannels = ["renderer-auth-ready"];
+    const validChannels = ["renderer-auth-ready", "history:open"];
     if (!validChannels.includes(channel)) {
       console.warn(
         `[Preload] Attempted to send on invalid channel: ${channel}`

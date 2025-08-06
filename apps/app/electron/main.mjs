@@ -18,7 +18,10 @@ import {
 } from "electron";
 import serve from "electron-serve";
 import path from "path";
-import { promises as fs } from "fs";
+import fs from "fs";
+import { exec } from "child_process";
+import db from "./database.mjs";
+import express from "express";
 import { fileURLToPath } from "url";
 import {
   installExtension,
@@ -555,6 +558,57 @@ app.on("ready", async () => {
     return await loadSettings();
   });
 
+  ipcMain.handle("db:create-session", (event, session) => {
+    const { id, started_at, status } = session;
+    const stmt = db.prepare(
+      "INSERT INTO sessions (id, started_at, status) VALUES (?, ?, ?)"
+    );
+    stmt.run(id, started_at, status);
+    return { id };
+  });
+
+  ipcMain.handle("db:add-transcript", (event, transcript) => {
+    const { id, session_id, timestamp, content } = transcript;
+    const stmt = db.prepare(
+      "INSERT INTO transcripts (id, session_id, timestamp, content) VALUES (?, ?, ?, ?)"
+    );
+    stmt.run(id, session_id, timestamp, content);
+    return { id };
+  });
+
+  ipcMain.handle("db:get-sessions", () => {
+    const stmt = db.prepare("SELECT * FROM sessions ORDER BY started_at DESC");
+    return stmt.all();
+  });
+
+  ipcMain.handle("db:get-transcripts", (event, sessionId) => {
+    const stmt = db.prepare(
+      "SELECT * FROM transcripts WHERE session_id = ? ORDER BY timestamp ASC"
+    );
+    return stmt.all(sessionId);
+  });
+
+  const historyViewerApp = express();
+  historyViewerApp.use(
+    express.static(path.join(__dirname, "../../history-viewer/out"))
+  );
+
+  historyViewerApp.get("/api/sessions", (req, res) => {
+    const stmt = db.prepare("SELECT * FROM sessions ORDER BY started_at DESC");
+    const sessions = stmt.all();
+    res.json(sessions);
+  });
+
+  historyViewerApp.get("/api/sessions/:id/transcripts", (req, res) => {
+    const stmt = db.prepare(
+      "SELECT * FROM transcripts WHERE session_id = ? ORDER BY timestamp ASC"
+    );
+    const transcripts = stmt.all(req.params.id);
+    res.json(transcripts);
+  });
+
+  
+
   // Handle settings saving
   ipcMain.handle("electronAPI:setSettings", async (event, settingsToUpdate) => {
     const currentSettings = await loadSettings();
@@ -651,6 +705,59 @@ app.on("ready", async () => {
       selectionWindow.close();
     }
   });
+
+  let historyViewerServer;
+
+  ipcMain.on("history:open", async () => {
+    const historyViewerOutDir = path.join(__dirname, "../../history-viewer/out");
+
+    try {
+      await fs.promises.access(historyViewerOutDir);
+      startHistoryViewerServer();
+    } catch (error) {
+      // Directory doesn't exist, so we need to build it
+      console.log("History viewer not built. Building now...");
+      exec("pnpm --filter history-viewer build", (err, stdout, stderr) => {
+        if (err) {
+          console.error(`Failed to build history-viewer: ${err}`);
+          return;
+        }
+        console.log(stdout);
+        console.error(stderr);
+        startHistoryViewerServer();
+      });
+    }
+  });
+
+  function startHistoryViewerServer() {
+    if (!historyViewerServer) {
+      const historyViewerApp = express();
+      historyViewerApp.use(
+        express.static(path.join(__dirname, "../../history-viewer/out"))
+      );
+
+      historyViewerApp.get("/api/sessions", (req, res) => {
+        const stmt = db.prepare(
+          "SELECT * FROM sessions ORDER BY started_at DESC"
+        );
+        const sessions = stmt.all();
+        res.json(sessions);
+      });
+
+      historyViewerApp.get("/api/sessions/:id/transcripts", (req, res) => {
+        const stmt = db.prepare(
+          "SELECT * FROM transcripts WHERE session_id = ? ORDER BY timestamp ASC"
+        );
+        const transcripts = stmt.all(req.params.id);
+        res.json(transcripts);
+      });
+
+      historyViewerServer = historyViewerApp.listen(4000, () => {
+        console.log("History viewer server started on port 4000");
+      });
+    }
+    shell.openExternal("http://localhost:4000");
+  }
 
   if (process.platform !== "darwin" && gotTheLock) {
     const cmdLineUrl = process.argv.find((arg) =>

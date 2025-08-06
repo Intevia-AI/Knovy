@@ -118,7 +118,23 @@ export function useAIInteraction() {
   const currentLanguage = language as "en-US" | "zh-TW" | "ja-JP";
 
 
-  // Scroll to bottom when messages change
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const handleNewSession = async () => {
+      if (window.electronAPI) {
+        const newSession = {
+          id: `session-${Date.now()}`,
+          started_at: Date.now(),
+          status: "active",
+        };
+        const { id } = await window.electronAPI.createSession(newSession);
+        setCurrentSessionId(id);
+      }
+    };
+
+    handleNewSession();
+  }, []);
   useEffect(() => {
     if (messagesContainerRef.current) {
       messagesContainerRef.current.scrollTop =
@@ -485,10 +501,9 @@ export function useAIInteraction() {
     [gatherContext, customPrompt, t, language],
   );
 
-  const handleTranscriptionResponse = useCallback((text: string) => {
-    console.log("[Transcription] 收到轉錄文字:", text);
+  const handleTranscriptionResponse = useCallback(async (text: string) => {
+    if (!currentSessionId) return;
 
-    // Create a new transcription message
     const newTranscription: TranscriptionMessage = {
       id: `transcription-${Date.now()}`,
       role: "assistant",
@@ -497,28 +512,28 @@ export function useAIInteraction() {
       type: "transcription",
     };
 
-    console.log("[Transcription] 新增轉錄訊息:", newTranscription);
+    if (window.electronAPI) {
+      await window.electronAPI.addTranscript({
+        id: newTranscription.id,
+        session_id: currentSessionId,
+        timestamp: newTranscription.timestamp,
+        content: newTranscription.content,
+      });
+    }
 
-    // Add to transcriptions state
-    setTranscriptions((prev) => {
-      console.log("[Transcription] 當前轉錄數量:", prev.length);
-      return [...prev, newTranscription];
-    });
+    setTranscriptions((prev) => [...prev, newTranscription]);
 
-    // Also update the chat messages for display
     setAiMessages((prev) => {
       const lastMessage = prev[prev.length - 1];
       if (
         lastMessage?.role === "assistant" &&
         lastMessage.content.startsWith("[即時轉錄]")
       ) {
-        console.log("[Transcription] 更新現有轉錄訊息");
         return [
           ...prev.slice(0, -1),
           { ...lastMessage, content: lastMessage.content + text },
         ];
       } else {
-        console.log("[Transcription] 新增轉錄訊息到聊天");
         return [
           ...prev,
           {
@@ -529,7 +544,7 @@ export function useAIInteraction() {
         ];
       }
     });
-  }, []);
+  }, [currentSessionId]);
 
   const handleAnswerResponse = useCallback(
     (text: string, turnComplete: boolean = false) => {

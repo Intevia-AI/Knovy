@@ -1,10 +1,17 @@
-// This configuration only applies to the package manager root.
+import { config as baseConfig } from "./packages/eslint-config/base.js";
+import tseslint from "typescript-eslint";
+
 /** @type {import("eslint").Linter.Config} */
-module.exports = {
-  ignorePatterns: ["apps/**", "packages/**"],
-  extends: ["@workspace/eslint-config/library.js"],
-  parser: "@typescript-eslint/parser",
-  parserOptions: {
-    project: true,
+export default tseslint.config(
+  ...baseConfig,
+  {
+    ignores: ["apps/**", "packages/**"],
   },
-}
+  {
+    files: ["**/*.ts", "**/*.tsx"],
+    parserOptions: {
+      project: true,
+      tsconfigRootDir: import.meta.dirname,
+    },
+  },
+);
