@@ -160,7 +160,7 @@ Before deploying, you must store your Google AI API key in **Google Secret Manag
 3.  **Name**: `intevia-google-ai-key` (this name is used in the deployment script).
 4.  **Secret value**: Paste your Google AI API key.
 5.  Click **"Create secret"**.
-6.  **Grant Access**: On the secret's details page, go to the **Permissions** tab and grant the **Compute Engine default service account** the **"Secret Manager Secret Accessor"** role.
+6.  **Grant Access**: On the secret's details page, go to the **Permissions** tab and grant the **Default compute service account** the **"Secret Manager Secret Accessor"**, **Connector Admin** and **Tag User** roles. (Probably not this much, I didn't test it yet).
 
 ### Deployment Steps
 
@@ -197,14 +197,14 @@ For a more efficient workflow, you can set up continuous deployment to automatic
 1.  **Navigate to your Service**: In the Google Cloud Console, go to your Cloud Run service (e.g., `intevia-proxy`).
 2.  **Edit and Deploy**: Click **"Edit & Deploy New Revision"**.
 3.  **Configure Source**:
-    *   Under the "Source" section, select **"Continuously deploy new revisions from a source repository"**.
-    *   Click **"Set up with Cloud Build"**.
+    - Under the "Source" section, select **"Continuously deploy new revisions from a source repository"**.
+    - Click **"Set up with Cloud Build"**.
 4.  **Connect Repository**:
-    *   Authenticate with your GitHub account and select the `intevia-ai` repository.
-    *   In the trigger settings, choose the branch that will trigger deployments (e.g., `main`).
+    - Authenticate with your GitHub account and select the `intevia-ai` repository.
+    - In the trigger settings, choose the branch that will trigger deployments (e.g., `main`).
 5.  **Configure Build Settings**:
-    *   **Build Type**: Select `Dockerfile`.
-    *   **Source Location**: This is critical for a monorepo. Set the path to your proxy's `Dockerfile` to: `/apps/proxy/Dockerfile`.
+    - **Build Type**: Select `Dockerfile`.
+    - **Source Location**: This is critical for a monorepo. Set the path to your proxy's `Dockerfile` to: `/apps/proxy/Dockerfile`.
 6.  **Save**: Save the trigger configuration.
 
 Once saved, any new commits pushed to the specified branch will automatically build and deploy a new revision to your Cloud Run service.
@@ -216,12 +216,16 @@ For a professional setup, you should map a custom subdomain (e.g., `proxy.intevi
 1.  **Deploy the Service**: Complete the deployment steps above to get your service running.
 2.  **Map Custom Domain in GCP**:
     - In the Google Cloud Console, navigate to **Cloud Run**.
-    - Click **"Manage custom domains"**.
-    - Click **"Add Mapping"**.
+    - Click the **"intevia-proxy"** service.
+    - Click the **"Network"** tab.
+    - Click the **"Custom Domains"** tab.
+    - Click **"Add Mapping"**
     - Select your deployed service (e.g., `intevia-proxy`) and enter the subdomain you want to use (e.g., `proxy.intevia.app`).
+    - You will be redirected to the Google Search Console and you select the property type as **"Domain"**.
+    - You will be redirected to the Cloudflare, we verify the ownership by adding the TXT record.
 3.  **Update DNS Records**:
-    - Google will provide you with the necessary DNS records (e.g., `A`, `AAAA`, or `CNAME`).
-    - Add these records in your domain provider's DNS settings (e.g., Cloudflare).
+    - Google will provide you with the necessary DNS records (e.g. type `CNAME`, name `proxy` and data `ghs.googlehosted.com`).
+    - Add these records in your domain provider's DNS settings (e.g., Cloudflare) and wait for the changes to take effect.
 4.  **Wait for Propagation**: It may take a few minutes for the SSL certificate to be provisioned and for DNS changes to take effect.
 
 ### Updating the Frontend
