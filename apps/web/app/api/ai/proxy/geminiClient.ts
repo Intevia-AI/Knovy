@@ -3,14 +3,8 @@
  * @description Client for connecting to the Gemini AI service via WebSocket proxy
  * @requires dotenv
  */
-import dotenv from "dotenv";
-
-// Load environment variables
-dotenv.config();
-
 const PROXY_SERVER_URL =
-  process.env.PROXY_SERVER_URL ||
-  `ws://${process.env.PROXY_HOST || "localhost"}:${process.env.PROXY_PORT || "4567"}`;
+  process.env.NEXT_PUBLIC_PROXY_SERVER_URL || "ws://localhost:4567";
 
 /**
  * @class GeminiClient
@@ -90,7 +84,7 @@ export class GeminiClient {
       this.ws = new WebSocket(PROXY_SERVER_URL);
 
       this.ws.onopen = () => {
-        console.log("Connected to proxy server");
+        console.log("Connected to proxy server: ", PROXY_SERVER_URL);
         this.isConnected = true;
         this.reconnectAttempts = 0;
         // Send initialization message
