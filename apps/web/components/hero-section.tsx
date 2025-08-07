@@ -88,7 +88,7 @@ export function HeroSection() {
                   as="h1"
                   className="mt-8 text-balance text-6xl md:text-7xl lg:mt-16 xl:text-[5.25rem]"
                 >
-                  你的個人會議神器 – INTEVIA AI
+                  您的個人會議神器 – INTEVIA AI
                 </TextEffect>
                 <TextEffect
                   per="line"
@@ -118,7 +118,7 @@ export function HeroSection() {
             </div>
 
             {/* Feedback Section */}
-            <div className="mt-12 max-w-xl mx-auto text-left px-6 pb-12">
+            {/* <div className="mt-12 max-w-xl mx-auto text-left px-6 pb-12">
               <h3 className="text-xl font-semibold mb-2 text-center">
                 使用回饋
               </h3>
@@ -138,7 +138,7 @@ export function HeroSection() {
                 onClick={handleFeedbackSubmit}
                 disabled={isSubmitting || !feedback.trim()}
               >
-                {isSubmitting ? "提交中..." : "提交回饋"}
+                {isSubmitting ? "送出中..." : "送出回饋"}
               </Button>
               {submitStatus === "success" && (
                 <p className="mt-2 text-sm text-green-600 text-center">
@@ -147,10 +147,10 @@ export function HeroSection() {
               )}
               {submitStatus === "error" && (
                 <p className="mt-2 text-sm text-red-600 text-center">
-                  提交失敗，請稍後再試。
+                  送出失敗，請稍後再試。
                 </p>
               )}
-            </div>
+            </div> */}
           </div>
         </section>
       </main>

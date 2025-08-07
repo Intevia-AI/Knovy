@@ -6,7 +6,6 @@
  * @requires dotenv
  */
 import { WebSocketServer, WebSocket } from "ws";
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import dotenv from "dotenv";
 
 // Load environment variables

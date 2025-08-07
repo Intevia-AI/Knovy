@@ -10,8 +10,8 @@ export default function Page() {
       <HeroSection />
       <FeaturesSection />
       <IntegrationsSection />
-      <TeamSection />
-      <CallToAction />
+      {/* <TeamSection /> */}
+      {/* <CallToAction /> */}
     </>
   );
 }
