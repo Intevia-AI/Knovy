@@ -9,10 +9,10 @@ import { Skeleton } from "@workspace/ui/components/skeleton";
 
 export default function HistoryPage() {
   const [sessions, setSessions] = useState([]);
-  const [selectedSession, setSelectedSession] = useState(null);
+  const [selectedSession, setSelectedSession] = useState<any | null>(null);
   const [transcripts, setTranscripts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [selectedDate, setSelectedDate] = useState(null);
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadSessions() {
@@ -28,7 +28,7 @@ export default function HistoryPage() {
     loadSessions();
   }, []);
 
-  const handleSelectSession = async (sessionId) => {
+  const handleSelectSession = async (sessionId: string) => {
     try {
       const transcripts = await getTranscripts(sessionId);
       setSelectedSession(sessions.find(s => s.id === sessionId));
@@ -38,7 +38,7 @@ export default function HistoryPage() {
     }
   };
 
-  const handleDeleteSession = async (sessionId) => {
+  const handleDeleteSession = async (sessionId: string) => {
     try {
       await deleteSession(sessionId);
       setSessions(sessions.filter(s => s.id !== sessionId));
@@ -51,7 +51,7 @@ export default function HistoryPage() {
     }
   };
 
-  const handleSelectDate = (date) => {
+  const handleSelectDate = (date: string) => {
     setSelectedDate(date);
     setSelectedSession(null);
     setTranscripts([]);

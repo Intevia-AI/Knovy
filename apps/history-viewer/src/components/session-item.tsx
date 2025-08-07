@@ -1,6 +1,6 @@
 import { Button } from "@workspace/ui/components/button";
 
-export function SessionItem({ session, onSelect, onDelete }) {
+export function SessionItem({ session, onSelect, onDelete }: { session: any, onSelect: (id: string) => void, onDelete: (id: string) => void }) {
   return (
     <div className="flex items-center justify-between">
       <Button variant="ghost" className="w-full justify-start" onClick={() => onSelect(session.id)}>

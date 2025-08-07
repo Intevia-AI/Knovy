@@ -1,7 +1,7 @@
 
 import { ThemeSwitcher } from "./theme-switcher";
 
-export function Sidebar({ children, sessions, onSelectDate }) {
+export function Sidebar({ children, sessions, onSelectDate }: { children: React.ReactNode, sessions: any[], onSelectDate: (date: string) => void }) {
   const groupedSessions = sessions.reduce((acc, session) => {
     const date = new Date(session.started_at).toLocaleDateString();
     if (!acc[date]) {
