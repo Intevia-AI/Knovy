@@ -6,7 +6,7 @@
   "main": "electron/main.mjs",
   "scripts": {
     "dev": "concurrently -n \"NEXT,ELECTRON\" -c \"yellow,blue\" --kill-others \"next dev -p 3001\" \"electron .\"",
-    "build": "next build && electron-builder",
+    "build": "pnpm --filter history-viewer build && next build && electron-builder",
     "prepare": "rimraf node_modules/electron/dist && node node_modules/electron/install.js",
     "postinstall": "electron-rebuild"
   },
@@ -28,6 +28,7 @@
     "app": "link:",
     "better-sqlite3": "^12.2.0",
     "bindings": "^1.5.0",
+    "cors": "^2.8.5",
     "dotenv": "^16.5.0",
     "electron-is-dev": "^3.0.1",
     "electron-serve": "^2.1.1",
