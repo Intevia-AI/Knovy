@@ -1,7 +1,17 @@
 
 import { ThemeSwitcher } from "./theme-switcher";
 
-export function Sidebar({ children, sessions, onSelectDate }: { children: React.ReactNode, sessions: any[], onSelectDate: (date: string) => void }) {
+interface Session {
+  id: string;
+  started_at: string;
+}
+
+interface SidebarProps {
+  sessions: Session[];
+  onSelectDate: (date: string | null) => void;
+}
+
+export function Sidebar({ sessions, onSelectDate }: SidebarProps) {
   const groupedSessions = sessions.reduce((acc, session) => {
     const date = new Date(session.started_at).toLocaleDateString();
     if (!acc[date]) {
@@ -9,7 +19,7 @@ export function Sidebar({ children, sessions, onSelectDate }: { children: React.
     }
     acc[date].push(session);
     return acc;
-  }, {});
+  }, {} as Record<string, Session[]>);
 
   return (
     <aside className="w-64 bg-muted p-4 flex flex-col justify-between">
@@ -29,3 +39,4 @@ export function Sidebar({ children, sessions, onSelectDate }: { children: React.
     </aside>
   );
 }
+

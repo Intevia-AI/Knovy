@@ -7,17 +7,30 @@ import { SessionItem } from "@/components/session-item";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@workspace/ui/components/card";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 
+interface Session {
+  id: string;
+  started_at: string;
+  ended_at: string;
+}
+
+interface Transcript {
+  id: string;
+  session_id: string;
+  timestamp: string;
+  content: string;
+}
+
 export default function HistoryPage() {
-  const [sessions, setSessions] = useState([]);
-  const [selectedSession, setSelectedSession] = useState<any | null>(null);
-  const [transcripts, setTranscripts] = useState([]);
+  const [sessions, setSessions] = useState<Session[]>([]);
+  const [selectedSession, setSelectedSession] = useState<Session | null>(null);
+  const [transcripts, setTranscripts] = useState<Transcript[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadSessions() {
       try {
-        const sessions = await getSessions();
+        const sessions: Session[] = await getSessions();
         setSessions(sessions);
       } catch (error) {
         console.error(error);
@@ -30,8 +43,8 @@ export default function HistoryPage() {
 
   const handleSelectSession = async (sessionId: string) => {
     try {
-      const transcripts = await getTranscripts(sessionId);
-      setSelectedSession(sessions.find(s => s.id === sessionId));
+      const transcripts: Transcript[] = await getTranscripts(sessionId);
+      setSelectedSession(sessions.find(s => s.id === sessionId) || null);
       setTranscripts(transcripts);
     } catch (error) {
       console.error(error);
@@ -51,7 +64,7 @@ export default function HistoryPage() {
     }
   };
 
-  const handleSelectDate = (date: string) => {
+  const handleSelectDate = (date: string | null) => {
     setSelectedDate(date);
     setSelectedSession(null);
     setTranscripts([]);
@@ -91,7 +104,7 @@ export default function HistoryPage() {
             <CardHeader>
               <CardTitle>{new Date(selectedSession.started_at).toLocaleString()}</CardTitle>
               <CardDescription>
-                Duration: {new Date(selectedSession.ended_at - selectedSession.started_at).toISOString().substr(11, 8)}
+                Duration: {new Date(new Date(selectedSession.ended_at).getTime() - new Date(selectedSession.started_at).getTime()).toISOString().substr(11, 8)}
               </CardDescription>
             </CardHeader>
             <CardContent>

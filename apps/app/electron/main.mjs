@@ -18,10 +18,11 @@ import {
 } from "electron";
 import serve from "electron-serve";
 import path from "path";
-import fs from "fs";
+import fs from "fs/promises";
 import { exec } from "child_process";
 import db from "./database.mjs";
 import express from "express";
+import cors from "cors";
 import { fileURLToPath } from "url";
 import {
   installExtension,
@@ -391,7 +392,9 @@ app.on("ready", async () => {
       try {
         const granted = await systemPreferences.askForMediaAccess("screen");
         console.log(
-          `Screen recording permission request result: ${granted ? "Granted" : "Denied"}`
+          `Screen recording permission request result: ${
+            granted ? "Granted" : "Denied"
+          }`
         );
         if (!granted) {
           // Optional: Inform user they need to grant permission manually
@@ -588,27 +591,6 @@ app.on("ready", async () => {
     return stmt.all(sessionId);
   });
 
-  const historyViewerApp = express();
-  historyViewerApp.use(
-    express.static(path.join(__dirname, "../../history-viewer/out"))
-  );
-
-  historyViewerApp.get("/api/sessions", (req, res) => {
-    const stmt = db.prepare("SELECT * FROM sessions ORDER BY started_at DESC");
-    const sessions = stmt.all();
-    res.json(sessions);
-  });
-
-  historyViewerApp.get("/api/sessions/:id/transcripts", (req, res) => {
-    const stmt = db.prepare(
-      "SELECT * FROM transcripts WHERE session_id = ? ORDER BY timestamp ASC"
-    );
-    const transcripts = stmt.all(req.params.id);
-    res.json(transcripts);
-  });
-
-  
-
   // Handle settings saving
   ipcMain.handle("electronAPI:setSettings", async (event, settingsToUpdate) => {
     const currentSettings = await loadSettings();
@@ -709,54 +691,84 @@ app.on("ready", async () => {
   let historyViewerServer;
 
   ipcMain.on("history:open", async () => {
-    const historyViewerOutDir = path.join(__dirname, "../../history-viewer/out");
-
-    try {
-      await fs.promises.access(historyViewerOutDir);
-      startHistoryViewerServer();
-    } catch (error) {
-      // Directory doesn't exist, so we need to build it
-      console.log("History viewer not built. Building now...");
-      exec("pnpm --filter history-viewer build", (err, stdout, stderr) => {
-        if (err) {
-          console.error(`Failed to build history-viewer: ${err}`);
-          return;
-        }
-        console.log(stdout);
-        console.error(stderr);
-        startHistoryViewerServer();
-      });
-    }
+    await startHistoryViewerServer();
   });
 
-  function startHistoryViewerServer() {
-    if (!historyViewerServer) {
-      const historyViewerApp = express();
-      historyViewerApp.use(
-        express.static(path.join(__dirname, "../../history-viewer/out"))
-      );
+  async function startHistoryViewerServer() {
+    if (historyViewerServer) {
+      const address = historyViewerServer.address();
+      if (address) {
+        const url = isDev ? "http://localhost:4001" : `http://localhost:${address.port}`;
+        shell.openExternal(url);
+      }
+      return;
+    }
 
-      historyViewerApp.get("/api/sessions", (req, res) => {
+    const historyViewerApp = express();
+    historyViewerApp.use(cors());
+    const apiRouter = express.Router();
+
+    apiRouter.get("/sessions", (req, res) => {
+      console.log("[History API] GET /api/sessions endpoint hit");
+      try {
         const stmt = db.prepare(
           "SELECT * FROM sessions ORDER BY started_at DESC"
         );
         const sessions = stmt.all();
+        console.log(`[History API] Found ${sessions.length} sessions.`);
         res.json(sessions);
-      });
+      } catch (error) {
+        console.error("[History API] Error fetching sessions:", error);
+        res.status(500).json({ error: "Failed to fetch sessions" });
+      }
+    });
 
-      historyViewerApp.get("/api/sessions/:id/transcripts", (req, res) => {
+    apiRouter.get("/sessions/:id/transcripts", (req, res) => {
+      console.log(`[History API] GET /api/sessions/${req.params.id}/transcripts endpoint hit`);
+      try {
         const stmt = db.prepare(
           "SELECT * FROM transcripts WHERE session_id = ? ORDER BY timestamp ASC"
         );
         const transcripts = stmt.all(req.params.id);
+        console.log(`[History API] Found ${transcripts.length} transcripts for session ${req.params.id}.`);
         res.json(transcripts);
-      });
+      } catch (error) {
+        console.error(`[History API] Error fetching transcripts for session ${req.params.id}:`, error);
+        res.status(500).json({ error: `Failed to fetch transcripts for session ${req.params.id}` });
+      }
+    });
 
+    apiRouter.delete("/sessions/:id", (req, res) => {
+      console.log(`[History API] DELETE /api/sessions/${req.params.id} endpoint hit`);
+      try {
+        const deleteTranscriptsStmt = db.prepare("DELETE FROM transcripts WHERE session_id = ?");
+        deleteTranscriptsStmt.run(req.params.id);
+        const deleteSessionStmt = db.prepare("DELETE FROM sessions WHERE id = ?");
+        deleteSessionStmt.run(req.params.id);
+        console.log(`[History API] Deleted session ${req.params.id}.`);
+        res.json({ success: true });
+      } catch (error) {
+        console.error(`[History API] Error deleting session ${req.params.id}:`, error);
+        res.status(500).json({ error: `Failed to delete session ${req.params.id}` });
+      }
+    });
+
+    historyViewerApp.use("/api", apiRouter);
+
+    if (!isDev) {
+      historyViewerApp.use(
+        express.static(path.join(__dirname, "../../history-viewer/out"))
+      );
+    }
+
+    return new Promise((resolve) => {
       historyViewerServer = historyViewerApp.listen(4000, () => {
         console.log("History viewer server started on port 4000");
+        const url = isDev ? "http://localhost:4001" : "http://localhost:4000";
+        shell.openExternal(url);
+        resolve();
       });
-    }
-    shell.openExternal("http://localhost:4000");
+    });
   }
 
   if (process.platform !== "darwin" && gotTheLock) {
