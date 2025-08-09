@@ -16,7 +16,7 @@ import {
   shell,
   nativeTheme,
 } from "electron";
-import serve from "electron-serve";
+
 import path from "path";
 import fs from "fs/promises";
 import { exec } from "child_process";
@@ -35,12 +35,6 @@ const __dirname = path.dirname(__filename);
 
 /** @type {boolean} Development mode flag based on app packaging status */
 const isDev = !app.isPackaged;
-
-/** @type {string} Output directory for production build files */
-const outputDir = path.join(__dirname, "../out");
-
-/** @type {Function} Electron-serve instance for serving static files in production */
-const appServe = serve({ directory: outputDir });
 
 /** @type {string} Path to user settings file in app data directory */
 const settingsPath = path.join(app.getPath("userData"), "settings.json");
@@ -95,6 +89,38 @@ let mainWindow;
 
 /** @type {BrowserWindow|null} Reference to the screenshot selection overlay window */
 let selectionWindow;
+
+/** @type {import("express").Application} */
+let mainAppServer;
+
+/**
+ * Starts an Express server to serve the main app's static files in production.
+ * This is a replacement for `electron-serve`.
+ * @returns {Promise<string>} The URL of the local server.
+ */
+async function startMainAppServer() {
+  return new Promise((resolve, reject) => {
+    if (mainAppServer && mainAppServer.address()) {
+      resolve(`http://localhost:${mainAppServer.address().port}`);
+      return;
+    }
+    const server = express();
+    const staticPath = path.join(__dirname, "../out");
+    server.use(express.static(staticPath));
+    mainAppServer = server.listen(0, "localhost", () => {
+      // Port 0 means a random available port
+      const port = mainAppServer.address().port;
+      console.log(
+        `[main] Main app static server listening on http://localhost:${port}`
+      );
+      resolve(`http://localhost:${port}`);
+    });
+    mainAppServer.on("error", (err) => {
+      console.error("[main] Main app static server error:", err);
+      reject(err);
+    });
+  });
+}
 
 /** @type {Function|null} Callback for pending screen capture media requests */
 let pendingMediaRequest = null;
@@ -261,13 +287,12 @@ const createWindow = async () => {
       }, 1000); // Retry after 1 second
     });
   } else {
-    // Production: Serve static files using electron-serve
+    // Production: Load from our own express server
     try {
-      await appServe(mainWindow);
-      console.log(`Loading production build from app://-/index.html`);
-      mainWindow.loadURL("app://-/index.html");
+      const mainAppUrl = await startMainAppServer();
+      await mainWindow.loadURL(mainAppUrl);
     } catch (err) {
-      console.error("Failed to load production build:", err);
+      console.error("Failed to load production build from server:", err);
     }
   }
 
@@ -698,7 +723,7 @@ app.on("ready", async () => {
     if (historyViewerServer) {
       const address = historyViewerServer.address();
       if (address) {
-        const url = isDev ? "http://localhost:4001" : `http://localhost:${address.port}`;
+        const url = `http://localhost:${address.port}`;
         shell.openExternal(url);
       }
       return;
@@ -724,47 +749,68 @@ app.on("ready", async () => {
     });
 
     apiRouter.get("/sessions/:id/transcripts", (req, res) => {
-      console.log(`[History API] GET /api/sessions/${req.params.id}/transcripts endpoint hit`);
+      console.log(
+        `[History API] GET /api/sessions/${req.params.id}/transcripts endpoint hit`
+      );
       try {
         const stmt = db.prepare(
           "SELECT * FROM transcripts WHERE session_id = ? ORDER BY timestamp ASC"
         );
         const transcripts = stmt.all(req.params.id);
-        console.log(`[History API] Found ${transcripts.length} transcripts for session ${req.params.id}.`);
+        console.log(
+          `[History API] Found ${transcripts.length} transcripts for session ${req.params.id}.`
+        );
         res.json(transcripts);
       } catch (error) {
-        console.error(`[History API] Error fetching transcripts for session ${req.params.id}:`, error);
-        res.status(500).json({ error: `Failed to fetch transcripts for session ${req.params.id}` });
+        console.error(
+          `[History API] Error fetching transcripts for session ${req.params.id}:`,
+          error
+        );
+        res
+          .status(500)
+          .json({
+            error: `Failed to fetch transcripts for session ${req.params.id}`,
+          });
       }
     });
 
     apiRouter.delete("/sessions/:id", (req, res) => {
-      console.log(`[History API] DELETE /api/sessions/${req.params.id} endpoint hit`);
+      console.log(
+        `[History API] DELETE /api/sessions/${req.params.id} endpoint hit`
+      );
       try {
-        const deleteTranscriptsStmt = db.prepare("DELETE FROM transcripts WHERE session_id = ?");
+        const deleteTranscriptsStmt = db.prepare(
+          "DELETE FROM transcripts WHERE session_id = ?"
+        );
         deleteTranscriptsStmt.run(req.params.id);
-        const deleteSessionStmt = db.prepare("DELETE FROM sessions WHERE id = ?");
+        const deleteSessionStmt = db.prepare(
+          "DELETE FROM sessions WHERE id = ?"
+        );
         deleteSessionStmt.run(req.params.id);
         console.log(`[History API] Deleted session ${req.params.id}.`);
         res.json({ success: true });
       } catch (error) {
-        console.error(`[History API] Error deleting session ${req.params.id}:`, error);
-        res.status(500).json({ error: `Failed to delete session ${req.params.id}` });
+        console.error(
+          `[History API] Error deleting session ${req.params.id}:`,
+          error
+        );
+        res
+          .status(500)
+          .json({ error: `Failed to delete session ${req.params.id}` });
       }
     });
 
     historyViewerApp.use("/api", apiRouter);
 
-    if (!isDev) {
-      historyViewerApp.use(
-        express.static(path.join(__dirname, "../public/history"))
-      );
-    }
+    // Serve static files for history viewer in both dev and prod
+    historyViewerApp.use(
+      express.static(path.join(__dirname, "../public/history"))
+    );
 
     return new Promise((resolve) => {
       historyViewerServer = historyViewerApp.listen(4000, () => {
         console.log("History viewer server started on port 4000");
-        const url = isDev ? "http://localhost:4001" : "http://localhost:4000";
+        const url = "http://localhost:4000";
         shell.openExternal(url);
         resolve();
       });
