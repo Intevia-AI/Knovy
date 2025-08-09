@@ -39,3 +39,7 @@ npm-debug.log*
 
 # Misc
 .vscode/
+
+# We copy the built history viewer to the app public folder
+# but we don't need to commit it
+apps/app/public/history

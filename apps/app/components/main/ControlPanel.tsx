@@ -494,6 +494,32 @@ export function ControlPanel({
         systemLevel={systemLevel}
       />
 
+      {/* View History Button */}
+      <div className="border-b border-border/30">
+        <div
+          className="flex items-center justify-between p-2 cursor-pointer bg-muted/10 hover:bg-muted/50"
+          onClick={() => window.electronAPI.send("history:open")}
+          role="button"
+        >
+          <h4 className="text-xs font-medium text-foreground">View History</h4>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="text-muted-foreground"
+          >
+            <path d="M1 4v6h6" />
+            <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
+          </svg>
+        </div>
+      </div>
+
       {/* Advanced Settings Button */}
 
       <div className="border-b border-border/30">

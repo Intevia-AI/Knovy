@@ -757,7 +757,7 @@ app.on("ready", async () => {
 
     if (!isDev) {
       historyViewerApp.use(
-        express.static(path.join(__dirname, "../../history-viewer/out"))
+        express.static(path.join(__dirname, "../public/history"))
       );
     }
 
