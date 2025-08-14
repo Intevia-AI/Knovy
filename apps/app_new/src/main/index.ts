@@ -14,7 +14,7 @@ import path from 'path'
 import fs from 'fs/promises'
 import { dbPromise } from './database'
 import { installExtension, REACT_DEVELOPER_TOOLS } from 'electron-devtools-installer'
-import isDev from 'electron-is-dev'
+import { is } from '@electron-toolkit/utils'
 
 let mainWindow: BrowserWindow | null
 let selectionWindow: BrowserWindow | null
@@ -108,14 +108,22 @@ function createSelectionWindow() {
     frame: false,
     alwaysOnTop: true,
     webPreferences: {
-      preload: path.join(__dirname, '../preload/index.js'),
+      preload: path.join(__dirname, '../preload/index.cjs'),
       contextIsolation: true,
       nodeIntegration: false
     }
   })
 
-  if (isDev && process.env['VITE_DEV_SERVER_URL']) {
-    selectionWindow.loadURL(`${process.env['VITE_DEV_SERVER_URL']}/selection.html`)
+  if (is.dev) {
+    const devServerUrl = import.meta.env['VITE_DEV_SERVER_URL']
+    if (devServerUrl) {
+      selectionWindow.loadURL(`${devServerUrl}/selection.html`)
+    } else {
+      console.warn(
+        'VITE_DEV_SERVER_URL is not set, falling back to http://localhost:5173 for selection window'
+      )
+      selectionWindow.loadURL('http://localhost:5173/selection.html')
+    }
   } else {
     selectionWindow.loadFile(path.join(__dirname, '../renderer/selection.html'))
   }
@@ -132,7 +140,7 @@ const createWindow = async () => {
     visualEffectState: 'active',
     backgroundMaterial: 'acrylic',
     webPreferences: {
-      preload: path.join(__dirname, '../preload/index.js'),
+      preload: path.join(__dirname, '../preload/index.cjs'),
       contextIsolation: true,
       nodeIntegration: false
     }
@@ -148,9 +156,24 @@ const createWindow = async () => {
 
   mainWindow.setContentProtection(true)
 
-  if (isDev && process.env['VITE_DEV_SERVER_URL']) {
-    mainWindow.loadURL(process.env['VITE_DEV_SERVER_URL'])
+  if (is.dev) {
+    const devServerUrl = import.meta.env['VITE_DEV_SERVER_URL']
+    if (devServerUrl) {
+      mainWindow.loadURL(devServerUrl)
+    } else {
+      // Fallback to a default port if the env var is not set
+      console.warn('VITE_DEV_SERVER_URL is not set, falling back to http://localhost:5173')
+      mainWindow.loadURL('http://localhost:5173')
+    }
     mainWindow.webContents.openDevTools()
+    mainWindow.webContents.on('did-fail-load', () => {
+      console.warn('Development server failed to load, retrying in 1 second...')
+      setTimeout(() => {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.reloadIgnoringCache()
+        }
+      }, 1000)
+    })
   } else {
     mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'))
   }
@@ -175,7 +198,7 @@ const toggleWindow = () => {
 }
 
 app.on('ready', async () => {
-  if (isDev) {
+  if (is.dev) {
     await installExtension(REACT_DEVELOPER_TOOLS).catch(console.log)
   }
   nativeTheme.themeSource = 'dark'
@@ -234,7 +257,7 @@ app.on('ready', async () => {
           const selectedSource = sources.find((s) => s.id === sourceId)
           if (selectedSource) {
             try {
-              pendingMediaRequest({ video: selectedSource, audio: 'loopback' })
+              pendingMediaRequest?.({ video: selectedSource, audio: 'loopback' })
             } catch (error) {
               console.error('Error granting access to source:', error)
             }
@@ -249,6 +272,10 @@ app.on('ready', async () => {
     if (pendingMediaRequest) {
       pendingMediaRequest = null
     }
+  })
+
+  ipcMain.on('electronAPI:openExternal', (event, url) => {
+    shell.openExternal(url)
   })
 
   ipcMain.on('electronAPI:minimizeWindow', () => mainWindow?.minimize())
@@ -320,30 +347,32 @@ app.on('ready', async () => {
   })
 
   // Database IPC handlers
-  ipcMain.handle('db:create-session', (event, session) => {
+  ipcMain.handle('db:create-session', async (event, session) => {
     const { id, started_at, status } = session
-    const stmt = db.prepare('INSERT INTO sessions (id, started_at, status) VALUES (?, ?, ?)')
-    stmt.run(id, started_at, status)
+    const stmt = await db.prepare('INSERT INTO sessions (id, started_at, status) VALUES (?, ?, ?)')
+    await stmt.run(id, started_at, status)
     return { id }
   })
 
-  ipcMain.handle('db:add-transcript', (event, transcript) => {
+  ipcMain.handle('db:add-transcript', async (event, transcript) => {
     const { id, session_id, timestamp, content } = transcript
-    const stmt = db.prepare(
+    const stmt = await db.prepare(
       'INSERT INTO transcripts (id, session_id, timestamp, content) VALUES (?, ?, ?, ?)'
     )
-    stmt.run(id, session_id, timestamp, content)
+    await stmt.run(id, session_id, timestamp, content)
     return { id }
   })
 
-  ipcMain.handle('db:get-sessions', () => {
-    const stmt = db.prepare('SELECT * FROM sessions ORDER BY started_at DESC')
-    return stmt.all()
+  ipcMain.handle('db:get-sessions', async () => {
+    const stmt = await db.prepare('SELECT * FROM sessions ORDER BY started_at DESC')
+    return await stmt.all()
   })
 
-  ipcMain.handle('db:get-transcripts', (event, sessionId) => {
-    const stmt = db.prepare('SELECT * FROM transcripts WHERE session_id = ? ORDER BY timestamp ASC')
-    return stmt.all(sessionId)
+  ipcMain.handle('db:get-transcripts', async (event, sessionId) => {
+    const stmt = await db.prepare(
+      'SELECT * FROM transcripts WHERE session_id = ? ORDER BY timestamp ASC'
+    )
+    return await stmt.all(sessionId)
   })
 })
 

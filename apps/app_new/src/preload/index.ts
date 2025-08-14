@@ -3,6 +3,8 @@ import { contextBridge, ipcRenderer } from 'electron';
 console.log("[Preload] Script loaded.");
 
 const api = {
+  openExternal: (url: string) => ipcRenderer.send("electronAPI:openExternal", url),
+
   supabaseSignInWithOAuth: (provider) =>
     ipcRenderer.invoke("supabase:signInWithOAuth", provider),
 

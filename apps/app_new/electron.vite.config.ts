@@ -11,7 +11,14 @@ export default defineConfig({
       externalizeDepsPlugin({
         include: ['sqlite3']
       })
-    ]
+    ],
+    build: {
+      rollupOptions: {
+        output: {
+          format: 'cjs'
+        }
+      }
+    }
   },
   renderer: {
     resolve: {

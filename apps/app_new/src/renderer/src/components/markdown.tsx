@@ -1,12 +1,11 @@
 "use client";
-import Link from "next/link";
 import React, { memo } from "react";
 import ReactMarkdown from "react-markdown";
 import type { Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkBreaks from "remark-breaks";
 import { toast } from "sonner";
-import { cn } from "@workspace/ui/lib/utils";
+import { cn } from "@/lib/utils";
 
 interface MarkdownProps {
   children: string;
@@ -90,17 +89,24 @@ const createMarkdownComponents = (): Partial<Components> => ({
     </span>
   ),
 
-  a: ({ children, href, ...props }) => (
-    <Link
-      className="text-blue-500 hover:underline"
-      target="_blank"
-      rel="noreferrer"
-      href={href || "#"}
-      {...props}
-    >
-      {children}
-    </Link>
-  ),
+  a: ({ children, href, ...props }) => {
+    const handleExternalLink = (e: React.MouseEvent<HTMLAnchorElement>) => {
+      e.preventDefault();
+      if (href && window.electronAPI?.openExternal) {
+        window.electronAPI.openExternal(href);
+      }
+    };
+    return (
+      <a
+        className="text-blue-500 hover:underline"
+        href={href || "#"}
+        onClick={handleExternalLink}
+        {...props}
+      >
+        {children}
+      </a>
+    );
+  },
 
   // Heading components with consistent styling pattern
   h1: ({ children, ...props }) => (
