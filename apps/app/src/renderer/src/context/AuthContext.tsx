@@ -158,7 +158,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         provider,
         options: {
           skipBrowserRedirect: true,
-          redirectTo: 'http://localhost:3000/auth/callback', // Redirect to the web app's callback page
+          redirectTo: 'https://intevia.app/auth/callback', // Redirect to the web app's callback page
           // For PKCE flow, skipBrowserRedirect might be an option if not automatically handled
           queryParams: { access_type: 'offline', prompt: 'consent' }, // Example for Google
         },
