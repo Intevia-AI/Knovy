@@ -5,7 +5,7 @@
   "type": "module",
   "main": "out/main/index.js",
   "scripts": {
-    "dev": "pnpm --filter history-viewer dev & electron-vite dev",
+    "dev": "concurrently \"pnpm --filter history-viewer dev\" \"electron-vite dev\"",
     "build:history": "pnpm --filter history-viewer build",
     "copy:history": "rm -rf src/renderer/public/history && cp -r ../history-viewer/out src/renderer/public/history",
     "build": "pnpm run build:history && pnpm run copy:history && electron-vite build && electron-rebuild && electron-builder",
