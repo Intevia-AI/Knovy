@@ -12,11 +12,11 @@ import {
 } from 'electron'
 import path from 'path'
 import fs from 'fs/promises'
-import { dbPromise } from './database'
 import { installExtension, REACT_DEVELOPER_TOOLS } from 'electron-devtools-installer'
 import { is } from '@electron-toolkit/utils'
 import express from 'express'
 import cors from 'cors'
+import * as dbService from './database-service'
 
 let mainWindow: BrowserWindow | null
 let selectionWindow: BrowserWindow | null
@@ -228,8 +228,6 @@ app.on('ready', async () => {
 
   await createWindow()
 
-  const db = await dbPromise
-
   globalShortcut.register('CommandOrControl+K', toggleWindow)
 
   ipcMain.handle('supabase:signInWithOAuth', async (event, provider) => {
@@ -357,25 +355,27 @@ app.on('ready', async () => {
   })
 
   async function startHistoryViewerServer() {
+    // If the server is already running, just open the URL.
     if (historyViewerServer) {
       const address = historyViewerServer.address()
-      if (address) {
-        const url = `http://localhost:${address.port}`
+      if (address && typeof address === 'object') {
+        // In dev, the content is on the Next.js dev server (port 3000).
+        // In prod, the content is on the server we started.
+        const url = is.dev ? 'http://localhost:3000' : `http://localhost:${address.port}`
         shell.openExternal(url)
       }
       return
     }
 
+    // If the server is not running, create it.
     const historyViewerApp = express()
     historyViewerApp.use(cors())
     const apiRouter = express.Router()
 
+    // All API routes use the central database service.
     apiRouter.get('/sessions', async (req, res) => {
-      console.log('[History API] GET /api/sessions endpoint hit')
       try {
-        const stmt = await db.prepare('SELECT * FROM sessions ORDER BY started_at DESC')
-        const sessions = await stmt.all()
-        console.log(`[History API] Found ${sessions.length} sessions.`)
+        const sessions = await dbService.getSessions()
         res.json(sessions)
       } catch (error) {
         console.error('[History API] Error fetching sessions:', error)
@@ -384,37 +384,18 @@ app.on('ready', async () => {
     })
 
     apiRouter.get('/sessions/:id/transcripts', async (req, res) => {
-      console.log(`[History API] GET /api/sessions/${req.params.id}/transcripts endpoint hit`)
       try {
-        const stmt = await db.prepare(
-          'SELECT * FROM transcripts WHERE session_id = ? ORDER BY timestamp ASC'
-        )
-        const transcripts = await stmt.all(req.params.id)
-        console.log(
-          `[History API] Found ${transcripts.length} transcripts for session ${req.params.id}.`
-        )
+        const transcripts = await dbService.getTranscripts(req.params.id)
         res.json(transcripts)
       } catch (error) {
-        console.error(
-          `[History API] Error fetching transcripts for session ${req.params.id}:`,
-          error
-        )
-        res.status(500).json({
-          error: `Failed to fetch transcripts for session ${req.params.id}`
-        })
+        console.error(`[History API] Error fetching transcripts for session ${req.params.id}:`, error)
+        res.status(500).json({ error: `Failed to fetch transcripts for session ${req.params.id}` })
       }
     })
 
     apiRouter.delete('/sessions/:id', async (req, res) => {
-      console.log(`[History API] DELETE /api/sessions/${req.params.id} endpoint hit`)
       try {
-        const deleteTranscriptsStmt = await db.prepare(
-          'DELETE FROM transcripts WHERE session_id = ?'
-        )
-        await deleteTranscriptsStmt.run(req.params.id)
-        const deleteSessionStmt = await db.prepare('DELETE FROM sessions WHERE id = ?')
-        await deleteSessionStmt.run(req.params.id)
-        console.log(`[History API] Deleted session ${req.params.id}.`)
+        await dbService.deleteSession(req.params.id)
         res.json({ success: true })
       } catch (error) {
         console.error(`[History API] Error deleting session ${req.params.id}:`, error)
@@ -424,19 +405,24 @@ app.on('ready', async () => {
 
     historyViewerApp.use('/api', apiRouter)
 
-    // Serve static files for history viewer in production
-    const historyPath = path.join(__dirname, '../renderer/history')
-    historyViewerApp.use(express.static(historyPath))
+    // In production, serve the static files from the build output.
+    // In development, this is handled by the Next.js dev server.
+    if (!is.dev) {
+      const historyPath = path.join(__dirname, '../renderer/history')
+      historyViewerApp.use(express.static(historyPath))
+      historyViewerApp.get('*', (req, res) => {
+        res.sendFile(path.join(historyPath, 'index.html'))
+      })
+    }
 
-    // Fallback for SPA routing
-    historyViewerApp.get('*', (req, res) => {
-      res.sendFile(path.join(historyPath, 'index.html'))
-    })
-
+    // Start the server.
     return new Promise<boolean>((resolve) => {
-      historyViewerServer = historyViewerApp.listen(4000, () => {
-        console.log('History viewer server started on port 4000')
-        const url = 'http://localhost:4000'
+      const port = 4000 // The API server always runs on port 4000.
+      historyViewerServer = historyViewerApp.listen(port, () => {
+        console.log(`History viewer API server started on port ${port}`)
+        // In dev, open the Next.js dev server (port 3000).
+        // In prod, open the server we just started (port 4000).
+        const url = is.dev ? 'http://localhost:3000' : `http://localhost:${port}`
         shell.openExternal(url)
         resolve(true)
       })
@@ -449,38 +435,18 @@ app.on('ready', async () => {
       console.log(
         `[main.js app.ready] Initial command line OAuth URL for Windows/Linux: ${cmdLineUrl}`
       )
-      oauthCallbackUrlOnStartup = cmdLineUrl // Store for did-finish-load
+      oauthCallbackUrlOnStartup = cmdLineUrl
     }
   }
 
   // Database IPC handlers
-  ipcMain.handle('db:create-session', async (event, session) => {
-    const { id, started_at, status } = session
-    const stmt = await db.prepare('INSERT INTO sessions (id, started_at, status) VALUES (?, ?, ?)')
-    await stmt.run(id, started_at, status)
-    return { id }
-  })
+  ipcMain.handle('db:create-session', (event, session) => dbService.createSession(session))
 
-  ipcMain.handle('db:add-transcript', async (event, transcript) => {
-    const { id, session_id, timestamp, content } = transcript
-    const stmt = await db.prepare(
-      'INSERT INTO transcripts (id, session_id, timestamp, content) VALUES (?, ?, ?, ?)'
-    )
-    await stmt.run(id, session_id, timestamp, content)
-    return { id }
-  })
+  ipcMain.handle('db:add-transcript', (event, transcript) => dbService.addTranscript(transcript))
 
-  ipcMain.handle('db:get-sessions', async () => {
-    const stmt = await db.prepare('SELECT * FROM sessions ORDER BY started_at DESC')
-    return await stmt.all()
-  })
+  ipcMain.handle('db:get-sessions', () => dbService.getSessions())
 
-  ipcMain.handle('db:get-transcripts', async (event, sessionId) => {
-    const stmt = await db.prepare(
-      'SELECT * FROM transcripts WHERE session_id = ? ORDER BY timestamp ASC'
-    )
-    return await stmt.all(sessionId)
-  })
+  ipcMain.handle('db:get-transcripts', (event, sessionId) => dbService.getTranscripts(sessionId))
 })
 
 app.on('window-all-closed', () => {

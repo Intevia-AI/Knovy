@@ -87,6 +87,25 @@ pnpm dev
    - Renderer process: Use Chrome DevTools (opens automatically in dev mode).
    - Main process: Use `console.log()` statements in your terminal.
 
+### Development Server & Port Architecture
+
+During development, the application runs in a multi-server environment to provide features like hot-reloading for the frontend components. Understanding how the ports are used is key to working on the system.
+
+| Component                        | Port      | Purpose                                                                                             |
+| -------------------------------- | --------- | --------------------------------------------------------------------------------------------------- |
+| **History Viewer (Next.js)**     | `3000`    | Serves the history viewer web interface. This is the URL that opens in your browser.                |
+| **Backend API Server (Express)** | `4000`    | Provides a REST API for the History Viewer to access the main application's database.               |
+| **Main App UI (Vite)**           | `5173`    | Serves the main Electron application's UI. This is what you see in the Electron window itself.      |
+
+#### Workflow
+
+1.  Running `pnpm dev` starts all three servers.
+2.  The main application window loads its UI from the Vite server on port `5173`.
+3.  When you click the "View History" button, the Electron app opens your default web browser to `http://localhost:3000`.
+4.  The History Viewer frontend (running on port `3000`) then makes API calls to the Backend API Server at `http://localhost:4000` to fetch session and transcript data.
+
+> **Note on Production**: In a production build (created with `pnpm build`), this multi-server setup is consolidated. The Backend API Server on port `4000` also serves the pre-built static files of the History Viewer, so only one server is needed.
+
 ### Project Structure
 
 ```
