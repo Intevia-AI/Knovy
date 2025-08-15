@@ -450,6 +450,8 @@ app.on('ready', async () => {
   ipcMain.handle('db:get-sessions', () => dbService.getSessions())
 
   ipcMain.handle('db:get-transcripts', (event, sessionId) => dbService.getTranscripts(sessionId))
+
+  ipcMain.handle('db:end-session', (event, sessionId) => dbService.endSession(sessionId))
 })
 
 app.on('window-all-closed', () => {

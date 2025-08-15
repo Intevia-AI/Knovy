@@ -115,21 +115,7 @@ export function useAIInteraction() {
 
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null)
 
-  useEffect(() => {
-    const handleNewSession = async () => {
-      if (window.electronAPI) {
-        const newSession = {
-          id: `session-${Date.now()}`,
-          started_at: Date.now(),
-          status: 'active'
-        }
-        const { id } = await window.electronAPI.createSession(newSession)
-        setCurrentSessionId(id)
-      }
-    }
-
-    handleNewSession()
-  }, [])
+  
   useEffect(() => {
     if (messagesContainerRef.current) {
       messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight
@@ -790,6 +776,27 @@ export function useAIInteraction() {
     [sendContextToAI, currentLanguage, setAiMessages]
   )
 
+  const startSession = useCallback(async () => {
+    if (window.electronAPI) {
+      const newSession = {
+        id: `session-${Date.now()}`,
+        started_at: new Date().toISOString(),
+        status: 'active'
+      };
+      const { id } = await window.electronAPI.createSession(newSession);
+      setCurrentSessionId(id);
+      console.log('Started new session:', id);
+    }
+  }, []);
+
+  const endSession = useCallback(async () => {
+    if (window.electronAPI && currentSessionId) {
+      await window.electronAPI.endSession(currentSessionId);
+      console.log('Ended session:', currentSessionId);
+      setCurrentSessionId(null);
+    }
+  }, [currentSessionId]);
+
   return {
     aiMessages,
     setAiMessages,
@@ -810,6 +817,9 @@ export function useAIInteraction() {
     isSubtitleVisible,
     setSubtitleVisibility,
     handleSendMessage: sendContextToAI,
-    handleScreenshot
+    handleScreenshot,
+    startSession,
+    endSession,
+    currentSessionId
   }
 }

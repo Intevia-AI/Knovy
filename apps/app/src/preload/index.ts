@@ -28,6 +28,7 @@ const api = {
   addTranscript: (transcript) => ipcRenderer.invoke('db:add-transcript', transcript),
   getSessions: () => ipcRenderer.invoke('db:get-sessions'),
   getTranscripts: (sessionId) => ipcRenderer.invoke('db:get-transcripts', sessionId),
+  endSession: (sessionId) => ipcRenderer.invoke('db:end-session', sessionId),
 
   startScreenshot: () => ipcRenderer.send('electronAPI:startScreenshot'),
 

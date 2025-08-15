@@ -78,6 +78,9 @@ export function Main() {
     setSubtitleVisibility,
     isSubtitleVisible,
     handleScreenshot,
+    startSession,
+    endSession,
+    currentSessionId,
   } = useAIInteraction();
 
   // --- State for Layout Direction ------------------------------
@@ -102,6 +105,18 @@ export function Main() {
     setLayoutDirection((prevDirection) =>
       prevDirection === "vertical" ? "horizontal" : "vertical",
     );
+  };
+
+  const handleToggleScreenShare = async () => {
+    if (isScreenSharing) {
+      if (currentSessionId) {
+        await endSession();
+      }
+      toggleScreenShare();
+    } else {
+      await startSession();
+      toggleScreenShare();
+    }
   };
 
   // --- Render -------------------------------------------------
@@ -148,7 +163,7 @@ export function Main() {
             currentSystemAudioStream={currentSystemAudioStream}
             customPrompt={customPrompt}
             setCustomPrompt={setCustomPrompt}
-            onToggleScreenShare={toggleScreenShare}
+            onToggleScreenShare={handleToggleScreenShare}
             onAiAction={sendContextToAI}
             onKeywordClick={handleKeywordClick}
             onTranscriptionResponse={handleTranscriptionResponse}

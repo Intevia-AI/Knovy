@@ -50,3 +50,19 @@ export async function addTranscript(transcript: {
   await stmt.run(id, session_id, timestamp, content)
   return { id }
 }
+
+export async function endSession(sessionId: string) {
+  const db = await dbPromise
+  try {
+    const ended_at = new Date().toISOString()
+    const stmt = await db.prepare(
+      "UPDATE sessions SET ended_at = ?, status = 'completed' WHERE id = ?"
+    )
+    await stmt.run(ended_at, sessionId)
+    console.log(`[DB] Ended session ${sessionId}.`)
+    return { success: true }
+  } catch (error) {
+    console.error(`[DB] Error ending session ${sessionId}:`, error)
+    throw new Error(`Failed to end session ${sessionId}`)
+  }
+}
