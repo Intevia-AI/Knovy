@@ -228,7 +228,7 @@ app.on('ready', async () => {
 
   await createWindow()
 
-  globalShortcut.register('CommandOrControl+K', toggleWindow)
+  globalShortcut.register('alt+\\', toggleWindow)
 
   ipcMain.handle('supabase:signInWithOAuth', async (event, provider) => {
     if (provider.urlToOpen) {

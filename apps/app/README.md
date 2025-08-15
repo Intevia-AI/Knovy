@@ -17,7 +17,7 @@ The Intevia AI Desktop App is an intelligent screen companion that captures and 
 - **Cross-Platform Support**: Native desktop experience on Windows, macOS, and Linux
 - **Secure Authentication**: Integrated Supabase authentication with OAuth support
 - **Customizable Interface**: Resizable panels, always-on-top mode, and dark theme support
-- **Global Shortcuts**: Quick access via keyboard shortcuts (Cmd/Ctrl+K)
+- **Global Shortcuts**: Quick access via keyboard shortcuts (alt+\)
 - **Screenshot Tools**: Built-in screenshot capture with area selection
 
 ### Technology Stack
