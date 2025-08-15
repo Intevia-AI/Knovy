@@ -5,7 +5,7 @@
  */
 
 /** @type {string} WebSocket proxy server URL from environment or default localhost */
-const PROXY_SERVER_URL = import.meta.env.VITE_AI_API_URL || 'ws://localhost:4567'
+const PROXY_SERVER_URL = import.meta.env.VITE_GEMINI_WS_URL || 'ws://localhost:4567'
 console.log(PROXY_SERVER_URL)
 
 /**

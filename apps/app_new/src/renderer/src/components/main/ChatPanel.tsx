@@ -1,10 +1,10 @@
 import React, { useRef, useState, useEffect } from "react";
 import { Message as AIMessage } from "ai";
-import { Button } from "@workspace/ui/components/button";
-import { Input } from "@workspace/ui/components/input";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { ArrowUpRight, Sparkles, ArrowDown } from "lucide-react";
 import { Markdown } from "@/components/markdown"; // Adjust path if needed
-import { cn } from "@workspace/ui/lib/utils"; // Adjust path if needed
+import { cn } from "@/lib/utils"; // Adjust path if needed
 import { useI18n } from "@/hooks/useI18n";
 
 interface CustomMessage extends AIMessage {

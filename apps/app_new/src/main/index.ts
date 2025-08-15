@@ -110,7 +110,8 @@ function createSelectionWindow() {
     webPreferences: {
       preload: path.join(__dirname, '../preload/index.cjs'),
       contextIsolation: true,
-      nodeIntegration: false
+      nodeIntegration: false,
+      sandbox: false
     }
   })
 
@@ -131,7 +132,7 @@ function createSelectionWindow() {
 }
 
 const createWindow = async () => {
-  mainWindow = new BrowserWindow({
+    mainWindow = new BrowserWindow({
     width: 480,
     height: 400,
     frame: false,
@@ -142,7 +143,8 @@ const createWindow = async () => {
     webPreferences: {
       preload: path.join(__dirname, '../preload/index.cjs'),
       contextIsolation: true,
-      nodeIntegration: false
+      nodeIntegration: false,
+      sandbox: false
     }
   })
 

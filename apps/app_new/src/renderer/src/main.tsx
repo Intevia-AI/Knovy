@@ -1,9 +1,9 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App'
-import "@workspace/ui/globals.css";
+import "@/assets/globals.css";
 import { Providers } from "./components/providers";
-import { Toaster } from "@workspace/ui/components/sonner";
+import { Toaster } from "@/components/ui/sonner";
 import { LanguageProvider } from "./context/LanguageContext";
 import { AuthProvider } from './context/AuthContext';
 

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { GeminiClient } from "./geminiClient";
-import { Switch } from "@workspace/ui/components/switch";
+import { Switch } from "@/components/ui/switch";
 import { useI18n } from "@/hooks/useI18n";
 
 interface RealTimeSubtitleProps {

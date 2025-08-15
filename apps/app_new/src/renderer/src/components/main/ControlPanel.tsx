@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react"; // Import useRef and useEffect
-import { Button } from "@workspace/ui/components/button";
+import { Button } from "@/components/ui/button";
 import {
   MicIcon,
   Loader2Icon,
@@ -19,12 +19,12 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@workspace/ui/components/select"; // Import Select components
+} from "@/components/ui/select"; // Import Select components
 import RealTimeAnalysis from "@/components/RealTimeAnalysis"; // Adjust path if needed
 import { formatTime } from "@/lib/utils"; // Adjust path if needed
 import RealTimeSubtitle from "@/components/RealTimeSubtitle";
-import { Textarea } from "@workspace/ui/components/textarea"; // Add Textarea component
-import { Label } from "@workspace/ui/components/label"; // Add Label component
+import { Textarea } from "@/components/ui/textarea"; // Add Textarea component
+import { Label } from "@/components/ui/label"; // Add Label component
 import { useI18n } from "@/hooks/useI18n"; // Import useI18n
 import { useLanguage } from "@/context/LanguageContext"; // Import useLanguage
 import { SupportedLanguage, TranslationKey } from "@/lib/translations"; // Import translations and SupportedLanguage
@@ -34,7 +34,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from "@workspace/ui/components/dialog";
+} from "@/components/ui/dialog";
 import { useAuth } from "@/context/AuthContext"; // Import useAuth
 import { toast } from "sonner"; // Corrected import for toast from sonner itself
 import { AIAction } from "@/hooks/useAIInteraction";

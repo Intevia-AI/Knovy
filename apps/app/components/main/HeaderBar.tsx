@@ -15,7 +15,7 @@ import {
   LogOutIcon,
   Loader2,
 } from "lucide-react";
-import { useTheme } from "next-themes";
+
 import { useI18n } from "@/hooks/useI18n";
 import { Logo } from "../logo";
 import { useAuth } from "@/context/AuthContext";

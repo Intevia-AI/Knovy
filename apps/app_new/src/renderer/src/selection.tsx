@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom/client';
-import "@workspace/ui/globals.css";
+import "@/assets/globals.css";
 
 function SelectionPage() {
   const overlayRef = useRef<HTMLDivElement>(null);

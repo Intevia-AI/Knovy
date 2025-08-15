@@ -18,7 +18,7 @@ import {
   ResizableHandle,
   ResizablePanel,
   ResizablePanelGroup,
-} from "@workspace/ui/components/resizable"; // Import Resizable components
+} from "@/components/ui/resizable"; // Import Resizable components
 
 // Types (Import necessary types)
 

@@ -1,11 +1,11 @@
-import { Button } from "@workspace/ui/components/button";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from "@workspace/ui/components/dialog";
+} from "@/components/ui/dialog";
 import type { ElectronSource } from "@/types";
 import { useI18n } from "@/hooks/useI18n";
 
