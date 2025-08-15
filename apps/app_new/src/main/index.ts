@@ -15,6 +15,8 @@ import fs from 'fs/promises'
 import { dbPromise } from './database'
 import { installExtension, REACT_DEVELOPER_TOOLS } from 'electron-devtools-installer'
 import { is } from '@electron-toolkit/utils'
+import express from 'express'
+import cors from 'cors'
 
 let mainWindow: BrowserWindow | null
 let selectionWindow: BrowserWindow | null
@@ -132,7 +134,7 @@ function createSelectionWindow() {
 }
 
 const createWindow = async () => {
-    mainWindow = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     width: 480,
     height: 400,
     frame: false,
@@ -347,6 +349,109 @@ app.on('ready', async () => {
       selectionWindow.close()
     }
   })
+
+  let historyViewerServer
+
+  ipcMain.on('history:open', async () => {
+    await startHistoryViewerServer()
+  })
+
+  async function startHistoryViewerServer() {
+    if (historyViewerServer) {
+      const address = historyViewerServer.address()
+      if (address) {
+        const url = `http://localhost:${address.port}`
+        shell.openExternal(url)
+      }
+      return
+    }
+
+    const historyViewerApp = express()
+    historyViewerApp.use(cors())
+    const apiRouter = express.Router()
+
+    apiRouter.get('/sessions', async (req, res) => {
+      console.log('[History API] GET /api/sessions endpoint hit')
+      try {
+        const stmt = await db.prepare('SELECT * FROM sessions ORDER BY started_at DESC')
+        const sessions = await stmt.all()
+        console.log(`[History API] Found ${sessions.length} sessions.`)
+        res.json(sessions)
+      } catch (error) {
+        console.error('[History API] Error fetching sessions:', error)
+        res.status(500).json({ error: 'Failed to fetch sessions' })
+      }
+    })
+
+    apiRouter.get('/sessions/:id/transcripts', async (req, res) => {
+      console.log(`[History API] GET /api/sessions/${req.params.id}/transcripts endpoint hit`)
+      try {
+        const stmt = await db.prepare(
+          'SELECT * FROM transcripts WHERE session_id = ? ORDER BY timestamp ASC'
+        )
+        const transcripts = await stmt.all(req.params.id)
+        console.log(
+          `[History API] Found ${transcripts.length} transcripts for session ${req.params.id}.`
+        )
+        res.json(transcripts)
+      } catch (error) {
+        console.error(
+          `[History API] Error fetching transcripts for session ${req.params.id}:`,
+          error
+        )
+        res.status(500).json({
+          error: `Failed to fetch transcripts for session ${req.params.id}`
+        })
+      }
+    })
+
+    apiRouter.delete('/sessions/:id', async (req, res) => {
+      console.log(`[History API] DELETE /api/sessions/${req.params.id} endpoint hit`)
+      try {
+        const deleteTranscriptsStmt = await db.prepare(
+          'DELETE FROM transcripts WHERE session_id = ?'
+        )
+        await deleteTranscriptsStmt.run(req.params.id)
+        const deleteSessionStmt = await db.prepare('DELETE FROM sessions WHERE id = ?')
+        await deleteSessionStmt.run(req.params.id)
+        console.log(`[History API] Deleted session ${req.params.id}.`)
+        res.json({ success: true })
+      } catch (error) {
+        console.error(`[History API] Error deleting session ${req.params.id}:`, error)
+        res.status(500).json({ error: `Failed to delete session ${req.params.id}` })
+      }
+    })
+
+    historyViewerApp.use('/api', apiRouter)
+
+    // Serve static files for history viewer in production
+    const historyPath = path.join(__dirname, '../renderer/history')
+    historyViewerApp.use(express.static(historyPath))
+
+    // Fallback for SPA routing
+    historyViewerApp.get('*', (req, res) => {
+      res.sendFile(path.join(historyPath, 'index.html'))
+    })
+
+    return new Promise<boolean>((resolve) => {
+      historyViewerServer = historyViewerApp.listen(4000, () => {
+        console.log('History viewer server started on port 4000')
+        const url = 'http://localhost:4000'
+        shell.openExternal(url)
+        resolve(true)
+      })
+    })
+  }
+
+  if (process.platform !== 'darwin' && gotTheLock) {
+    const cmdLineUrl = process.argv.find((arg) => arg.startsWith(`${PROTOCOL}://`))
+    if (cmdLineUrl) {
+      console.log(
+        `[main.js app.ready] Initial command line OAuth URL for Windows/Linux: ${cmdLineUrl}`
+      )
+      oauthCallbackUrlOnStartup = cmdLineUrl // Store for did-finish-load
+    }
+  }
 
   // Database IPC handlers
   ipcMain.handle('db:create-session', async (event, session) => {

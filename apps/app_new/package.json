@@ -5,8 +5,10 @@
   "type": "module",
   "main": "out/main/index.js",
   "scripts": {
-    "dev": "electron-vite dev",
-    "build": "electron-vite build && electron-rebuild && electron-builder",
+    "dev": "pnpm --filter history-viewer dev & electron-vite dev",
+    "build:history": "pnpm --filter history-viewer build",
+    "copy:history": "rm -rf src/renderer/public/history && cp -r ../history-viewer/out src/renderer/public/history",
+    "build": "pnpm run build:history && pnpm run copy:history && electron-vite build && electron-rebuild && electron-builder",
     "postinstall": "electron-builder install-app-deps && electron-rebuild",
     "rebuild": "electron-rebuild"
   },
@@ -28,7 +30,6 @@
     "@types/dotenv": "^8.2.3",
     "@types/wav": "^1.0.4",
     "@types/ws": "^8.18.1",
-    
     "ai": "^4.3.5",
     "bindings": "^1.5.0",
     "cors": "^2.8.5",

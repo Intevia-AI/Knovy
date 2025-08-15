@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "build": "turbo build",
-    "dev": "concurrently \"pnpm --filter app dev\" \"pnpm --filter history-viewer dev:history\"",
+    "dev": "concurrently \"pnpm --filter app_new dev\" \"pnpm --filter history-viewer dev:history\"",
     "lint": "turbo lint",
     "format": "prettier --write \"**/*.{ts,tsx,md}\""
   },
