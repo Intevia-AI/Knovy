@@ -1,6 +1,8 @@
+"use client";
+
 /**
  * @fileoverview Demo Component - Main interactive demo interface for the Intevia AI application
- * @module DemoComponent
+ * @module DemoSection
  * @description This component provides a comprehensive demo interface that allows users to:
  * - Share their screen and record audio (microphone + system audio)
  * - Get real-time AI analysis and transcription
@@ -27,6 +29,7 @@ import RealTimeAnalysis from "@/components/RealTimeAnalysis";
 import AudioVisualizer from "./AudioVisualizer";
 import { cn } from "@workspace/ui/lib/utils";
 import { useSegmentRecorder, SEGMENT_MS } from "@/hooks/useSegmentRecorder";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@workspace/ui/components/accordion";
 
 /**
  * @interface AIContextData
@@ -49,7 +52,7 @@ interface Segment {
 }
 
 /**
- * @component DemoComponent
+ * @component DemoSection
  * @description Main demo component that provides screen sharing, audio recording, and AI analysis functionality
  * 
  * @features
@@ -65,10 +68,10 @@ interface Segment {
  * 
  * @example
  * ```tsx
- * <DemoComponent />
+ * <DemoSection />
  * ```
  */
-export function DemoComponent() {
+export function DemoSection() {
   // --- Refs: Used to persist values across renders without causing re-renders ---
   const screenStreamRef = useRef<MediaStream | null>(null); // Holds the screen share stream (video + system audio)
   const screenAudioRecorderRef = useRef<MediaRecorder | null>(null); // MediaRecorder for system audio
@@ -790,47 +793,12 @@ export function DemoComponent() {
   };
 
   return (
-    <div className="flex flex-col gap-16">
+    <div className="flex flex-col gap-16 mx-auto max-w-5xl p-6 mt-12 lg:mt-16">
+      {/* Add a divider */}
+      <div className="h-px w-full bg-border my-8"></div>
       <h2 className="text-balance text-3xl font-semibold lg:text-4xl text-center">
-        Demo 試用
+        Give it a try!
       </h2>
-
-      {/* 測試版試用說明 */}
-      <div className="max-w-3xl mx-auto text-left border rounded-lg p-6 bg-card">
-        <h3 className="text-2xl font-semibold mb-4 text-center">
-          測試版試用說明
-        </h3>
-        <p className="mb-4 text-muted-foreground text-center">
-          我們做了一個包含基礎功能的試用版，使用步驟如下：
-        </p>
-        <ol className="list-decimal list-inside space-y-2 text-muted-foreground mx-auto w-fit">
-          <li>建議使用電腦操作，確保功能完整運作。</li>
-          <li>點擊「開始錄製」和「分享螢幕」。</li>
-          <li>選擇你要分享的畫面，並允許麥克風和攝影機權限。</li>
-          <li>點擊「開始分析」</li>
-          <li>
-            開始對鏡頭說話，主題、語言不限，可以是你發問、閒聊、提到一些新聞（模擬開會中的情境）；也可以用電腦播放任何你想要的影片、語音。
-          </li>
-          <li>
-            開始說話後，INTEVIA
-            AI便會開始運作，逐字稿會持續產生。此時你可以使用工具列中的三項功能：回答、即時統整和查資料，AI會根據最近一段內容提供你選擇的資訊，也可以手動在文字框輸入Prompt你的要求或問題。
-          </li>
-          <li>下方Keyword會根據音訊持續跳出，亦可以隨時點擊想查詢的關鍵字。</li>
-        </ol>
-        <div className="mt-6">
-          <h4 className="text-lg font-semibold mb-2 text-center">
-            不知道說什麼的話你可以：
-          </h4>
-          <ol className="list-decimal list-inside space-y-2 text-muted-foreground mx-auto w-fit">
-            <li>
-              隨便找一部YouTube談話性影片（課程、演講、聊天）放在背景播放，自己一邊講話、提問，根據生成的逐字稿去測試三個按鈕。
-            </li>
-            <li>
-              找一個朋友或是自己，隨便聊最近的新聞或是分享自己的一天，然後一樣根據生成逐字稿的內容去測試功能。
-            </li>
-          </ol>
-        </div>
-      </div>
 
       <div className="flex flex-1 overflow-hidden border rounded-lg shadow-lg bg-card max-h-[70vh]">
         <main className="flex flex-col flex-1 overflow-hidden">
@@ -1064,6 +1032,88 @@ export function DemoComponent() {
             ></audio>
           </div> */}
         </aside>
+      </div>
+
+      {/* 測試版體驗指南 */}
+      <div className="max-w-3xl mx-auto text-left border rounded-lg p-6 bg-card w-3/4 md:w-full">
+        <h3 className="text-2xl font-semibold mb-4 text-center">
+          操作說明
+        </h3>
+        <p className="text-muted-foreground text-center mb-6">
+          本版本提供基礎核心功能，協助您初步感受我們的即時語音分析與互動能力。
+        </p>
+        <Accordion type="single" collapsible className="w-full">
+          <AccordionItem value="item-1">
+            <AccordionTrigger className="w-full text-xl">使用建議</AccordionTrigger>
+            <AccordionContent className="whitespace-pre-wrap w-full">
+              <ul className="list-disc list-inside space-y-2 pl-4">
+                <li className="text-lg"><span className="text-lg font-bold">請使用電腦操作</span>，以確保功能穩定與完整體驗。</li>
+                <li className="text-lg"><span className="text-lg font-bold">建議使用 Chrome 瀏覽器</span>，並確認開啟麥克風與鏡頭權限。</li>
+              </ul>
+            </AccordionContent>
+          </AccordionItem>
+          <AccordionItem value="item-2">
+            <AccordionTrigger className="w-full text-xl">操作步驟</AccordionTrigger>
+            <AccordionContent className="whitespace-pre-wrap w-full">
+              <ol className="list-decimal list-inside space-y-2 pl-4">
+                <li className="text-lg my-4">
+                  <span className="text-lg font-bold">點擊「開始錄製」與「分享螢幕」</span>
+                  <br />
+                  系統將要求您選擇畫面來源，並請允許使用麥克風與攝影機。
+                </li>
+                <li className="text-lg my-4">
+                  <span className="text-lg font-bold">點擊「開始分析」</span>
+                  <br />
+                  開始對鏡頭說話，或播放任何語音/影片內容。
+                </li>
+                <li className="text-lg my-4">
+                  <span className="text-lg font-bold">模擬情境自由發揮</span>
+                  <br />
+                  可以自由工作、提問、討論新聞或日常對話。
+                  <br />
+                  也可以播放 YouTube 講座、聊天影片等內容。
+                </li>
+              </ol>
+            </AccordionContent>
+          </AccordionItem>
+          <AccordionItem value="item-3">
+            <AccordionTrigger className="w-full text-xl">功能介紹</AccordionTrigger>
+            <AccordionContent className="whitespace-pre-wrap w-full">
+              <p className="mb-2 pl-4 text-lg">當您開始說話，INTEVIA AI 將：</p>
+              <ul className="list-disc list-inside space-y-2 pl-4">
+                <li className="text-lg">即時產生<span className="text-lg font-bold">逐字稿</span>。</li>
+                <li className="text-lg">顯示下方動態<span className="text-lg font-bold">關鍵字 Keyword</span>，可點擊查詢。</li>
+                <li className="text-lg">
+                  提供 3 項互動工具列功能，可點擊使用：
+                  <ul className="list-disc list-inside ml-4 mt-2">
+                    <li className="text-lg mt-2"><span className="text-lg font-bold">回答問題</span>：針對內容自動生成回應。</li>
+                    <li className="text-lg mt-2"><span className="text-lg font-bold">即時統整</span>：摘要最近段落的重點。</li>
+                    <li className="text-lg mt-2"><span className="text-lg font-bold">查詢資料</span>：延伸查找相關資訊。</li>
+                  </ul>
+                </li>
+              </ul>
+              <p className="mt-2 pl-4 text-lg">您也可以在輸入框中輸入任何 Prompt，自由提問或下指令。</p>
+            </AccordionContent>
+          </AccordionItem>
+          <AccordionItem value="item-4">
+            <AccordionTrigger className="w-full text-xl">使用情境</AccordionTrigger>
+            <AccordionContent className="whitespace-pre-wrap w-full">
+              <p className="mb-2 pl-4 text-lg">以下是推薦的使用情境，您也可以自由發揮：</p>
+              <ol className="list-decimal list-inside space-y-2 pl-4">
+                <li className="text-lg my-4">
+                  <span className="text-lg font-bold">背景播放影片 + 自言自語</span>
+                  <br />
+                  播放一段有聲的影片（例如演講、課程、Podcast），一邊提問、一邊看逐字稿變化並嘗試使用三個功能。
+                </li>
+                <li className="text-lg my-4">
+                  <span className="text-lg font-bold">與朋友閒聊</span>
+                  <br />
+                  找朋友聊天或自己講話，分享近況或討論新聞，觀察 INTEVIA AI 如何即時處理內容，並測試功能按鈕。
+                </li>
+              </ol>
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
       </div>
     </div>
   );
