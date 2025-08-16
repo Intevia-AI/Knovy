@@ -793,6 +793,7 @@ export function DemoSection() {
   };
 
   return (
+    <section id="demo">
     <div className="flex flex-col gap-16 mx-auto max-w-5xl p-6 mt-12 lg:mt-16">
       {/* Add a divider */}
       <div className="h-px w-full bg-border my-8"></div>
@@ -1116,5 +1117,6 @@ export function DemoSection() {
         </Accordion>
       </div>
     </div>
+    </section>
   );
 }
