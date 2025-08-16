@@ -5,51 +5,103 @@ import { ArrowRight } from "lucide-react";
 import { TextEffect } from "@workspace/ui/components/text-effect";
 // import { Button } from "@workspace/ui/components/button";
 import { useState } from "react";
+import { motion, AnimatePresence } from "motion/react";
 
-export function HeroSection() {
-  const [feedback, setFeedback] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitStatus, setSubmitStatus] = useState<
-    "idle" | "success" | "error"
-  >("idle");
+interface HeroSectionProps {
+  stripCount?: number;
+  animationDuration?: number;
+}
 
-  const handleFeedbackSubmit = async () => {
-    if (!feedback.trim()) {
-      return;
-    }
-    setIsSubmitting(true);
-    setSubmitStatus("idle");
-    try {
-      const response = await fetch("/api/feedback", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ feedback }),
-      });
+export function HeroSection({ 
+  stripCount = 5,
+  animationDuration = 1.25
+}: HeroSectionProps = {}) {
+  // const [feedback, setFeedback] = useState("");
+  // const [isSubmitting, setIsSubmitting] = useState(false);
+  // const [submitStatus, setSubmitStatus] = useState<
+  //   "idle" | "success" | "error"
+  // >("idle");
+  const [showStrips, setShowStrips] = useState(true);
 
-      if (response.ok) {
-        setFeedback("");
-        setSubmitStatus("success");
-        console.log("Feedback submitted successfully!");
-        setTimeout(() => setSubmitStatus("idle"), 3000);
-      } else {
-        console.error("Failed to submit feedback");
-        setSubmitStatus("error");
-        setTimeout(() => setSubmitStatus("idle"), 3000);
-      }
-    } catch (error) {
-      console.error("Error submitting feedback:", error);
-      setSubmitStatus("error");
-      setTimeout(() => setSubmitStatus("idle"), 3000);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+  // const handleFeedbackSubmit = async () => {
+  //   if (!feedback.trim()) {
+  //     return;
+  //   }
+  //   setIsSubmitting(true);
+  //   setSubmitStatus("idle");
+  //   try {
+  //     const response = await fetch("/api/feedback", {
+  //       method: "POST",
+  //       headers: {
+  //         "Content-Type": "application/json",
+  //       },
+  //       body: JSON.stringify({ feedback }),
+  //     });
+
+  //     if (response.ok) {
+  //       setFeedback("");
+  //       setSubmitStatus("success");
+  //       console.log("Feedback submitted successfully!");
+  //       setTimeout(() => setSubmitStatus("idle"), 3000);
+  //     } else {
+  //       console.error("Failed to submit feedback");
+  //       setSubmitStatus("error");
+  //       setTimeout(() => setSubmitStatus("idle"), 3000);
+  //     }
+  //   } catch (error) {
+  //     console.error("Error submitting feedback:", error);
+  //     setSubmitStatus("error");
+  //     setTimeout(() => setSubmitStatus("idle"), 3000);
+  //   } finally {
+  //     setIsSubmitting(false);
+  //   }
+  // };
 
   return (
     <>
-      <main className="overflow-hidden" id="home">
+      <main className="overflow-hidden relative" id="home">
+        {/* Strip Overlay Animation */}
+        <AnimatePresence>
+          {showStrips && (
+            <div className="fixed inset-0 z-50 pointer-events-none">
+              {Array.from({ length: stripCount }, (_, index) => {
+                const isOdd = index % 2 === 0;
+                const stripHeight = 100 / stripCount;
+                
+                return (
+                  <motion.div
+                    key={index}
+                    className="absolute w-full"
+                    style={{
+                      height: `${stripHeight}%`,
+                      top: `${index * stripHeight}%`,
+                    }}
+                    initial={{
+                      x: 0,
+                      background: '#000',
+                    }}
+                    animate={{
+                      x: isOdd ? '-100%' : '100%',
+                      background: isOdd 
+                        ? `linear-gradient(to right, #000 0%, #000 70%, transparent 100%)`
+                        : `linear-gradient(to left, #000 0%, #000 70%, transparent 100%)`,
+                    }}
+                    transition={{
+                      duration: animationDuration,
+                      ease: [0.25, 0.1, 0.25, 1],
+                    }}
+                    onAnimationComplete={() => {
+                      if (index === stripCount - 1) {
+                        setShowStrips(false);
+                      }
+                    }}
+                  />
+                );
+              })}
+            </div>
+          )}
+        </AnimatePresence>
+
         <div
           aria-hidden
           className="absolute inset-0 isolate hidden opacity-65 contain-strict lg:block"
@@ -65,7 +117,7 @@ export function HeroSection() {
                   href="#"
                   className="hover:bg-background dark:hover:border-t-border bg-muted group mx-auto flex w-fit items-center gap-4 rounded-full border p-1 pl-4 shadow-md shadow-zinc-950/5 transition-colors duration-300 dark:border-t-white/5 dark:shadow-zinc-950"
                 >
-                  <span className="text-foreground text-sm">
+                  <span className={`text-sm transition-colors duration-300`}>
                     隆重介紹：全方位 AI 開會神器
                   </span>
                   <div className="bg-background group-hover:bg-muted size-6 overflow-hidden rounded-full duration-500">
@@ -84,7 +136,7 @@ export function HeroSection() {
                   preset="fade-in-blur"
                   speedSegment={0.3}
                   as="h1"
-                  className="mt-8 text-balance text-6xl md:text-7xl lg:mt-16 xl:text-[7.25rem]"
+                  className={`mt-8 text-balance text-6xl md:text-7xl lg:mt-16 xl:text-[7.25rem] transition-colors duration-300`}
                 >
                   INTEVIA AI
                 </TextEffect>
@@ -94,7 +146,7 @@ export function HeroSection() {
                   speedSegment={0.3}
                   delay={0.5}
                   as="h3"
-                  className="mt-4 text-balance text-xl md:text-2xl lg:mt-8 xl:text-[2.20rem]"
+                  className={`mt-4 text-balance text-xl md:text-2xl lg:mt-8 xl:text-[2.20rem] transition-colors duration-300`}
                 >
                   Your All-in-One AI working assistant
                 </TextEffect>
