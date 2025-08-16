@@ -63,7 +63,7 @@ export default function RealTimeSubtitle({
 
           // 提取轉錄內容
           const transcriptionMatch = textBufferRef.current.match(
-            /TRANSCRIPTION: (.*?)(?:\n|$)KEYWORDS:/s,
+            /TRANSCRIPTION: (.*?)(?:\n|$|KEYWORDS:)/s,
           );
 
           // 提取關鍵字

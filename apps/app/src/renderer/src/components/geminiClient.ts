@@ -19,8 +19,11 @@ export class GeminiClient {
   /** @type {WebSocket|null} WebSocket connection instance */
   private ws: WebSocket | null = null
 
-  /** @type {boolean} Connection status flag */
-  private isConnected: boolean = false
+  private _isConnected: boolean = false
+
+  public get isConnected(): boolean {
+    return this._isConnected && this.ws?.readyState === WebSocket.OPEN;
+  }
 
   /** @type {boolean} Setup completion status flag */
   private isSetupComplete: boolean = false
@@ -142,7 +145,7 @@ export class GeminiClient {
         console.log('[Gemini] 發送模式信息:', this.mode)
         this.ws?.send(JSON.stringify({ type: 'mode', mode: this.mode }))
         this.onSetupCompleteCallback?.()
-        this.isConnected = true
+        this._isConnected = true
         this.reconnectAttempts = 0
       }
 
@@ -166,7 +169,7 @@ export class GeminiClient {
 
       this.ws.onclose = () => {
         console.log('[Gemini] WebSocket 已關閉')
-        this.isConnected = false
+        this._isConnected = false
         this.onClose()
         this.reconnect()
       }
@@ -278,7 +281,7 @@ export class GeminiClient {
       this.ws.close()
       this.ws = null
     }
-    this.isConnected = false
+    this._isConnected = false
   }
 
   /**
