@@ -797,7 +797,7 @@ export function DemoSection() {
       {/* Add a divider */}
       <div className="h-px w-full bg-border my-8"></div>
       <h2 className="text-balance text-3xl font-semibold lg:text-4xl text-center">
-        Give it a try!
+        Try our web demo!
       </h2>
 
       <div className="flex flex-1 overflow-hidden border rounded-lg shadow-lg bg-card max-h-[70vh]">

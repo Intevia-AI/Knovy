@@ -3,7 +3,7 @@ import { Annoyed, Search, BookOpen } from "lucide-react";
 
 export function PainPoint() {
   return (
-    <div className="relative z-10 mx-auto max-w-5xl space-y-12">
+    <div className="relative z-10 mx-auto max-w-5xl space-y-12 py-12 md:py-20 lg:py-24">
       <div className="space-y-6 text-center">
         <h2 className="text-balance text-3xl font-semibold lg:text-4xl text-center">
           您是否也有這樣的困擾？
@@ -12,8 +12,7 @@ export function PainPoint() {
           「我們人在參與，心卻無法專注其中。」
         </p>
         <p className="text-lg text-muted-foreground">
-          從線上會議、遠距課程、業務簡報、跨部門溝通等場景，我們早已習慣邊開著會議視窗，邊在
-          Google、ChatGPT、雲端硬碟間切換視窗。我們查找資料、做筆記和回應訊息，試圖一心多用，但卻沒有真正推動進度。
+          從線上會議、遠距課程、業務簡報、跨部門溝通等場景，我們早已習慣邊開著會議視窗，邊在 Google、ChatGPT、雲端硬碟間切換視窗。我們查找資料、做筆記和回應訊息，試圖一心多用，但卻沒有真正推動進度。
         </p>
       </div>
       <div className="grid gap-8 md:grid-cols-3">
