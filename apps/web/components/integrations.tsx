@@ -1,12 +1,3 @@
-import {
-  Gemini,
-  Replit,
-  MagicUI,
-  VSCodium,
-  MediaWiki,
-  GooglePaLM,
-} from "@/components/logos";
-import { Logo } from "@/components/logo";
 import { cn } from "@workspace/ui/lib/utils";
 import Image from "next/image";
 
