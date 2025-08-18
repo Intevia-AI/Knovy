@@ -91,10 +91,12 @@ export function DemoSection() {
   const formatTime = (s: number) =>
     `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, "0")}`;
 
-  const gatherContext = async (): Promise<AIContextData | null> => {
+  const gatherContext = useCallback(async (): Promise<AIContextData | null> => {
     const lastMicSegment = segments.length > 0 ? segments[segments.length - 1] : null;
     const lastSystemSegment = systemAudioSegments.length > 0 ? systemAudioSegments[systemAudioSegments.length - 1] : null;
     const currentMicRecordingChunks = currentMicChunks;
+
+    console.log("[Demo] gatherContext - Mic segments:", segments.length, "System segments:", systemAudioSegments.length);
 
     const blobsToProcess: { blob: Blob; type: string; label: string; }[] = [];
 
@@ -148,7 +150,7 @@ export function DemoSection() {
 
     if (!validAudioInputs.length) return null;
     return { audioInputs: validAudioInputs };
-  };
+  }, [segments, systemAudioSegments, currentMicChunks, micMimeType]);
 
   const sendContextToAI = useCallback(
     async (action: "answer" | "summary" | "search" | "custom", customQuery?: string) => {
@@ -205,7 +207,7 @@ export function DemoSection() {
             content: ai.content,
           },
         ]);
-      } catch (e: unknown) {
+      } catch {
         setAiMessages((p) => [
           ...p,
           {
@@ -218,7 +220,7 @@ export function DemoSection() {
         setIsLoading(false);
       }
     },
-    [isSessionActive, segments, systemAudioSegments, customPrompt, micMimeType, currentMicChunks],
+    [isSessionActive, customPrompt, isLoading, gatherContext],
   );
 
   useEffect(() => {
@@ -237,6 +239,15 @@ export function DemoSection() {
       setSegments((p) => [...p, { blob: e.detail, timestamp: Date.now() }]);
     window.addEventListener("segment", h as EventListener);
     return () => window.removeEventListener("segment", h as EventListener);
+  }, []);
+
+  useEffect(() => {
+    const h = (e: CustomEvent<Blob>) => {
+      console.log("[Demo] Received system audio segment:", e.detail.size, "bytes");
+      setSystemAudioSegments((p) => [...p, { blob: e.detail, timestamp: Date.now() }]);
+    };
+    window.addEventListener("systemAudioSegment", h as EventListener);
+    return () => window.removeEventListener("systemAudioSegment", h as EventListener);
   }, []);
 
   useEffect(() => {
@@ -295,7 +306,7 @@ export function DemoSection() {
           content: `[${keyword} 的解釋] ${data.content}`,
         },
       ]);
-    } catch (error) {
+    } catch {
       setAiMessages((prev) => [
         ...prev,
         {

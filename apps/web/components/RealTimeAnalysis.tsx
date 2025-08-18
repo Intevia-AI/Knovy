@@ -47,7 +47,7 @@ export default function RealTimeAnalysis({
   const [isActive, setIsActive] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [audioLevel, setAudioLevel] = useState(0);
-  const [isConnected, setIsConnected] = useState(false);
+  const [, setIsConnected] = useState(false);
 
   // Refs for audio processing
   const geminiClientRef = useRef<GeminiClient | null>(null);
@@ -59,6 +59,9 @@ export default function RealTimeAnalysis({
   const shouldSendAudioRef = useRef(false);
   const textBufferRef = useRef("");
   const sessionTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const systemAudioRecorderRef = useRef<MediaRecorder | null>(null);
+  const systemAudioChunksRef = useRef<Blob[]>([]);
+  const systemAudioTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const stopSession = useCallback(
     (notifyUser = false) => {
@@ -68,7 +71,19 @@ export default function RealTimeAnalysis({
         sessionTimerRef.current = null;
       }
 
+      if (systemAudioTimerRef.current) {
+        clearInterval(systemAudioTimerRef.current);
+        systemAudioTimerRef.current = null;
+      }
+
       shouldSendAudioRef.current = false;
+
+      // Stop system audio recording
+      if (systemAudioRecorderRef.current && systemAudioRecorderRef.current.state !== "inactive") {
+        systemAudioRecorderRef.current.stop();
+      }
+      systemAudioRecorderRef.current = null;
+      systemAudioChunksRef.current = [];
 
       systemAudioSourceRef.current?.disconnect();
       systemAudioSourceRef.current = null;
@@ -221,6 +236,80 @@ export default function RealTimeAnalysis({
         );
         systemSource.connect(workletNode);
         systemAudioSourceRef.current = systemSource;
+
+        // Start system audio recording for segment capture
+        try {
+          const systemRecorder = new MediaRecorder(systemAudioStream, { 
+            mimeType: "audio/webm;codecs=opus" 
+          });
+          
+          systemRecorder.ondataavailable = (e) => {
+            if (e.data.size > 0) {
+              systemAudioChunksRef.current.push(e.data);
+            }
+          };
+          
+          systemRecorder.onstop = () => {
+            if (systemAudioChunksRef.current.length > 0) {
+              const blob = new Blob(systemAudioChunksRef.current, { 
+                type: "audio/webm;codecs=opus" 
+              });
+              if (blob.size > 0) {
+                console.log("[RealTimeAnalysis] Dispatching system audio segment:", blob.size, "bytes");
+                window.dispatchEvent(
+                  new CustomEvent("systemAudioSegment", { detail: blob })
+                );
+              }
+              systemAudioChunksRef.current = [];
+            }
+          };
+          
+          systemRecorder.start(1000); // Record in 1-second chunks
+          systemAudioRecorderRef.current = systemRecorder;
+          
+          // Create segments every 20 seconds (matching microphone behavior)
+          systemAudioTimerRef.current = setInterval(() => {
+            if (systemAudioRecorderRef.current && 
+                systemAudioRecorderRef.current.state === "recording") {
+              systemAudioRecorderRef.current.stop();
+              // Restart recording
+              setTimeout(() => {
+                if (systemAudioStream && systemAudioRecorderRef.current) {
+                  const newRecorder = new MediaRecorder(systemAudioStream, { 
+                    mimeType: "audio/webm;codecs=opus" 
+                  });
+                  
+                  newRecorder.ondataavailable = (e) => {
+                    if (e.data.size > 0) {
+                      systemAudioChunksRef.current.push(e.data);
+                    }
+                  };
+                  
+                  newRecorder.onstop = () => {
+                    if (systemAudioChunksRef.current.length > 0) {
+                      const blob = new Blob(systemAudioChunksRef.current, { 
+                        type: "audio/webm;codecs=opus" 
+                      });
+                      if (blob.size > 0) {
+                        console.log("[RealTimeAnalysis] Dispatching system audio segment (restart):", blob.size, "bytes");
+                        window.dispatchEvent(
+                          new CustomEvent("systemAudioSegment", { detail: blob })
+                        );
+                      }
+                      systemAudioChunksRef.current = [];
+                    }
+                  };
+                  
+                  newRecorder.start(1000);
+                  systemAudioRecorderRef.current = newRecorder;
+                }
+              }, 100);
+            }
+          }, 20000); // 20 seconds to match SEGMENT_MS
+          
+        } catch (error) {
+          console.warn("Failed to start system audio recording:", error);
+        }
       } else {
         console.warn("No system audio track found.");
         alert(
