@@ -23,6 +23,7 @@ interface AIRequest {
     text?: string;
     timestamp?: number;
     screenshot?: string;
+    audioInputs?: { data: string; mimeType: string; label: string }[];
   };
 }
 
@@ -31,7 +32,7 @@ interface AIRequest {
  * @description Handles POST requests to the AI endpoint, processing messages and generating responses using Google's Gemini model
  * @route POST /api/ai
  * @param {Request} request - The incoming HTTP request object
- * 
+ *
  * @requestBody {AIRequest} - The request body should conform to the AIRequest interface
  * @requestExample
  * {
@@ -42,7 +43,7 @@ interface AIRequest {
  *     "screenshot": "base64-encoded-image-data" // Optional
  *   }
  * }
- * 
+ *
  * @responseBody {Object} - The response containing the AI-generated content
  * @responseExample
  * {
@@ -50,13 +51,13 @@ interface AIRequest {
  *   "role": "assistant",
  *   "content": "Machine learning is a subset of artificial intelligence..."
  * }
- * 
+ *
  * @errorResponse {Object} - Error response when the request fails
  * @errorExample
  * {
  *   "error": "Failed to process AI request: Invalid message format"
  * }
- * 
+ *
  * @returns {Promise<NextResponse>} JSON response with the generated text or error message
  */
 export async function POST(request: Request) {
@@ -64,7 +65,7 @@ export async function POST(request: Request) {
     const body = await request.json();
     console.log("Received request body:", JSON.stringify(body, null, 2));
 
-    const { messages, action, data } = body as AIRequest;
+    const { messages, data } = body as AIRequest;
 
     // Format messages for the AI
     const formatted: CoreMessage[] = messages.map((msg: any) => ({
@@ -74,24 +75,39 @@ export async function POST(request: Request) {
 
     console.log("Formatted messages:", JSON.stringify(formatted, null, 2));
 
-    // If there's a screenshot, add it to the last user message
-    if (data?.screenshot) {
-      console.log("Processing screenshot data...");
-      const lastUserMessage = formatted[formatted.length - 1];
-      if (lastUserMessage && lastUserMessage.role === "user") {
-        const content: UserContent = [
-          { type: "text", text: lastUserMessage.content as string },
-          { type: "image", image: data.screenshot },
-        ];
+    // If there's a screenshot or audio, add it to the last user message
+    const lastUserMessage = formatted[formatted.length - 1];
+    if (lastUserMessage && lastUserMessage.role === "user") {
+      const content: UserContent = [
+        { type: "text", text: lastUserMessage.content as string },
+      ];
+
+      if (data?.screenshot) {
+        console.log("Processing screenshot data...");
+        (content as any[]).push({ type: "image", image: data.screenshot });
+      }
+
+      if (data?.audioInputs && data.audioInputs.length > 0) {
+        console.log("Processing audio data...");
+        for (const audio of data.audioInputs) {
+          (content as any[]).push({
+            type: "file",
+            data: Buffer.from(audio.data, "base64"),
+            mimeType: audio.mimeType,
+          });
+        }
+      }
+
+      if ((content as any[]).length > 1) {
         lastUserMessage.content = content;
-        console.log("Updated last user message with screenshot");
+        console.log("Updated last user message with multimodal content");
       }
     }
 
     // Generate text using the Gemini model with search grounding enabled
     console.log("Generating text with Gemini model...");
     const { text } = await generateText({
-      model: google("gemini-2.0-flash-001", {
+      model: google("gemini-2.5-flash", {
         useSearchGrounding: true,
       }),
       messages: formatted,
@@ -104,13 +120,14 @@ export async function POST(request: Request) {
     headers.set("Access-Control-Allow-Methods", "POST, GET, OPTIONS");
     headers.set("Access-Control-Allow-Headers", "Content-Type");
 
-    return NextResponse.json({
-      id: `ai-${Date.now()}`,
-      role: "assistant",
-      content: text,
-    },
-    { headers },
-  );
+    return NextResponse.json(
+      {
+        id: `ai-${Date.now()}`,
+        role: "assistant",
+        content: text,
+      },
+      { headers }
+    );
   } catch (error) {
     console.error("Detailed error in AI route:", error);
     if (error instanceof Error) {
@@ -121,18 +138,17 @@ export async function POST(request: Request) {
       {
         error: `Failed to process AI request: ${error instanceof Error ? error.message : String(error)}`,
       },
-      { status: 500 },
+      { status: 500 }
     );
   }
 }
-
 
 /**
  * @function OPTIONS
  * @description Handles OPTIONS requests for CORS preflight checks
  * @route OPTIONS /api/ai
  * @param {Request} request - The incoming HTTP request object
- * 
+ *
  * @returns {Response} Empty response with CORS headers
  */
 export async function OPTIONS(request: Request) {

@@ -218,7 +218,7 @@ export function DemoSection() {
         setIsLoading(false);
       }
     },
-    [isLoading, isSessionActive, segments, systemAudioSegments, customPrompt, micMimeType],
+    [isSessionActive, segments, systemAudioSegments, customPrompt, micMimeType, currentMicChunks],
   );
 
   useEffect(() => {
