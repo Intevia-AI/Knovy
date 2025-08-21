@@ -9,11 +9,7 @@ import { Message as AIMessage } from 'ai'
 import html2canvas from 'html2canvas-pro'
 import { useI18n } from '@/hooks/useI18n'
 
-/**
- * @constant {string} API_URL - Endpoint URL for AI API interactions
- * @description Uses environment variable or falls back to localhost
- */
-const API_URL = import.meta.env.VITE_AI_API_URL || 'http://localhost:5173/api/ai'
+const API_URL = import.meta.env.VITE_AI_API_URL || 'http://localhost:4567/api/ai'
 
 /**
  * @typedef {string} AIAction
@@ -115,7 +111,6 @@ export function useAIInteraction() {
 
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null)
 
-  
   useEffect(() => {
     if (messagesContainerRef.current) {
       messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight
@@ -649,7 +644,7 @@ export function useAIInteraction() {
         // 最多重試5次
         let retries = 0
         const maxRetries = 5
-        let lastError = null
+        let lastError: unknown = null
 
         // 獲取最後兩句轉錄內容作為上下文
         const contextText = transcriptions
@@ -782,20 +777,20 @@ export function useAIInteraction() {
         id: `session-${Date.now()}`,
         started_at: new Date().toISOString(),
         status: 'active'
-      };
-      const { id } = await window.electronAPI.createSession(newSession);
-      setCurrentSessionId(id);
-      console.log('Started new session:', id);
+      }
+      const { id } = await window.electronAPI.createSession(newSession)
+      setCurrentSessionId(id)
+      console.log('Started new session:', id)
     }
-  }, []);
+  }, [])
 
   const endSession = useCallback(async () => {
     if (window.electronAPI && currentSessionId) {
-      await window.electronAPI.endSession(currentSessionId);
-      console.log('Ended session:', currentSessionId);
-      setCurrentSessionId(null);
+      await window.electronAPI.endSession(currentSessionId)
+      console.log('Ended session:', currentSessionId)
+      setCurrentSessionId(null)
     }
-  }, [currentSessionId]);
+  }, [currentSessionId])
 
   return {
     aiMessages,

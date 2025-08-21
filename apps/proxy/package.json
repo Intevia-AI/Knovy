@@ -8,6 +8,7 @@
     "start": "node startProxy.js"
   },
   "dependencies": {
+    "cors": "^2.8.5",
     "dotenv": "^16.0.0",
     "ws": "^8.0.0"
   },
