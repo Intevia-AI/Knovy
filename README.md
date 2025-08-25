@@ -13,6 +13,7 @@ Intevia AI is a comprehensive platform that combines the power of Google's Gener
 ## Technology Stack
 
 ### Core Technologies
+
 - **Frontend**: React 19, Next.js 15
 - **Desktop**: Electron 35
 - **Backend**: Node.js (v20+)
@@ -23,6 +24,7 @@ Intevia AI is a comprehensive platform that combines the power of Google's Gener
 - **Build System**: Turborepo
 
 ### Key Features
+
 - Real-time audio transcription
 - AI-powered conversation analysis
 - Meeting integration (Zoom, Google Meet, Microsoft Teams, Webex)
@@ -54,6 +56,7 @@ intevia-ai/
 ## Quick Start
 
 ### Prerequisites
+
 - Node.js v20 or later
 - pnpm v10 or later
 - Git
@@ -61,21 +64,24 @@ intevia-ai/
 ### Installation
 
 1. **Clone the repository**
+
    ```bash
    git clone https://github.com/your-org/intevia-ai.git
    cd intevia-ai
    ```
 
 2. **Install dependencies**
+
    ```bash
    pnpm install
    ```
 
 3. **Set up environment variables**
+
    ```bash
    # Run the automated setup script
    bash scripts/setup-env.sh
-   
+
    # Edit the .env files in each application directory with your actual values
    # - apps/app/.env
    # - apps/web/.env
@@ -85,17 +91,19 @@ intevia-ai/
 4. **Start the development servers**
 
    For the web application:
+
    ```bash
    # Terminal 1: Start the web application
    cd apps/web
    pnpm dev
-   
+
    # Terminal 2: Start the proxy server
    cd apps/web
    pnpm proxy
    ```
 
    For the desktop application:
+
    ```bash
    cd apps/app
    pnpm dev
@@ -158,26 +166,55 @@ This project uses Supabase for authentication and database services. You can run
 ### Managing the Local Supabase Environment
 
 - **Start the local Supabase services:**
+
   ```bash
   pnpm dlx supabase start
   ```
 
 - **Stop the local Supabase services:**
+
   ```bash
   pnpm dlx supabase stop
   ```
 
 - **View the status and API keys:**
   This command shows the API URLs, keys, and other useful information for your local instance.
+
   ```bash
   pnpm dlx supabase status
   ```
 
 - **Reset the local database:**
   This will wipe your local database and re-apply all migrations. This is useful when you want to start with a clean slate.
+
   ```bash
   pnpm dlx supabase db reset
   ```
+
+- **Deploy Supabase Functions**
+
+To deploy the Supabase functions, run the following command from the root of the project:
+
+```bash
+supabase functions deploy <function-name(the folder name in supabase/functions)>
+# Example: supabase functions deploy add-to-waitlist
+```
+
+- **Set the environment variables for the functions**
+
+1. Set the Resend API key
+
+   ```bash
+   npx supabase secrets set RESEND_API_KEY=your_resend_api_key_here
+   ```
+
+- **Push Database Updates**
+
+To apply any new database migrations, run the following command from the root of the project:
+
+```bash
+supabase db push
+```
 
 ### Deploying Supabase Changes to Production
 
@@ -185,12 +222,14 @@ To deploy your local database changes (like the new `waitlist` table) to your li
 
 1.  **Link your local project to your remote Supabase project:**
     You only need to do this once. Find your `Project Ref` in your Supabase project's dashboard (Settings > General).
+
     ```bash
     pnpm dlx supabase link --project-ref <your-project-ref>
     ```
 
 2.  **Push database migrations:**
     This command will apply any new migrations from your `supabase/migrations` folder to your remote database.
+
     ```bash
     pnpm dlx supabase db push
     ```

@@ -72,7 +72,7 @@ client_id = ""
 secret = ""
 redirect_uri = ""
 
-[functions.send-welcome-email]
+[functions.add-to-waitlist]
 enabled = true
 verify_jwt = false
-entrypoint = "./functions/send-welcome-email/index.ts"
+entrypoint = "./functions/add-to-waitlist/index.ts"

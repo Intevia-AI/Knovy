@@ -8,6 +8,7 @@ import { Button } from '@workspace/ui/components/button'
 import { Input } from '@workspace/ui/components/input'
 import { Form, FormControl, FormField, FormItem, FormMessage } from '@workspace/ui/components/form'
 import { Toaster, toast } from 'sonner'
+import { createClient } from '@supabase/supabase-js'
 
 const formSchema = z.object({
   email: z.string().email({ message: 'Invalid email address.' }),
@@ -23,24 +24,23 @@ export function WaitlistForm() {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
-      const response = await fetch('/api/waitlist', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(values),
-      })
+      const supabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      );
 
-      const result = await response.json()
+      const { error } = await supabase.functions.invoke('add-to-waitlist', {
+        body: values,
+      });
 
-      if (response.ok) {
-        toast.success('加入成功！')
-        form.reset()
+      if (error) {
+        toast.error(error.message || '加入失敗，請再試一次。');
       } else {
-        toast.error(result.error || '加入失敗，請再試一次。')
+        toast.success('加入成功！您很快就會收到一封確認信。');
+        form.reset();
       }
     } catch (error) {
-      toast.error('加入失敗，請再試一次。')
+      toast.error('加入失敗，請再試一次。');
     }
   }
 
