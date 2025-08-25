@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
+
+import { WaitlistForm } from './waitlist-form'
 import { TextEffect } from "@workspace/ui/components/text-effect";
 // import { Button } from "@workspace/ui/components/button";
 import { useState } from "react";
@@ -150,6 +152,9 @@ export function HeroSection({
                 >
                   Your All-in-One AI working assistant
                 </TextEffect>
+                <div className="mt-8 flex justify-center">
+                  <WaitlistForm />
+                </div>
               </div>
             </div>
 

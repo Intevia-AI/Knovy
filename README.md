@@ -151,6 +151,57 @@ docker-compose down
 
 The web application will be available at http://localhost:3456
 
+## Local Development with Supabase
+
+This project uses Supabase for authentication and database services. You can run a full Supabase stack locally for development.
+
+### Managing the Local Supabase Environment
+
+- **Start the local Supabase services:**
+  ```bash
+  pnpm dlx supabase start
+  ```
+
+- **Stop the local Supabase services:**
+  ```bash
+  pnpm dlx supabase stop
+  ```
+
+- **View the status and API keys:**
+  This command shows the API URLs, keys, and other useful information for your local instance.
+  ```bash
+  pnpm dlx supabase status
+  ```
+
+- **Reset the local database:**
+  This will wipe your local database and re-apply all migrations. This is useful when you want to start with a clean slate.
+  ```bash
+  pnpm dlx supabase db reset
+  ```
+
+### Deploying Supabase Changes to Production
+
+To deploy your local database changes (like the new `waitlist` table) to your live Supabase project on the cloud, follow these steps:
+
+1.  **Link your local project to your remote Supabase project:**
+    You only need to do this once. Find your `Project Ref` in your Supabase project's dashboard (Settings > General).
+    ```bash
+    pnpm dlx supabase link --project-ref <your-project-ref>
+    ```
+
+2.  **Push database migrations:**
+    This command will apply any new migrations from your `supabase/migrations` folder to your remote database.
+    ```bash
+    pnpm dlx supabase db push
+    ```
+
+3.  **Set production secrets:**
+    Your edge functions might need API keys (like the Resend API key). You should set these securely in your production environment.
+    ```bash
+    # Example for setting the RESEND_API_KEY
+    pnpm dlx supabase secrets set RESEND_API_KEY <your-actual-resend-api-key>
+    ```
+
 ## Environment Configuration
 
 Each application requires specific environment variables:

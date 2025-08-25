@@ -45,3 +45,7 @@ npm-debug.log*
 # but we don't need to commit it
 apps/app/public/history
 apps/app_old/public/history
+
+# Supabase local development files
+supabase/.branches/
+supabase/.temp/

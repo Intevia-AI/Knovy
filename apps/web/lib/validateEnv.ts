@@ -31,6 +31,16 @@ export function validateEnv(): boolean {
       description: "WebSocket proxy server URL for Gemini AI connections",
       hint: "Default: ws://localhost:4567 (if running proxy locally)",
     },
+    {
+      name: "NEXT_PUBLIC_SUPABASE_URL",
+      description: "Supabase URL for waitlist feature",
+      hint: "Obtain from Supabase project settings",
+    },
+    {
+      name: "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+      description: "Supabase anonymous key for waitlist feature",
+      hint: "Obtain from Supabase project settings",
+    },
   ];
 
   const missingVars = requiredVars.filter(
