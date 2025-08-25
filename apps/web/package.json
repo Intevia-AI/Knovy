@@ -21,6 +21,7 @@
     "@types/nodemailer": "^6.4.17",
     "@types/wav": "^1.0.4",
     "@types/ws": "^8.18.1",
+    "@supabase/supabase-js": "^2.0.0",
     "@workspace/ui": "workspace:*",
     "ai": "^4.3.5",
     "dotenv": "^16.5.0",
