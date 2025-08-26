@@ -275,7 +275,8 @@ export class GeminiClient {
 
         // 組合最終回應，確保格式乾淨
         const finalResponse =
-          cleanTranscription + (keywords ? `\n${this.t("demo.keywords_detected")}: ${keywords}` : "");
+          cleanTranscription +
+          (keywords ? `\nDetected Keywords: ${keywords}` : "");
         this.onTranscriptionCallback?.(finalResponse);
         this.streamingBuffer = "";
       }

@@ -35,7 +35,6 @@ interface ClientConnection {
   geminiWs: WebSocket | null;
   isSetupComplete: boolean;
   lastActivity: number;
-  locale: string;
 }
 
 /**
@@ -135,14 +134,14 @@ export class GeminiProxyServer {
       const now = Date.now();
       if (now - client.lastActivity > this.healthCheckInterval) {
         console.log(
-          `[Proxy] Client ${clientId} inactive for too long, sending ping`,
+          `[Proxy] Client ${clientId} inactive for too long, sending ping`
         );
         try {
           client.ws.ping();
         } catch (error) {
           console.error(
             `[Proxy] Error sending ping to client ${clientId}:`,
-            error,
+            error
           );
           this.cleanupClient(clientId);
         }
@@ -155,7 +154,7 @@ export class GeminiProxyServer {
         } catch (error) {
           console.error(
             `[Proxy] Error sending ping to Gemini for client ${clientId}:`,
-            error,
+            error
           );
           this.attemptReconnect(client);
         }
@@ -176,7 +175,7 @@ export class GeminiProxyServer {
    * @param {string} clientId - The ID of the client sending the message
    * @param {any} data - The message data
    * @returns {Promise<void>}
-   * 
+   *
    * @remarks
    * Handles three types of messages:
    * - "connect": Establishes a connection to the Gemini API
@@ -202,7 +201,7 @@ export class GeminiProxyServer {
    * @description Establishes a WebSocket connection to the Gemini API for a client
    * @param {ClientConnection} client - The client connection
    * @returns {Promise<void>}
-   * 
+   *
    * @remarks
    * Sets up event handlers for the Gemini WebSocket connection:
    * - "open": Sends initial setup message to Gemini
@@ -237,7 +236,7 @@ export class GeminiProxyServer {
       geminiWs.on("error", (error) => {
         console.error(
           `[Proxy] Gemini connection error for client ${client.id}:`,
-          error,
+          error
         );
         this.cleanupGeminiConnection(client.id);
         this.attemptReconnect(client);
@@ -254,7 +253,7 @@ export class GeminiProxyServer {
     } catch (error) {
       console.error(
         `[Proxy] Error connecting to Gemini for client ${client.id}:`,
-        error,
+        error
       );
       this.cleanupGeminiConnection(client.id);
       this.attemptReconnect(client);
@@ -276,7 +275,7 @@ export class GeminiProxyServer {
         system_instruction: {
           parts: [
             {
-              text: system_instruction,
+              text: "You are a helpful assistant",
             },
           ],
         },
@@ -349,12 +348,12 @@ export class GeminiProxyServer {
       this.reconnectAttempts.set(client.id, attempts + 1);
       const delay = this.reconnectTimeout * (attempts + 1);
       console.log(
-        `[Proxy] Attempting to reconnect to Gemini for client ${client.id} (${attempts + 1}/${this.maxReconnectAttempts}) in ${delay}ms`,
+        `[Proxy] Attempting to reconnect to Gemini for client ${client.id} (${attempts + 1}/${this.maxReconnectAttempts}) in ${delay}ms`
       );
       setTimeout(() => this.connectToGemini(client), delay);
     } else {
       console.log(
-        `[Proxy] Max reconnection attempts reached for client ${client.id}`,
+        `[Proxy] Max reconnection attempts reached for client ${client.id}`
       );
       this.cleanupClient(client.id);
     }

@@ -9,8 +9,7 @@
     "start": "next start",
     "lint": "next lint",
     "lint:fix": "next lint --fix",
-    "typecheck": "tsc --noEmit",
-    "proxy": "node app/api/ai/proxy/startProxy.js"
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@ai-sdk/google": "^1.2.10",
