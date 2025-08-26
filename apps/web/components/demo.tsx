@@ -375,7 +375,7 @@ export function DemoSection() {
   );
 
   return (
-    <section id="demo">
+    <section id="demo" className="hidden lg:block">
       <div className="flex flex-col gap-16 mx-auto max-w-5xl p-6 mt-12 lg:mt-16">
         <div className="h-px w-full bg-border my-8"></div>
         <h2 className="text-balance text-3xl font-semibold lg:text-4xl text-center">{t("demo.title")}</h2>
@@ -569,7 +569,7 @@ export function DemoSection() {
           </aside>
         </div>
 
-        <div className="max-w-3xl mx-auto text-left border rounded-lg p-6 bg-card w-3/4 md:w-full">
+        <div className="max-w-3xl mx-auto text-left border rounded-lg p-6 bg-card w-full">
           <h3 className="text-2xl font-semibold mb-4 text-center">
             {t("demo.instructions.title")}
           </h3>

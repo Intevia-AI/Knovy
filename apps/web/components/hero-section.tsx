@@ -21,46 +21,7 @@ export function HeroSection({
   animationDuration = 1.25
 }: HeroSectionProps = {}) {
   const { t } = useLanguage();
-  // const [feedback, setFeedback] = useState("");
-  // const [isSubmitting, setIsSubmitting] = useState(false);
-  // const [submitStatus, setSubmitStatus] = useState<
-  //   "idle" | "success" | "error"
-  // >("idle");
   const [showStrips, setShowStrips] = useState(true);
-
-  // const handleFeedbackSubmit = async () => {
-  //   if (!feedback.trim()) {
-  //     return;
-  //   }
-  //   setIsSubmitting(true);
-  //   setSubmitStatus("idle");
-  //   try {
-  //     const response = await fetch("/api/feedback", {
-  //       method: "POST",
-  //       headers: {
-  //         "Content-Type": "application/json",
-  //       },
-  //       body: JSON.stringify({ feedback }),
-  //     });
-
-  //     if (response.ok) {
-  //       setFeedback("");
-  //       setSubmitStatus("success");
-  //       console.log("Feedback submitted successfully!");
-  //       setTimeout(() => setSubmitStatus("idle"), 3000);
-  //     } else {
-  //       console.error("Failed to submit feedback");
-  //       setSubmitStatus("error");
-  //       setTimeout(() => setSubmitStatus("idle"), 3000);
-  //     }
-  //   } catch (error) {
-  //     console.error("Error submitting feedback:", error);
-  //     setSubmitStatus("error");
-  //     setTimeout(() => setSubmitStatus("idle"), 3000);
-  //   } finally {
-  //     setIsSubmitting(false);
-  //   }
-  // };
 
   return (
     <>
