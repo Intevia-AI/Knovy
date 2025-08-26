@@ -22,6 +22,8 @@ const api = {
 
   getSettings: () => ipcRenderer.invoke('electronAPI:getSettings'),
 
+  getMainWindowBounds: () => ipcRenderer.invoke('electronAPI:getMainWindowBounds'),
+
   setSettings: (settings) => ipcRenderer.invoke('electronAPI:setSettings', settings),
 
   createSession: (session) => ipcRenderer.invoke('db:create-session', session),
@@ -54,7 +56,10 @@ const api = {
       'electronAPI:availableSources',
       'electronAPI:screenshotTaken',
       'electronAPI:screenshotError',
-      'electronAPI:oauth-callback'
+      'electronAPI:oauth-callback',
+      'source-picker:select',
+      'source-picker:cancel',
+      'ai:message'
     ]
     if (validChannels.includes(channel)) {
       const subscription = (event, ...args) => callback(...args)
@@ -65,13 +70,52 @@ const api = {
     return () => {}
   },
   send: (channel, ...args) => {
-    const validChannels = ['renderer-auth-ready', 'history:open']
+    const validChannels = [
+      'renderer-auth-ready',
+      'history:open',
+      'app:show-transcriptions',
+      'app:hide-transcriptions',
+      'app:resize-window',
+      'app:show-features',
+      'app:hide-features',
+      'app:show-settings',
+      'app:hide-settings',
+      'app:show-screen-preview',
+      'app:hide-screen-preview',
+      'source-picker:select',
+      'source-picker:cancel',
+      'popover:close',
+      'popover:sendMessage',
+      'electronAPI:requestSources'
+    ]
     if (!validChannels.includes(channel)) {
       console.warn(`[Preload] Attempted to send on invalid channel: ${channel}`)
       return
     }
     ipcRenderer.send(channel, ...args)
-  }
+  },
+  invoke: (channel, ...args) => {
+    const validChannels = [
+      'electronAPI:getMainWindowBounds',
+      'supabase:signInWithOAuth',
+      'electronAPI:selectSource',
+      'electronAPI:cancelSourceSelection',
+      'electronAPI:getInitialAlwaysOnTop',
+      'electronAPI:getSettings',
+      'electronAPI:setSettings',
+      'db:create-session',
+      'db:add-transcript',
+      'db:get-sessions',
+      'db:get-transcripts',
+      'db:end-session',
+      'popover:create'
+    ]
+    if (!validChannels.includes(channel)) {
+      return Promise.reject(new Error(`Invalid invoke channel: ${channel}`))
+    }
+    return ipcRenderer.invoke(channel, ...args)
+  },
+  removeAllListeners: (channel) => ipcRenderer.removeAllListeners(channel)
 }
 
 try {

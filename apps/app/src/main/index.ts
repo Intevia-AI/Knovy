@@ -16,10 +16,59 @@ import { installExtension, REACT_DEVELOPER_TOOLS } from 'electron-devtools-insta
 import { is } from '@electron-toolkit/utils'
 import express from 'express'
 import cors from 'cors'
-import * as dbService from './database-service.js'
+import * as dbService from './database-service'
+import * as popoverManager from './popoverManager'
+
+ipcMain.handle('electronAPI:getMainWindowBounds', () => {
+  return mainWindow?.getBounds()
+})
+
+ipcMain.handle('popover:create', (event, options) => {
+  console.log('Received popover:create', options);
+  const parentWindow = BrowserWindow.fromWebContents(event.sender)
+  if (!parentWindow) return
+
+  const mainBounds = parentWindow.getBounds()
+  const devServerUrl = import.meta.env['VITE_DEV_SERVER_URL']
+  let url;
+  if (is.dev) {
+    const baseUrl = devServerUrl || 'http://localhost:5173';
+    url = `${baseUrl}#${options.hash}`;
+  } else {
+    url = `file://${path.join(__dirname, '../renderer/index.html')}#${options.hash}`;
+  }
+
+  const popoverOptions = {
+    ...options,
+    url,
+    parent: parentWindow,
+  }
+
+  popoverManager.createPopover(popoverOptions)
+})
+
+ipcMain.on('popover:close', (event, id) => {
+  popoverManager.closePopover(id)
+})
+
+// app.on('browser-window-blur', () => {
+//   popoverManager.closeAllPopovers()
+// })
+
+ipcMain.on('popover:sendMessage', (event, { action, prompt }) => {
+  // This is a simplified handler. In a real app, you'd have a proper AI service.
+  console.log(`Received message from popover: ${prompt}`)
+  const popoverWindow = BrowserWindow.fromWebContents(event.sender)
+  popoverWindow?.webContents.send('ai:message', {
+    role: 'assistant',
+    content: `You said: ${prompt}`
+  })
+})
 
 let mainWindow: BrowserWindow | null
+let transcriptionWindow: BrowserWindow | null
 let selectionWindow: BrowserWindow | null
+let sourcePickerWindow: BrowserWindow | null
 
 const settingsPath = path.join(app.getPath('userData'), 'settings.json')
 
@@ -136,10 +185,10 @@ function createSelectionWindow() {
 const createWindow = async () => {
   mainWindow = new BrowserWindow({
     width: 480,
-    height: 400,
+    height: 60,
     frame: false,
     transparent: true,
-    vibrancy: 'fullscreen-ui',
+    hasShadow: false,
     visualEffectState: 'active',
     backgroundMaterial: 'acrylic',
     webPreferences: {
@@ -149,6 +198,8 @@ const createWindow = async () => {
       sandbox: false
     }
   })
+
+  mainWindow.setContentProtection(true)
 
   mainWindow.webContents.on('did-finish-load', () => {
     mainWindow?.webContents.send('electronAPI:forceDarkMode')
@@ -185,6 +236,110 @@ const createWindow = async () => {
   mainWindow.on('closed', () => {
     mainWindow = null
     pendingMediaRequest = null
+  })
+}
+
+function createTranscriptionWindow() {
+  if (transcriptionWindow) {
+    transcriptionWindow.focus()
+    return
+  }
+
+  const mainBounds = mainWindow?.getBounds()
+  const x = mainBounds ? mainBounds.x : 0
+  const y = mainBounds ? mainBounds.y - 300 - 8 : 0
+
+  transcriptionWindow = new BrowserWindow({
+    width: 480,
+    height: 300,
+    x,
+    y,
+    frame: false,
+    transparent: true,
+    vibrancy: 'fullscreen-ui',
+    visualEffectState: 'active',
+    backgroundMaterial: 'acrylic',
+    webPreferences: {
+      preload: path.join(__dirname, '../preload/index.cjs'),
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: false
+    }
+  })
+
+  if (is.dev) {
+    const devServerUrl = import.meta.env['VITE_DEV_SERVER_URL']
+    if (devServerUrl) {
+      transcriptionWindow.loadURL(`${devServerUrl}#transcriptions`)
+    } else {
+      transcriptionWindow.loadURL('http://localhost:5173#transcriptions')
+    }
+  } else {
+    transcriptionWindow.loadFile(path.join(__dirname, '../renderer/index.html'), {
+      hash: 'transcriptions'
+    })
+  }
+
+  transcriptionWindow.on('closed', () => {
+    transcriptionWindow = null
+  })
+}
+
+
+
+function createSourcePickerWindow(sources: any[]) {
+  if (sourcePickerWindow) {
+    sourcePickerWindow.focus()
+    return
+  }
+
+  const mainBounds = mainWindow?.getBounds()
+  const x = mainBounds ? mainBounds.x : 0
+  const y = mainBounds ? mainBounds.y - 400 - 8 : 0
+
+  sourcePickerWindow = new BrowserWindow({
+    width: 500,
+    height: 400,
+    x,
+    y,
+    frame: false,
+    transparent: true,
+    vibrancy: 'fullscreen-ui',
+    visualEffectState: 'active',
+    backgroundMaterial: 'acrylic',
+    webPreferences: {
+      preload: path.join(__dirname, '../preload/index.cjs'),
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: false
+    }
+  })
+
+  if (is.dev) {
+    const devServerUrl = import.meta.env['VITE_DEV_SERVER_URL']
+    if (devServerUrl) {
+      sourcePickerWindow.loadURL(`${devServerUrl}#source-picker`)
+    } else {
+      sourcePickerWindow.loadURL('http://localhost:5173#source-picker')
+    }
+  } else {
+    sourcePickerWindow.loadFile(path.join(__dirname, '../renderer/index.html'), {
+      hash: 'source-picker'
+    })
+  }
+
+  sourcePickerWindow.webContents.on('did-finish-load', () => {
+    sourcePickerWindow?.webContents.send(
+      'electronAPI:availableSources',
+      sources.map((s) => ({ id: s.id, name: s.name }))
+    )
+  })
+
+  sourcePickerWindow.on('closed', () => {
+    sourcePickerWindow = null
+    if (pendingMediaRequest) {
+      pendingMediaRequest = null
+    }
   })
 }
 
@@ -237,6 +392,23 @@ app.on('ready', async () => {
     }
     return { error: 'No URL provided' }
   })
+
+  ipcMain.on('electronAPI:requestSources', () => {
+    if (pendingMediaRequest) {
+      // If a request is already pending, we can just re-trigger the source fetching
+      desktopCapturer
+        .getSources({ types: ['window', 'screen'] })
+        .then(async (sources) => {
+          mainWindow?.webContents.send(
+            'electronAPI:availableSources',
+            sources.map((s) => ({ id: s.id, name: s.name }))
+          )
+        })
+        .catch(console.error)
+    } else {
+      console.log('No pending media request to fulfill');
+    }
+  });
 
   session.defaultSession.setDisplayMediaRequestHandler((request, callback) => {
     pendingMediaRequest = callback
@@ -294,6 +466,92 @@ app.on('ready', async () => {
     await saveSettings(newSettings)
     return newSettings
   })
+
+  ipcMain.on('app:show-transcriptions', () => {
+    createTranscriptionWindow()
+  })
+
+  ipcMain.on('app:hide-transcriptions', () => {
+    if (transcriptionWindow) {
+      transcriptionWindow.close()
+      transcriptionWindow = null
+    }
+  })
+
+  ipcMain.on('app:show-features', (event) => {
+  const parentWindow = BrowserWindow.fromWebContents(event.sender) || mainWindow
+  if (!parentWindow) return
+  const devServerUrl = import.meta.env['VITE_DEV_SERVER_URL']
+  let url;
+  if (is.dev) {
+    const baseUrl = devServerUrl || 'http://localhost:5173';
+    url = `${baseUrl}#features`;
+  } else {
+    url = `file://${path.join(__dirname, '../renderer/index.html')}#features`;
+  }
+
+  popoverManager.createPopover({
+    id: 'features',
+    parent: parentWindow,
+    url,
+    width: 200,
+    height: 200,
+  })
+})
+
+ipcMain.on('app:hide-features', () => {
+  popoverManager.closePopover('features')
+})
+
+ipcMain.on('app:show-settings', (event) => {
+  const parentWindow = BrowserWindow.fromWebContents(event.sender) || mainWindow
+  if (!parentWindow) return
+  const devServerUrl = import.meta.env['VITE_DEV_SERVER_URL']
+  let url;
+  if (is.dev) {
+    const baseUrl = devServerUrl || 'http://localhost:5173';
+    url = `${baseUrl}#settings`;
+  } else {
+    url = `file://${path.join(__dirname, '../renderer/index.html')}#settings`;
+  }
+
+  popoverManager.createPopover({
+    id: 'settings',
+    parent: parentWindow,
+    url,
+    width: 280,
+    height: 300,
+  })
+})
+
+ipcMain.on('app:hide-settings', () => {
+  popoverManager.closePopover('settings')
+})
+
+ipcMain.on('app:show-screen-preview', (event) => {
+  const parentWindow = BrowserWindow.fromWebContents(event.sender) || mainWindow
+  if (!parentWindow) return
+  const devServerUrl = import.meta.env['VITE_DEV_SERVER_URL']
+  let url;
+  if (is.dev) {
+    const baseUrl = devServerUrl || 'http://localhost:5173';
+    url = `${baseUrl}#screen-preview`;
+  } else {
+    url = `file://${path.join(__dirname, '../renderer/index.html')}#screen-preview`;
+  }
+
+  popoverManager.createPopover({
+    id: 'screen-preview',
+    parent: parentWindow,
+    url,
+    width: 480,
+    height: 300,
+  })
+})
+
+ipcMain.on('app:hide-screen-preview', () => {
+  popoverManager.closePopover('screen-preview')
+})
 
   ipcMain.on('electronAPI:startScreenshot', () => createSelectionWindow())
 
@@ -389,7 +647,7 @@ app.on('ready', async () => {
         res.json(transcripts)
       } catch (error) {
         console.error(
-          `[History API] Error fetching transcripts for session ${req.params.id}:`,
+          `[History API] Error fetching transcripts for session ${req.params.id}`,
           error
         )
         res.status(500).json({ error: `Failed to fetch transcripts for session ${req.params.id}` })
@@ -452,6 +710,15 @@ app.on('ready', async () => {
   ipcMain.handle('db:get-transcripts', (event, sessionId) => dbService.getTranscripts(sessionId))
 
   ipcMain.handle('db:end-session', (event, sessionId) => dbService.endSession(sessionId))
+
+  ipcMain.on('app:resize-window', (event, { width, height }) => {
+    if (mainWindow) {
+      const [currentWidth, currentHeight] = mainWindow.getSize()
+      const newWidth = width || currentWidth
+      const newHeight = height || currentHeight
+      mainWindow.setSize(newWidth, newHeight, true) // Animate the resize
+    }
+  })
 })
 
 app.on('window-all-closed', () => {

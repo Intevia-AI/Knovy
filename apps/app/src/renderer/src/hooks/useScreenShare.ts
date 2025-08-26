@@ -317,7 +317,7 @@ export function useScreenShare() {
   const startScreenShare = useCallback(async () => {
     console.log("[ScreenShare] Attempting to start screen share...");
     // Reset previous state
-    setMicSegments([]); // Clear mic segments state
+    setMicSegments([]);
     setSystemAudioSegments([]);
     setSystemAudioMimeType("");
     setRecordingDuration(0);
@@ -326,121 +326,48 @@ export function useScreenShare() {
     systemAudioChunksRef.current = [];
     if (systemAudioTimerRef.current) clearInterval(systemAudioTimerRef.current);
 
-    let capturedMicStream: MediaStream | null = null;
-    let displayStream: MediaStream | null = null;
-    let systemAudioStreamOnly: MediaStream | null = null;
-
     try {
-      // --- Step 1: Check for API support & Get Display Media ---
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
-        throw new Error(
-          "getDisplayMedia is not supported by this environment.",
-        );
-      }
-      console.log("Requesting screen share via getDisplayMedia...");
-      displayStream = await navigator.mediaDevices.getDisplayMedia({
+      // This will trigger the custom source picker in the main process
+      const stream = await navigator.mediaDevices.getDisplayMedia({
         video: true,
         audio: true,
       });
 
-      // Check if the stream was cancelled
-      if (!displayStream || displayStream.getVideoTracks().length === 0) {
-        console.log("[ScreenShare] Screen share was cancelled by user.");
-        return; // Exit gracefully without throwing an error
-      }
+      // --- Mic Recording ---
+      await startMicRecording();
 
-      screenStreamRef.current = displayStream;
-      console.log("Screen share stream obtained:", displayStream);
-
-      // --- Check for Audio Track (System Audio) ---
-      const audioTracks = displayStream.getAudioTracks();
-      if (audioTracks.length > 0) {
-        console.log("[ScreenShare] System audio track found.");
-        systemAudioStreamOnly = new MediaStream(audioTracks);
-        setCurrentSystemAudioStream(systemAudioStreamOnly);
+      // --- System Audio Recording ---
+      const systemAudioTracks = stream.getAudioTracks();
+      if (systemAudioTracks.length > 0) {
+        const systemAudioStream = new MediaStream(systemAudioTracks);
+        setCurrentSystemAudioStream(systemAudioStream);
+        startSystemAudioRecorderInternal(systemAudioStream);
       } else {
-        console.warn(
-          "[ScreenShare] System audio track *NOT* found. Recording mic only.",
-        );
-        alert("警告：無法擷取系統音訊。錄音將只包含麥克風。");
-        setCurrentSystemAudioStream(null);
+        console.warn("[ScreenShare] No system audio track found in the selected source.");
       }
 
-      // --- Step 2: Start Microphone Recording ---
-      console.log("[ScreenShare] Starting microphone recording...");
-      capturedMicStream = await startMicRecording();
-      if (!capturedMicStream) {
-        throw new Error(
-          "Failed to start microphone recording. Check permissions.",
-        );
-      }
-      console.log("[ScreenShare] Microphone recording started.");
-
-      // --- Step 3: Setup System Audio Recorder (if audio track exists) ---
-      if (systemAudioStreamOnly) {
-        console.log(
-          "[ScreenShare] Setting up system audio recording process...",
-        );
-        startSystemAudioRecorderInternal(systemAudioStreamOnly);
-
-        // Setup interval timer for system audio segmentation
-        if (systemAudioTimerRef.current)
-          clearInterval(systemAudioTimerRef.current);
-        console.log(
-          `[ScreenShare] Setting system audio segment interval timer: ${SYSTEM_AUDIO_SEGMENT_MS}ms`,
-        );
-        systemAudioTimerRef.current = setInterval(() => {
-          if (
-            systemAudioRecorderRef.current &&
-            systemAudioRecorderRef.current.state === "recording"
-          ) {
-            console.log(
-              `[ScreenShare] Interval timer: Stopping system audio recorder to finalize segment.`,
-            );
-            systemAudioRecorderRef.current.stop(); // Triggers onstop
-          } else {
-            console.warn(
-              "[ScreenShare] Interval timer: System recorder not active.",
-            );
-          }
-        }, SYSTEM_AUDIO_SEGMENT_MS);
-      } else {
-        console.log(
-          "[ScreenShare] No system audio stream, skipping system audio recorder setup.",
-        );
-        setSystemAudioMimeType("");
-      }
-
-      // --- Finalize ---
-      // 等待一小段時間確保所有資源都已初始化
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      screenStreamRef.current = stream;
       setIsScreenSharing(true);
-      console.log("[ScreenShare] Screen sharing and recording setup complete.");
-    } catch (e) {
-      console.error("Error during screen share setup process:", e);
-      let userMessage = `啟動分享時發生錯誤: ${e instanceof Error ? e.message : String(e)}`;
 
-      // Handle specific error cases
-      if (e instanceof DOMException) {
-        if (e.name === "NotAllowedError") {
-          userMessage = "錯誤：螢幕分享權限被拒絕或取消。";
-        } else if (e.name === "NotFoundError") {
-          userMessage = "錯誤：找不到可分享的螢幕或視窗。";
-        } else if (e.name === "AbortError") {
-          // User cancelled the selection
-          console.log("[ScreenShare] User cancelled screen share selection.");
-          return; // Exit without showing error message
-        }
-      }
+      // Handle when the user stops sharing via the browser/OS UI
+      stream.getVideoTracks()[0].onended = () => {
+        console.log("[ScreenShare] Screen sharing stopped by user via OS/browser UI.");
+        stopScreenShare();
+      };
 
-      // Only show alert if it's not a cancellation
-      if (!(e instanceof DOMException && e.name === "AbortError")) {
-        alert(userMessage);
-      }
-
-      stopScreenShare(); // Ensure cleanup on any error
+    } catch (err) {
+      console.error("[ScreenShare] Error starting screen share:", err);
+      // User might have cancelled the picker
+      stopScreenShare(); // Clean up everything if it fails
     }
   }, [startMicRecording, stopScreenShare, startSystemAudioRecorderInternal]);
+
+  const cancelScreenShare = useCallback(() => {
+    // This function can be called if the user cancels the source picker
+    console.log("[ScreenShare] User cancelled the process during source selection.");
+    // No need to call stopScreenShare, as nothing has been started yet.
+    // We just need to ensure any UI state is reset, which is handled by the component using the hook.
+  }, []);
 
   const toggleScreenShare = useCallback(() => {
     if (isScreenSharing) {
@@ -462,5 +389,6 @@ export function useScreenShare() {
     screenStreamRef, // Ref for the video element
     screenPreviewRef,
     toggleScreenShare,
+    cancelScreenShare, // Expose the cancel function
   };
 }

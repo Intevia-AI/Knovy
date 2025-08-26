@@ -20,6 +20,7 @@ interface ChatPanelProps {
   onSendMessage: (action: "custom", prompt: string) => void;
   messagesContainerRef?: React.RefObject<HTMLDivElement | null>;
   isSubtitleVisible?: boolean;
+  isPopover?: boolean;
 }
 
 const FloatingMenu: React.FC<{
@@ -55,12 +56,21 @@ export default function ChatPanel({
   setCustomPrompt,
   onSendMessage,
   isSubtitleVisible,
+  isPopover = false,
 }: ChatPanelProps) {
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const [selectedText, setSelectedText] = useState("");
   const [menuPosition, setMenuPosition] = useState<{ x: number; y: number } | null>(null);
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
   const { t } = useI18n();
+
+  const handleSendMessageInternal = (action: "custom", prompt: string) => {
+    if (isPopover) {
+      window.electronAPI.send('popover:sendMessage', { action, prompt });
+    } else {
+      onSendMessage(action, prompt);
+    }
+  };
 
   useEffect(() => {
     const container = messagesContainerRef.current;
@@ -151,7 +161,7 @@ export default function ChatPanel({
     console.log(`[ChatPanel] handleAskAI called. Current selectedText: "${selectedText}"`);
     if (selectedText.trim()) {
       console.log(`[ChatPanel] selectedText is valid, sending to AI: "${selectedText}"`);
-      onSendMessage("custom", selectedText);
+      handleSendMessageInternal("custom", selectedText);
       setMenuPosition(null);
       setSelectedText("");
     } else {
@@ -162,7 +172,7 @@ export default function ChatPanel({
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!customPrompt.trim() || isLoading || !isScreenSharing) return;
-    onSendMessage("custom", customPrompt);
+    handleSendMessageInternal("custom", customPrompt);
   };
 
   const scrollToBottom = () => {

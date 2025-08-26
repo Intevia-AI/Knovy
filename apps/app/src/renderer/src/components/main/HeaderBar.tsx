@@ -1,32 +1,26 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
-  MinusIcon,
-  XIcon,
+  MicIcon,
+  SettingsIcon,
   PinIcon,
   PinOffIcon,
-  SunIcon,
-  MoonIcon,
-  Maximize,
-  Minimize,
+  MinusIcon,
+  XIcon,
   Rows,
-  Columns,
-  LogInIcon,
-  LogOutIcon,
-  Loader2,
+  MonitorIcon,
 } from "lucide-react";
-import { useTheme } from "next-themes";
 import { useI18n } from "@/hooks/useI18n";
-import { Logo } from "../logo.js";
-import { useAuth } from "@/context/AuthContext";
 
 interface HeaderBarProps {
   isAlwaysOnTop: boolean;
   toggleAlwaysOnTop: () => void;
   minimizeWindow: () => void;
   closeWindow: () => void;
-  layoutDirection: "horizontal" | "vertical";
-  toggleLayoutDirection: () => void;
+  isScreenSharing: boolean;
+  onToggleScreenShare: () => void;
+  onToggleTranscriptionWindow: () => void;
+  isTranscriptionWindowVisible: boolean;
 }
 
 export function HeaderBar({
@@ -34,116 +28,153 @@ export function HeaderBar({
   toggleAlwaysOnTop,
   minimizeWindow,
   closeWindow,
-  layoutDirection,
-  toggleLayoutDirection,
+  isScreenSharing,
+  onToggleScreenShare,
+  onToggleTranscriptionWindow,
+  isTranscriptionWindowVisible
 }: HeaderBarProps) {
   const { t } = useI18n();
-  const { user, session, isLoading, signInWithProvider, signOut } = useAuth();
+  const [isFeaturesVisible, setIsFeaturesVisible] = useState(false);
+  const [isSettingsVisible, setIsSettingsVisible] = useState(false);
+  const [isScreenPreviewVisible, setIsScreenPreviewVisible] = useState(false);
+  const [mainBounds, setMainBounds] = useState<DOMRect | null>(null);
 
-  const handleLogin = async () => {
-    await signInWithProvider("google");
-  };
+  useEffect(() => {
+    const fetchBounds = async () => {
+      if (window.electronAPI) {
+        const bounds = await window.electronAPI.getMainWindowBounds();
+        setMainBounds(bounds);
+      }
+    };
+    fetchBounds();
+  }, []);
 
-  const handleLogout = async () => {
-    await signOut();
-  };
+  const handleToggleFeatures = () => {
+    console.log('Toggling features popover');
+    if (isFeaturesVisible) {
+      window.electronAPI.send('popover:close', 'features');
+    } else {
+      if (mainBounds) {
+        window.electronAPI.invoke('popover:create', { 
+          id: 'features', 
+          width: 200, 
+          height: 200, 
+          x: mainBounds.x + Math.round((mainBounds.width - 200) / 2),
+          y: mainBounds.y + mainBounds.height + 8,
+          hash: 'features' 
+        });
+      }
+    }
+    setIsFeaturesVisible(!isFeaturesVisible);
+  }
+  const handleToggleSettings = () => {
+    console.log('Toggling settings popover');
+    if (isSettingsVisible) {
+      window.electronAPI.send('popover:close', 'settings');
+    } else {
+      if (mainBounds) {
+        window.electronAPI.invoke('popover:create', { 
+          id: 'settings', 
+          width: 280, 
+          height: 300, 
+          x: mainBounds.x + Math.round((mainBounds.width - 280) / 2),
+          y: mainBounds.y + mainBounds.height + 8,
+          hash: 'settings' 
+        });
+      }
+    }
+    setIsSettingsVisible(!isSettingsVisible);
+  }
+  const handleToggleScreenPreview = () => {
+    console.log('Toggling screen preview popover');
+    if (isScreenPreviewVisible) {
+      window.electronAPI.send('popover:close', 'screen-preview');
+    } else {
+      if (mainBounds) {
+        window.electronAPI.invoke('popover:create', { 
+          id: 'screen-preview', 
+          width: 480, 
+          height: 300, 
+          x: mainBounds.x + Math.round((mainBounds.width - 480) / 2),
+          y: mainBounds.y + mainBounds.height + 8,
+          hash: 'screen-preview' 
+        });
+      }
+    }
+    setIsScreenPreviewVisible(!isScreenPreviewVisible);
+  }
 
   return (
-    <header className="fixed h-7 bg-muted/10 overflow-hidden rounded-t-lg top-0 left-0 right-0 z-10 border-b border-border/30 flex items-center justify-between">
-      {/* Draggable Region */}
-      <div
-        className="flex-grow h-full pl-2 flex items-center"
-        style={{ WebkitAppRegion: "drag" } as React.CSSProperties}
-      >
-        <span className="text-xs font-medium">
-          Intevia AI
-        </span>
-      </div>
-      {/* Auth Controls - Placed before window controls for now */}
-      <div className="flex items-center h-full mr-1 space-x-1" style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}>
-        {isLoading ? (
-          <Button variant="ghost" size="icon" className="h-5 w-5 rounded-sm animate-spin" disabled>
-            <Loader2 size={12} />
-          </Button>
-        ) : user ? (
+    <header 
+      className="flex items-center justify-between p-1 bg-muted/10 rounded-full w-full h-full"
+      style={{ WebkitAppRegion: "drag" } as React.CSSProperties}
+    >
+      <div className="flex items-center gap-1" style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}>
+        <Button
+          variant={isScreenPreviewVisible ? "secondary" : "ghost"}
+          size="icon"
+          className="h-8 w-8 rounded-full"
+          onClick={handleToggleScreenPreview}
+        >
+          <MonitorIcon className="h-4 w-4" />
+        </Button>
+        <Button
+          variant={isScreenSharing ? "destructive" : "default"}
+          size="sm"
+          onClick={onToggleScreenShare}
+          className="h-8 rounded-full px-4 text-xs"
+        >
+          <MicIcon className="h-3 w-3 mr-1" />
+          {isScreenSharing ? "Stop" : "Listen"}
+        </Button>
+
+        {isScreenSharing && (
           <Button
-            onClick={handleLogout}
-            variant="ghost"
-            size="icon"
-            className="h-5 w-5 rounded-sm hover:bg-muted-foreground/20"
-            title="Logout"
+            variant={isTranscriptionWindowVisible ? "secondary" : "outline"}
+            size="sm"
+            onClick={onToggleTranscriptionWindow}
+            className="h-8 rounded-full px-4 text-xs"
           >
-            <LogOutIcon size={12} />
-          </Button>
-        ) : (
-          <Button
-            onClick={handleLogin}
-            variant="ghost"
-            size="icon"
-            className="h-5 w-5 rounded-sm hover:bg-muted-foreground/20"
-            title="Login with Google"
-          >
-            <LogInIcon size={12} />
+            Transcriptions
           </Button>
         )}
       </div>
-      {/* Separator - Optional visually */}
-      {/* <div className="h-4 w-px bg-border/50 mx-1"></div> */}
-      {/* Window Controls */}
-      <div
-        className="flex items-center h-full mr-1"
-        style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
-      >
-        <Button
-          onClick={toggleLayoutDirection}
-          variant="ghost"
-          size="icon"
-          className="h-5 w-5 rounded-sm hover:bg-muted-foreground/20"
-          title={layoutDirection === "vertical" ? "Switch to Horizontal Layout" : "Switch to Vertical Layout"}
-        >
-          {layoutDirection === "vertical" ? (
-            <Columns size={12} />
-          ) : (
-            <Rows size={12} />
-          )}
+
+      <div className="flex items-center gap-1" style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}>
+        <Button variant={isFeaturesVisible ? "secondary" : "ghost"} size="icon" className="h-8 w-8 rounded-full" onClick={handleToggleFeatures}>
+          <Rows className="h-4 w-4" />
         </Button>
+        <Button variant={isSettingsVisible ? "secondary" : "ghost"} size="icon" className="h-8 w-8 rounded-full" onClick={handleToggleSettings}>
+          <SettingsIcon className="h-4 w-4" />
+        </Button>
+
+        {/* Window Controls */}
         <Button
           variant="ghost"
           size="icon"
-          className="h-5 w-5 rounded-sm hover:bg-muted-foreground/20"
+          className="h-8 w-8 rounded-full"
           onClick={toggleAlwaysOnTop}
-          aria-label={
-            isAlwaysOnTop ? t("unpinWindowTooltip") : t("pinWindowTooltip")
-          }
-          title={
-            isAlwaysOnTop ? t("unpinWindowTooltip") : t("pinWindowTooltip")
-          }
+          title={isAlwaysOnTop ? t("unpinWindowTooltip") : t("pinWindowTooltip")}
         >
-          {isAlwaysOnTop ? (
-            <PinOffIcon size={12} />
-          ) : (
-            <PinIcon size={12} />
-          )}
+          {isAlwaysOnTop ? <PinOffIcon size={14} /> : <PinIcon size={14} />}
         </Button>
         <Button
           variant="ghost"
           size="icon"
-          className="h-5 w-5 rounded-sm hover:bg-muted-foreground/20"
+          className="h-8 w-8 rounded-full"
           onClick={minimizeWindow}
-          aria-label="Minimize window"
           title={t("minimizeWindowTooltip")}
         >
-          <MinusIcon size={12} />
+          <MinusIcon size={14} />
         </Button>
         <Button
           variant="ghost"
           size="icon"
-          className="h-5 w-5 rounded-sm hover:bg-destructive/80 hover:text-destructive-foreground"
+          className="h-8 w-8 rounded-full hover:bg-destructive/80"
           onClick={closeWindow}
-          aria-label="Close window"
           title={t("closeWindowTooltip")}
         >
-          <XIcon size={12} />
+          <XIcon size={14} />
         </Button>
       </div>
     </header>

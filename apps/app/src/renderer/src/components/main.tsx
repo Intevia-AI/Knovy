@@ -1,185 +1,116 @@
 "use client";
 import { useEffect, useState } from "react";
+import path from "path";
+import { is } from "@electron-toolkit/utils";
 
 // Hooks
 import { useElectron } from "@/hooks/useElectron";
 import { useScreenShare } from "@/hooks/useScreenShare";
-import { useAudioAnalysis } from "@/hooks/useAudioAnalysis";
 import { useAIInteraction } from "@/hooks/useAIInteraction";
 import { useLanguage } from "@/context/LanguageContext";
 
 // Components
-import { HeaderBar } from "./main/HeaderBar.js";
-import { SourcePickerModal } from "./main/SourcePickerModal.js";
-import ChatPanel from "./main/ChatPanel.js";
-import { ControlPanel } from "./main/ControlPanel.js";
+import { HeaderBar } from "./main/HeaderBar";
+import { SourcePickerModal } from "./main/SourcePickerModal";
 import { useTheme } from "next-themes";
-import {
-  ResizableHandle,
-  ResizablePanel,
-  ResizablePanelGroup,
-} from "@/components/ui/resizable"; // Import Resizable components
-
-// Types (Import necessary types)
+import ChatPanel from "./main/ChatPanel";
+import { FeaturesPopup } from "./main/FeaturesPopup";
+import { SettingsPopup } from "./main/SettingsPopup";
+import { ScreenPreviewPopup } from "./main/ScreenPreviewPopup.js";
 
 // =============================================================
 export function Main() {
   // --- Hooks ----------------------------------------------------
   const { setTheme } = useTheme();
-  const { language, setLanguage } = useLanguage();
 
   // Electron Interactions
-  const {
-    isAlwaysOnTop,
-    toggleAlwaysOnTop,
-    minimizeWindow,
-    closeWindow,
-    availableSources,
-    showSourcePicker,
-    handleSourceSelect,
-    handleCancelSelect,
-  } = useElectron();
+  const { isAlwaysOnTop, toggleAlwaysOnTop, minimizeWindow, closeWindow, availableSources, handleSourceSelect, handleCancelSelect, requestSources } = useElectron();
 
   // Screen Sharing and Recording
-  const {
-    isScreenSharing,
-    recordingDuration,
-    micStream, // Needed for mic analysis
-    currentSystemAudioStream, // Needed for system analysis & RealTimeAnalysis component
-    toggleScreenShare,
-    screenPreviewRef, // Ref for video element in ControlPanel
-    screenStreamRef, // Ref for the video element
-  } = useScreenShare();
-
-  // Audio Analysis (Visualizers)
-  const { micAnalyserNode, systemAnalyserNode, micLevel, systemLevel } =
-    useAudioAnalysis(
-      isScreenSharing ? micStream : null, // Pass stream only when sharing
-      isScreenSharing ? currentSystemAudioStream : null, // Pass stream only when sharing
-    );
+  const { isScreenSharing, toggleScreenShare, screenStreamRef, cancelScreenShare } = useScreenShare();
 
   // AI Interaction Logic
-  const {
-    aiMessages,
-    isLoading,
-    customPrompt,
-    setCustomPrompt,
-    keywords,
-    selectedKeyword,
-    sendContextToAI,
-    handleTranscriptionResponse,
-    handleTranscriptionKeywords,
-    handleAnswerResponse,
-    handleAnswerKeywords,
-    handleKeywordClick,
-    messagesContainerRef,
-    resetChat,
-    handleSendMessage,
-    setSubtitleVisibility,
-    isSubtitleVisible,
-    handleScreenshot,
-    startSession,
-    endSession,
-    currentSessionId,
-  } = useAIInteraction();
+  const { aiMessages, isLoading, customPrompt, setCustomPrompt, sendContextToAI, handleSendMessage, messagesContainerRef, isSubtitleVisible } = useAIInteraction();
 
-  // --- State for Layout Direction ------------------------------
-  const [layoutDirection, setLayoutDirection] = useState<"horizontal" | "vertical">("vertical");
+  const [isTranscriptionWindowVisible, setIsTranscriptionWindowVisible] = useState(false);
 
   // --- Effects ------------------------------------------------
-
-  // Reset AI state when starting a new screen share session
-  useEffect(() => {
-    if (isScreenSharing) {
-      resetChat();
-      // Mic recorder state is reset within useScreenShare's startScreenShare
-    }
-  }, [isScreenSharing, resetChat]);
-
   useEffect(() => {
     setTheme("dark");
   }, []);
 
-  // --- Helper Functions ---------------------------------------
-  const toggleLayoutDirection = () => {
-    setLayoutDirection((prevDirection) =>
-      prevDirection === "vertical" ? "horizontal" : "vertical",
-    );
-  };
-
-  const handleToggleScreenShare = async () => {
-    if (isScreenSharing) {
-      if (currentSessionId) {
-        await endSession();
-      }
-      toggleScreenShare();
-    } else {
-      await startSession();
-      toggleScreenShare();
+  useEffect(() => {
+    if (availableSources.length > 0) {
+      window.electronAPI.invoke('popover:create', {
+        id: 'source-picker',
+        hash: 'source-picker',
+        width: 500,
+        height: 400,
+      });
     }
+  }, [availableSources]);
+
+  useEffect(() => {
+    const removeSelectListener = window.electronAPI.on('source-picker:select', handleSourceSelect);
+    const removeCancelListener = window.electronAPI.on('source-picker:cancel', handleCancelSelect);
+
+    return () => {
+      removeSelectListener();
+      removeCancelListener();
+    };
+  }, [handleSourceSelect, handleCancelSelect]);
+
+  const handleToggleTranscriptionWindow = () => {
+    if (isTranscriptionWindowVisible) {
+      window.electronAPI.send('popover:close', 'transcriptions');
+    } else {
+      window.electronAPI.invoke('popover:create', {
+        id: 'transcriptions',
+        hash: 'transcriptions',
+        width: 480,
+        height: 300,
+      });
+    }
+    setIsTranscriptionWindowVisible(!isTranscriptionWindowVisible);
   };
 
-  // --- Render -------------------------------------------------
-  return (
-    // Added padding-top to account for fixed header height (h-6 = pt-6)
-    <div className="flex flex-col h-screen rounded-lg bg-transparent pt-6">
-      {/* Fixed Header */}
-      <HeaderBar
-        isAlwaysOnTop={isAlwaysOnTop}
-        toggleAlwaysOnTop={toggleAlwaysOnTop}
-        minimizeWindow={minimizeWindow}
-        closeWindow={closeWindow}
-        layoutDirection={layoutDirection}
-        toggleLayoutDirection={toggleLayoutDirection}
-      />
+  const handleShowHistory = () => {
+    window.electronAPI.send("history:open");
+  }
 
-      {/* Source Picker Modal */}
-      <SourcePickerModal
-        show={showSourcePicker}
-        sources={availableSources}
-        onSelect={handleSourceSelect}
-        onCancel={handleCancelSelect}
-      />
+  // This logic determines what to render based on the URL hash
+  const [view, setView] = useState('main');
 
-      {/* Main Content Area using ResizablePanelGroup */}
-      <ResizablePanelGroup
-        direction={layoutDirection}
-        className="flex flex-1 overflow-hidden shadow-lg rounded-b-lg"
-      >
-        {/* Control Panel (Sidebar) - Moved to the left */}
-        <ResizablePanel defaultSize={30} minSize={16} className="border-none">
-          <ControlPanel
-            isScreenSharing={isScreenSharing}
-            isLoading={isLoading}
-            recordingDuration={recordingDuration}
-            keywords={keywords}
-            selectedKeyword={selectedKeyword}
-            micAnalyserNode={micAnalyserNode}
-            systemAnalyserNode={systemAnalyserNode}
-            micLevel={micLevel}
-            systemLevel={systemLevel}
-            screenStreamRef={screenStreamRef}
-            screenPreviewRef={screenPreviewRef}
-            currentSystemAudioStream={currentSystemAudioStream}
-            customPrompt={customPrompt}
-            setCustomPrompt={setCustomPrompt}
-            onToggleScreenShare={handleToggleScreenShare}
-            onAiAction={sendContextToAI}
-            onKeywordClick={handleKeywordClick}
-            onTranscriptionResponse={handleTranscriptionResponse}
-            onTranscriptionKeywords={handleTranscriptionKeywords}
-            onAnswerResponse={handleAnswerResponse}
-            onAnswerKeywords={handleAnswerKeywords}
-            setSubtitleVisibility={setSubtitleVisibility}
-            handleScreenshot={handleScreenshot}
-          />
-        </ResizablePanel>
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash;
+      if (hash === '#transcriptions') {
+        setView('transcriptions');
+      } else if (hash === '#features') {
+        setView('features');
+      } else if (hash === '#settings') {
+        setView('settings');
+      } else if (hash === '#screen-preview') {
+        setView('screen-preview');
+      } else if (hash === '#source-picker') {
+        setView('source-picker');
+      } else {
+        setView('main');
+      }
+    };
 
-        <ResizableHandle withHandle className="bg-border/70" />
+    window.addEventListener('hashchange', handleHashChange);
+    handleHashChange(); // Initial check
 
-        {/* Chat Panel - Moved to the right */}
-        <ResizablePanel defaultSize={70} minSize={20} className="border-none">
-          <ChatPanel
+    return () => {
+      window.removeEventListener('hashchange', handleHashChange);
+    };
+  }, []);
+
+  if (view === 'transcriptions') {
+    return (
+      <div className="flex flex-col h-screen rounded-lg bg-transparent pt-6">
+        <ChatPanel
             messages={aiMessages}
             isLoading={isLoading}
             isScreenSharing={isScreenSharing}
@@ -189,8 +120,53 @@ export function Main() {
             messagesContainerRef={messagesContainerRef}
             isSubtitleVisible={isSubtitleVisible}
           />
-        </ResizablePanel>
-      </ResizablePanelGroup>
+      </div>
+    );
+  }
+
+  if (view === 'features') {
+    return (
+        <FeaturesPopup onAiAction={sendContextToAI} isScreenSharing={isScreenSharing} onShowHistory={handleShowHistory} />
+    );
+  }
+
+  if (view === 'settings') {
+    return (
+        <SettingsPopup customPrompt={customPrompt} setCustomPrompt={setCustomPrompt} isScreenSharing={isScreenSharing} onToggleScreenShare={toggleScreenShare} />
+    );
+  }
+
+  if (view === 'source-picker') {
+    return (
+      <SourcePickerModal
+        sources={availableSources}
+        onSelect={handleSourceSelect}
+        onCancel={handleCancelSelect}
+      />
+    );
+  }
+
+  if (view === 'screen-preview') {
+    return (
+        <ScreenPreviewPopup isScreenSharing={isScreenSharing} screenStreamRef={screenStreamRef} />
+    );
+  }
+
+  // --- Render Main Bar -------------------------------------------------
+  return (
+    <div className="flex flex-col h-screen rounded-lg bg-transparent">
+      <HeaderBar
+        isAlwaysOnTop={isAlwaysOnTop}
+        toggleAlwaysOnTop={toggleAlwaysOnTop}
+        minimizeWindow={minimizeWindow}
+        closeWindow={closeWindow}
+        isScreenSharing={isScreenSharing}
+        onToggleScreenShare={toggleScreenShare}
+        onToggleTranscriptionWindow={handleToggleTranscriptionWindow}
+        isTranscriptionWindowVisible={isTranscriptionWindowVisible}
+      />
+
+      
     </div>
   );
 }

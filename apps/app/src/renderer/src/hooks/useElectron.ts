@@ -4,8 +4,8 @@
  * @description React hook for integrating with Electron desktop app features
  */
 
-import { useState, useEffect, useCallback } from "react";
-import type { ElectronSource } from "@/types";
+import { useState, useEffect, useCallback } from 'react'
+import type { ElectronSource } from '@/types'
 
 /**
  * React hook for Electron desktop app integration
@@ -43,113 +43,106 @@ import type { ElectronSource } from "@/types";
  * ```
  */
 export function useElectron() {
-  const [isAlwaysOnTop, setIsAlwaysOnTop] = useState(false);
-  const [availableSources, setAvailableSources] = useState<ElectronSource[]>(
-    []
-  );
-  const [showSourcePicker, setShowSourcePicker] = useState(false);
+  const [isAlwaysOnTop, setIsAlwaysOnTop] = useState(false)
+  const [availableSources, setAvailableSources] = useState<ElectronSource[]>([])
+
+  const requestSources = () => {
+    if (window.electronAPI) {
+      // This will trigger the main process to get sources and send them back
+      // via the 'electronAPI:availableSources' event.
+      window.electronAPI.send('electronAPI:requestSources')
+    }
+  }
 
   // Effect to handle Electron-specific initialization and listeners
   useEffect(() => {
-    let removeAlwaysOnTopListener: (() => void) | undefined;
-    let removeSourcesListener: (() => void) | undefined;
+    let removeAlwaysOnTopListener: (() => void) | undefined
+    let removeSourcesListener: (() => void) | undefined
 
     const initializeElectronFeatures = async () => {
       if (window.electronAPI) {
         // Get initial always-on-top state
         try {
-          const initialState = await window.electronAPI.getInitialAlwaysOnTop();
-          console.log("Initial Always On Top State:", initialState);
-          setIsAlwaysOnTop(initialState);
+          const initialState = await window.electronAPI.getInitialAlwaysOnTop()
+          console.log('Initial Always On Top State:', initialState)
+          setIsAlwaysOnTop(initialState)
         } catch (error) {
-          console.error("Failed to get initial always on top state:", error);
+          console.error('Failed to get initial always on top state:', error)
         }
 
         // Listen for always-on-top changes from the main process
         removeAlwaysOnTopListener = window.electronAPI.on(
-          "electronAPI:alwaysOnTopChanged",
+          'electronAPI:alwaysOnTopChanged',
           (newState) => {
-            console.log(
-              "Always On Top state changed from main process:",
-              newState
-            );
-            setIsAlwaysOnTop(newState);
+            console.log('Always On Top state changed from main process:', newState)
+            setIsAlwaysOnTop(newState)
           }
-        );
+        )
 
         // Listener for available sources from main process
         removeSourcesListener = window.electronAPI.on(
-          "electronAPI:availableSources",
+          'electronAPI:availableSources',
           (sources: ElectronSource[]) => {
-            console.log(
-              "Received available sources from main:",
-              sources.length
-            );
-            setAvailableSources(sources);
-            setShowSourcePicker(true); // Show the picker UI
+            console.log('Received available sources from main:', sources.length)
+            setAvailableSources(sources)
           }
-        );
+        )
       } else {
-        console.warn("Electron API not found. Running in browser mode?");
+        console.warn('Electron API not found. Running in browser mode?')
       }
-    };
+    }
 
-    initializeElectronFeatures();
+    initializeElectronFeatures()
 
     // Cleanup listeners on hook unmount
     return () => {
-      removeAlwaysOnTopListener?.();
-      removeSourcesListener?.();
-    };
-  }, []);
+      removeAlwaysOnTopListener?.()
+      removeSourcesListener?.()
+    }
+  }, [])
 
   const toggleAlwaysOnTop = useCallback(() => {
     if (window.electronAPI) {
-      const newAlwaysOnTopState = !isAlwaysOnTop;
-      console.log(
-        "Toggling always on top via Electron API to:",
-        newAlwaysOnTopState
-      );
-      window.electronAPI.toggleAlwaysOnTop(newAlwaysOnTopState);
+      const newAlwaysOnTopState = !isAlwaysOnTop
+      console.log('Toggling always on top via Electron API to:', newAlwaysOnTopState)
+      window.electronAPI.toggleAlwaysOnTop(newAlwaysOnTopState)
       // State will be updated via the listener if successful
     } else {
-      console.warn("Electron API not available for toggleAlwaysOnTop");
+      console.warn('Electron API not available for toggleAlwaysOnTop')
     }
-  }, [isAlwaysOnTop]);
+  }, [isAlwaysOnTop])
 
   const minimizeWindow = useCallback(() => {
     if (window.electronAPI) {
-      console.log("Minimizing window via Electron API");
-      window.electronAPI.minimizeWindow();
+      console.log('Minimizing window via Electron API')
+      window.electronAPI.minimizeWindow()
     } else {
-      console.warn("Electron API not available for minimizeWindow");
+      console.warn('Electron API not available for minimizeWindow')
     }
-  }, []);
+  }, [])
 
   const closeWindow = useCallback(() => {
     if (window.electronAPI) {
-      console.log("Closing window via Electron API");
-      window.electronAPI.closeWindow();
+      console.log('Closing window via Electron API')
+      window.electronAPI.closeWindow()
     } else {
-      console.warn("Electron API not available for closeWindow");
+      console.warn('Electron API not available for closeWindow')
     }
-  }, []);
+  }, [])
 
   const handleSourceSelect = useCallback((sourceId: string) => {
-    setShowSourcePicker(false);
-    setAvailableSources([]);
+    setAvailableSources([])
     if (window.electronAPI) {
-      window.electronAPI.selectSource(sourceId);
+      window.electronAPI.selectSource(sourceId)
     }
-  }, []);
+  }, [])
 
   const handleCancelSelect = useCallback(() => {
-    setShowSourcePicker(false);
-    setAvailableSources([]);
+    setAvailableSources([])
     if (window.electronAPI) {
-      window.electronAPI.cancelSourceSelection();
+      window.electronAPI.cancelSourceSelection()
     }
-  }, []);
+  }, [])
 
   return {
     isAlwaysOnTop,
@@ -157,10 +150,9 @@ export function useElectron() {
     minimizeWindow,
     closeWindow,
     availableSources,
-    showSourcePicker,
     handleSourceSelect,
     handleCancelSelect,
-    setShowSourcePicker, // Allow external control if needed
     setAvailableSources, // Allow external control if needed
-  };
+    requestSources
+  }
 }
