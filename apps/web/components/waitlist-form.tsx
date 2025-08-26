@@ -1,22 +1,29 @@
-
-'use client'
+"use client";
 
 import { useLanguage } from "@/context/language-context";
-import { createClient } from '@supabase/supabase-js'
-import { zodResolver } from '@hookform/resolvers/zod'
-import * as z from 'zod'
-import { Button } from '@workspace/ui/components/button'
-import { Input } from '@workspace/ui/components/input'
-import { Form, FormControl, FormField, FormItem, FormMessage } from '@workspace/ui/components/form'
-import { Toaster, toast } from 'sonner'
-import { useForm } from 'react-hook-form'
+import { createClient } from "@supabase/supabase-js";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { Button } from "@workspace/ui/components/button";
+import { Input } from "@workspace/ui/components/input";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormMessage,
+} from "@workspace/ui/components/form";
+import { Toaster, toast } from "sonner";
+import { useForm } from "react-hook-form";
 
-const formSchema = z.object({
-  email: z.string().email({ message: 'Invalid email address.' }),
-})
+// Create the Supabase client once outside the component to avoid multiple instances.
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 
 export function WaitlistForm() {
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
 
   const formSchema = z.object({
     email: z.string().email({ message: t("auth.validation.invalid_email") }),
@@ -30,25 +37,24 @@ export function WaitlistForm() {
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    try {
-      const supabase = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      );
+    await supabase.functions.invoke("add-to-waitlist", {
+      body: { ...values, locale },
+    }).then((res) => {
+      if (res.error) {
+        let errorMessage = t("waitlist.toast.error"); // Default message
 
-      const { error } = await supabase.functions.invoke("add-to-waitlist", {
-        body: values,
-      });
+        if (res.error.context?.status === 409) {
+          errorMessage = t("waitlist.toast.duplicate_email");
+        } else if (res.error.context?.error) {
+          errorMessage = res.error.context.error;
+        }
 
-      if (error) {
-        toast.error(error.message || t("waitlist.toast.error"));
+        toast.error(errorMessage);
       } else {
         toast.success(t("waitlist.toast.success"));
         form.reset();
       }
-    } catch (error) {
-      toast.error(t("waitlist.toast.error"));
-    }
+    });
   }
 
   return (

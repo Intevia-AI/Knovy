@@ -23,7 +23,7 @@ serve(async (req) => {
 
   try {
     const body = await req.json();
-    const { email } = body;
+    const { email, locale } = body;
 
     // Basic email validation
     if (!email || !email.includes("@")) {
@@ -53,7 +53,9 @@ serve(async (req) => {
       if (error.code === "23505") {
         // Postgres unique_violation code
         return new Response(
-          JSON.stringify({ error: "This email is already on the waitlist." }),
+          JSON.stringify({
+            error: "This email is already on the waitlist.",
+          }),
           {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
             status: 409, // HTTP 409 Conflict
@@ -66,14 +68,14 @@ serve(async (req) => {
 
     // Send the welcome email
     const emailSubjects = {
-      "en": "Welcome to Knovy!",
+      en: "Welcome to Knovy!",
       "zh-TW": "歡迎來到 Knovy！",
     };
 
     const emailHtml = renderToString(
       WaitlistWelcomeEmail({
         username: email.split("@")[0],
-        locale: locale || "zh-TW",
+        locale: locale || "en",
       })
     );
 
@@ -81,7 +83,9 @@ serve(async (req) => {
       from: "info@intevia.app",
       to: email,
       replyTo: "info@intevia.app",
-      subject: emailSubjects[locale as keyof typeof emailSubjects] || emailSubjects["zh-TW"],
+      subject:
+        emailSubjects[locale as keyof typeof emailSubjects] ||
+        emailSubjects["en"],
       html: emailHtml,
     });
 

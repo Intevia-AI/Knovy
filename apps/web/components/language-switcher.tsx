@@ -24,11 +24,20 @@ import { useLanguage } from "@/context/language-context";
 export function LanguageSwitcher() {
   const [open, setOpen] = React.useState(false);
   const { locale, setLocale, t } = useLanguage();
+  const [mounted, setMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const languages = [
     { value: "en", label: t("language_switcher.en") },
     { value: "zh-TW", label: t("language_switcher.zh_tw") },
   ];
+
+  if (!mounted) {
+    return null;
+  }
 
   return (
     <Popover open={open} onOpenChange={setOpen}>

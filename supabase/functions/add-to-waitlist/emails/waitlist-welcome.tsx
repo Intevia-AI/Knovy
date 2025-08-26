@@ -5,8 +5,6 @@ import {
   Head,
   Heading,
   Html,
-  Img,
-  Link,
   Preview,
   Text,
 } from 'https://esm.sh/@react-email/components';
@@ -14,19 +12,34 @@ import * as React from 'https://esm.sh/react';
 
 interface WaitlistWelcomeEmailProps {
   username: string;
+  locale: string;
 }
 
 const translations = {
-  zh: {
-    preview: '歡迎加入 Knovy 的等待名單！',
-    h1: '歡迎加入 Knovy 的等待名單！',
-    hi: '安安',
-    thanks: '感謝您加入 Knovy 測試版等待名單',
-    moreInfo: '再忍耐一下，測試版現在還塞在路上，就快到ㄌ！',
-    button: '回到官網',
-    questions: '如果有任何問題，請隨時與我們聯繫。',
-    best: '感恩的心，',
-    team: 'Archi @ Knovy',
+  en: {
+    preview: "Welcome to Knovy Waitlist!",
+    h1: "Welcome to Knovy Waitlist!",
+    hi: "Hi",
+    thanks:
+      "Thanks for joining the waitlist for Knovy. We're excited to have you on board!",
+    moreInfo:
+      "We'll be in touch soon with more information about the beta launch.",
+    button: "Visit our Website",
+    questions:
+      "If you have any questions, please don't hesitate to contact us.",
+    best: "Sincerely,",
+    team: "Archi @ INTEVIA",
+  },
+  "zh-TW": {
+    preview: "歡迎加入 Knovy 等待名單",
+    h1: "歡迎加入 Knovy 等待名單",
+    hi: "安安",
+    thanks: "感謝您加入 Knovy 測試版等待名單",
+    moreInfo: "再忍耐一下，測試版現在還塞在路上，就快到ㄌ！",
+    button: "來去官網",
+    questions: "如果有任何問題，請隨時與我們聯繫。",
+    best: "感恩的心，",
+    team: "Archi @ INTEVIA",
   },
 };
 
@@ -36,7 +49,7 @@ export const WaitlistWelcomeEmail = ({
   username,
   locale,
 }: WaitlistWelcomeEmailProps) => {
-  const t = translations[locale as keyof typeof translations] || translations["zh-TW"];
+  const t = translations[locale as keyof typeof translations] || translations["en"];
   return (
     <Html>
       <Head />
