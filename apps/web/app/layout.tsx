@@ -44,6 +44,10 @@ export default async function RootLayout({
 
   return (
     <html lang={locale} suppressHydrationWarning>
+      <head>
+        <title>Knovy | Intevia</title>
+        <link rel="icon" href="/favicon.ico" />
+      </head>
       <body
         className={`${fontSans.variable} ${fontMono.variable} font-sans antialiased `}
       >
