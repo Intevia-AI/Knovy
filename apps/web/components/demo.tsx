@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * @fileoverview Demo Component - Main interactive demo interface for the Intevia AI application
+ * @fileoverview Demo Component - Main interactive demo interface for the Knovy application
  * @module DemoSection
  * @description This component provides a comprehensive demo interface that allows users to:
  * - Share their screen and record audio (microphone + system audio)

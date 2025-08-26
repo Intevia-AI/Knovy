@@ -108,7 +108,7 @@ function SolutionAccordion() {
           <AccordionItem value="item-5">
             <AccordionTrigger>文件與目標整合（開發中）</AccordionTrigger>
             <AccordionContent>
-              會議前上傳文件、任務目標、議程等背景知識，INTEVIA 將在您需要時自動引用，不用再手動翻資料。
+              會議前上傳文件、任務目標、議程等背景知識，Knovy 將在您需要時自動引用，不用再手動翻資料。
             </AccordionContent>
           </AccordionItem>
           <AccordionItem value="item-6">

@@ -38,7 +38,7 @@ export function TeamSection() {
           </p>
           {/* <div className="mt-6 sm:mt-0">
             {/* <p className="text-muted-foreground">
-              認識 INTEVIA AI 背後的核心團隊。
+              認識 Knovy 背後的核心團隊。
             </p> */}
           {/* </div>  */}
         </div>

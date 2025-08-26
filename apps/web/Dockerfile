@@ -1,5 +1,5 @@
 # =========================================================================
-# Multi-Stage Dockerfile for Intevia AI Web Application (Next.js)
+# Multi-Stage Dockerfile for Knovy Web Application (Next.js)
 # =========================================================================
 # This Dockerfile builds the Next.js web application using a multi-stage
 # approach to optimize the final image size and security. The build process

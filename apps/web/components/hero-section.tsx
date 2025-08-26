@@ -144,7 +144,7 @@ export function HeroSection({
                   as="h1"
                   className={`mt-8 text-balance text-6xl md:text-7xl lg:mt-16 xl:text-[7.25rem] transition-colors duration-300`}
                 >
-                  INTEVIA AI
+                  {t("hero.brand")}
                 </TextEffect>
                 <TextEffect
                   per="line"
