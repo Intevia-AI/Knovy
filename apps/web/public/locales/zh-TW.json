@@ -154,7 +154,7 @@
   "auth.register.has_account_prompt": "已經有帳戶了？",
   "auth.register.login_link": "登入",
   "auth.form.password_placeholder": "••••••••",
-  "auth.validation.password_too_short_8": "密碼長度至少需 8 個字元。",
+  "auth.validation.password_too_short_12": "密碼長度至少需 12 個字元。",
   "auth.validation.terms_required": "您必須接受服務條款與隱私權政策。",
   "auth.validation.passwords_do_not_match": "密碼不相符。",
   "solution.description_p1": "INTEVIA 能理解您眼前的工作內容與需求，不再需要切換視窗找查資料。在您使用電腦的每一個當下，即時提供轉錄對話、總結現況及建議回應。讓您開啟",

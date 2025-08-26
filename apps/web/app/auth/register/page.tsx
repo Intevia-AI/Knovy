@@ -24,8 +24,8 @@ export default function RegisterPage() {
   const formSchema = z
     .object({
       email: z.string().email({ message: t("auth.validation.invalid_email") }),
-      password: z.string().min(8, {
-        message: t("auth.validation.password_too_short_8"),
+      password: z.string().min(12, {
+        message: t("auth.validation.password_too_short_12"),
       }),
       confirmPassword: z.string(),
       acceptTerms: z.boolean().refine((val) => val === true, {

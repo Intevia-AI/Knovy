@@ -22,8 +22,8 @@ export default function LoginPage() {
 
   const formSchema = z.object({
     email: z.string().email({ message: t("auth.validation.invalid_email") }),
-    password: z.string().min(6, {
-      message: t("auth.validation.password_too_short", { minLength: 6 }),
+    password: z.string().min(12, {
+      message: t("auth.validation.password_too_short").replace("{minLength}", "12"),
     }),
   });
 
