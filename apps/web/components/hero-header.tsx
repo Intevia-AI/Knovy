@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { Logo } from "./logo";
+import { LogoText } from "./logo";
 import { Menu, X } from "lucide-react";
 import React from "react";
 import { cn } from "@workspace/ui/lib/utils";
@@ -46,7 +46,7 @@ export const HeroHeader = () => {
                 aria-label="home"
                 className="flex items-center space-x-2"
               >
-                <Logo />
+                <LogoText />
               </Link>
 
               <button

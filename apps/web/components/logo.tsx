@@ -13,3 +13,16 @@ export const Logo = ({ className }: { className?: string }) => {
     />
   );
 };
+
+export const LogoText = ({ className }: { className?: string }) => {
+  return (
+    <Image
+      src="/meeting/intevia(+logo).svg"
+      alt="INTEVIA"
+      width={200}
+      height={100}
+      className={cn("h-8 w-auto", className)}
+      priority
+    />
+  );
+};

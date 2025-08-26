@@ -1,7 +1,5 @@
 "use client";
 
-"use client";
-
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 
@@ -11,6 +9,7 @@ import { TextEffect } from "@workspace/ui/components/text-effect";
 import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { useLanguage } from "@/context/language-context";
+import { Logo } from "./logo";
 
 interface HeroSectionProps {
   stripCount?: number;
@@ -123,6 +122,7 @@ export function HeroSection({
                   href="#"
                   className="hover:bg-background dark:hover:border-t-border bg-muted group mx-auto flex w-fit items-center gap-4 rounded-full border p-1 pl-4 shadow-md shadow-zinc-950/5 transition-colors duration-300 dark:border-t-white/5 dark:shadow-zinc-950"
                 >
+                  <Logo className="size-5" />
                   <span className={`text-sm transition-colors duration-300`}>
                     {t("hero.introducing")}
                   </span>
@@ -161,41 +161,6 @@ export function HeroSection({
                 </div>
               </div>
             </div>
-
-            {/* Feedback Section */}
-            {/* <div className="mt-12 max-w-xl mx-auto text-left px-6 pb-12">
-              <h3 className="text-xl font-semibold mb-2 text-center">
-                使用回饋
-              </h3>
-              <p className="mb-4 text-sm text-muted-foreground text-center">
-                我們只花了兩週時間開發這個原型，請幫助我們改進。
-              </p>
-              <textarea
-                placeholder="請在此輸入您的回饋..."
-                rows={4}
-                className="w-full rounded-md border bg-background p-3 text-sm focus:outline-none focus:ring-2 focus:ring-muted"
-                value={feedback}
-                onChange={(e) => setFeedback(e.target.value)}
-                disabled={isSubmitting}
-              />
-              <Button
-                className="mt-4 w-full"
-                onClick={handleFeedbackSubmit}
-                disabled={isSubmitting || !feedback.trim()}
-              >
-                {isSubmitting ? "送出中..." : "送出回饋"}
-              </Button>
-              {submitStatus === "success" && (
-                <p className="mt-2 text-sm text-green-600 text-center">
-                  感謝您的回饋！
-                </p>
-              )}
-              {submitStatus === "error" && (
-                <p className="mt-2 text-sm text-red-600 text-center">
-                  送出失敗，請稍後再試。
-                </p>
-              )}
-            </div> */}
           </div>
         </section>
       </main>

@@ -12,7 +12,7 @@ export default function FooterSection() {
         <div className="flex flex-row items-center md:items-center md:justify-between gap-8">
           {/* Left side - Logo and Copyright */}
           <div className="flex flex-row items-center md:items-center gap-2">
-            <Logo className="size-6" />
+            <Logo className="size-5" />
             <span className="ml-2 text-muted-foreground text-md items-center justify-center">
               {t("footer.copyright").replace("{year}", new Date().getFullYear().toString())}
             </span>
