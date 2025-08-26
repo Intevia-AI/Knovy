@@ -1,9 +1,11 @@
 import { Geist, Geist_Mono } from "next/font/google";
+import { headers } from 'next/headers';
 
 import "@workspace/ui/globals.css";
 import { Providers } from "@/components/providers";
 import { validateEnv } from "@/lib/validateEnv";
 import { LanguageProvider } from "@/context/language-context";
+import { getDictionary } from "@/lib/i18n";
 import { SpeedInsights } from "@vercel/speed-insights/next"
 import { Analytics } from "@vercel/analytics/next"
 
@@ -21,18 +23,34 @@ const fontMono = Geist_Mono({
   variable: "--font-mono",
 });
 
-export default function RootLayout({
+const getLocale = async () => {
+  const headersList = await headers();
+  const acceptLanguage = headersList.get('accept-language');
+  if (!acceptLanguage) return 'en';
+
+  if (acceptLanguage.includes('zh-TW')) return 'zh-TW';
+  if (acceptLanguage.includes('en')) return 'en';
+
+  return 'en';
+}
+
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const locale = await getLocale();
+  const dictionary = await getDictionary(locale);
+
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang={locale} suppressHydrationWarning>
       <body
         className={`${fontSans.variable} ${fontMono.variable} font-sans antialiased `}
       >
         <Providers>
-          <LanguageProvider>{children}</LanguageProvider>
+          <LanguageProvider initialLocale={locale} initialTranslations={dictionary}>
+            {children}
+          </LanguageProvider>
           <SpeedInsights />
           <Analytics />
         </Providers>

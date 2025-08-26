@@ -16,12 +16,18 @@ const LanguageContext = createContext<LanguageContextType | undefined>(undefined
 // Define the props for the provider
 interface LanguageProviderProps {
   children: ReactNode;
+  initialLocale: string;
+  initialTranslations: Record<string, string>;
 }
 
 // Create a provider component
-export const LanguageProvider: React.FC<LanguageProviderProps> = ({ children }) => {
-  const [locale, setLocale] = useState('zh-TW'); // Default language
-  const [translations, setTranslations] = useState<Record<string, string>>({});
+export const LanguageProvider: React.FC<LanguageProviderProps> = ({
+  children,
+  initialLocale,
+  initialTranslations,
+}) => {
+  const [locale, setLocale] = useState(initialLocale);
+  const [translations, setTranslations] = useState(initialTranslations);
 
   useEffect(() => {
     const fetchTranslations = async () => {
@@ -38,15 +44,35 @@ export const LanguageProvider: React.FC<LanguageProviderProps> = ({ children }) 
       }
     };
 
-    fetchTranslations();
-  }, [locale]);
+    if (locale !== initialLocale) {
+      fetchTranslations();
+    }
+  }, [locale, initialLocale]);
+
+  useEffect(() => {
+    const savedLocale = localStorage.getItem('locale');
+    if (savedLocale && savedLocale !== locale) {
+      setLocale(savedLocale);
+    } else if (!savedLocale) {
+      const browserLang = navigator.language;
+      const newLocale = browserLang.startsWith('zh') ? 'zh-TW' : 'en';
+      if (newLocale !== locale) {
+        setLocale(newLocale);
+      }
+    }
+  }, []); // Runs once on client-side
+
+  const handleSetLocale = (newLocale: string) => {
+    localStorage.setItem('locale', newLocale);
+    setLocale(newLocale);
+  };
 
   const t = (key: string): string => {
     return translations[key] || key;
   };
 
   return (
-    <LanguageContext.Provider value={{ locale, setLocale, t }}>
+    <LanguageContext.Provider value={{ locale, setLocale: handleSetLocale, t }}>
       {children}
     </LanguageContext.Provider>
   );
