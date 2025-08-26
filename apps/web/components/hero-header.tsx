@@ -2,18 +2,20 @@
 import Link from "next/link";
 import { Logo } from "./logo";
 import { Menu, X } from "lucide-react";
-import { Button } from "@workspace/ui/components/button";
 import React from "react";
 import { cn } from "@workspace/ui/lib/utils";
-
-const menuItems = [
-  { name: "首頁", href: "/#home" },
-  { name: "線上體驗", href: "#demo" },
-  { name: "功能介紹", href: "#features" },
-  { name: "聯絡我們", href: "#footer" },
-];
+import { useLanguage } from "@/context/language-context";
+import { LanguageSwitcher } from "./language-switcher";
 
 export const HeroHeader = () => {
+  const { t } = useLanguage();
+  const menuItems = [
+    { name: t("nav.home"), href: "/#home" },
+    { name: t("nav.demo"), href: "#demo" },
+    { name: t("nav.features"), href: "#features" },
+    { name: t("nav.contact"), href: "#footer" },
+  ];
+
   const [menuState, setMenuState] = React.useState(false);
   const [isScrolled, setIsScrolled] = React.useState(false);
 
@@ -88,28 +90,7 @@ export const HeroHeader = () => {
                 </ul>
               </div>
               <div className="flex w-full flex-col space-y-3 sm:flex-row sm:gap-3 sm:space-y-0 md:w-fit">
-                {/* <Link passHref href="/auth/login">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className={cn(isScrolled && "lg:hidden")}
-                  >
-                    <span>登入</span>
-                  </Button>
-                </Link>
-                <Link passHref href="/auth/register">
-                  <Button size="sm" className={cn(isScrolled && "lg:hidden")}>
-                    <span>註冊</span>
-                  </Button>
-                </Link> */}
-                {/* <Link passHref href="/auth/login">
-                  <Button
-                    size="sm"
-                    className={cn(isScrolled ? "lg:inline-flex" : "hidden")}
-                  >
-                    <span>開始使用</span>
-                  </Button>
-                </Link> */}
+                <LanguageSwitcher />
               </div>
             </div>
           </div>

@@ -34,8 +34,9 @@ const baseUrl = 'https://intevia.app';
 
 export const WaitlistWelcomeEmail = ({
   username,
+  locale,
 }: WaitlistWelcomeEmailProps) => {
-  const t = translations.zh;
+  const t = translations[locale as keyof typeof translations] || translations["zh-TW"];
   return (
     <Html>
       <Head />

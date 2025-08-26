@@ -1,7 +1,11 @@
+"use client";
+
 import { Logo } from "@/components/logo";
+import { useLanguage } from "@/context/language-context";
 import Link from "next/link";
 
 export default function FooterSection() {
+  const { t } = useLanguage();
   return (
     <footer className="py-8 md:py-16" id="footer">
       <div className="mx-auto max-w-5xl px-6">
@@ -10,7 +14,7 @@ export default function FooterSection() {
           <div className="flex flex-row items-center md:items-center gap-2">
             <Logo className="size-6" />
             <span className="ml-2 text-muted-foreground text-md items-center justify-center">
-              © {new Date().getFullYear()} INTEVIA AI 版權所有
+              {t("footer.copyright").replace("{year}", new Date().getFullYear().toString())}
             </span>
           </div>
 

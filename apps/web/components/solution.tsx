@@ -1,16 +1,22 @@
 "use client";
+"use client";
+
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@workspace/ui/components/accordion";
 import { Briefcase, Play, Settings } from "lucide-react";
+import { useLanguage } from "@/context/language-context";
 
 export function Solution() {
+  const { t } = useLanguage();
   return (
     <div className="relative z-10 mx-auto max-w-5xl space-y-12 py-12 md:py-20 lg:py-24">
       <div className="space-y-6 text-center">
         <h2 className="text-balance text-3xl font-semibold lg:text-4xl text-center">
-          INTEVIA：您的聰明好夥伴
+          {t("solution.title")}
         </h2>
         <p className="text-lg text-muted-foreground">
-          INTEVIA 能理解您眼前的工作內容與需求，不再需要切換視窗找查資料。在您使用電腦的每一個當下，即時提供轉錄對話、總結現況及建議回應。讓您開啟<span className="font-bold">「知識加速器（Knowledge Buff）」</span>，大幅減少操作負擔，專注於最核心的輸出。
+          {t("solution.description_p1")}
+          <span className="font-bold">{t("solution.description_highlight")}</span>
+          {t("solution.description_p2")}
         </p>
       </div>
       <WorkingStages />
@@ -20,6 +26,7 @@ export function Solution() {
 }
 
 function WorkingStages() {
+  const { t } = useLanguage();
   return (
     <div className="relative z-10 mx-auto max-w-5xl space-y-12">
       <div className="grid gap-8 md:grid-cols-3">
@@ -28,12 +35,12 @@ function WorkingStages() {
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
               <Settings className="h-6 w-6 text-primary" />
             </div>
-            <h3 className="text-xl font-semibold">會議前</h3>
+            <h3 className="text-xl font-semibold">{t("solution.stage1.title")}</h3>
           </div>
           <ul className="list-disc space-y-2 pl-5 text-muted-foreground">
-            <li>設定會議目標、主題、成員</li>
-            <li>上傳相關文件（如議程和履歷）</li>
-            <li>設定語言偏好</li>
+            <li>{t("solution.stage1.item1")}</li>
+            <li>{t("solution.stage1.item2")}</li>
+            <li>{t("solution.stage1.item3")}</li>
           </ul>
         </div>
         <div className="space-y-4 rounded-lg border bg-card p-6">
@@ -41,14 +48,14 @@ function WorkingStages() {
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
               <Play className="h-6 w-6 text-primary" />
             </div>
-            <h3 className="text-xl font-semibold">會議中</h3>
+            <h3 className="text-xl font-semibold">{t("solution.stage2.title")}</h3>
           </div>
           <ul className="list-disc space-y-2 pl-5 text-muted-foreground">
-            <li>即時字幕、摘要</li>
-            <li>推薦應答</li>
-            <li>關鍵字搜尋</li>
-            <li>理解畫面內容</li>
-            <li>Agent 代理任務（開發中）</li>
+            <li>{t("solution.stage2.item1")}</li>
+            <li>{t("solution.stage2.item2")}</li>
+            <li>{t("solution.stage2.item3")}</li>
+            <li>{t("solution.stage2.item4")}</li>
+            <li>{t("solution.stage2.item5")}</li>
           </ul>
         </div>
         <div className="space-y-4 rounded-lg border bg-card p-6">
@@ -56,13 +63,13 @@ function WorkingStages() {
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
               <Briefcase className="h-6 w-6 text-primary" />
             </div>
-            <h3 className="text-xl font-semibold">會議後</h3>
+            <h3 className="text-xl font-semibold">{t("solution.stage3.title")}</h3>
           </div>
           <ul className="list-disc space-y-2 pl-5 text-muted-foreground">
-            <li>完整逐字稿、摘要</li>
-            <li>待辦事項、任務時程</li>
-            <li>表現評分與建議</li>
-            <li>Agent 代理任務（開發中）</li>
+            <li>{t("solution.stage3.item1")}</li>
+            <li>{t("solution.stage3.item2")}</li>
+            <li>{t("solution.stage3.item3")}</li>
+            <li>{t("solution.stage3.item4")}</li>
           </ul>
         </div>
       </div>

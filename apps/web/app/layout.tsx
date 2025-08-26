@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "@workspace/ui/globals.css";
 import { Providers } from "@/components/providers";
 import { validateEnv } from "@/lib/validateEnv";
+import { LanguageProvider } from "@/context/language-context";
 
 // Validate environment variables on application startup
 // This runs server-side during Next.js initialization
@@ -28,7 +29,7 @@ export default function RootLayout({
       <body
         className={`${fontSans.variable} ${fontMono.variable} font-sans antialiased `}
       >
-        <Providers>{children}</Providers>
+        <Providers><LanguageProvider>{children}</LanguageProvider></Providers>
       </body>
     </html>
   );

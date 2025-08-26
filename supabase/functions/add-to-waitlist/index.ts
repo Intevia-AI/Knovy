@@ -65,9 +65,15 @@ serve(async (req) => {
     }
 
     // Send the welcome email
+    const emailSubjects = {
+      "en": "Welcome to Knovy!",
+      "zh-TW": "歡迎來到 Knovy！",
+    };
+
     const emailHtml = renderToString(
       WaitlistWelcomeEmail({
         username: email.split("@")[0],
+        locale: locale || "zh-TW",
       })
     );
 
@@ -75,7 +81,7 @@ serve(async (req) => {
       from: "info@intevia.app",
       to: email,
       replyTo: "info@intevia.app",
-      subject: "Welcome to Knovy!",
+      subject: emailSubjects[locale as keyof typeof emailSubjects] || emailSubjects["zh-TW"],
       html: emailHtml,
     });
 

@@ -10,6 +10,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { Button } from "@workspace/ui/components/button";
 import { MonitorIcon, MonitorOffIcon, Pause } from "lucide-react";
+import { useLanguage } from "@/context/language-context";
 import { GeminiClient } from "../app/api/ai/proxy/geminiClient";
 
 /**
@@ -43,6 +44,7 @@ export default function RealTimeAnalysis({
   onStreamsReady,
   onIsActiveChange,
 }: RealTimeAnalysisProps) {
+  const { t } = useLanguage();
   // State for component operation
   const [isActive, setIsActive] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -107,10 +109,10 @@ export default function RealTimeAnalysis({
       onStreamsReady({ mic: null, system: null, screen: null });
 
       if (notifyUser) {
-        alert("Session has ended after 5 minutes.");
+        alert(t("demo.session_ended_alert"));
       }
     },
-    [onIsActiveChange, onStreamsReady],
+    [onIsActiveChange, onStreamsReady, t],
   );
 
   useEffect(() => {
@@ -128,7 +130,7 @@ export default function RealTimeAnalysis({
         ) {
           // Extract keywords using regex
           const transcriptionMatch = textBufferRef.current.match(
-            /TRANSCRIPTION: (.*?)(?:\n|$)KEYWORDS:/s,
+            /TRANSCRIPTION: (.*?)(?:\n|$|$|$)KEYWORDS:/s,
           );
           const keywordsMatch = textBufferRef.current.match(
             /KEYWORDS: (.*?)(?:\n|$)/s,
@@ -252,7 +254,7 @@ export default function RealTimeAnalysis({
           systemRecorder.onstop = () => {
             if (systemAudioChunksRef.current.length > 0) {
               const blob = new Blob(systemAudioChunksRef.current, { 
-                type: "audio/webm;codecs=opus" 
+                type: "audio/webm;codecs=opus"
               });
               if (blob.size > 0) {
                 console.log("[RealTimeAnalysis] Dispatching system audio segment:", blob.size, "bytes");
@@ -276,7 +278,7 @@ export default function RealTimeAnalysis({
               setTimeout(() => {
                 if (systemAudioStream && systemAudioRecorderRef.current) {
                   const newRecorder = new MediaRecorder(systemAudioStream, { 
-                    mimeType: "audio/webm;codecs=opus" 
+                    mimeType: "audio/webm;codecs=opus"
                   });
                   
                   newRecorder.ondataavailable = (e) => {
@@ -288,7 +290,7 @@ export default function RealTimeAnalysis({
                   newRecorder.onstop = () => {
                     if (systemAudioChunksRef.current.length > 0) {
                       const blob = new Blob(systemAudioChunksRef.current, { 
-                        type: "audio/webm;codecs=opus" 
+                        type: "audio/webm;codecs=opus"
                       });
                       if (blob.size > 0) {
                         console.log("[RealTimeAnalysis] Dispatching system audio segment (restart):", blob.size, "bytes");
@@ -312,9 +314,7 @@ export default function RealTimeAnalysis({
         }
       } else {
         console.warn("No system audio track found.");
-        alert(
-          "無法擷取系統音訊，錄音將只包含麥克風。若要錄製系統音訊，請在分享畫面時確認已勾選分享音訊選項。",
-        );
+        alert(t("demo.system_audio_error"));
         systemAudioStream = null;
       }
 
@@ -335,7 +335,7 @@ export default function RealTimeAnalysis({
       );
     } catch (error) {
       console.error("Error starting session:", error);
-      alert(`Failed to start session: ${error}`);
+      alert(t("demo.session_start_error") + error);
       stopSession();
     } finally {
       setIsProcessing(false);
@@ -366,10 +366,10 @@ export default function RealTimeAnalysis({
           <MonitorIcon className="h-4 w-4" />
         )}
         {isProcessing
-          ? "處理中..."
+          ? t("demo.status.processing")
           : isActive
-            ? "停止錄製"
-            : "開始錄製"}
+            ? t("demo.button.stop")
+            : t("demo.button.start")}
       </Button>
 
       {isActive && (
@@ -381,7 +381,7 @@ export default function RealTimeAnalysis({
         </div>
       )}
       <p className="text-xs text-muted-foreground">
-        測試體驗將在 5 分鐘後自動停止
+        {t("demo.session_timeout_notice")}
       </p>
     </div>
   );

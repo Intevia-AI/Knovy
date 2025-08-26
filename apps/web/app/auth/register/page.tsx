@@ -11,31 +11,32 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-  FormDescription,
 } from "@workspace/ui/components/form";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import Link from "next/link";
-
-// Define form schema with Zod
-const formSchema = z
-  .object({
-    email: z.string().email({ message: "Please enter a valid email address." }),
-    password: z.string().min(8, {
-      message: "Password must be at least 8 characters.",
-    }),
-    confirmPassword: z.string(),
-    acceptTerms: z.boolean().refine((val) => val === true, {
-      message: "You must accept the terms and conditions.",
-    }),
-  })
-  .refine((data) => data.password === data.confirmPassword, {
-    message: "Passwords do not match.",
-    path: ["confirmPassword"],
-  });
+import { useLanguage } from "@/context/language-context";
 
 export default function RegisterPage() {
+  const { t } = useLanguage();
+
+  const formSchema = z
+    .object({
+      email: z.string().email({ message: t("auth.validation.invalid_email") }),
+      password: z.string().min(8, {
+        message: t("auth.validation.password_too_short_8"),
+      }),
+      confirmPassword: z.string(),
+      acceptTerms: z.boolean().refine((val) => val === true, {
+        message: t("auth.validation.terms_required"),
+      }),
+    })
+    .refine((data) => data.password === data.confirmPassword, {
+      message: t("auth.validation.passwords_do_not_match"),
+      path: ["confirmPassword"],
+    });
+
   // Initialize form with React Hook Form
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -62,9 +63,9 @@ export default function RegisterPage() {
               <Logo />
             </Link>
             <h1 className="mb-1 mt-4 text-xl font-semibold">
-              Create an Account
+              {t("auth.register.title")}
             </h1>
-            <p className="text-sm">Sign up to get started with your account</p>
+            <p className="text-sm">{t("auth.register.subtitle")}</p>
           </div>
 
           <Form {...form}>
@@ -78,13 +79,13 @@ export default function RegisterPage() {
                 render={({ field }) => (
                   <FormItem className="space-y-2">
                     <FormLabel htmlFor="email" className="block text-sm">
-                      Email
+                      {t("auth.form.email_label")}
                     </FormLabel>
                     <FormControl>
                       <Input
                         type="email"
                         id="email"
-                        placeholder="name@example.com"
+                        placeholder={t("auth.form.email_placeholder")}
                         {...field}
                       />
                     </FormControl>
@@ -99,13 +100,13 @@ export default function RegisterPage() {
                 render={({ field }) => (
                   <FormItem className="space-y-2">
                     <FormLabel htmlFor="password" className="block text-sm">
-                      Password
+                      {t("auth.form.password_label")}
                     </FormLabel>
                     <FormControl>
                       <Input
                         type="password"
                         id="password"
-                        placeholder="••••••••"
+                        placeholder={t("auth.form.password_placeholder")}
                         {...field}
                       />
                     </FormControl>
@@ -123,13 +124,13 @@ export default function RegisterPage() {
                       htmlFor="confirmPassword"
                       className="block text-sm"
                     >
-                      Confirm Password
+                      {t("auth.form.confirm_password_label")}
                     </FormLabel>
                     <FormControl>
                       <Input
                         type="password"
                         id="confirmPassword"
-                        placeholder="••••••••"
+                        placeholder={t("auth.form.password_placeholder")}
                         {...field}
                       />
                     </FormControl>
@@ -151,22 +152,22 @@ export default function RegisterPage() {
                     </FormControl>
                     <div className="space-y-1 text-sm leading-none">
                       <FormLabel className=" font-normal">
-                        I agree to the{" "}
+                        {t("auth.register.terms_prefix")}
                       </FormLabel>
                       <Link
                         target="_blank"
                         href="/privacy"
                         className="text-primary underline"
                       >
-                        Terms of Service
-                      </Link>{" "}
-                      and{" "}
+                        {t("auth.register.terms_of_service")}
+                      </Link>
+                      {t("auth.register.terms_conjunction")}
                       <Link
                         target="_blank"
                         href="/terms"
                         className="text-primary underline"
                       >
-                        Privacy Policy
+                        {t("auth.register.privacy_policy")}
                       </Link>
                       <FormMessage />
                     </div>
@@ -175,7 +176,7 @@ export default function RegisterPage() {
               />
 
               <Button type="submit" className="w-full">
-                Create Account
+                {t("auth.register.submit_button")}
               </Button>
             </form>
           </Form>
@@ -183,7 +184,7 @@ export default function RegisterPage() {
           <div className="my-6 grid grid-cols-[1fr_auto_1fr] items-center gap-3">
             <hr className="border-dashed" />
             <span className="text-muted-foreground text-xs">
-              Or sign up with
+              {t("auth.register.continue_with_divider")}
             </span>
             <hr className="border-dashed" />
           </div>
@@ -214,16 +215,16 @@ export default function RegisterPage() {
                   d="M130.55 50.479c24.514 0 41.05 10.589 50.479 19.438l36.844-35.974C195.245 12.91 165.798 0 130.55 0C79.49 0 35.393 29.301 13.925 71.947l42.211 32.783c10.59-31.477 39.891-54.251 74.414-54.251"
                 ></path>
               </svg>
-              Google
+              {t("auth.form.google_button")}
             </Button>
           </div>
         </div>
 
         <div className="p-3">
           <p className="text-accent-foreground text-center text-sm">
-            Already have an account?
+            {t("auth.register.has_account_prompt")}
             <Button variant="link" className="px-2">
-              <Link href="/auth/login">Sign in</Link>
+              <Link href="/auth/login">{t("auth.register.login_link")}</Link>
             </Button>
           </p>
         </div>

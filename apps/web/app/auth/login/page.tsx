@@ -15,16 +15,18 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import Link from "next/link";
-
-// Define form schema with Zod
-const formSchema = z.object({
-  email: z.string().email({ message: "Please enter a valid email address." }),
-  password: z
-    .string()
-    .min(6, { message: "Password must be at least 6 characters." }),
-});
+import { useLanguage } from "@/context/language-context";
 
 export default function LoginPage() {
+  const { t } = useLanguage();
+
+  const formSchema = z.object({
+    email: z.string().email({ message: t("auth.validation.invalid_email") }),
+    password: z.string().min(6, {
+      message: t("auth.validation.password_too_short", { minLength: 6 }),
+    }),
+  });
+
   // Initialize form with React Hook Form
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -49,9 +51,9 @@ export default function LoginPage() {
               <Logo />
             </Link>
             <h1 className="mb-1 mt-4 text-xl font-semibold">
-              Sign In to Invetia AI
+              {t("auth.login.title")}
             </h1>
-            <p className="text-sm">Welcome back! Sign in to continue</p>
+            <p className="text-sm">{t("auth.login.subtitle")}</p>
           </div>
 
           <Form {...form}>
@@ -65,13 +67,13 @@ export default function LoginPage() {
                 render={({ field }) => (
                   <FormItem className="space-y-2">
                     <FormLabel htmlFor="email" className="block text-sm">
-                      Email
+                      {t("auth.form.email_label")}
                     </FormLabel>
                     <FormControl>
                       <Input
                         type="email"
                         id="email"
-                        placeholder="name@example.com"
+                        placeholder={t("auth.form.email_placeholder")}
                         {...field}
                       />
                     </FormControl>
@@ -90,14 +92,14 @@ export default function LoginPage() {
                         htmlFor="password"
                         className="text-title text-sm"
                       >
-                        Password
+                        {t("auth.form.password_label")}
                       </FormLabel>
                       <Button variant="link" size="sm">
                         <Link
                           href="/auth/forgot-password"
                           className="link intent-info variant-ghost text-sm"
                         >
-                          Forgot your Password?
+                          {t("auth.login.forgot_password")}
                         </Link>
                       </Button>
                     </div>
@@ -115,7 +117,7 @@ export default function LoginPage() {
               />
 
               <Button type="submit" className="w-full">
-                Sign In
+                {t("auth.login.submit_button")}
               </Button>
             </form>
           </Form>
@@ -123,7 +125,7 @@ export default function LoginPage() {
           <div className="my-6 grid grid-cols-[1fr_auto_1fr] items-center gap-3">
             <hr className="border-dashed" />
             <span className="text-muted-foreground text-xs">
-              Or continue With
+              {t("auth.form.continue_with_divider")}
             </span>
             <hr className="border-dashed" />
           </div>
@@ -154,17 +156,17 @@ export default function LoginPage() {
                   d="M130.55 50.479c24.514 0 41.05 10.589 50.479 19.438l36.844-35.974C195.245 12.91 165.798 0 130.55 0C79.49 0 35.393 29.301 13.925 71.947l42.211 32.783c10.59-31.477 39.891-54.251 74.414-54.251"
                 ></path>
               </svg>
-              Google
+              {t("auth.form.google_button")}
             </Button>
           </div>
         </div>
 
         <div className="p-3">
           <p className="text-accent-foreground text-center text-sm">
-            Don't have an account?
+            {t("auth.login.no_account_prompt")}
             <Link href="/auth/register">
               <Button variant="link" className="px-2">
-                Create account
+                {t("auth.login.create_account_link")}
               </Button>
             </Link>
           </p>

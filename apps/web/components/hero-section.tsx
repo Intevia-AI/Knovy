@@ -1,5 +1,7 @@
 "use client";
 
+"use client";
+
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 
@@ -8,6 +10,7 @@ import { TextEffect } from "@workspace/ui/components/text-effect";
 // import { Button } from "@workspace/ui/components/button";
 import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
+import { useLanguage } from "@/context/language-context";
 
 interface HeroSectionProps {
   stripCount?: number;
@@ -18,6 +21,7 @@ export function HeroSection({
   stripCount = 5,
   animationDuration = 1.25
 }: HeroSectionProps = {}) {
+  const { t } = useLanguage();
   // const [feedback, setFeedback] = useState("");
   // const [isSubmitting, setIsSubmitting] = useState(false);
   // const [submitStatus, setSubmitStatus] = useState<
@@ -120,7 +124,7 @@ export function HeroSection({
                   className="hover:bg-background dark:hover:border-t-border bg-muted group mx-auto flex w-fit items-center gap-4 rounded-full border p-1 pl-4 shadow-md shadow-zinc-950/5 transition-colors duration-300 dark:border-t-white/5 dark:shadow-zinc-950"
                 >
                   <span className={`text-sm transition-colors duration-300`}>
-                    隆重介紹：全方位 AI 開會神器
+                    {t("hero.introducing")}
                   </span>
                   <div className="bg-background group-hover:bg-muted size-6 overflow-hidden rounded-full duration-500">
                     <div className="flex w-12 -translate-x-1/2 duration-500 ease-in-out group-hover:translate-x-0">
@@ -150,7 +154,7 @@ export function HeroSection({
                   as="h3"
                   className={`mt-4 text-balance text-xl md:text-2xl lg:mt-8 xl:text-[2.20rem] transition-colors duration-300`}
                 >
-                  Your All-in-One AI working assistant
+                  {t("hero.tagline")}
                 </TextEffect>
                 <div className="mt-8 flex justify-center">
                   <WaitlistForm />

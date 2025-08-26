@@ -1,5 +1,8 @@
+"use client";
+
 import { cn } from "@workspace/ui/lib/utils";
 import Image from "next/image";
+import { useLanguage } from "@/context/language-context";
 
 // Placeholder Logos for Meeting Software
 const GoogleMeet = () => (
@@ -64,6 +67,7 @@ const InteviaLogo = () => (
 );
 
 export function IntegrationsSection() {
+  const { t } = useLanguage();
   return (
     <section>
       <div className="bg-muted dark:bg-background py-24 md:py-32">
@@ -102,13 +106,8 @@ export function IntegrationsSection() {
               </div> */}
             </div>
             <div className="mx-auto mt-6 max-w-lg space-y-6 text-center sm:mt-0 sm:text-left">
-              <h2 className="text-balance text-3xl font-semibold md:text-4xl">
-                適用於您常用的會議軟體
-              </h2>
-              <p className="text-muted-foreground">
-                INTEVIA AI 在背景運作，並能無縫整合 Google Meet、Zoom、Microsoft
-                Teams、Webex 等常用平台。
-              </p>
+              <h2 className="text-balance text-3xl font-semibold md:text-4xl">{t("integrations.title")}</h2>
+              <p className="text-muted-foreground">{t("integrations.description")}</p>
             </div>
           </div>
         </div>
