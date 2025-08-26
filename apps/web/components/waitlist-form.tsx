@@ -2,7 +2,6 @@
 
 import { useLanguage } from "@/context/language-context";
 import { createClient } from "@supabase/supabase-js";
-import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
@@ -11,7 +10,6 @@ import {
   FormControl,
   FormField,
   FormItem,
-  FormMessage,
 } from "@workspace/ui/components/form";
 import { Toaster, toast } from "sonner";
 import { useForm } from "react-hook-form";
@@ -30,13 +28,29 @@ export function WaitlistForm() {
   });
 
   const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
+    mode: "onSubmit", // Only validate on submit to avoid real-time errors
     defaultValues: {
       email: "",
     },
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
+    // Clear any previous validation errors
+    form.clearErrors();
+    
+    // Validate the form manually and show toast if invalid
+    const validationResult = formSchema.safeParse(values);
+    if (!validationResult.success) {
+      const emailError = validationResult.error.errors.find(err => err.path[0] === 'email');
+      if (emailError) {
+        toast.error(emailError.message, {
+          // description: emailError.message,
+          duration: 4000,
+        });
+        return;
+      }
+    }
+
     await supabase.functions.invoke("add-to-waitlist", {
       body: { ...values, locale },
     }).then((res) => {
@@ -76,7 +90,6 @@ export function WaitlistForm() {
                     {...field}
                   />
                 </FormControl>
-                <FormMessage />
               </FormItem>
             )}
           />
