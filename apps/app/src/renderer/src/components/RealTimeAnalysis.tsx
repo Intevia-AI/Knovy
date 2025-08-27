@@ -101,9 +101,11 @@ export default function RealTimeAnalysis({
 
         audioWorkletNode.port.onmessage = (event) => {
             const { pcmData } = event.data;
+            console.log("[RealTimeAnalysis] Received data from AudioWorkletNode. PCM data size:", pcmData.byteLength); // New log
             if (geminiClientRef.current && shouldSendAudioRef.current) {
                 try {
                     const pcmArray = new Uint8Array(pcmData);
+                    console.log("[RealTimeAnalysis] Sending PCM data chunk, size:", pcmArray.length);
                     const b64Data = btoa(String.fromCharCode.apply(null, Array.from(pcmArray)));
                     geminiClientRef.current.sendMediaChunk(b64Data, "audio/pcm");
                 } catch (error) {

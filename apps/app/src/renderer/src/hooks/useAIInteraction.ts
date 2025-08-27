@@ -204,73 +204,82 @@ export function useAIInteraction() {
     }
   }, [isScreenSharing, startAudioProcessing, stopAudioProcessing]);
 
-  const startSession = useCallback(async () => {
-    if (window.electronAPI) {
-      const newSession = {
-        id: `session-${Date.now()}`,
-        started_at: new Date().toISOString(),
-        status: 'active'
-      }
-      const { id } = await window.electronAPI.createSession(newSession)
-      setCurrentSessionId(id);
-      sessionIdRef.current = id;
-      console.log('Started new session:', id)
-
-      geminiClientRef.current = new GeminiClient(
-        (text, turnComplete) => { 
-            console.log('[GeminiClient Message]:', text, 'Turn Complete:', turnComplete);
-        },
-        () => { 
-            console.log('[GeminiClient] Setup complete.');
-            shouldSendAudioRef.current = true;
-        },
-        () => {}, // onTranscription
-        () => {}, // onKeywords
-        (text) => { 
-            const transcriptionMatch = text.match(/TRANSCRIPTION:\s*(.*)/);
-            const keywordsMatch = text.match(/KEYWORDS:\s*(.*)/);
-
-            if (transcriptionMatch && transcriptionMatch[1]) {
-                const transcription = transcriptionMatch[1].trim();
-                if (transcription) {
-                    handleTranscriptionResponse(transcription);
-                }
-            }
-
-            if (keywordsMatch && keywordsMatch[1]) {
-                const keywords = keywordsMatch[1].split(',').map(k => k.trim()).filter(k => k);
-                if (keywords.length > 0) {
-                    handleTranscriptionKeywords(keywords);
-                }
-            }
-        },
-        'transcription',
-        customPrompt,
-        language
-      );
-      await geminiClientRef.current.connect();
-    }
-  }, [customPrompt, language, handleTranscriptionResponse, handleTranscriptionKeywords])
-
-  const endSession = useCallback(async () => {
-    if (geminiClientRef.current) {
-        geminiClientRef.current.disconnect();
-        geminiClientRef.current = null;
-    }
-    if (window.electronAPI && sessionIdRef.current) {
-      await window.electronAPI.endSession(sessionIdRef.current)
-      console.log('Ended session:', sessionIdRef.current)
-      setCurrentSessionId(null);
-      sessionIdRef.current = null;
-    }
-  }, [])
-
   useEffect(() => {
-    startSession();
+    let currentGeminiClient: GeminiClient | null = null;
+
+    const initializeSessionAndClient = async () => {
+      console.trace('[AIInteraction] initializeSessionAndClient called');
+      if (window.electronAPI) {
+        const newSession = {
+          id: `session-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`, // More unique ID
+          started_at: new Date().toISOString(),
+          status: 'active'
+        }
+        try {
+          const { id } = await window.electronAPI.createSession(newSession)
+          setCurrentSessionId(id);
+          sessionIdRef.current = id;
+          console.log('Started new session:', id)
+
+          currentGeminiClient = new GeminiClient(
+            (text, turnComplete) => { 
+                console.log('[GeminiClient Message]:', text, 'Turn Complete:', turnComplete);
+            },
+            () => { 
+                console.log('[GeminiClient] Setup complete.');
+                shouldSendAudioRef.current = true;
+            },
+            () => {}, // onPlayingStateChange
+            () => {}, // onAudioLevelChange
+            (text) => { 
+                const transcriptionMatch = text.match(/TRANSCRIPTION:\s*(.*)/);
+                const keywordsMatch = text.match(/KEYWORDS:\s*(.*)/);
+
+                if (transcriptionMatch && transcriptionMatch[1]) {
+                    const transcription = transcriptionMatch[1].trim();
+                    if (transcription) {
+                        handleTranscriptionResponse(transcription);
+                    }
+                }
+
+                if (keywordsMatch && keywordsMatch[1]) {
+                    const keywords = keywordsMatch[1].split(',').map(k => k.trim()).filter(k => k);
+                    if (keywords.length > 0) {
+                        handleTranscriptionKeywords(keywords);
+                    }
+                }
+            },
+            'transcription',
+            customPrompt,
+            language
+          );
+          geminiClientRef.current = currentGeminiClient; // Assign to ref
+          await currentGeminiClient.connect();
+        } catch (error) {
+          console.error('[AIInteraction] Error creating session or connecting GeminiClient:', error);
+        }
+      }
+    };
+
+    const cleanupSessionAndClient = async () => {
+      if (currentGeminiClient) {
+          currentGeminiClient.disconnect();
+          currentGeminiClient = null;
+      }
+      if (window.electronAPI && sessionIdRef.current) {
+        await window.electronAPI.endSession(sessionIdRef.current)
+        console.log('Ended session:', sessionIdRef.current)
+        setCurrentSessionId(null);
+        sessionIdRef.current = null;
+      }
+    };
+
+    initializeSessionAndClient();
+
     return () => {
-        endSession();
-    }
-  }, [startSession, endSession]);
+      cleanupSessionAndClient();
+    };
+  }, [customPrompt, language, handleTranscriptionResponse, handleTranscriptionKeywords]);
 
   const gatherContext = useCallback(
     async (action?: AIAction): Promise<AIContextData | null> => {

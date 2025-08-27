@@ -22,7 +22,6 @@ export function SettingsPopup({ customPrompt, setCustomPrompt, isScreenSharing, 
     { code: 'zh-TW', name: '繁體中文' },
     { code: 'en-US', name: 'English' },
     { code: 'ja-JP', name: '日本語' },
-    { code: 'original', name: 'Original' }
   ]
 
   const handleLanguageChange = (value: string) => {
@@ -35,15 +34,15 @@ export function SettingsPopup({ customPrompt, setCustomPrompt, isScreenSharing, 
   }
 
   return (
-    <div className="grid gap-4 p-3 glass-popover">
+    <div className="grid gap-2 p-2 bg-muted/10 rounded-2xl">
       <div className="space-y-1.5">
-        <Label htmlFor="language" className="text-xs text-gray-300">Language</Label>
+        <Label htmlFor="language" className="text-xs text-black">Language</Label>
         <Select value={language || 'zh-TW'} onValueChange={handleLanguageChange}>
-          <SelectTrigger className="w-full h-8 text-xs bg-black/20 border-white/20 text-gray-200">
-            <LanguagesIcon className="h-3 w-3 mr-1.5" />
+          <SelectTrigger className="w-full h-8 text-xs bg-black/20 border-white/20 text-black">
+            <LanguagesIcon className="h-3 w-3" />
             <SelectValue placeholder={t('languageSelectPlaceholder')} />
           </SelectTrigger>
-          <SelectContent className="bg-background/80 backdrop-blur-md border-white/20 text-gray-200">
+          <SelectContent className="bg-muted/80 backdrop-blur-md border-white/20 text-black">
             {languages.map((lang) => (
               <SelectItem key={lang.code} value={lang.code} className="text-xs">
                 {lang.name}
@@ -53,7 +52,7 @@ export function SettingsPopup({ customPrompt, setCustomPrompt, isScreenSharing, 
         </Select>
       </div>
       <div className="space-y-1.5">
-        <Label htmlFor="custom-prompt" className="text-xs text-gray-300">Custom Prompt</Label>
+        <Label htmlFor="custom-prompt" className="text-xs text-black">Custom Prompt</Label>
         <Textarea
           id="custom-prompt"
           placeholder="Enter a custom prompt for the AI..."

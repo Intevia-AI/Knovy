@@ -40,9 +40,12 @@ export const useI18n = () => {
    * @returns {string} The translated string or the key itself if translation is missing
    */
   const t = (key: TranslationKey): string => {
+    if (language === "original") {
+      return key;
+    }
     // Basic lookup, can be enhanced with fallback logic
-    const langTranslations = translations[language];
-    return langTranslations[key] || key; // Return key if translation is missing
+    const langTranslations = translations[language as keyof typeof translations];
+    return langTranslations?.[key] || key; // Return key if translation is missing
   };
 
   return { t, language };

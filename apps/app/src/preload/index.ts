@@ -88,6 +88,7 @@ const api = {
       'source-picker:select',
       'source-picker:cancel',
       'popover:close',
+      'popover:close-all', // Added this channel
       'popover:sendMessage',
       'electronAPI:requestSources'
     ]

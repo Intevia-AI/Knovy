@@ -16,13 +16,7 @@ export function ScreenPreviewPopup({ isScreenSharing, screenStreamRef }: ScreenP
   }, [isScreenSharing, screenStreamRef]);
 
   return (
-    <div className="grid gap-4 p-4">
-      <div className="space-y-2">
-        <h4 className="font-medium leading-none">Screen Preview</h4>
-        <p className="text-sm text-muted-foreground">
-          This is a preview of your shared screen.
-        </p>
-      </div>
+    <div className="grid gap-4 p-4 bg-muted/10 rounded-2xl">
       <video ref={videoRef} autoPlay muted className="w-full rounded-md border bg-muted" />
     </div>
   );

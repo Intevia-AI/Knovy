@@ -321,4 +321,4 @@ export type TranslationKey =
  * 
  * @typedef {string} SupportedLanguage
  */
-export type SupportedLanguage = keyof typeof translations;
+export type SupportedLanguage = keyof typeof translations | "original";

@@ -6,7 +6,7 @@ import { is } from '@electron-toolkit/utils'
 // Hooks
 import { useElectron } from '@/hooks/useElectron'
 import { useScreenShare } from '@/hooks/useScreenShare'
-import { useAIInteraction } from '@/hooks/useAIInteraction'
+import { useAIInteraction } from '@/hooks/useAIInteraction' // Moved to top-level
 import { useLanguage } from '@/context/LanguageContext'
 
 // Components
@@ -37,7 +37,7 @@ export function Main() {
   const { isScreenSharing, toggleScreenShare, screenStreamRef, currentSystemAudioStream } =
     useScreenShare()
 
-  // AI Interaction Logic
+  // AI Interaction Logic (Moved to top-level)
   const {
     aiMessages,
     isLoading,
@@ -51,7 +51,11 @@ export function Main() {
     handleTranscriptionKeywords
   } = useAIInteraction()
 
+  // Popover Visibility States
   const [isTranscriptionWindowVisible, setIsTranscriptionWindowVisible] = useState(false)
+  const [isFeaturesWindowVisible, setIsFeaturesWindowVisible] = useState(false)
+  const [isSettingsWindowVisible, setIsSettingsWindowVisible] = useState(false)
+  const [isScreenPreviewWindowVisible, setIsScreenPreviewWindowVisible] = useState(false)
 
   // --- Effects ------------------------------------------------
   useEffect(() => {
@@ -72,10 +76,21 @@ export function Main() {
     }
   }, [handleSendMessage])
 
+  // Helper to close all popovers
+  const closeAllPopovers = () => {
+    window.electronAPI.send('popover:close-all')
+    setIsTranscriptionWindowVisible(false)
+    setIsFeaturesWindowVisible(false)
+    setIsSettingsWindowVisible(false)
+    setIsScreenPreviewWindowVisible(false)
+  }
+
+  // Toggle functions for each popover
   const handleToggleTranscriptionWindow = () => {
     if (isTranscriptionWindowVisible) {
       window.electronAPI.send('popover:close', 'transcriptions')
     } else {
+      closeAllPopovers() // Close others before opening new one
       window.electronAPI.invoke('popover:create', {
         id: 'transcriptions',
         hash: 'transcriptions',
@@ -84,6 +99,51 @@ export function Main() {
       })
     }
     setIsTranscriptionWindowVisible(!isTranscriptionWindowVisible)
+  }
+
+  const handleToggleFeaturesWindow = () => {
+    if (isFeaturesWindowVisible) {
+      window.electronAPI.send('popover:close', 'features')
+    } else {
+      closeAllPopovers() // Close others before opening new one
+      window.electronAPI.invoke('popover:create', {
+        id: 'features',
+        hash: 'features',
+        width: 200,
+        height: 150
+      })
+    }
+    setIsFeaturesWindowVisible(!isFeaturesWindowVisible)
+  }
+
+  const handleToggleSettingsWindow = () => {
+    if (isSettingsWindowVisible) {
+      window.electronAPI.send('popover:close', 'settings')
+    } else {
+      closeAllPopovers() // Close others before opening new one
+      window.electronAPI.invoke('popover:create', {
+        id: 'settings',
+        hash: 'settings',
+        width: 350,
+        height: 300
+      })
+    }
+    setIsSettingsWindowVisible(!isSettingsWindowVisible)
+  }
+
+  const handleToggleScreenPreviewWindow = () => {
+    if (isScreenPreviewWindowVisible) {
+      window.electronAPI.send('popover:close', 'screen-preview')
+    } else {
+      closeAllPopovers() // Close others before opening new one
+      window.electronAPI.invoke('popover:create', {
+        id: 'screen-preview',
+        hash: 'screen-preview',
+        width: 480,
+        height: 300
+      })
+    }
+    setIsScreenPreviewWindowVisible(!isScreenPreviewWindowVisible)
   }
 
   const handleShowHistory = () => {
@@ -118,20 +178,27 @@ export function Main() {
   }, [])
 
   // --- Render Views -------------------------------------------------
+  if (view === 'screen-preview') {
+    return (
+      <div className="flex flex-col h-screen rounded-lg bg-transparent">
+        {/* Removed HeaderBar from here */}
+        <ScreenPreviewPopup isScreenSharing={isScreenSharing} screenStreamRef={screenStreamRef} />
+      </div>
+    )
+  }
+  
   if (view === 'transcriptions') {
     return (
-      <div className="flex flex-col h-screen rounded-lg bg-transparent pt-6">
-        <ChatPanel
-          messages={aiMessages}
-          isLoading={isLoading}
-          isScreenSharing={isScreenSharing}
-          customPrompt={customPrompt}
-          setCustomPrompt={setCustomPrompt}
-          onSendMessage={handleSendMessage}
-          messagesContainerRef={messagesContainerRef}
-          isSubtitleVisible={isSubtitleVisible}
-        />
-      </div>
+      <ChatPanel
+        messages={aiMessages}
+        isLoading={isLoading}
+        isScreenSharing={isScreenSharing}
+        customPrompt={customPrompt}
+        setCustomPrompt={setCustomPrompt}
+        onSendMessage={handleSendMessage}
+        messagesContainerRef={messagesContainerRef}
+        isSubtitleVisible={isSubtitleVisible}
+      />
     )
   }
 
@@ -156,24 +223,6 @@ export function Main() {
     )
   }
 
-  if (view === 'screen-preview') {
-    return (
-      <div className="flex flex-col h-screen rounded-lg bg-transparent">
-        <HeaderBar
-          isAlwaysOnTop={isAlwaysOnTop}
-          toggleAlwaysOnTop={toggleAlwaysOnTop}
-          minimizeWindow={minimizeWindow}
-          closeWindow={closeWindow}
-          isScreenSharing={isScreenSharing}
-          onToggleScreenShare={toggleScreenShare}
-          onToggleTranscriptionWindow={handleToggleTranscriptionWindow}
-          isTranscriptionWindowVisible={isTranscriptionWindowVisible}
-        />
-        <ScreenPreviewPopup isScreenSharing={isScreenSharing} screenStreamRef={screenStreamRef} />
-      </div>
-    )
-  }
-
   // --- Render Main Bar -------------------------------------------------
   return (
     <div className="flex flex-col h-screen rounded-lg bg-transparent">
@@ -184,8 +233,15 @@ export function Main() {
         closeWindow={closeWindow}
         isScreenSharing={isScreenSharing}
         onToggleScreenShare={toggleScreenShare}
+        // Updated props for HeaderBar
         onToggleTranscriptionWindow={handleToggleTranscriptionWindow}
         isTranscriptionWindowVisible={isTranscriptionWindowVisible}
+        onToggleFeaturesWindow={handleToggleFeaturesWindow}
+        isFeaturesWindowVisible={isFeaturesWindowVisible}
+        onToggleSettingsWindow={handleToggleSettingsWindow}
+        isSettingsWindowVisible={isSettingsWindowVisible}
+        onToggleScreenPreviewWindow={handleToggleScreenPreviewWindow}
+        isScreenPreviewWindowVisible={isScreenPreviewWindowVisible}
       />
       <RealTimeAnalysis
         isScreenSharing={isScreenSharing}

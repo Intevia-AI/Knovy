@@ -24,6 +24,7 @@ import { SupportedLanguage } from "@/lib/translations"; // Adjust path if needed
 interface LanguageContextType {
   language: SupportedLanguage;
   setLanguage: (language: SupportedLanguage) => void;
+  isLoading: boolean; // Add isLoading to context type
 }
 
 /** @type {React.Context} Language context instance */
@@ -103,7 +104,7 @@ export const LanguageProvider: React.FC<{ children: ReactNode }> = ({
   }
 
   return (
-    <LanguageContext.Provider value={{ language, setLanguage }}>
+    <LanguageContext.Provider value={{ language, setLanguage, isLoading }}>
       {children}
     </LanguageContext.Provider>
   );

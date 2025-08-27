@@ -189,9 +189,10 @@ export function useScreenShare() {
         recorder.onstop = () => {
           console.log("[ScreenShare] System audio recorder stopped.");
           makeSystemAudioBlobAndDispatch();
-          if (!isStoppingSystemAudioRef.current && currentSystemAudioStream) {
+          // Use the 'stream' from the closure for restarting, not currentSystemAudioStream from state
+          if (!isStoppingSystemAudioRef.current && stream.active) { // Check stream.active instead of currentSystemAudioStream
             console.log("[ScreenShare] Restarting system audio recorder...");
-            startSystemAudioRecorderInternal(currentSystemAudioStream); // Restart
+            recorder.start(SYSTEM_AUDIO_CHUNK_MS); // Restart the same recorder instance
           } else {
             console.log("[ScreenShare] Not restarting system audio recorder.");
             systemAudioRecorderRef.current = null;
@@ -339,6 +340,9 @@ export function useScreenShare() {
 
     } catch (err) {
       console.error("[ScreenShare] Error starting screen share:", err);
+      if (err instanceof DOMException) {
+        console.error(`[ScreenShare] DOMException: name=${err.name}, message=${err.message}`);
+      }
       // User might have cancelled the picker
       stopScreenShare(); // Clean up everything if it fails
     }

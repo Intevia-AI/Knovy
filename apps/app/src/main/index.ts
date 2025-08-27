@@ -53,9 +53,9 @@ ipcMain.handle('popover:create', (event, options) => {
     parent: parentWindow
   }
 
-  console.log('[index.ts] Emitting popover:create on internalBridge');
+  console.log('[index.ts] Emitting popover:create on internalBridge')
   internalBridge.emit('popover:create', popoverOptions)
-  console.log('[index.ts] "popover:create" event emitted successfully.');
+  console.log('[index.ts] "popover:create" event emitted successfully.')
 })
 
 // The popover:close IPC handler now emits an internal event.
@@ -187,7 +187,7 @@ function createSelectionWindow() {
 const createWindow = async () => {
   mainWindow = new BrowserWindow({
     width: 480,
-    height: 60,
+    height: 50,
     frame: false,
     transparent: true,
     hasShadow: false,
@@ -201,7 +201,7 @@ const createWindow = async () => {
     }
   })
 
-  mainWindow.setContentProtection(true)
+  // mainWindow.setContentProtection(true)
 
   mainWindow.webContents.on('did-finish-load', () => {
     mainWindow?.webContents.send('electronAPI:forceDarkMode')
@@ -285,7 +285,7 @@ app.on('ready', async () => {
 
   await createWindow()
 
-  globalShortcut.register('alt+\'', toggleWindow)
+  globalShortcut.register("alt+'", toggleWindow)
 
   ipcMain.handle('supabase:signInWithOAuth', async (event, provider) => {
     if (provider.urlToOpen) {
@@ -305,7 +305,9 @@ app.on('ready', async () => {
         if (primarySource) {
           callback({ video: primarySource, audio: 'loopback' })
         } else if (sources.length > 0) {
-          console.warn('Primary display source not found, falling back to the first available screen.')
+          console.warn(
+            'Primary display source not found, falling back to the first available screen.'
+          )
           callback({ video: sources[0], audio: 'loopback' })
         } else {
           console.error('No screen sources found!')
@@ -377,8 +379,8 @@ app.on('ready', async () => {
       id: 'features',
       parent: parentWindow,
       url,
-      width: 200,
-      height: 200
+      width: 280,
+      height: 300
     })
   })
 
@@ -572,7 +574,10 @@ app.on('ready', async () => {
   }
 
   // Database IPC handlers
-  ipcMain.handle('db:create-session', (event, session) => dbService.createSession(session))
+  ipcMain.handle('db:create-session', (event, session) => {
+    console.log('[main] db:create-session received for id:', session.id)
+    return dbService.createSession(session)
+  })
   ipcMain.handle('db:add-transcript', (event, transcript) => dbService.addTranscript(transcript))
   ipcMain.handle('db:get-sessions', () => dbService.getSessions())
   ipcMain.handle('db:get-transcripts', (event, sessionId) => dbService.getTranscripts(sessionId))

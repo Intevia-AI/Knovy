@@ -70,7 +70,7 @@ export function HeaderBar({
             onClick={handleLogout}
             variant="ghost"
             size="icon"
-            className="h-5 w-5 rounded-sm hover:bg-muted-foreground/20"
+            className="h-5 w-5 rounded-sm hover:bg-white/20"
             title="Logout"
           >
             <LogOutIcon size={12} />
@@ -80,7 +80,7 @@ export function HeaderBar({
             onClick={handleLogin}
             variant="ghost"
             size="icon"
-            className="h-5 w-5 rounded-sm hover:bg-muted-foreground/20"
+            className="h-5 w-5 rounded-sm hover:bg-white/20"
             title="Login with Google"
           >
             <LogInIcon size={12} />
@@ -98,7 +98,7 @@ export function HeaderBar({
           onClick={toggleLayoutDirection}
           variant="ghost"
           size="icon"
-          className="h-5 w-5 rounded-sm hover:bg-muted-foreground/20"
+          className="h-5 w-5 rounded-sm hover:bg-white/20"
           title={layoutDirection === "vertical" ? "Switch to Horizontal Layout" : "Switch to Vertical Layout"}
         >
           {layoutDirection === "vertical" ? (
@@ -110,7 +110,7 @@ export function HeaderBar({
         <Button
           variant="ghost"
           size="icon"
-          className="h-5 w-5 rounded-sm hover:bg-muted-foreground/20"
+          className="h-5 w-5 rounded-sm hover:bg-white/20"
           onClick={toggleAlwaysOnTop}
           aria-label={
             isAlwaysOnTop ? t("unpinWindowTooltip") : t("pinWindowTooltip")
@@ -128,7 +128,7 @@ export function HeaderBar({
         <Button
           variant="ghost"
           size="icon"
-          className="h-5 w-5 rounded-sm hover:bg-muted-foreground/20"
+          className="h-5 w-5 rounded-sm hover:bg-white/20"
           onClick={minimizeWindow}
           aria-label="Minimize window"
           title={t("minimizeWindowTooltip")}

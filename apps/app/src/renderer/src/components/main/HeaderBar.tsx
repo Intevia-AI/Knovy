@@ -7,7 +7,7 @@ import {
   PinOffIcon,
   MinusIcon,
   XIcon,
-  Rows,
+  LayoutGrid,
   MonitorIcon,
   MessageSquare
 } from 'lucide-react'
@@ -20,6 +20,15 @@ interface HeaderBarProps {
   closeWindow: () => void
   isScreenSharing: boolean
   onToggleScreenShare: () => void
+  // New props for popover management
+  onToggleTranscriptionWindow: () => void
+  isTranscriptionWindowVisible: boolean
+  onToggleFeaturesWindow: () => void
+  isFeaturesWindowVisible: boolean
+  onToggleSettingsWindow: () => void
+  isSettingsWindowVisible: boolean
+  onToggleScreenPreviewWindow: () => void
+  isScreenPreviewWindowVisible: boolean
 }
 
 export function HeaderBar({
@@ -28,29 +37,31 @@ export function HeaderBar({
   minimizeWindow,
   closeWindow,
   isScreenSharing,
-  onToggleScreenShare
+  onToggleScreenShare,
+  // Destructure new props
+  onToggleTranscriptionWindow,
+  isTranscriptionWindowVisible,
+  onToggleFeaturesWindow,
+  isFeaturesWindowVisible,
+  onToggleSettingsWindow,
+  isSettingsWindowVisible,
+  onToggleScreenPreviewWindow,
+  isScreenPreviewWindowVisible
 }: HeaderBarProps) {
   const { t } = useI18n()
 
-  const handleTogglePopover = (id: string, hash: string, width: number, height: number) => {
-    // This function now simply sends a request to the main process.
-    // The main process is responsible for managing the popover's state and position.
-    window.electronAPI.invoke('popover:create', { id, hash, width, height })
-      .catch(console.error);
-  }
-
   return (
     <header
-      className="flex items-center justify-between p-1 bg-muted/10 rounded-full w-full h-full"
+      className="flex items-center justify-between p-1 bg-muted/10 rounded-full w-full h-full px-2"
       style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
     >
       {/* Left side controls */}
       <div className="flex items-center gap-1" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
         <Button
-          variant='ghost'
+          variant={isScreenPreviewWindowVisible ? 'default' : 'ghost'} // Highlight if open
           size='icon'
-          className='h-8 w-8 rounded-full'
-          onClick={() => handleTogglePopover('screen-preview', 'screen-preview', 480, 300)}
+          className='h-7 w-7 rounded-full'
+          onClick={onToggleScreenPreviewWindow} // Use new toggle function
           title='Screen Preview'
         >
           <MonitorIcon className='h-4 w-4' />
@@ -59,18 +70,18 @@ export function HeaderBar({
           variant={isScreenSharing ? 'destructive' : 'default'}
           size='sm'
           onClick={onToggleScreenShare}
-          className='h-8 rounded-full px-4 text-xs'
+          className='h-7 rounded-full text-xs'
         >
-          <MicIcon className='h-3 w-3 mr-1' />
+          <MicIcon className='h-5 w-5' />
           {isScreenSharing ? 'Stop' : 'Listen'}
         </Button>
 
         {isScreenSharing && (
           <Button
-            variant='outline'
+            variant={isTranscriptionWindowVisible ? 'default' : 'default'} // Highlight if open
             size='icon'
-            onClick={() => handleTogglePopover('transcriptions', 'transcriptions', 480, 300)}
-            className='h-8 w-8 rounded-full'
+            onClick={onToggleTranscriptionWindow} // Use new toggle function
+            className='h-7 w-7 rounded-full'
             title='Show Transcriptions'
           >
             <MessageSquare className='h-4 w-4' />
@@ -81,19 +92,19 @@ export function HeaderBar({
       {/* Right side controls */}
       <div className="flex items-center gap-1" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
         <Button
-          variant='ghost'
+          variant={isFeaturesWindowVisible ? 'default' : 'ghost'} // Highlight if open
           size='icon'
-          className='h-8 w-8 rounded-full'
-          onClick={() => handleTogglePopover('features', 'features', 200, 150)}
+          className='h-7 w-7 rounded-full'
+          onClick={onToggleFeaturesWindow} // Use new toggle function
           title='Features'
         >
-          <Rows className='h-4 w-4' />
+          <LayoutGrid className='h-4 w-4' />
         </Button>
         <Button
-          variant='ghost'
+          variant={isSettingsWindowVisible ? 'default' : 'ghost'} // Highlight if open
           size='icon'
-          className='h-8 w-8 rounded-full'
-          onClick={() => handleTogglePopover('settings', 'settings', 280, 300)}
+          className='h-7 w-7 rounded-full'
+          onClick={onToggleSettingsWindow} // Use new toggle function
           title='Settings'
         >
           <SettingsIcon className='h-4 w-4' />
@@ -103,7 +114,7 @@ export function HeaderBar({
         <Button
           variant='ghost'
           size='icon'
-          className='h-8 w-8 rounded-full'
+          className='h-7 w-7 rounded-full'
           onClick={toggleAlwaysOnTop}
           title={isAlwaysOnTop ? t('unpinWindowTooltip') : t('pinWindowTooltip')}
         >
@@ -112,7 +123,7 @@ export function HeaderBar({
         <Button
           variant='ghost'
           size='icon'
-          className='h-8 w-8 rounded-full'
+          className='h-7 w-7 rounded-full'
           onClick={minimizeWindow}
           title={t('minimizeWindowTooltip')}
         >
@@ -121,7 +132,7 @@ export function HeaderBar({
         <Button
           variant='ghost'
           size='icon'
-          className='h-8 w-8 rounded-full hover:bg-destructive/80'
+          className='h-7 w-7 rounded-full hover:bg-destructive/80'
           onClick={closeWindow}
           title={t('closeWindowTooltip')}
         >
