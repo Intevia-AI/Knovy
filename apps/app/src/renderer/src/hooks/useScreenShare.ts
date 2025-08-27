@@ -80,28 +80,6 @@ export function useScreenShare() {
     currentMicChunksRef, // Get ref to current mic chunks
   } = useSegmentRecorder();
 
-  const [micSegments, setMicSegments] = useState<Segment[]>([]); // State to store mic segments from event
-
-  // --- Mic Segment Event Listener ---
-  useEffect(() => {
-    const handleMicSegment = (
-      event: CustomEvent<{ blob: Blob; timestamp: number }>,
-    ) => {
-      console.log(
-        `[ScreenShare] Received mic_segment event, size: ${event.detail.blob.size}`,
-      );
-      setMicSegments((prev) => [...prev, event.detail]);
-    };
-
-    window.addEventListener("mic_segment", handleMicSegment as EventListener);
-    return () => {
-      window.removeEventListener(
-        "mic_segment",
-        handleMicSegment as EventListener,
-      );
-    };
-  }, []);
-
   // --- System Audio Blob Creation and Dispatch ---
   const makeSystemAudioBlobAndDispatch = useCallback(() => {
     if (systemAudioChunksRef.current.length === 0) return;
@@ -112,12 +90,9 @@ export function useScreenShare() {
       systemAudioChunksRef.current = []; // Clear chunks
       if (blob.size > 0) {
         console.log(
-          `[ScreenShare] Dispatching system_segment event, size: ${blob.size}`,
+          `[ScreenShare] Creating system audio segment, size: ${blob.size}`,
         );
-        setSystemAudioSegments((prev) => [
-          ...prev,
-          { blob, timestamp: Date.now() },
-        ]);
+        setSystemAudioSegments((prev) => [...prev, { blob, timestamp: Date.now() }]);
       } else {
         console.warn("[ScreenShare] System audio blob created but size is 0.");
       }
@@ -129,6 +104,44 @@ export function useScreenShare() {
       systemAudioChunksRef.current = [];
     }
   }, [systemAudioMimeType]);
+
+  const stopScreenShare = useCallback(() => {
+    console.log("[ScreenShare] Stopping screen share and recordings...");
+    stopMicRecording();
+
+    // Stop system audio recording process
+    isStoppingSystemAudioRef.current = true;
+    if (systemAudioTimerRef.current) {
+      clearInterval(systemAudioTimerRef.current);
+      systemAudioTimerRef.current = null;
+    }
+    if (
+      systemAudioRecorderRef.current &&
+      systemAudioRecorderRef.current.state !== "inactive"
+    ) {
+      try {
+        systemAudioRecorderRef.current.stop(); // Trigger final onstop
+      } catch (e) {
+        console.warn("[ScreenShare] Error stopping system recorder:", e);
+        makeSystemAudioBlobAndDispatch(); // Manual dispatch if stop fails
+        systemAudioRecorderRef.current = null;
+      }
+    } else {
+      makeSystemAudioBlobAndDispatch(); // Dispatch remaining if inactive
+    }
+
+    // Cleanup screen stream
+    cleanupStream(screenStreamRef);
+    if (screenPreviewRef.current) screenPreviewRef.current.srcObject = null;
+
+    setCurrentSystemAudioStream(null);
+    setIsScreenSharing(false);
+    setRecordingDuration(0);
+    // Reset states
+    setSystemAudioMimeType("");
+
+    console.log("[ScreenShare] Screen share stopped.");
+  }, [stopMicRecording, makeSystemAudioBlobAndDispatch]);
 
   // --- Start System Audio Recorder (Internal) ---
   const startSystemAudioRecorderInternal = useCallback(
@@ -194,6 +207,17 @@ export function useScreenShare() {
           `[ScreenShare] Starting system audio recorder with timeslice: ${SYSTEM_AUDIO_CHUNK_MS}ms`,
         );
         recorder.start(SYSTEM_AUDIO_CHUNK_MS);
+
+        if (systemAudioTimerRef.current) {
+          clearInterval(systemAudioTimerRef.current);
+        }
+        systemAudioTimerRef.current = setInterval(() => {
+          if (systemAudioRecorderRef.current?.state === 'recording') {
+            console.log('[ScreenShare] Interval: Stopping system audio recorder to finalize segment.');
+            systemAudioRecorderRef.current.stop();
+          }
+        }, SYSTEM_AUDIO_SEGMENT_MS);
+
       } catch (recorderError) {
         console.error(
           "[ScreenShare] Failed to create/start system MediaRecorder:",
@@ -205,8 +229,8 @@ export function useScreenShare() {
         stopScreenShare();
       }
     },
-    [makeSystemAudioBlobAndDispatch, currentSystemAudioStream],
-  ); // Added dependencies
+    [makeSystemAudioBlobAndDispatch, currentSystemAudioStream, stopScreenShare],
+  );
 
   // Timer effect
   useEffect(() => {
@@ -272,53 +296,11 @@ export function useScreenShare() {
         screenPreviewRef.current.srcObject = null;
       }
     };
-  }, [isScreenSharing]); // Rerun when isScreenSharing changes
-
-  const stopScreenShare = useCallback(() => {
-    console.log("[ScreenShare] Stopping screen share and recordings...");
-    stopMicRecording();
-
-    // Stop system audio recording process
-    isStoppingSystemAudioRef.current = true;
-    if (systemAudioTimerRef.current) {
-      clearInterval(systemAudioTimerRef.current);
-      systemAudioTimerRef.current = null;
-    }
-    if (
-      systemAudioRecorderRef.current &&
-      systemAudioRecorderRef.current.state !== "inactive"
-    ) {
-      try {
-        systemAudioRecorderRef.current.stop(); // Trigger final onstop
-      } catch (e) {
-        console.warn("[ScreenShare] Error stopping system recorder:", e);
-        makeSystemAudioBlobAndDispatch(); // Manual dispatch if stop fails
-        systemAudioRecorderRef.current = null;
-      }
-    } else {
-      makeSystemAudioBlobAndDispatch(); // Dispatch remaining if inactive
-    }
-
-    // Cleanup screen stream
-    cleanupStream(screenStreamRef);
-    if (screenPreviewRef.current) screenPreviewRef.current.srcObject = null;
-
-    setCurrentSystemAudioStream(null);
-    setIsScreenSharing(false);
-    setRecordingDuration(0);
-    // Reset states
-    setSystemAudioSegments([]);
-    setMicSegments([]); // Reset mic segments state
-    setSystemAudioMimeType("");
-
-    console.log("[ScreenShare] Screen share stopped.");
-  }, [stopMicRecording, makeSystemAudioBlobAndDispatch]); // Dependencies updated
+  }, [isScreenSharing]);
 
   const startScreenShare = useCallback(async () => {
     console.log("[ScreenShare] Attempting to start screen share...");
     // Reset previous state
-    setMicSegments([]);
-    setSystemAudioSegments([]);
     setSystemAudioMimeType("");
     setRecordingDuration(0);
     setCurrentSystemAudioStream(null);
@@ -382,8 +364,6 @@ export function useScreenShare() {
     recordingDuration,
     micStream,
     currentSystemAudioStream,
-    micSegments,
-    systemAudioSegments,
     micMimeType,
     systemAudioMimeType,
     screenStreamRef, // Ref for the video element

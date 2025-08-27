@@ -17,58 +17,61 @@ import { is } from '@electron-toolkit/utils'
 import express from 'express'
 import cors from 'cors'
 import * as dbService from './database-service'
-import * as popoverManager from './popoverManager'
+import { initializePopoverManager } from './popoverManager'
+import internalBridge from './internalBridge'
+
+let mainWindow: BrowserWindow | null
+let selectionWindow: BrowserWindow | null
+
+// This is now the single source of truth for the main window.
+// Other modules can get it from here if needed.
+export const getMainWindow = (): BrowserWindow | null => mainWindow
 
 ipcMain.handle('electronAPI:getMainWindowBounds', () => {
   return mainWindow?.getBounds()
 })
 
+// The popover:create IPC handler now emits an internal event
+// instead of directly calling the popover manager.
 ipcMain.handle('popover:create', (event, options) => {
-  console.log('Received popover:create', options);
+  console.log('Received popover:create IPC call', options)
   const parentWindow = BrowserWindow.fromWebContents(event.sender)
   if (!parentWindow) return
 
-  const mainBounds = parentWindow.getBounds()
   const devServerUrl = import.meta.env['VITE_DEV_SERVER_URL']
-  let url;
+  let url
   if (is.dev) {
-    const baseUrl = devServerUrl || 'http://localhost:5173';
-    url = `${baseUrl}#${options.hash}`;
+    const baseUrl = devServerUrl || 'http://localhost:5173'
+    url = `${baseUrl}#${options.hash}`
   } else {
-    url = `file://${path.join(__dirname, '../renderer/index.html')}#${options.hash}`;
+    url = `file://${path.join(__dirname, '../renderer/index.html')}#${options.hash}`
   }
 
   const popoverOptions = {
     ...options,
     url,
-    parent: parentWindow,
+    parent: parentWindow
   }
 
-  popoverManager.createPopover(popoverOptions)
+  console.log('[index.ts] Emitting popover:create on internalBridge');
+  internalBridge.emit('popover:create', popoverOptions)
+  console.log('[index.ts] "popover:create" event emitted successfully.');
 })
 
+// The popover:close IPC handler now emits an internal event.
 ipcMain.on('popover:close', (event, id) => {
-  popoverManager.closePopover(id)
+  internalBridge.emit('popover:close', id)
 })
 
-// app.on('browser-window-blur', () => {
-//   popoverManager.closeAllPopovers()
-// })
-
+// Example of sending a message to a popover, remains the same.
 ipcMain.on('popover:sendMessage', (event, { action, prompt }) => {
-  // This is a simplified handler. In a real app, you'd have a proper AI service.
-  console.log(`Received message from popover: ${prompt}`)
-  const popoverWindow = BrowserWindow.fromWebContents(event.sender)
-  popoverWindow?.webContents.send('ai:message', {
-    role: 'assistant',
-    content: `You said: ${prompt}`
-  })
+  // Forward the message to the main window's renderer process
+  // so the useAIInteraction hook can handle it.
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    console.log(`Forwarding message to main window: ${prompt}`)
+    mainWindow.webContents.send('ai:custom-prompt', { action, prompt })
+  }
 })
-
-let mainWindow: BrowserWindow | null
-let transcriptionWindow: BrowserWindow | null
-let selectionWindow: BrowserWindow | null
-let sourcePickerWindow: BrowserWindow | null
 
 const settingsPath = path.join(app.getPath('userData'), 'settings.json')
 
@@ -92,7 +95,6 @@ async function saveSettings(settings: any) {
   }
 }
 
-let pendingMediaRequest: ((...args: any[]) => void) | null = null
 const PROTOCOL = 'intevia'
 let oauthCallbackUrlOnStartup: string | null = null
 
@@ -209,14 +211,16 @@ const createWindow = async () => {
     }
   })
 
-  mainWindow.setContentProtection(true)
+  mainWindow.on('blur', () => {
+    // When the main window loses focus, close all popovers.
+    // internalBridge.emit('popover:close-all') // Temporarily disabled to debug popover closing issue
+  })
 
   if (is.dev) {
     const devServerUrl = import.meta.env['VITE_DEV_SERVER_URL']
     if (devServerUrl) {
       mainWindow.loadURL(devServerUrl)
     } else {
-      // Fallback to a default port if the env var is not set
       console.warn('VITE_DEV_SERVER_URL is not set, falling back to http://localhost:5173')
       mainWindow.loadURL('http://localhost:5173')
     }
@@ -235,111 +239,6 @@ const createWindow = async () => {
 
   mainWindow.on('closed', () => {
     mainWindow = null
-    pendingMediaRequest = null
-  })
-}
-
-function createTranscriptionWindow() {
-  if (transcriptionWindow) {
-    transcriptionWindow.focus()
-    return
-  }
-
-  const mainBounds = mainWindow?.getBounds()
-  const x = mainBounds ? mainBounds.x : 0
-  const y = mainBounds ? mainBounds.y - 300 - 8 : 0
-
-  transcriptionWindow = new BrowserWindow({
-    width: 480,
-    height: 300,
-    x,
-    y,
-    frame: false,
-    transparent: true,
-    vibrancy: 'fullscreen-ui',
-    visualEffectState: 'active',
-    backgroundMaterial: 'acrylic',
-    webPreferences: {
-      preload: path.join(__dirname, '../preload/index.cjs'),
-      contextIsolation: true,
-      nodeIntegration: false,
-      sandbox: false
-    }
-  })
-
-  if (is.dev) {
-    const devServerUrl = import.meta.env['VITE_DEV_SERVER_URL']
-    if (devServerUrl) {
-      transcriptionWindow.loadURL(`${devServerUrl}#transcriptions`)
-    } else {
-      transcriptionWindow.loadURL('http://localhost:5173#transcriptions')
-    }
-  } else {
-    transcriptionWindow.loadFile(path.join(__dirname, '../renderer/index.html'), {
-      hash: 'transcriptions'
-    })
-  }
-
-  transcriptionWindow.on('closed', () => {
-    transcriptionWindow = null
-  })
-}
-
-
-
-function createSourcePickerWindow(sources: any[]) {
-  if (sourcePickerWindow) {
-    sourcePickerWindow.focus()
-    return
-  }
-
-  const mainBounds = mainWindow?.getBounds()
-  const x = mainBounds ? mainBounds.x : 0
-  const y = mainBounds ? mainBounds.y - 400 - 8 : 0
-
-  sourcePickerWindow = new BrowserWindow({
-    width: 500,
-    height: 400,
-    x,
-    y,
-    frame: false,
-    transparent: true,
-    vibrancy: 'fullscreen-ui',
-    visualEffectState: 'active',
-    backgroundMaterial: 'acrylic',
-    webPreferences: {
-      preload: path.join(__dirname, '../preload/index.cjs'),
-      contextIsolation: true,
-      nodeIntegration: false,
-      sandbox: false
-    }
-  })
-
-  if (is.dev) {
-    const devServerUrl = import.meta.env['VITE_DEV_SERVER_URL']
-    if (devServerUrl) {
-      sourcePickerWindow.loadURL(`${devServerUrl}#source-picker`)
-    } else {
-      sourcePickerWindow.loadURL('http://localhost:5173#source-picker')
-    }
-  } else {
-    sourcePickerWindow.loadFile(path.join(__dirname, '../renderer/index.html'), {
-      hash: 'source-picker'
-    })
-  }
-
-  sourcePickerWindow.webContents.on('did-finish-load', () => {
-    sourcePickerWindow?.webContents.send(
-      'electronAPI:availableSources',
-      sources.map((s) => ({ id: s.id, name: s.name }))
-    )
-  })
-
-  sourcePickerWindow.on('closed', () => {
-    sourcePickerWindow = null
-    if (pendingMediaRequest) {
-      pendingMediaRequest = null
-    }
   })
 }
 
@@ -357,6 +256,9 @@ const toggleWindow = () => {
 }
 
 app.on('ready', async () => {
+  // Initialize the popover manager to listen for events
+  initializePopoverManager()
+
   if (is.dev) {
     await installExtension(REACT_DEVELOPER_TOOLS).catch(console.log)
   }
@@ -383,7 +285,7 @@ app.on('ready', async () => {
 
   await createWindow()
 
-  globalShortcut.register('alt+\\', toggleWindow)
+  globalShortcut.register('alt+\'', toggleWindow)
 
   ipcMain.handle('supabase:signInWithOAuth', async (event, provider) => {
     if (provider.urlToOpen) {
@@ -393,59 +295,27 @@ app.on('ready', async () => {
     return { error: 'No URL provided' }
   })
 
-  ipcMain.on('electronAPI:requestSources', () => {
-    if (pendingMediaRequest) {
-      // If a request is already pending, we can just re-trigger the source fetching
-      desktopCapturer
-        .getSources({ types: ['window', 'screen'] })
-        .then(async (sources) => {
-          mainWindow?.webContents.send(
-            'electronAPI:availableSources',
-            sources.map((s) => ({ id: s.id, name: s.name }))
-          )
-        })
-        .catch(console.error)
-    } else {
-      console.log('No pending media request to fulfill');
-    }
-  });
-
   session.defaultSession.setDisplayMediaRequestHandler((request, callback) => {
-    pendingMediaRequest = callback
     desktopCapturer
-      .getSources({ types: ['window', 'screen'] })
+      .getSources({ types: ['screen'] })
       .then(async (sources) => {
-        mainWindow?.webContents.send(
-          'electronAPI:availableSources',
-          sources.map((s) => ({ id: s.id, name: s.name }))
-        )
+        const primaryDisplay = screen.getPrimaryDisplay()
+        const primarySource = sources.find((s) => s.display_id === String(primaryDisplay.id))
+
+        if (primarySource) {
+          callback({ video: primarySource, audio: 'loopback' })
+        } else if (sources.length > 0) {
+          console.warn('Primary display source not found, falling back to the first available screen.')
+          callback({ video: sources[0], audio: 'loopback' })
+        } else {
+          console.error('No screen sources found!')
+          callback({ video: null, audio: null })
+        }
       })
-      .catch(console.error)
-  })
-
-  ipcMain.handle('electronAPI:selectSource', (event, sourceId) => {
-    if (pendingMediaRequest) {
-      desktopCapturer
-        .getSources({ types: ['window', 'screen'] })
-        .then((sources) => {
-          const selectedSource = sources.find((s) => s.id === sourceId)
-          if (selectedSource) {
-            try {
-              pendingMediaRequest?.({ video: selectedSource, audio: 'loopback' })
-            } catch (error) {
-              console.error('Error granting access to source:', error)
-            }
-          }
-          pendingMediaRequest = null
-        })
-        .catch(console.error)
-    }
-  })
-
-  ipcMain.handle('electronAPI:cancelSourceSelection', () => {
-    if (pendingMediaRequest) {
-      pendingMediaRequest = null
-    }
+      .catch((error) => {
+        console.error('Error getting desktop sources:', error)
+        callback({ video: null, audio: null })
+      })
   })
 
   ipcMain.on('electronAPI:openExternal', (event, url) => {
@@ -467,91 +337,102 @@ app.on('ready', async () => {
     return newSettings
   })
 
-  ipcMain.on('app:show-transcriptions', () => {
-    createTranscriptionWindow()
+  // Refactored handlers to use the internal event bridge
+  ipcMain.on('app:show-transcriptions', (event) => {
+    const parentWindow = BrowserWindow.fromWebContents(event.sender) || mainWindow
+    if (!parentWindow) return
+    const devServerUrl = import.meta.env['VITE_DEV_SERVER_URL']
+    let url
+    if (is.dev) {
+      const baseUrl = devServerUrl || 'http://localhost:5173'
+      url = `${baseUrl}#transcriptions`
+    } else {
+      url = `file://${path.join(__dirname, '../renderer/index.html')}#transcriptions`
+    }
+    internalBridge.emit('popover:create', {
+      id: 'transcriptions',
+      parent: parentWindow,
+      url,
+      width: 480,
+      height: 300
+    })
   })
 
   ipcMain.on('app:hide-transcriptions', () => {
-    if (transcriptionWindow) {
-      transcriptionWindow.close()
-      transcriptionWindow = null
-    }
+    internalBridge.emit('popover:close', 'transcriptions')
   })
 
   ipcMain.on('app:show-features', (event) => {
-  const parentWindow = BrowserWindow.fromWebContents(event.sender) || mainWindow
-  if (!parentWindow) return
-  const devServerUrl = import.meta.env['VITE_DEV_SERVER_URL']
-  let url;
-  if (is.dev) {
-    const baseUrl = devServerUrl || 'http://localhost:5173';
-    url = `${baseUrl}#features`;
-  } else {
-    url = `file://${path.join(__dirname, '../renderer/index.html')}#features`;
-  }
-
-  popoverManager.createPopover({
-    id: 'features',
-    parent: parentWindow,
-    url,
-    width: 200,
-    height: 200,
+    const parentWindow = BrowserWindow.fromWebContents(event.sender) || mainWindow
+    if (!parentWindow) return
+    const devServerUrl = import.meta.env['VITE_DEV_SERVER_URL']
+    let url
+    if (is.dev) {
+      const baseUrl = devServerUrl || 'http://localhost:5173'
+      url = `${baseUrl}#features`
+    } else {
+      url = `file://${path.join(__dirname, '../renderer/index.html')}#features`
+    }
+    internalBridge.emit('popover:create', {
+      id: 'features',
+      parent: parentWindow,
+      url,
+      width: 200,
+      height: 200
+    })
   })
-})
 
-ipcMain.on('app:hide-features', () => {
-  popoverManager.closePopover('features')
-})
-
-ipcMain.on('app:show-settings', (event) => {
-  const parentWindow = BrowserWindow.fromWebContents(event.sender) || mainWindow
-  if (!parentWindow) return
-  const devServerUrl = import.meta.env['VITE_DEV_SERVER_URL']
-  let url;
-  if (is.dev) {
-    const baseUrl = devServerUrl || 'http://localhost:5173';
-    url = `${baseUrl}#settings`;
-  } else {
-    url = `file://${path.join(__dirname, '../renderer/index.html')}#settings`;
-  }
-
-  popoverManager.createPopover({
-    id: 'settings',
-    parent: parentWindow,
-    url,
-    width: 280,
-    height: 300,
+  ipcMain.on('app:hide-features', () => {
+    internalBridge.emit('popover:close', 'features')
   })
-})
 
-ipcMain.on('app:hide-settings', () => {
-  popoverManager.closePopover('settings')
-})
-
-ipcMain.on('app:show-screen-preview', (event) => {
-  const parentWindow = BrowserWindow.fromWebContents(event.sender) || mainWindow
-  if (!parentWindow) return
-  const devServerUrl = import.meta.env['VITE_DEV_SERVER_URL']
-  let url;
-  if (is.dev) {
-    const baseUrl = devServerUrl || 'http://localhost:5173';
-    url = `${baseUrl}#screen-preview`;
-  } else {
-    url = `file://${path.join(__dirname, '../renderer/index.html')}#screen-preview`;
-  }
-
-  popoverManager.createPopover({
-    id: 'screen-preview',
-    parent: parentWindow,
-    url,
-    width: 480,
-    height: 300,
+  ipcMain.on('app:show-settings', (event) => {
+    const parentWindow = BrowserWindow.fromWebContents(event.sender) || mainWindow
+    if (!parentWindow) return
+    const devServerUrl = import.meta.env['VITE_DEV_SERVER_URL']
+    let url
+    if (is.dev) {
+      const baseUrl = devServerUrl || 'http://localhost:5173'
+      url = `${baseUrl}#settings`
+    } else {
+      url = `file://${path.join(__dirname, '../renderer/index.html')}#settings`
+    }
+    internalBridge.emit('popover:create', {
+      id: 'settings',
+      parent: parentWindow,
+      url,
+      width: 280,
+      height: 300
+    })
   })
-})
 
-ipcMain.on('app:hide-screen-preview', () => {
-  popoverManager.closePopover('screen-preview')
-})
+  ipcMain.on('app:hide-settings', () => {
+    internalBridge.emit('popover:close', 'settings')
+  })
+
+  ipcMain.on('app:show-screen-preview', (event) => {
+    const parentWindow = BrowserWindow.fromWebContents(event.sender) || mainWindow
+    if (!parentWindow) return
+    const devServerUrl = import.meta.env['VITE_DEV_SERVER_URL']
+    let url
+    if (is.dev) {
+      const baseUrl = devServerUrl || 'http://localhost:5173'
+      url = `${baseUrl}#screen-preview`
+    } else {
+      url = `file://${path.join(__dirname, '../renderer/index.html')}#screen-preview`
+    }
+    internalBridge.emit('popover:create', {
+      id: 'screen-preview',
+      parent: parentWindow,
+      url,
+      width: 480,
+      height: 300
+    })
+  })
+
+  ipcMain.on('app:hide-screen-preview', () => {
+    internalBridge.emit('popover:close', 'screen-preview')
+  })
 
   ipcMain.on('electronAPI:startScreenshot', () => createSelectionWindow())
 
@@ -613,24 +494,19 @@ ipcMain.on('app:hide-screen-preview', () => {
   })
 
   async function startHistoryViewerServer() {
-    // If the server is already running, just open the URL.
     if (historyViewerServer) {
       const address = historyViewerServer.address()
       if (address && typeof address === 'object') {
-        // In dev, the content is on the Next.js dev server (port 3000).
-        // In prod, the content is on the server we started.
         const url = is.dev ? 'http://localhost:3000' : `http://localhost:${address.port}`
         shell.openExternal(url)
       }
       return
     }
 
-    // If the server is not running, create it.
     const historyViewerApp = express()
     historyViewerApp.use(cors())
     const apiRouter = express.Router()
 
-    // All API routes use the central database service.
     apiRouter.get('/sessions', async (req, res) => {
       try {
         const sessions = await dbService.getSessions()
@@ -666,8 +542,6 @@ ipcMain.on('app:hide-screen-preview', () => {
 
     historyViewerApp.use('/api', apiRouter)
 
-    // In production, serve the static files from the build output.
-    // In development, this is handled by the Next.js dev server.
     if (!is.dev) {
       const historyPath = path.join(__dirname, '../renderer/history')
       historyViewerApp.use(express.static(historyPath))
@@ -676,13 +550,10 @@ ipcMain.on('app:hide-screen-preview', () => {
       })
     }
 
-    // Start the server.
     return new Promise<boolean>((resolve) => {
-      const port = 4000 // The API server always runs on port 4000.
+      const port = 4000
       historyViewerServer = historyViewerApp.listen(port, () => {
         console.log(`History viewer API server started on port ${port}`)
-        // In dev, open the Next.js dev server (port 3000).
-        // In prod, open the server we just started (port 4000).
         const url = is.dev ? 'http://localhost:3000' : `http://localhost:${port}`
         shell.openExternal(url)
         resolve(true)
@@ -702,13 +573,9 @@ ipcMain.on('app:hide-screen-preview', () => {
 
   // Database IPC handlers
   ipcMain.handle('db:create-session', (event, session) => dbService.createSession(session))
-
   ipcMain.handle('db:add-transcript', (event, transcript) => dbService.addTranscript(transcript))
-
   ipcMain.handle('db:get-sessions', () => dbService.getSessions())
-
   ipcMain.handle('db:get-transcripts', (event, sessionId) => dbService.getTranscripts(sessionId))
-
   ipcMain.handle('db:end-session', (event, sessionId) => dbService.endSession(sessionId))
 
   ipcMain.on('app:resize-window', (event, { width, height }) => {

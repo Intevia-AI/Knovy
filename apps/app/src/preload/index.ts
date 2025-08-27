@@ -52,14 +52,17 @@ const api = {
 
   on: (channel, callback) => {
     const validChannels = [
+      'always-on-top-changed',
       'electronAPI:alwaysOnTopChanged',
       'electronAPI:availableSources',
+      'electronAPI:sources-empty',
       'electronAPI:screenshotTaken',
       'electronAPI:screenshotError',
       'electronAPI:oauth-callback',
       'source-picker:select',
       'source-picker:cancel',
-      'ai:message'
+      'ai:message',
+      'ai:custom-prompt'
     ]
     if (validChannels.includes(channel)) {
       const subscription = (event, ...args) => callback(...args)

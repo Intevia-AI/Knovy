@@ -27,6 +27,7 @@ Since agents in Gemini CLI cannot directly invoke other sub-agents, orchestratio
 2. **FOLLOW the agent routing map** defined in the plan EXACTLY.
 3. **USE ONLY the agents** explicitly recommended for the task.
 4. **NEVER select agents independently** - the plan dictates which agents exist and are approved for the task.
+5. **DO NOT edit the diff between '' and ""** - just use the one that follows the linting rules.
 
 ### Example: Building a Feature with Agent Routing
 

@@ -1,26 +1,25 @@
-import React from "react";
-import { Button } from "@/components/ui/button";
-import { ListCollapseIcon, CameraIcon } from "lucide-react";
-import { useI18n } from "@/hooks/useI18n";
-import { AIAction } from "@/hooks/useAIInteraction";
+import React from 'react'
+import { Button } from '@/components/ui/button'
+import { ListCollapseIcon, CameraIcon, History } from 'lucide-react'
+import { useI18n } from '@/hooks/useI18n'
+import { AIAction } from '@/hooks/useAIInteraction'
 
 interface FeaturesPopupProps {
-  onAiAction: (action: AIAction) => void;
-  isScreenSharing: boolean;
-  onShowHistory: () => void;
+  onAiAction: (action: AIAction) => void
+  isScreenSharing: boolean
+  onShowHistory: () => void
 }
 
 export function FeaturesPopup({ onAiAction, isScreenSharing, onShowHistory }: FeaturesPopupProps) {
-  const { t } = useI18n();
+  const { t } = useI18n()
 
   const features = [
-    { action: "summary", labelKey: "aiActionSummary", icon: ListCollapseIcon },
-    { action: "screenshot", labelKey: "aiActionScreenshot", icon: CameraIcon },
-  ] as const;
+    { action: 'summary', labelKey: 'aiActionSummary', icon: ListCollapseIcon },
+    { action: 'screenshot', labelKey: 'aiActionScreenshot', icon: CameraIcon }
+  ] as const
 
   return (
-    <div className="grid gap-2 p-2">
-      <h4 className="font-medium leading-none px-2 py-1.5 text-sm">Features</h4>
+    <div className="grid gap-1 p-2 glass-popover">
       {features.map(({ action, labelKey, icon: Icon }) => (
         <Button
           key={action}
@@ -28,21 +27,21 @@ export function FeaturesPopup({ onAiAction, isScreenSharing, onShowHistory }: Fe
           size="sm"
           disabled={!isScreenSharing}
           onClick={() => onAiAction(action)}
-          className="w-full justify-start"
+          className="w-full justify-start text-xs h-8 text-gray-200 hover:bg-white/10 hover:text-white"
         >
-          <Icon className="mr-2 h-4 w-4" />
+          <Icon className="mr-2 h-3 w-3" />
           {t(labelKey as any)}
         </Button>
       ))}
-       <Button
-          variant="ghost"
-          size="sm"
-          onClick={onShowHistory}
-          className="w-full justify-start"
-        >
-          <ListCollapseIcon className="mr-2 h-4 w-4" />
-          View History
-        </Button>
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={onShowHistory}
+        className="w-full justify-start text-xs h-8 text-gray-200 hover:bg-white/10 hover:text-white"
+      >
+        <History className="mr-2 h-3 w-3" />
+        View History
+      </Button>
     </div>
-  );
+  )
 }

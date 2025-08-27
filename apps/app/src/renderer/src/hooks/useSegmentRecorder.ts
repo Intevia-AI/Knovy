@@ -213,7 +213,7 @@ export function useSegmentRecorder() {
       console.log("[MicRecorder] Unmounting, ensuring cleanup.");
       stop();
     };
-  }, [stop]);
+  }, []);
 
   // Expose necessary values
   return {
