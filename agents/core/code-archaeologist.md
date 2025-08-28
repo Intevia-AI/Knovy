@@ -83,12 +83,12 @@ Bulleted list with file references and impact.
 
 ## 9. Recommended Actions (Prioritised)
 
-| Priority | Action                      | Owner Sub-Agent    |
-| -------- | --------------------------- | ------------------ |
-| P0       | Encrypt API keys            |                    |
-| P1       | Enable CSRF & rate limiting |                    |
-| P2       | Add frontend tests          |                    |
-| …        | …                           | …                  |
+| Priority | Action                      | Owner Sub-Agent |
+| -------- | --------------------------- | --------------- |
+| P0       | Encrypt API keys            |                 |
+| P1       | Enable CSRF & rate limiting |                 |
+| P2       | Add frontend tests          |                 |
+| …        | …                           | …               |
 
 ## 10. Open Questions / Unknowns
 

@@ -55,12 +55,13 @@ export function HeaderBar({
         className="flex-grow h-full pl-2 flex items-center"
         style={{ WebkitAppRegion: "drag" } as React.CSSProperties}
       >
-        <span className="text-xs font-medium">
-          Intevia AI
-        </span>
+        <span className="text-xs font-medium">Intevia AI</span>
       </div>
       {/* Auth Controls - Placed before window controls for now */}
-      <div className="flex items-center h-full mr-1 space-x-1" style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}>
+      <div
+        className="flex items-center h-full mr-1 space-x-1"
+        style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
+      >
         {isLoading ? (
           <Button variant="ghost" size="icon" className="h-5 w-5 rounded-sm animate-spin" disabled>
             <Loader2 size={12} />
@@ -99,31 +100,23 @@ export function HeaderBar({
           variant="ghost"
           size="icon"
           className="h-5 w-5 rounded-sm hover:bg-white/20"
-          title={layoutDirection === "vertical" ? "Switch to Horizontal Layout" : "Switch to Vertical Layout"}
+          title={
+            layoutDirection === "vertical"
+              ? "Switch to Horizontal Layout"
+              : "Switch to Vertical Layout"
+          }
         >
-          {layoutDirection === "vertical" ? (
-            <Columns size={12} />
-          ) : (
-            <Rows size={12} />
-          )}
+          {layoutDirection === "vertical" ? <Columns size={12} /> : <Rows size={12} />}
         </Button>
         <Button
           variant="ghost"
           size="icon"
           className="h-5 w-5 rounded-sm hover:bg-white/20"
           onClick={toggleAlwaysOnTop}
-          aria-label={
-            isAlwaysOnTop ? t("unpinWindowTooltip") : t("pinWindowTooltip")
-          }
-          title={
-            isAlwaysOnTop ? t("unpinWindowTooltip") : t("pinWindowTooltip")
-          }
+          aria-label={isAlwaysOnTop ? t("unpinWindowTooltip") : t("pinWindowTooltip")}
+          title={isAlwaysOnTop ? t("unpinWindowTooltip") : t("pinWindowTooltip")}
         >
-          {isAlwaysOnTop ? (
-            <PinOffIcon size={12} />
-          ) : (
-            <PinIcon size={12} />
-          )}
+          {isAlwaysOnTop ? <PinOffIcon size={12} /> : <PinIcon size={12} />}
         </Button>
         <Button
           variant="ghost"

@@ -133,16 +133,11 @@ export class GeminiProxyServer {
 
       const now = Date.now();
       if (now - client.lastActivity > this.healthCheckInterval) {
-        console.log(
-          `[Proxy] Client ${clientId} inactive for too long, sending ping`
-        );
+        console.log(`[Proxy] Client ${clientId} inactive for too long, sending ping`);
         try {
           client.ws.ping();
         } catch (error) {
-          console.error(
-            `[Proxy] Error sending ping to client ${clientId}:`,
-            error
-          );
+          console.error(`[Proxy] Error sending ping to client ${clientId}:`, error);
           this.cleanupClient(clientId);
         }
       }
@@ -152,10 +147,7 @@ export class GeminiProxyServer {
         try {
           client.geminiWs.ping();
         } catch (error) {
-          console.error(
-            `[Proxy] Error sending ping to Gemini for client ${clientId}:`,
-            error
-          );
+          console.error(`[Proxy] Error sending ping to Gemini for client ${clientId}:`, error);
           this.attemptReconnect(client);
         }
       }
@@ -234,10 +226,7 @@ export class GeminiProxyServer {
       });
 
       geminiWs.on("error", (error) => {
-        console.error(
-          `[Proxy] Gemini connection error for client ${client.id}:`,
-          error
-        );
+        console.error(`[Proxy] Gemini connection error for client ${client.id}:`, error);
         this.cleanupGeminiConnection(client.id);
         this.attemptReconnect(client);
       });
@@ -251,10 +240,7 @@ export class GeminiProxyServer {
         client.lastActivity = Date.now();
       });
     } catch (error) {
-      console.error(
-        `[Proxy] Error connecting to Gemini for client ${client.id}:`,
-        error
-      );
+      console.error(`[Proxy] Error connecting to Gemini for client ${client.id}:`, error);
       this.cleanupGeminiConnection(client.id);
       this.attemptReconnect(client);
     }
@@ -292,8 +278,7 @@ export class GeminiProxyServer {
         realtime_input: {
           media_chunks: [
             {
-              mime_type:
-                data.mimeType === "audio/pcm" ? "audio/pcm" : data.mimeType,
+              mime_type: data.mimeType === "audio/pcm" ? "audio/pcm" : data.mimeType,
               data: data.chunk,
             },
           ],
@@ -348,13 +333,11 @@ export class GeminiProxyServer {
       this.reconnectAttempts.set(client.id, attempts + 1);
       const delay = this.reconnectTimeout * (attempts + 1);
       console.log(
-        `[Proxy] Attempting to reconnect to Gemini for client ${client.id} (${attempts + 1}/${this.maxReconnectAttempts}) in ${delay}ms`
+        `[Proxy] Attempting to reconnect to Gemini for client ${client.id} (${attempts + 1}/${this.maxReconnectAttempts}) in ${delay}ms`,
       );
       setTimeout(() => this.connectToGemini(client), delay);
     } else {
-      console.log(
-        `[Proxy] Max reconnection attempts reached for client ${client.id}`
-      );
+      console.log(`[Proxy] Max reconnection attempts reached for client ${client.id}`);
       this.cleanupClient(client.id);
     }
   }

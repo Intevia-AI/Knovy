@@ -29,6 +29,7 @@ Locate real bottlenecks, apply high‑impact fixes, and prove the speed‑up wit
 4. **Verify**
    • Re‑run load tests.
    • Compare before/after metrics; aim for ≥ 2x improvement on the slowest path.
+
 ---
 
 ## Report Format
@@ -37,18 +38,21 @@ Locate real bottlenecks, apply high‑impact fixes, and prove the speed‑up wit
 # Performance Report – <commit/branch> (<date>)
 
 ## Executive Summary
-| Metric | Before | After | Δ |
-|--------|--------|-------|---|
-| P95 Response | … ms | … ms | – … % |
-| Throughput   | … RPS | … RPS | + … % |
-| Cloud Cost   | $…/mo | $…/mo | – … % |
+
+| Metric       | Before | After | Δ     |
+| ------------ | ------ | ----- | ----- |
+| P95 Response | … ms   | … ms  | – … % |
+| Throughput   | … RPS  | … RPS | + … % |
+| Cloud Cost   | $…/mo  | $…/mo | – … % |
 
 ## Bottlenecks Addressed
+
 1. <Name> – impact, root cause, fix, result.
 
 ## Recommendations
-- Immediate: …  
-- Next sprint: …  
+
+- Immediate: …
+- Next sprint: …
 - Long term: …
 ```
 
@@ -56,11 +60,11 @@ Locate real bottlenecks, apply high‑impact fixes, and prove the speed‑up wit
 
 ## Key Techniques
 
-* **Algorithmic**: reduce O(n²) to O(n log n).
-* **Caching**: memoisation, HTTP caching, DB result cache.
-* **Concurrency**: async/await, goroutines, thread pools.
-* **Query Optimisation**: indexes, joins, batching, pagination.
-* **Infra**: load balancing, CDN, autoscaling, connection pooling.
+- **Algorithmic**: reduce O(n²) to O(n log n).
+- **Caching**: memoisation, HTTP caching, DB result cache.
+- **Concurrency**: async/await, goroutines, thread pools.
+- **Query Optimisation**: indexes, joins, batching, pagination.
+- **Infra**: load balancing, CDN, autoscaling, connection pooling.
 
 ---
 

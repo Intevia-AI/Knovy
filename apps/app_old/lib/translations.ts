@@ -7,7 +7,7 @@
 /**
  * Translation dictionary containing all application strings in multiple languages
  * Organized by language code and then by string key
- * 
+ *
  * @type {Record<string, Record<string, string>>}
  */
 export const translations = {
@@ -68,22 +68,22 @@ export const translations = {
     copyCodeSuccessToast: "Copied successfully",
     // Textarea Hints
     textareaHint: "Press Enter to confirm, Shift + Enter for new line",
-    "noQueryProvided": "[Hint] No query content provided.",
-    "currentScreen": "this screenshot",
-    "screenshotAnalysis": "Screenshot Analysis",
-    "noSearchQueryProvided": "[Hint] No search keywords provided.",
-    "search": "Search",
-    "insufficientTranscription": "[Hint] Insufficient transcription content for analysis.",
-    "screenshotButton": "Screenshot",
+    noQueryProvided: "[Hint] No query content provided.",
+    currentScreen: "this screenshot",
+    screenshotAnalysis: "Screenshot Analysis",
+    noSearchQueryProvided: "[Hint] No search keywords provided.",
+    search: "Search",
+    insufficientTranscription: "[Hint] Insufficient transcription content for analysis.",
+    screenshotButton: "Screenshot",
     // New Auth-related translations (English placeholders)
-    "loginToShareScreenToast": "Login Required",
-    "loginToShareScreenDescriptionToast": "Please log in to start screen sharing.",
-    "loginToTakeScreenshotToast": "Login Required",
-    "loginToTakeScreenshotDescriptionToast": "Please log in to take a screenshot.",
-    "loginToUseAiActionsToast": "Login Required",
-    "loginToUseAiActionsDescriptionToast": "Please log in to use AI actions with screen content.",
-    "statusAuthLoading": "Authenticating...",
-    "statusAuthLoadingShort": "Auth...",
+    loginToShareScreenToast: "Login Required",
+    loginToShareScreenDescriptionToast: "Please log in to start screen sharing.",
+    loginToTakeScreenshotToast: "Login Required",
+    loginToTakeScreenshotDescriptionToast: "Please log in to take a screenshot.",
+    loginToUseAiActionsToast: "Login Required",
+    loginToUseAiActionsDescriptionToast: "Please log in to use AI actions with screen content.",
+    statusAuthLoading: "Authenticating...",
+    statusAuthLoadingShort: "Auth...",
   },
   "zh-TW": {
     // Add Traditional Chinese translations here
@@ -142,22 +142,22 @@ export const translations = {
     copyCodeSuccessToast: "複製成功",
     // Textarea Hints
     textareaHint: "按 Enter 確認，Shift + Enter 換行",
-    "noQueryProvided": "[提示] 沒有提供查詢內容。",
-    "currentScreen": "這張截圖",
-    "screenshotAnalysis": "截圖分析",
-    "noSearchQueryProvided": "[提示] 沒有提供搜尋關鍵字。",
-    "search": "搜尋",
-    "insufficientTranscription": "[提示] 沒有足夠的轉錄內容可供分析。",
-    "screenshotButton": "截圖",
+    noQueryProvided: "[提示] 沒有提供查詢內容。",
+    currentScreen: "這張截圖",
+    screenshotAnalysis: "截圖分析",
+    noSearchQueryProvided: "[提示] 沒有提供搜尋關鍵字。",
+    search: "搜尋",
+    insufficientTranscription: "[提示] 沒有足夠的轉錄內容可供分析。",
+    screenshotButton: "截圖",
     // Add zh-TW translations for new keys here
-    "loginToShareScreenToast": "請先登入",
-    "loginToShareScreenDescriptionToast": "請登入以開始分享螢幕。",
-    "loginToTakeScreenshotToast": "請先登入",
-    "loginToTakeScreenshotDescriptionToast": "請登入以擷取螢幕畫面。",
-    "loginToUseAiActionsToast": "請先登入",
-    "loginToUseAiActionsDescriptionToast": "請登入以使用螢幕內容相關的 AI 功能。",
-    "statusAuthLoading": "驗證中...",
-    "statusAuthLoadingShort": "驗證...",
+    loginToShareScreenToast: "請先登入",
+    loginToShareScreenDescriptionToast: "請登入以開始分享螢幕。",
+    loginToTakeScreenshotToast: "請先登入",
+    loginToTakeScreenshotDescriptionToast: "請登入以擷取螢幕畫面。",
+    loginToUseAiActionsToast: "請先登入",
+    loginToUseAiActionsDescriptionToast: "請登入以使用螢幕內容相關的 AI 功能。",
+    statusAuthLoading: "驗證中...",
+    statusAuthLoadingShort: "驗證...",
   },
   "ja-JP": {
     // Add Japanese translations here
@@ -216,29 +216,30 @@ export const translations = {
     copyCodeSuccessToast: "コピーしました",
     // Textarea Hints
     textareaHint: "Enter で確定、Shift + Enter で改行",
-    "noQueryProvided": "[ヒント] クエリ内容が提供されていません。",
-    "currentScreen": "このスクリーンショット",
-    "screenshotAnalysis": "スクリーンショット分析",
-    "noSearchQueryProvided": "[ヒント] 検索キーワードが提供されていません。",
-    "search": "検索",
-    "insufficientTranscription": "[ヒント] 分析に十分な文字起こし内容がありません。",
-    "screenshotButton": "スクリーンショット",
+    noQueryProvided: "[ヒント] クエリ内容が提供されていません。",
+    currentScreen: "このスクリーンショット",
+    screenshotAnalysis: "スクリーンショット分析",
+    noSearchQueryProvided: "[ヒント] 検索キーワードが提供されていません。",
+    search: "検索",
+    insufficientTranscription: "[ヒント] 分析に十分な文字起こし内容がありません。",
+    screenshotButton: "スクリーンショット",
     // Add ja-JP translations for new keys here
-    "loginToShareScreenToast": "ログインが必要です",
-    "loginToShareScreenDescriptionToast": "画面共有を開始するにはログインしてください。",
-    "loginToTakeScreenshotToast": "ログインが必要です",
-    "loginToTakeScreenshotDescriptionToast": "スクリーンショットを撮るにはログインしてください。",
-    "loginToUseAiActionsToast": "ログインが必要です",
-    "loginToUseAiActionsDescriptionToast": "画面コンテンツを使用するAI機能を利用するにはログインしてください。",
-    "statusAuthLoading": "認証中...",
-    "statusAuthLoadingShort": "認証...",
+    loginToShareScreenToast: "ログインが必要です",
+    loginToShareScreenDescriptionToast: "画面共有を開始するにはログインしてください。",
+    loginToTakeScreenshotToast: "ログインが必要です",
+    loginToTakeScreenshotDescriptionToast: "スクリーンショットを撮るにはログインしてください。",
+    loginToUseAiActionsToast: "ログインが必要です",
+    loginToUseAiActionsDescriptionToast:
+      "画面コンテンツを使用するAI機能を利用するにはログインしてください。",
+    statusAuthLoading: "認証中...",
+    statusAuthLoadingShort: "認証...",
   },
 };
 
 /**
  * Type definition for all translation keys in the application
  * Used for type safety when accessing translations
- * 
+ *
  * @typedef {string} TranslationKey
  */
 export type TranslationKey =
@@ -318,7 +319,7 @@ export type TranslationKey =
 /**
  * Type definition for supported language codes in the application
  * Currently supports: en-US, zh-TW, ja-JP
- * 
+ *
  * @typedef {string} SupportedLanguage
  */
 export type SupportedLanguage = keyof typeof translations;

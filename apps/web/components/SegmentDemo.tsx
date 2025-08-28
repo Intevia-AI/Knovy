@@ -14,7 +14,7 @@ import { useSegmentRecorder } from "@/hooks/useSegmentRecorder";
  * @description A demonstration component for audio segment recording functionality
  * Provides UI controls for starting and stopping audio recording
  * Automatically processes recorded segments by sending them to the AI API
- * 
+ *
  * @example
  * ```tsx
  * <SegmentDemo />
@@ -35,24 +35,24 @@ export default function SegmentDemo() {
     // Handler for segment events
     const handler = async (e: CustomEvent<Blob>) => {
       setBusy(true); // Show uploading indicator
-      
+
       // Convert blob to base64 string
       const buf = await e.detail.arrayBuffer();
       const b64 = btoa(String.fromCharCode(...new Uint8Array(buf)));
-      
+
       // Send to AI API
       await fetch("/api/ai", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ data: b64, mimeType }),
       });
-      
+
       setBusy(false); // Hide uploading indicator
     };
-    
+
     // Add event listener
     window.addEventListener("segment", handler as any);
-    
+
     // Clean up event listener on unmount
     return () => window.removeEventListener("segment", handler as any);
   }, [mimeType]);

@@ -6,9 +6,9 @@ This guide provides a comprehensive overview of the Electron application in `app
 
 The desktop application is built using a combination of **Electron**, **electron-vite**, and **Next.js**.
 
--   **Electron**: Serves as the application wrapper, providing access to native OS-level functionalities (e.g., windows, menus, screen capture). It runs the **Main Process**.
--   **electron-vite**: A build tool that provides a faster and leaner development experience for Electron, handling the main and preload scripts.
--   **Next.js**: Powers the user interface. It runs as a web application inside an Electron browser window, known as the **Renderer Process**. For production, the Next.js app is exported as a static site.
+- **Electron**: Serves as the application wrapper, providing access to native OS-level functionalities (e.g., windows, menus, screen capture). It runs the **Main Process**.
+- **electron-vite**: A build tool that provides a faster and leaner development experience for Electron, handling the main and preload scripts.
+- **Next.js**: Powers the user interface. It runs as a web application inside an Electron browser window, known as the **Renderer Process**. For production, the Next.js app is exported as a static site.
 
 This architecture allows us to build a cross-platform desktop app using familiar web technologies with a modern and efficient build system.
 
@@ -74,10 +74,10 @@ graph TD
 
 ### Key Files
 
--   `src/main/main.ts`: **The Main Process Entry Point**. This is the heart of the Electron app. It controls the application lifecycle, creates `BrowserWindow` instances, handles native OS integrations, and sets up all Inter-Process Communication (IPC) listeners.
--   `src/main/preload.ts`: **The Secure Bridge**. This script runs in a privileged context and uses `contextBridge` to securely expose specific Main process functions to the UI.
--   `src/renderer/next.config.mjs`: **Next.js Configuration**. The key configuration is `output: 'export'`, which builds the UI into static files.
--   `electron.vite.config.ts`: **Electron-Vite Configuration**. Configures the entry points for the main and preload scripts. The renderer process is handled independently by Next.js.
+- `src/main/main.ts`: **The Main Process Entry Point**. This is the heart of the Electron app. It controls the application lifecycle, creates `BrowserWindow` instances, handles native OS integrations, and sets up all Inter-Process Communication (IPC) listeners.
+- `src/main/preload.ts`: **The Secure Bridge**. This script runs in a privileged context and uses `contextBridge` to securely expose specific Main process functions to the UI.
+- `src/renderer/next.config.mjs`: **Next.js Configuration**. The key configuration is `output: 'export'`, which builds the UI into static files.
+- `electron.vite.config.ts`: **Electron-Vite Configuration**. Configures the entry points for the main and preload scripts. The renderer process is handled independently by Next.js.
 
 ### Communication Flow (IPC)
 
@@ -97,6 +97,7 @@ pnpm dev
 ```
 
 This single command will:
+
 1.  Start the Next.js development server for the renderer on `http://localhost:3001`, with hot-reloading for UI changes.
 2.  Start the Electron main process, which loads the renderer from the dev server.
 3.  Watch for changes in `src/main/main.ts` and `src/main/preload.ts` and restart the main process automatically.
@@ -126,7 +127,8 @@ Open `src/main/preload.ts` and add the new function to the `api` object.
 // In src/main/preload.ts
 const api = {
   // ... all other existing functions
-  resizeWindow: (size: { width: number; height: number }) => ipcRenderer.send("electronAPI:resizeWindow", size),
+  resizeWindow: (size: { width: number; height: number }) =>
+    ipcRenderer.send("electronAPI:resizeWindow", size),
 };
 
 contextBridge.exposeInMainWorld("electronAPI", api);
@@ -155,6 +157,7 @@ pnpm build
 ```
 
 This script performs these main actions:
+
 1.  **Builds the Next.js App**: Runs `next build src/renderer` to generate a static site in the `src/renderer/out` directory.
 2.  **Builds the Electron App**: Runs `electron-vite build` to compile the main and preload scripts.
 3.  **Packages the Application**: Uses `electron-builder` to bundle the Electron app, the static Next.js build, and all dependencies into a distributable format (e.g., `.dmg`, `.exe`).

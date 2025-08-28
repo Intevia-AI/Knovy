@@ -12,7 +12,7 @@ import { Loader2 } from "lucide-react"; // For a loading spinner
  * Main page component that serves as the entry point for the application.
  * Shows a loading spinner during authentication initialization, then renders
  * the main application interface.
- * 
+ *
  * @component
  * @returns {JSX.Element} Loading spinner or main application interface
  */

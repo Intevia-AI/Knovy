@@ -10,30 +10,30 @@ import nodemailer from "nodemailer";
  * @description Handles POST requests to submit user feedback via email
  * @route POST /api/feedback
  * @param {Request} req - The incoming HTTP request object
- * 
+ *
  * @requestBody {Object} - The request body containing feedback text
  * @requestExample
  * {
  *   "feedback": "I really like the new feature, but I found a bug when..."
  * }
- * 
+ *
  * @responseBody {Object} - Success message when feedback is sent
  * @responseExample
  * {
  *   "message": "Feedback sent successfully"
  * }
- * 
+ *
  * @errorResponse {Object} - Error message when feedback submission fails
  * @errorExample
  * {
  *   "message": "Error sending feedback"
  * }
- * 
+ *
  * @returns {Promise<NextResponse>} JSON response indicating success or failure
  */
 export async function POST(req: Request) {
   const { feedback } = await req.json();
-  
+
   // Create email transporter using Gmail with app password
   const transporter = nodemailer.createTransport({
     service: "gmail",
@@ -42,7 +42,7 @@ export async function POST(req: Request) {
       pass: process.env.GMAIL_PASS,
     },
   });
-  
+
   // Configure email content
   const mailOptions = {
     from: process.env.GMAIL_USER,
@@ -50,7 +50,7 @@ export async function POST(req: Request) {
     subject: "Feedback from user",
     text: feedback,
   };
-  
+
   try {
     // Send the email with feedback
     await transporter.sendMail(mailOptions);
@@ -58,9 +58,6 @@ export async function POST(req: Request) {
   } catch (error) {
     console.error("Error sending feedback:", error);
     // Return a 500 error response
-    return NextResponse.json(
-      { message: "Error sending feedback" },
-      { status: 500 },
-    );
+    return NextResponse.json({ message: "Error sending feedback" }, { status: 500 });
   }
 }

@@ -19,9 +19,9 @@ export function FeaturesPopup({ onAiAction, isScreenSharing }: FeaturesPopupProp
 
   const onShowHistory = () => {
     if (window.electronAPI) {
-      window.electronAPI.send('history:open');
+      window.electronAPI.send('history:open')
     }
-  };
+  }
 
   return (
     <div className="grid gap-2 p-2 bg-muted/10 rounded-2xl">

@@ -94,7 +94,6 @@ This project will be executed by a team of specialized AI agents. Each task in t
 **Goal:** Implement a streamlined signup process where joining the beta is done by signing up directly with a Google account.
 
 - **Task 1.1: Implement "Join with Google" Authentication.**
-
   - **1.1.1: Supabase Google OAuth Configuration:**
     - Enable Google as an OAuth provider in the Supabase project settings. This is a configuration step within the Supabase dashboard.
   - **1.1.2: Repurpose `Login.tsx` for Login:**
@@ -124,7 +123,6 @@ This project will be executed by a team of specialized AI agents. Each task in t
 **Goal:** Create the necessary legal documents and user documentation.
 
 - **Task 2.1: Terms of Service and Privacy Policy.**
-
   1.  Create a "Terms of Service" page on the website.
   2.  Create a "Privacy Policy" page on the website.
   3.  These documents should clearly state what data is collected and how it is used.
@@ -137,7 +135,6 @@ This project will be executed by a team of specialized AI agents. Each task in t
 **Goal:** Connect the Chrome extension to the backend and implement Notion integration.
 
 - **Task 3.1: Refactor the Chrome Extension.**
-
   - **3.1.1: Modify Extension Login Button:**
     - Change the existing "Login" button in the extension's popup (`apps/extension/src/popup.tsx`) to open the website's login page (`Waitlist.tsx`).
   - **3.1.2: Implement Extension Listener for Login Event:**

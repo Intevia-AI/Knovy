@@ -27,14 +27,14 @@ interface AudioVisualizerProps {
 /**
  * @component AudioVisualizer
  * @description Renders a real-time audio frequency visualization using HTML5 Canvas
- * 
+ *
  * @example
  * ```tsx
  * // Basic usage with an analyser node
  * <AudioVisualizer analyserNode={audioAnalyserNode} />
- * 
+ *
  * // Custom styling
- * <AudioVisualizer 
+ * <AudioVisualizer
  *   analyserNode={audioAnalyserNode}
  *   width={500}
  *   height={100}

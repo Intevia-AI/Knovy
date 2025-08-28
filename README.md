@@ -251,6 +251,30 @@ Each application requires specific environment variables:
 
 Refer to the `.env.example` files in each application directory for detailed information.
 
+## Code Style and Linting
+
+This project uses [ESLint](https://eslint.org/) for identifying and reporting on patterns in JavaScript and TypeScript, and [Prettier](https://prettier.io/) for code formatting to ensure a consistent code style across the entire codebase.
+
+### Formatting Code
+
+To automatically format all files according to the project's Prettier configuration, run the following command from the root directory:
+
+```bash
+pnpm format
+```
+
+### Linting Code
+
+To check for code quality issues and potential errors, run the linter. Many simple errors can be fixed automatically by adding the `--fix` flag.
+
+```bash
+# Check for linting errors
+pnpm lint
+
+# Automatically fix fixable linting errors
+pnpm lint -- --fix
+```
+
 ## Contributing
 
 Please see [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduct and the process for submitting pull requests.

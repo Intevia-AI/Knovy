@@ -17,7 +17,9 @@ export function SessionItem({ session, onSelect, onDelete }: SessionItemProps) {
       <Button variant="ghost" className="w-full justify-start" onClick={() => onSelect(session.id)}>
         {new Date(session.started_at).toLocaleString()}
       </Button>
-      <Button variant="destructive" size="sm" onClick={() => onDelete(session.id)}>Delete</Button>
+      <Button variant="destructive" size="sm" onClick={() => onDelete(session.id)}>
+        Delete
+      </Button>
     </div>
   );
 }

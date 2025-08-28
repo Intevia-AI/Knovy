@@ -67,9 +67,7 @@ export default function RealTimeSubtitle({
           );
 
           // 提取關鍵字
-          const keywordsMatch = textBufferRef.current.match(
-            /KEYWORDS: (.*?)(?:\n|$)/s,
-          );
+          const keywordsMatch = textBufferRef.current.match(/KEYWORDS: (.*?)(?:\n|$)/s);
 
           if (transcriptionMatch && transcriptionMatch[1]) {
             // 清理轉錄文本
@@ -184,18 +182,12 @@ export default function RealTimeSubtitle({
       });
 
       console.log("[即時字幕] 載入 audio worklet...");
-      await audioContextRef.current.audioWorklet.addModule(
-        "/worklets/audio-processor.js",
-      );
-      const audioWorkletNode = new AudioWorkletNode(
-        audioContextRef.current,
-        "audio-processor",
-        {
-          processorOptions: {
-            bufferSize: 4096,
-          },
+      await audioContextRef.current.audioWorklet.addModule("/worklets/audio-processor.js");
+      const audioWorkletNode = new AudioWorkletNode(audioContextRef.current, "audio-processor", {
+        processorOptions: {
+          bufferSize: 4096,
         },
-      );
+      });
 
       audioWorkletNode.port.onmessage = (event) => {
         const { pcmData, level } = event.data;
@@ -224,8 +216,7 @@ export default function RealTimeSubtitle({
         },
       });
       mediaStreamRef.current = micStream;
-      const micSource =
-        audioContextRef.current.createMediaStreamSource(micStream);
+      const micSource = audioContextRef.current.createMediaStreamSource(micStream);
       micSource.connect(audioWorkletNode);
 
       if (systemAudioStream) {
@@ -285,11 +276,7 @@ export default function RealTimeSubtitle({
         checked={isSubtitleVisible}
         onCheckedChange={handleCheckedChange}
         disabled={isProcessing}
-        aria-label={
-          isSubtitleVisible
-            ? t("hideSubtitlesAriaLabel")
-            : t("showSubtitlesAriaLabel")
-        }
+        aria-label={isSubtitleVisible ? t("hideSubtitlesAriaLabel") : t("showSubtitlesAriaLabel")}
       />
     </div>
   );

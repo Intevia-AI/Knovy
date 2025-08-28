@@ -1,7 +1,12 @@
 "use client";
 "use client";
 
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@workspace/ui/components/accordion";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@workspace/ui/components/accordion";
 import { Briefcase, Play, Settings } from "lucide-react";
 import { useLanguage } from "@/context/language-context";
 
@@ -79,45 +84,48 @@ function WorkingStages() {
 
 function SolutionAccordion() {
   return (
-<div className="mx-auto max-w-3xl">
-        <Accordion type="single" collapsible className="w-full">
-          <AccordionItem value="item-1">
-            <AccordionTrigger>不切畫面、不分心打字</AccordionTrigger>
-            <AccordionContent>
-              以工具列形式常駐於工作畫面旁，<span className="font-bold">無須切換視窗，更不用打字</span>，只要說話、滑鼠點擊，就能獲得支援。
-            </AccordionContent>
-          </AccordionItem>
-          <AccordionItem value="item-2">
-            <AccordionTrigger>即時語音與畫面感知</AccordionTrigger>
-            <AccordionContent>
-              同步感知您的語音和螢幕內容，<span className="font-bold">主動提供有價值的資訊、問題與建議</span>。
-            </AccordionContent>
-          </AccordionItem>
-          <AccordionItem value="item-3">
-            <AccordionTrigger>多語即時字幕</AccordionTrigger>
-            <AccordionContent>
-              支援多語言即時字幕生成，讓跨國溝通不再受限。
-            </AccordionContent>
-          </AccordionItem>
-          <AccordionItem value="item-4">
-            <AccordionTrigger>會議結束後的完整回饋</AccordionTrigger>
-            <AccordionContent>
-              提供逐字稿、摘要、待辦事項，甚至根據您在會議的表現，提供<span className="font-bold">分析與建議</span>。
-            </AccordionContent>
-          </AccordionItem>
-          <AccordionItem value="item-5">
-            <AccordionTrigger>文件與目標整合（開發中）</AccordionTrigger>
-            <AccordionContent>
-              會議前上傳文件、任務目標、議程等背景知識，Knovy 將在您需要時自動引用，不用再手動翻資料。
-            </AccordionContent>
-          </AccordionItem>
-          <AccordionItem value="item-6">
-            <AccordionTrigger>Agentic 功能（開發中）</AccordionTrigger>
-            <AccordionContent>
-              我們正在開發更主動的 Agent，未來只須說出需求（如修改檔案、查詢資料或安排會議），就能<span className="font-bold">自動執行任務</span>。
-            </AccordionContent>
-          </AccordionItem>
-        </Accordion>
-      </div>
+    <div className="mx-auto max-w-3xl">
+      <Accordion type="single" collapsible className="w-full">
+        <AccordionItem value="item-1">
+          <AccordionTrigger>不切畫面、不分心打字</AccordionTrigger>
+          <AccordionContent>
+            以工具列形式常駐於工作畫面旁，
+            <span className="font-bold">無須切換視窗，更不用打字</span>
+            ，只要說話、滑鼠點擊，就能獲得支援。
+          </AccordionContent>
+        </AccordionItem>
+        <AccordionItem value="item-2">
+          <AccordionTrigger>即時語音與畫面感知</AccordionTrigger>
+          <AccordionContent>
+            同步感知您的語音和螢幕內容，
+            <span className="font-bold">主動提供有價值的資訊、問題與建議</span>。
+          </AccordionContent>
+        </AccordionItem>
+        <AccordionItem value="item-3">
+          <AccordionTrigger>多語即時字幕</AccordionTrigger>
+          <AccordionContent>支援多語言即時字幕生成，讓跨國溝通不再受限。</AccordionContent>
+        </AccordionItem>
+        <AccordionItem value="item-4">
+          <AccordionTrigger>會議結束後的完整回饋</AccordionTrigger>
+          <AccordionContent>
+            提供逐字稿、摘要、待辦事項，甚至根據您在會議的表現，提供
+            <span className="font-bold">分析與建議</span>。
+          </AccordionContent>
+        </AccordionItem>
+        <AccordionItem value="item-5">
+          <AccordionTrigger>文件與目標整合（開發中）</AccordionTrigger>
+          <AccordionContent>
+            會議前上傳文件、任務目標、議程等背景知識，Knovy 將在您需要時自動引用，不用再手動翻資料。
+          </AccordionContent>
+        </AccordionItem>
+        <AccordionItem value="item-6">
+          <AccordionTrigger>Agentic 功能（開發中）</AccordionTrigger>
+          <AccordionContent>
+            我們正在開發更主動的 Agent，未來只須說出需求（如修改檔案、查詢資料或安排會議），就能
+            <span className="font-bold">自動執行任務</span>。
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
+    </div>
   );
 }

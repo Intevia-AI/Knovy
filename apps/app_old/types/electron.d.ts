@@ -31,12 +31,7 @@ interface ElectronAPI {
 
   // Screenshot
   startScreenshot: () => void;
-  captureArea: (bounds: {
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-  }) => void;
+  captureArea: (bounds: { x: number; y: number; width: number; height: number }) => void;
   cancelScreenshot: () => void;
   onScreenshotTaken: (callback: (path: string) => void) => () => void;
   onScreenshotError: (callback: (errorMessage: string) => void) => () => void;

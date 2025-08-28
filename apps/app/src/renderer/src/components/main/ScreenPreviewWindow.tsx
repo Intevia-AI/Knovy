@@ -1,16 +1,15 @@
-import React, { useEffect, useRef } from "react";
-import { MonitorIcon, XIcon } from "lucide-react";
-import AudioVisualizer from "@/components/AudioVisualizer";
-import { useI18n } from "@/hooks/useI18n";
-
+import React, { useEffect, useRef } from 'react'
+import { MonitorIcon, XIcon } from 'lucide-react'
+import AudioVisualizer from '@/components/AudioVisualizer'
+import { useI18n } from '@/hooks/useI18n'
 
 interface ScreenPreviewWindowProps {
-  isOpen: boolean;
-  onClose: () => void;
-  isScreenSharing: boolean;
-  screenStreamRef: React.RefObject<MediaStream | null>;
-  systemAnalyserNode: AnalyserNode | null;
-  systemLevel: number;
+  isOpen: boolean
+  onClose: () => void
+  isScreenSharing: boolean
+  screenStreamRef: React.RefObject<MediaStream | null>
+  systemAnalyserNode: AnalyserNode | null
+  systemLevel: number
 }
 
 export default function ScreenPreviewWindow({
@@ -19,19 +18,18 @@ export default function ScreenPreviewWindow({
   isScreenSharing,
   screenStreamRef,
   systemAnalyserNode,
-  systemLevel,
+  systemLevel
 }: ScreenPreviewWindowProps) {
-  const screenPreviewRef = useRef<HTMLVideoElement>(null);
-  const { t } = useI18n();
-
+  const screenPreviewRef = useRef<HTMLVideoElement>(null)
+  const { t } = useI18n()
 
   useEffect(() => {
     const setupStream = async () => {
       if (isOpen && isScreenSharing && screenPreviewRef.current) {
-        console.log('[ScreenPreviewWindow] Attempting to get screen source ID.');
+        console.log('[ScreenPreviewWindow] Attempting to get screen source ID.')
         try {
-          const sourceId = await window.electronAPI.invoke('electronAPI:getActiveScreenSourceId');
-          console.log(`[ScreenPreviewWindow] Received source ID: ${sourceId}`);
+          const sourceId = await window.electronAPI.invoke('electronAPI:getActiveScreenSourceId')
+          console.log(`[ScreenPreviewWindow] Received source ID: ${sourceId}`)
 
           if (sourceId) {
             const stream = await navigator.mediaDevices.getUserMedia({
@@ -42,43 +40,45 @@ export default function ScreenPreviewWindow({
                   chromeMediaSourceId: sourceId
                 }
               }
-            });
+            })
 
             if (screenPreviewRef.current) {
-              screenPreviewRef.current.srcObject = stream;
+              screenPreviewRef.current.srcObject = stream
               screenPreviewRef.current.onloadedmetadata = () => {
-                screenPreviewRef.current?.play().catch((e) => console.error('[ScreenPreviewWindow] Video play error:', e));
-              };
+                screenPreviewRef.current
+                  ?.play()
+                  .catch((e) => console.error('[ScreenPreviewWindow] Video play error:', e))
+              }
               screenPreviewRef.current.onerror = (e) => {
-                console.error('[ScreenPreviewWindow] Video error:', e);
-              };
+                console.error('[ScreenPreviewWindow] Video error:', e)
+              }
             }
           } else {
-            console.warn('[ScreenPreviewWindow] No active screen source ID received.');
-            if (screenPreviewRef.current) screenPreviewRef.current.srcObject = null;
+            console.warn('[ScreenPreviewWindow] No active screen source ID received.')
+            if (screenPreviewRef.current) screenPreviewRef.current.srcObject = null
           }
         } catch (error) {
-          console.error('[ScreenPreviewWindow] Error setting up screen preview:', error);
-          if (screenPreviewRef.current) screenPreviewRef.current.srcObject = null;
+          console.error('[ScreenPreviewWindow] Error setting up screen preview:', error)
+          if (screenPreviewRef.current) screenPreviewRef.current.srcObject = null
         }
       } else if (screenPreviewRef.current) {
-        console.log('[ScreenPreviewWindow] Clearing video preview.');
-        screenPreviewRef.current.srcObject = null;
+        console.log('[ScreenPreviewWindow] Clearing video preview.')
+        screenPreviewRef.current.srcObject = null
       }
-    };
+    }
 
-    setupStream();
+    setupStream()
 
     return () => {
       if (screenPreviewRef.current && screenPreviewRef.current.srcObject) {
-        const stream = screenPreviewRef.current.srcObject as MediaStream;
-        stream.getTracks().forEach((track) => track.stop());
-        screenPreviewRef.current.srcObject = null;
+        const stream = screenPreviewRef.current.srcObject as MediaStream
+        stream.getTracks().forEach((track) => track.stop())
+        screenPreviewRef.current.srcObject = null
       }
-    };
-  }, [isOpen, isScreenSharing]);
+    }
+  }, [isOpen, isScreenSharing])
 
-  if (!isOpen) return null;
+  if (!isOpen) return null
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
@@ -115,8 +115,7 @@ export default function ScreenPreviewWindow({
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5">
                 <div className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse" />
-                <span className="text-[10px] font-medium text-white">{t("systemAudioLabel")}</span>
-
+                <span className="text-[10px] font-medium text-white">{t('systemAudioLabel')}</span>
               </div>
               {isScreenSharing && (
                 <span className="text-[10px] font-medium text-blue-500">
@@ -126,8 +125,8 @@ export default function ScreenPreviewWindow({
             </div>
             <div className="w-full h-[6px] flex items-center bg-black/50 rounded-full overflow-hidden">
               {isScreenSharing && systemAnalyserNode ? (
-                <AudioVisualizer 
-                  analyserNode={systemAnalyserNode} 
+                <AudioVisualizer
+                  analyserNode={systemAnalyserNode}
                   height={6}
                   barColor="#3b82f6"
                   backgroundColor="transparent"
@@ -140,5 +139,5 @@ export default function ScreenPreviewWindow({
         </div>
       </div>
     </div>
-  );
-} 
+  )
+}

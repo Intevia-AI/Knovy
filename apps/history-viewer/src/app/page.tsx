@@ -4,13 +4,19 @@ import { useEffect, useState } from "react";
 import { Sidebar } from "@/components/sidebar";
 import { getSessions, getTranscripts, deleteSession } from "@/lib/api";
 import { SessionItem } from "@/components/session-item";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@workspace/ui/components/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@workspace/ui/components/card";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
-  AccordionTrigger
+  AccordionTrigger,
 } from "@workspace/ui/components/accordion";
 import { Button } from "@workspace/ui/components/button";
 
@@ -39,7 +45,7 @@ function TranscriptView({ sessionId }: { sessionId: string }) {
         const fetchedTranscripts = await getTranscripts(sessionId);
         setTranscripts(fetchedTranscripts);
       } catch (err) {
-        setError('Failed to load transcripts.');
+        setError("Failed to load transcripts.");
         console.error(err);
       } finally {
         setIsLoading(false);
@@ -61,7 +67,8 @@ function TranscriptView({ sessionId }: { sessionId: string }) {
       {transcripts.length > 0 ? (
         transcripts.map((t) => (
           <p key={t.id} className="text-sm text-gray-500 dark:text-gray-400">
-            <span className="font-semibold">{new Date(t.timestamp).toLocaleTimeString()}:</span> {t.content}
+            <span className="font-semibold">{new Date(t.timestamp).toLocaleTimeString()}:</span>{" "}
+            {t.content}
           </p>
         ))
       ) : (
@@ -133,7 +140,11 @@ export default function HistoryPage() {
                 <AccordionTrigger>
                   <div className="flex justify-between items-center w-full pr-4">
                     <span>
-                      {new Date(session.started_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                      {new Date(session.started_at).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        second: "2-digit",
+                      })}
                     </span>
                     <Button
                       variant="ghost"

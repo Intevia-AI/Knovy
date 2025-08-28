@@ -34,10 +34,7 @@ export default function RealTimeAnalysis({
 
   useEffect(() => {
     if (isScreenSharing && systemAudioStream) {
-      console.log(
-        "[RealTimeAnalysis] 初始化 GeminiClient, language:",
-        language,
-      );
+      console.log("[RealTimeAnalysis] 初始化 GeminiClient, language:", language);
       geminiClientRef.current = new GeminiClient(
         (text, turnComplete) => {
           console.log("[即時問答] 收到回答:", text);
@@ -88,14 +85,7 @@ export default function RealTimeAnalysis({
       shouldSendAudioRef.current = false;
       textBufferRef.current = "";
     };
-  }, [
-    onTextResponse,
-    onKeywords,
-    customPrompt,
-    language,
-    isScreenSharing,
-    systemAudioStream,
-  ]);
+  }, [onTextResponse, onKeywords, customPrompt, language, isScreenSharing, systemAudioStream]);
 
   useEffect(() => {
     if (isActive && systemAudioStream) {
@@ -146,18 +136,12 @@ export default function RealTimeAnalysis({
       });
 
       console.log("[即時分析] 載入 audio worklet...");
-      await audioContextRef.current.audioWorklet.addModule(
-        "/worklets/audio-processor.js",
-      );
-      const audioWorkletNode = new AudioWorkletNode(
-        audioContextRef.current,
-        "audio-processor",
-        {
-          processorOptions: {
-            bufferSize: 8192,
-          },
+      await audioContextRef.current.audioWorklet.addModule("/worklets/audio-processor.js");
+      const audioWorkletNode = new AudioWorkletNode(audioContextRef.current, "audio-processor", {
+        processorOptions: {
+          bufferSize: 8192,
         },
-      );
+      });
 
       audioWorkletNode.port.onmessage = (event) => {
         const { pcmData, level } = event.data;
@@ -186,8 +170,7 @@ export default function RealTimeAnalysis({
         },
       });
       mediaStreamRef.current = micStream;
-      const micSource =
-        audioContextRef.current.createMediaStreamSource(micStream);
+      const micSource = audioContextRef.current.createMediaStreamSource(micStream);
       micSource.connect(audioWorkletNode);
 
       if (systemAudioStream) {

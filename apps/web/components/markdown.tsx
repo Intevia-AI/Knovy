@@ -68,10 +68,7 @@ const CodeBlock: React.FC<{
   }
 
   return (
-    <code
-      className={cn(className, "bg-muted rounded-md px-1 py-0.5 text-sm")}
-      {...props}
-    >
+    <code className={cn(className, "bg-muted rounded-md px-1 py-0.5 text-sm")} {...props}>
       {children}
     </code>
   );
@@ -165,33 +162,28 @@ const createMarkdownComponents = (): Partial<Components> => ({
  * @param {Object} props - Component props
  * @param {string} props.children - The markdown string to render
  * @param {boolean} [props.pure=false] - If true, uses default React Markdown styling instead of custom components
- * 
+ *
  * @example
  * ```tsx
  * // Basic usage with custom styling
  * <Markdown>
  *   # Heading
  *   This is **bold** text with a [link](https://example.com).
- *   
+ *
  *   ```js
  *   const code = "example";
  *   ```
  * </Markdown>
- * 
+ *
  * // Using default styling
  * <Markdown pure>
  *   Simple markdown content
  * </Markdown>
  * ```
  */
-const NonMemoizedMarkdown: React.FC<MarkdownProps> = ({
-  children,
-  pure = false,
-}) => {
+const NonMemoizedMarkdown: React.FC<MarkdownProps> = ({ children, pure = false }) => {
   // Replace HTML line breaks with newlines for proper markdown parsing
-  const parsedContent = children
-    .replace(/<br\s*\/?>/g, "\n")
-    .replace(/~/g, "-");
+  const parsedContent = children.replace(/<br\s*\/?>/g, "\n").replace(/~/g, "-");
 
   // Common plugins for both pure and styled versions
   const plugins = [remarkGfm, remarkBreaks];
@@ -199,10 +191,7 @@ const NonMemoizedMarkdown: React.FC<MarkdownProps> = ({
   return pure ? (
     <ReactMarkdown remarkPlugins={plugins}>{parsedContent}</ReactMarkdown>
   ) : (
-    <ReactMarkdown
-      remarkPlugins={plugins}
-      components={createMarkdownComponents()}
-    >
+    <ReactMarkdown remarkPlugins={plugins} components={createMarkdownComponents()}>
       {parsedContent}
     </ReactMarkdown>
   );

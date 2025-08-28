@@ -128,7 +128,7 @@ apps/proxy/
 Connect to the proxy server using WebSocket:
 
 ```javascript
-const ws = new WebSocket('ws://localhost:4567');
+const ws = new WebSocket("ws://localhost:4567");
 ```
 
 ### Message Types
@@ -136,6 +136,7 @@ const ws = new WebSocket('ws://localhost:4567');
 #### Client to Server Messages
 
 **Set Operation Mode**
+
 ```json
 {
   "type": "mode",
@@ -144,6 +145,7 @@ const ws = new WebSocket('ws://localhost:4567');
 ```
 
 **Set Custom Prompt**
+
 ```json
 {
   "type": "custom_prompt",
@@ -152,6 +154,7 @@ const ws = new WebSocket('ws://localhost:4567');
 ```
 
 **Set Language Preference**
+
 ```json
 {
   "type": "language",
@@ -160,6 +163,7 @@ const ws = new WebSocket('ws://localhost:4567');
 ```
 
 **Send Audio Data**
+
 ```json
 {
   "type": "media_chunk",
@@ -169,6 +173,7 @@ const ws = new WebSocket('ws://localhost:4567');
 ```
 
 **Disconnect**
+
 ```json
 {
   "type": "disconnect"
@@ -178,6 +183,7 @@ const ws = new WebSocket('ws://localhost:4567');
 #### Server to Client Messages
 
 **Setup Complete**
+
 ```json
 {
   "setupComplete": true
@@ -185,6 +191,7 @@ const ws = new WebSocket('ws://localhost:4567');
 ```
 
 **AI Response**
+
 ```json
 {
   "text": "Transcribed or AI-generated text",
@@ -193,6 +200,7 @@ const ws = new WebSocket('ws://localhost:4567');
 ```
 
 **Turn Complete**
+
 ```json
 {
   "text": "Final response",
@@ -201,6 +209,7 @@ const ws = new WebSocket('ws://localhost:4567');
 ```
 
 **Error**
+
 ```json
 {
   "error": "Error description"
@@ -272,11 +281,11 @@ upstream proxy_backend {
 server {
     listen 443 ssl;
     server_name your-domain.com;
-    
+
     # SSL configuration
     ssl_certificate /path/to/cert.pem;
     ssl_certificate_key /path/to/key.pem;
-    
+
     location / {
         proxy_pass http://proxy_backend;
         proxy_http_version 1.1;
@@ -329,6 +338,7 @@ DEBUG=false
 ### Common Issues
 
 #### Connection Refused
+
 ```bash
 # Check if the server is running
 netstat -tlnp | grep 4567
@@ -341,6 +351,7 @@ node -e "console.log(process.env.GOOGLE_GENERATIVE_AI_API_KEY ? 'API key set' : 
 ```
 
 #### API Key Issues
+
 ```bash
 # Verify API key validity
 curl -H "Authorization: Bearer YOUR_API_KEY" \
@@ -350,6 +361,7 @@ curl -H "Authorization: Bearer YOUR_API_KEY" \
 ```
 
 #### WebSocket Connection Failures
+
 ```bash
 # Test WebSocket connection
 wscat -c ws://localhost:4567
@@ -359,6 +371,7 @@ docker-compose logs proxy-server
 ```
 
 #### High Memory Usage
+
 ```bash
 # Monitor memory usage
 docker stats intevia-proxy-server

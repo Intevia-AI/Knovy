@@ -10,17 +10,14 @@ This guide provides detailed instructions for setting up your development enviro
 Before you begin, ensure you have the following installed:
 
 - **Node.js**: Version 20.0.0 or later
-
   - [Download Node.js](https://nodejs.org/)
   - Verify with: `node --version`
 
 - **pnpm**: Version 10.0.0 or later
-
   - Install with: `npm install -g pnpm`
   - Verify with: `pnpm --version`
 
 - **Git**: Latest version recommended
-
   - [Download Git](https://git-scm.com/downloads)
   - Verify with: `git --version`
 
@@ -176,7 +173,6 @@ A deployment script is provided at `scripts/deploy-proxy.sh` to automate the pro
 2.  **Configure the script:**
 
     Open `scripts/deploy-proxy.sh` and update the following variables:
-
     - `PROJECT_ID`: Your Google Cloud Project ID.
     - `SERVICE_NAME`: The desired name for your Cloud Run service (e.g., `intevia-proxy`).
     - `REGION`: The GCP region for deployment (e.g., `us-central1`).

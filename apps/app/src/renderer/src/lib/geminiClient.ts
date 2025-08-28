@@ -92,11 +92,11 @@ export class GeminiClient {
 
   private processQueue() {
     if (this.transcriptionQueue.length === 0) {
-      return;
+      return
     }
-    const batchedText = this.transcriptionQueue.join(' ');
-    this.transcriptionQueue = [];
-    this.onTranscriptionCallback?.(batchedText);
+    const batchedText = this.transcriptionQueue.join(' ')
+    this.transcriptionQueue = []
+    this.onTranscriptionCallback?.(batchedText)
   }
 
   async connect() {
@@ -132,9 +132,9 @@ export class GeminiClient {
 
         // Start processing the queue
         if (this.processingInterval) {
-          clearInterval(this.processingInterval);
+          clearInterval(this.processingInterval)
         }
-        this.processingInterval = window.setInterval(() => this.processQueue(), 2000);
+        this.processingInterval = window.setInterval(() => this.processQueue(), 2000)
       }
 
       this.ws.onmessage = (event) => {
@@ -143,7 +143,7 @@ export class GeminiClient {
           if (data.text) {
             // Route based on mode
             if (this.mode === 'transcription') {
-              this.transcriptionQueue.push(data.text);
+              this.transcriptionQueue.push(data.text)
             } else {
               this.onMessageCallback?.(data.text, data.turnComplete || false)
             }

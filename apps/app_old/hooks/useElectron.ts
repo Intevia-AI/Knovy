@@ -44,9 +44,7 @@ import type { ElectronSource } from "@/types";
  */
 export function useElectron() {
   const [isAlwaysOnTop, setIsAlwaysOnTop] = useState(false);
-  const [availableSources, setAvailableSources] = useState<ElectronSource[]>(
-    []
-  );
+  const [availableSources, setAvailableSources] = useState<ElectronSource[]>([]);
   const [showSourcePicker, setShowSourcePicker] = useState(false);
 
   // Effect to handle Electron-specific initialization and listeners
@@ -69,25 +67,19 @@ export function useElectron() {
         removeAlwaysOnTopListener = window.electronAPI.on(
           "electronAPI:alwaysOnTopChanged",
           (newState) => {
-            console.log(
-              "Always On Top state changed from main process:",
-              newState
-            );
+            console.log("Always On Top state changed from main process:", newState);
             setIsAlwaysOnTop(newState);
-          }
+          },
         );
 
         // Listener for available sources from main process
         removeSourcesListener = window.electronAPI.on(
           "electronAPI:availableSources",
           (sources: ElectronSource[]) => {
-            console.log(
-              "Received available sources from main:",
-              sources.length
-            );
+            console.log("Received available sources from main:", sources.length);
             setAvailableSources(sources);
             setShowSourcePicker(true); // Show the picker UI
-          }
+          },
         );
       } else {
         console.warn("Electron API not found. Running in browser mode?");
@@ -106,10 +98,7 @@ export function useElectron() {
   const toggleAlwaysOnTop = useCallback(() => {
     if (window.electronAPI) {
       const newAlwaysOnTopState = !isAlwaysOnTop;
-      console.log(
-        "Toggling always on top via Electron API to:",
-        newAlwaysOnTopState
-      );
+      console.log("Toggling always on top via Electron API to:", newAlwaysOnTopState);
       window.electronAPI.toggleAlwaysOnTop(newAlwaysOnTopState);
       // State will be updated via the listener if successful
     } else {

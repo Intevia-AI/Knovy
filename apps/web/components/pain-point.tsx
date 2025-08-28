@@ -15,9 +15,7 @@ export function PainPoint() {
         <p className="text-lg text-muted-foreground text-center font-bold">
           {t("painpoint.quote")}
         </p>
-        <p className="text-lg text-muted-foreground">
-          {t("painpoint.description")}
-        </p>
+        <p className="text-lg text-muted-foreground">{t("painpoint.description")}</p>
       </div>
       <div className="grid gap-8 md:grid-cols-3">
         <div className="space-y-4 text-center">

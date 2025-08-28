@@ -1,7 +1,6 @@
-
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
 
 // Define the shape of the context
 interface LanguageContextType {
@@ -40,7 +39,7 @@ export const LanguageProvider: React.FC<LanguageProviderProps> = ({
         const data = await response.json();
         setTranslations(data);
       } catch (error) {
-        console.error('Error fetching translations:', error);
+        console.error("Error fetching translations:", error);
       }
     };
 
@@ -50,12 +49,12 @@ export const LanguageProvider: React.FC<LanguageProviderProps> = ({
   }, [locale, initialLocale]);
 
   useEffect(() => {
-    const savedLocale = localStorage.getItem('locale');
+    const savedLocale = localStorage.getItem("locale");
     if (savedLocale && savedLocale !== locale) {
       setLocale(savedLocale);
     } else if (!savedLocale) {
       const browserLang = navigator.language;
-      const newLocale = browserLang.startsWith('zh') ? 'zh-TW' : 'en';
+      const newLocale = browserLang.startsWith("zh") ? "zh-TW" : "en";
       if (newLocale !== locale) {
         setLocale(newLocale);
       }
@@ -63,7 +62,7 @@ export const LanguageProvider: React.FC<LanguageProviderProps> = ({
   }, []); // Runs once on client-side
 
   const handleSetLocale = (newLocale: string) => {
-    localStorage.setItem('locale', newLocale);
+    localStorage.setItem("locale", newLocale);
     setLocale(newLocale);
   };
 
@@ -82,7 +81,7 @@ export const LanguageProvider: React.FC<LanguageProviderProps> = ({
 export const useLanguage = (): LanguageContextType => {
   const context = useContext(LanguageContext);
   if (context === undefined) {
-    throw new Error('useLanguage must be used within a LanguageProvider');
+    throw new Error("useLanguage must be used within a LanguageProvider");
   }
   return context;
 };

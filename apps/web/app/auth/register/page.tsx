@@ -62,17 +62,12 @@ export default function RegisterPage() {
             <Link href="/" aria-label="go home" className="mx-auto block w-fit">
               <Logo />
             </Link>
-            <h1 className="mb-1 mt-4 text-xl font-semibold">
-              {t("auth.register.title")}
-            </h1>
+            <h1 className="mb-1 mt-4 text-xl font-semibold">{t("auth.register.title")}</h1>
             <p className="text-sm">{t("auth.register.subtitle")}</p>
           </div>
 
           <Form {...form}>
-            <form
-              onSubmit={form.handleSubmit(onSubmit)}
-              className="mt-6 space-y-5"
-            >
+            <form onSubmit={form.handleSubmit(onSubmit)} className="mt-6 space-y-5">
               <FormField
                 control={form.control}
                 name="email"
@@ -120,10 +115,7 @@ export default function RegisterPage() {
                 name="confirmPassword"
                 render={({ field }) => (
                   <FormItem className="space-y-2">
-                    <FormLabel
-                      htmlFor="confirmPassword"
-                      className="block text-sm"
-                    >
+                    <FormLabel htmlFor="confirmPassword" className="block text-sm">
                       {t("auth.form.confirm_password_label")}
                     </FormLabel>
                     <FormControl>
@@ -145,28 +137,17 @@ export default function RegisterPage() {
                 render={({ field }) => (
                   <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md">
                     <FormControl>
-                      <Checkbox
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
+                      <Checkbox checked={field.value} onCheckedChange={field.onChange} />
                     </FormControl>
                     <div className="space-y-1 text-sm leading-none">
                       <FormLabel className=" font-normal">
                         {t("auth.register.terms_prefix")}
                       </FormLabel>
-                      <Link
-                        target="_blank"
-                        href="/privacy"
-                        className="text-primary underline"
-                      >
+                      <Link target="_blank" href="/privacy" className="text-primary underline">
                         {t("auth.register.terms_of_service")}
                       </Link>
                       {t("auth.register.terms_conjunction")}
-                      <Link
-                        target="_blank"
-                        href="/terms"
-                        className="text-primary underline"
-                      >
+                      <Link target="_blank" href="/terms" className="text-primary underline">
                         {t("auth.register.privacy_policy")}
                       </Link>
                       <FormMessage />

@@ -6,15 +6,15 @@
 /**
  * Helper function to download and analyze WAV data
  * Creates a downloadable WAV file from base64 encoded WAV data
- * 
+ *
  * @param {string} wavData - Base64 encoded WAV audio data
  * @param {string} [filename="debug.wav"] - Name of the file to be downloaded
  * @returns {void}
- * 
+ *
  * @example
  * // Download WAV data with default filename
  * debugSaveWav(base64WavData);
- * 
+ *
  * // Download WAV data with custom filename
  * debugSaveWav(base64WavData, "recording.wav");
  */
@@ -39,16 +39,16 @@ function debugSaveWav(wavData: string, filename: string = "debug.wav") {
 
 /**
  * Converts base64 encoded PCM audio data to WAV format
- * 
+ *
  * This function takes raw PCM audio data and adds the necessary WAV header
  * to create a valid WAV file. It assumes 16-bit mono PCM input.
- * 
+ *
  * @param {string} pcmData - Base64 encoded PCM audio data
  * @param {number} [sampleRate=24000] - Sample rate of the audio in Hz
  * @returns {Promise<string>} Promise resolving to base64 encoded WAV data
- * 
+ *
  * @throws {Error} If decoding or conversion fails
- * 
+ *
  * @example
  * // Convert PCM data to WAV with default sample rate
  * pcmToWav(base64PcmData)
@@ -59,17 +59,14 @@ function debugSaveWav(wavData: string, filename: string = "debug.wav") {
  *   .catch(error => {
  *     console.error('WAV conversion failed:', error);
  *   });
- * 
+ *
  * // Convert PCM data to WAV with custom sample rate
  * pcmToWav(base64PcmData, 44100)
  *   .then(wavData => {
  *     // Process the WAV data
  *   });
  */
-export function pcmToWav(
-  pcmData: string,
-  sampleRate: number = 24000,
-): Promise<string> {
+export function pcmToWav(pcmData: string, sampleRate: number = 24000): Promise<string> {
   return new Promise((resolve, reject) => {
     try {
       // Decode base64 PCM data

@@ -15,34 +15,40 @@ Provide a structured snapshot of the project’s languages, frameworks, architec
 ## Workflow
 
 1. **Initial Scan**
-
-   * List package / build files (`composer.json`, `package.json`, etc.).
-   * Sample source files to infer primary language.
+   - List package / build files (`composer.json`, `package.json`, etc.).
+   - Sample source files to infer primary language.
 
 2. **Deep Analysis**
-
-   * Parse dependency files, lock files.
-   * Read key configs (env, settings, build scripts).
-   * Map directory layout against common patterns.
+   - Parse dependency files, lock files.
+   - Read key configs (env, settings, build scripts).
+   - Map directory layout against common patterns.
 
 3. **Pattern Recognition & Confidence**
-
-   * Tag MVC, microservices, monorepo etc.
-   * Score high / medium / low confidence for each detection.
+   - Tag MVC, microservices, monorepo etc.
+   - Score high / medium / low confidence for each detection.
 
 4. **Structured Report**
    Return Markdown with:
 
    ```markdown
    ## Technology Stack Analysis
+
    …
+
    ## Architecture Patterns
+
    …
+
    ## Specialist Recommendations
+
    …
+
    ## Key Findings
+
    …
+
    ## Uncertainties
+
    …
    ```
 

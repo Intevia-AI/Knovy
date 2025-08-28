@@ -11,8 +11,7 @@ const corsHeaders = {
   // "Access-Control-Allow-Origin": "http://localhost:3000",
   "Access-Control-Allow-Origin": "https://intevia.app",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
 serve(async (req) => {
@@ -27,26 +26,20 @@ serve(async (req) => {
 
     // Basic email validation
     if (!email || !email.includes("@")) {
-      return new Response(
-        JSON.stringify({ error: "Invalid email address provided." }),
-        {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 400,
-        }
-      );
+      return new Response(JSON.stringify({ error: "Invalid email address provided." }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400,
+      });
     }
 
     // Create a Supabase client
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_ANON_KEY") ?? ""
+      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
     );
 
     // Insert the email into the waitlist table
-    const { data, error } = await supabase
-      .from("waitlist")
-      .insert({ email })
-      .select();
+    const { data, error } = await supabase.from("waitlist").insert({ email }).select();
 
     if (error) {
       // Handle cases where the email already exists
@@ -59,7 +52,7 @@ serve(async (req) => {
           {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
             status: 409, // HTTP 409 Conflict
-          }
+          },
         );
       }
       // For other errors, re-throw to be caught by the catch block
@@ -76,16 +69,14 @@ serve(async (req) => {
       WaitlistWelcomeEmail({
         username: email.split("@")[0],
         locale: locale || "en",
-      })
+      }),
     );
 
     const { data: resendData, error: resendError } = await resend.emails.send({
       from: "info@intevia.app",
       to: email,
       replyTo: "info@intevia.app",
-      subject:
-        emailSubjects[locale as keyof typeof emailSubjects] ||
-        emailSubjects["en"],
+      subject: emailSubjects[locale as keyof typeof emailSubjects] || emailSubjects["en"],
       html: emailHtml,
     });
 
@@ -102,7 +93,7 @@ serve(async (req) => {
         {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
           status: 500,
-        }
+        },
       );
     }
 
@@ -116,16 +107,13 @@ serve(async (req) => {
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
-      }
+      },
     );
   } catch (err) {
     // Catch any unexpected errors
-    return new Response(
-      JSON.stringify({ error: err.message || "An unexpected error occurred." }),
-      {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 500,
-      }
-    );
+    return new Response(JSON.stringify({ error: err.message || "An unexpected error occurred." }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 500,
+    });
   }
 });

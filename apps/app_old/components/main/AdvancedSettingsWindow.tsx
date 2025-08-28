@@ -82,9 +82,9 @@ export default function AdvancedSettingsWindow({
     }
     setConfirmedPrompt(undefined);
     if (setCustomPrompt) {
-      setCustomPrompt('');
+      setCustomPrompt("");
     }
-    setDraftPrompt('');
+    setDraftPrompt("");
   };
 
   return (
@@ -102,23 +102,14 @@ export default function AdvancedSettingsWindow({
                 <h3 className="text-xs font-medium text-foreground">語言設定</h3>
               </div>
               <div className="flex items-center justify-between">
-                <Label className="text-xs text-muted-foreground">
-                  選擇輸出語言
-                </Label>
-                <Select
-                  value={language || "zh-TW"}
-                  onValueChange={handleLanguageChange}
-                >
+                <Label className="text-xs text-muted-foreground">選擇輸出語言</Label>
+                <Select value={language || "zh-TW"} onValueChange={handleLanguageChange}>
                   <SelectTrigger className="w-[100px] h-6 text-xs px-2 bg-muted/95 border-border/50">
                     <SelectValue placeholder="選擇語言" />
                   </SelectTrigger>
                   <SelectContent className="bg-muted/95 border-border/50">
                     {languages.map((lang) => (
-                      <SelectItem
-                        key={lang.code}
-                        value={lang.code}
-                        className="text-xs"
-                      >
+                      <SelectItem key={lang.code} value={lang.code} className="text-xs">
                         {lang.name}
                       </SelectItem>
                     ))}
@@ -149,13 +140,10 @@ export default function AdvancedSettingsWindow({
                 </svg>
                 <h3 className="text-xs font-medium text-foreground">模型要求</h3>
               </div>
-              
+
               {!confirmedPrompt ? (
                 <div className="space-y-1">
-                  <Label
-                    htmlFor="custom-prompt"
-                    className="text-xs text-muted-foreground"
-                  >
+                  <Label htmlFor="custom-prompt" className="text-xs text-muted-foreground">
                     輸入自定義提示詞
                   </Label>
                   <Textarea
@@ -173,9 +161,7 @@ export default function AdvancedSettingsWindow({
               ) : (
                 <div className="space-y-1">
                   <div className="flex items-center justify-between">
-                    <Label className="text-xs text-muted-foreground">
-                      當前模型要求
-                    </Label>
+                    <Label className="text-xs text-muted-foreground">當前模型要求</Label>
                     <Button
                       variant="ghost"
                       size="sm"
@@ -196,4 +182,4 @@ export default function AdvancedSettingsWindow({
       </DialogContent>
     </Dialog>
   );
-} 
+}

@@ -38,37 +38,42 @@ Guarantee that all code merged to the mainline is **secure, maintainable, perfor
    • Suggest concrete fixes or code snippets.
    • End with a short **Action Checklist**.
 
-
 ## Required Output Format
 
 ```markdown
-# Code Review – <branch/PR/commit id>  (<date>)
+# Code Review – <branch/PR/commit id> (<date>)
 
 ## Executive Summary
-| Metric | Result |
-|--------|--------|
+
+| Metric             | Result                                       |
+| ------------------ | -------------------------------------------- |
 | Overall Assessment | Excellent / Good / Needs Work / Major Issues |
-| Security Score     | A-F |
-| Maintainability    | A-F |
-| Test Coverage      | % or “none detected” |
+| Security Score     | A-F                                          |
+| Maintainability    | A-F                                          |
+| Test Coverage      | % or “none detected”                         |
 
 ## 🔴 Critical Issues
-| File:Line | Issue | Why it’s critical | Suggested Fix |
-|-----------|-------|-------------------|---------------|
-| src/auth.js:42 | Plain-text API key | Leakage risk | Load from env & encrypt |
+
+| File:Line      | Issue              | Why it’s critical | Suggested Fix           |
+| -------------- | ------------------ | ----------------- | ----------------------- |
+| src/auth.js:42 | Plain-text API key | Leakage risk      | Load from env & encrypt |
 
 ## 🟡 Major Issues
+
 … (same table)
 
 ## 🟢 Minor Suggestions
+
 - Improve variable naming in `utils/helpers.py:88`
 - Add docstring to `service/payment.go:12`
 
 ## Positive Highlights
+
 - ✅ Well‑structured React hooks in `Dashboard.jsx`
 - ✅ Good use of prepared statements in `UserRepo.php`
 
 ## Action Checklist
+
 - [ ] Replace plain‑text keys with env vars.
 - [ ] Add unit tests for edge cases in `DateUtils`.
 - [ ] Run `npm run lint --fix` for style issues.
@@ -78,10 +83,10 @@ Guarantee that all code merged to the mainline is **secure, maintainable, perfor
 
 ## Review Heuristics
 
-* **Security**: validate inputs, authn/z flows, encryption, CSRF/XSS/SQLi.
-* **Performance**: algorithmic complexity, N+1 DB queries, memory leaks.
-* **Maintainability**: clear naming, small functions, module boundaries.
-* **Testing**: new logic covered, edge‑cases included, deterministic tests.
-* **Documentation**: public APIs documented, README/CHANGELOG updated.
+- **Security**: validate inputs, authn/z flows, encryption, CSRF/XSS/SQLi.
+- **Performance**: algorithmic complexity, N+1 DB queries, memory leaks.
+- **Maintainability**: clear naming, small functions, module boundaries.
+- **Testing**: new logic covered, edge‑cases included, deterministic tests.
+- **Documentation**: public APIs documented, README/CHANGELOG updated.
 
 **Deliver every review in the specified markdown format, with explicit file\:line references and concrete fixes.**

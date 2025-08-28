@@ -27,35 +27,40 @@ We expect all contributors to adhere to the following principles:
 ### Setting Up Your Development Environment
 
 1. **Clone the repository**
+
    ```bash
    git clone https://github.com/your-org/intevia-ai.git
    cd intevia-ai
    ```
 
 2. **Install dependencies**
+
    ```bash
    pnpm install
    ```
 
 3. **Set up environment variables**
+
    ```bash
    bash scripts/setup-env.sh
    ```
 
 4. **Start the development servers**
-   
+
    For the web application:
+
    ```bash
    # Terminal 1: Start the web application
    cd apps/web
    pnpm dev
-   
+
    # Terminal 2: Start the proxy server
    cd apps/web
    pnpm proxy
    ```
 
    For the desktop application:
+
    ```bash
    cd apps/app
    pnpm dev
@@ -98,6 +103,7 @@ We follow the [Conventional Commits](https://www.conventionalcommits.org/) speci
 ```
 
 Types include:
+
 - `feat`: A new feature
 - `fix`: A bug fix
 - `docs`: Documentation changes
@@ -107,6 +113,7 @@ Types include:
 - `chore`: Maintenance tasks
 
 Example:
+
 ```
 feat(web): add real-time transcription component
 
@@ -167,15 +174,16 @@ pnpm format
 - Document any non-obvious behavior or edge cases
 
 Example:
+
 ```typescript
 /**
  * Processes audio data and extracts speech segments
- * 
+ *
  * @param audioData - Raw audio buffer to process
  * @param options - Processing options
  * @returns Array of identified speech segments with timestamps
  * @throws {AudioProcessingError} If audio processing fails
- * 
+ *
  * @example
  * const segments = processSpeech(audioBuffer, { minVolume: 0.2 });
  */

@@ -21,9 +21,7 @@ export function useSegmentRecorder() {
       const blob = new Blob(chunksRef.current, { type: mimeType });
       chunksRef.current = []; // Clear chunks *after* creating blob
       if (blob.size > 0) {
-        console.log(
-          `[MicRecorder] Dispatching segment event, size: ${blob.size}`,
-        );
+        console.log(`[MicRecorder] Dispatching segment event, size: ${blob.size}`);
         window.dispatchEvent(
           new CustomEvent("mic_segment", {
             detail: { blob, timestamp: Date.now() },
@@ -33,10 +31,7 @@ export function useSegmentRecorder() {
         console.warn("[MicRecorder] Segment blob created but size is 0.");
       }
     } catch (error) {
-      console.error(
-        "[MicRecorder] Error creating or dispatching segment blob:",
-        error,
-      );
+      console.error("[MicRecorder] Error creating or dispatching segment blob:", error);
       chunksRef.current = []; // Clear chunks on error too
     }
   }, [mimeType]);
@@ -53,9 +48,7 @@ export function useSegmentRecorder() {
     chunksRef.current = []; // Clear chunks before starting new recorder
 
     try {
-      console.log(
-        `[MicRecorder] Creating MediaRecorder with mimeType: ${mimeType}`,
-      );
+      console.log(`[MicRecorder] Creating MediaRecorder with mimeType: ${mimeType}`);
       const recorder = new MediaRecorder(streamRef.current, { mimeType });
       recorderRef.current = recorder;
 
@@ -88,15 +81,10 @@ export function useSegmentRecorder() {
         stop(); // Attempt to stop everything on error
       };
 
-      console.log(
-        `[MicRecorder] Starting internal recorder with timeslice: ${CHUNK_MS}ms`,
-      );
+      console.log(`[MicRecorder] Starting internal recorder with timeslice: ${CHUNK_MS}ms`);
       recorder.start(CHUNK_MS);
     } catch (err) {
-      console.error(
-        "[MicRecorder] Error creating/starting MediaRecorder:",
-        err,
-      );
+      console.error("[MicRecorder] Error creating/starting MediaRecorder:", err);
       stop(); // Attempt to stop everything on error
     }
   }, [mimeType, makeBlobAndDispatch]); // Removed stop from dependencies
@@ -115,14 +103,10 @@ export function useSegmentRecorder() {
       streamRef.current = stream;
       console.log("[MicRecorder] User media obtained.");
 
-      const supportedMime = MediaRecorder.isTypeSupported(
-        "audio/webm;codecs=opus",
-      )
+      const supportedMime = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
         ? "audio/webm;codecs=opus"
         : "audio/ogg;codecs=opus";
-      console.log(
-        `[MicRecorder] Determined supported mimeType: ${supportedMime}`,
-      );
+      console.log(`[MicRecorder] Determined supported mimeType: ${supportedMime}`);
       setMimeType(supportedMime);
 
       startRecorderInternal(); // Start the internal recorder loop
@@ -130,9 +114,7 @@ export function useSegmentRecorder() {
       // Clear previous timer
       if (timerRef.current) clearInterval(timerRef.current);
 
-      console.log(
-        `[MicRecorder] Setting segment interval timer: ${SEGMENT_MS}ms`,
-      );
+      console.log(`[MicRecorder] Setting segment interval timer: ${SEGMENT_MS}ms`);
       timerRef.current = setInterval(() => {
         if (recorderRef.current && recorderRef.current.state === "recording") {
           console.log(
@@ -140,9 +122,7 @@ export function useSegmentRecorder() {
           );
           recorderRef.current.stop(); // Stop triggers onstop, which handles blob creation and restart
         } else {
-          console.warn(
-            "[MicRecorder] Interval timer: Recorder not active, cannot stop.",
-          );
+          console.warn("[MicRecorder] Interval timer: Recorder not active, cannot stop.");
         }
       }, SEGMENT_MS);
 
@@ -150,10 +130,7 @@ export function useSegmentRecorder() {
       console.log("[MicRecorder] Main recording process started successfully.");
       return stream; // Return the stream on success
     } catch (err) {
-      console.error(
-        "[MicRecorder] Error getting user media or starting process:",
-        err,
-      );
+      console.error("[MicRecorder] Error getting user media or starting process:", err);
       cleanupStream(streamRef);
       setRecording(false);
       return null; // Return null on error
@@ -188,9 +165,7 @@ export function useSegmentRecorder() {
       }
     } else {
       // If recorder wasn't active, still try to dispatch any remaining chunks
-      console.log(
-        "[MicRecorder] Recorder inactive, dispatching any remaining chunks manually.",
-      );
+      console.log("[MicRecorder] Recorder inactive, dispatching any remaining chunks manually.");
       makeBlobAndDispatch();
     }
 

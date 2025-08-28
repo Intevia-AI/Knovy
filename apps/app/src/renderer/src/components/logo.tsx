@@ -1,4 +1,4 @@
-import { cn } from "@/lib/utils";
+import { cn } from '@/lib/utils'
 
 export const Logo = ({ className }: { className?: string }) => {
   return (
@@ -7,7 +7,7 @@ export const Logo = ({ className }: { className?: string }) => {
       alt="INTEVIA"
       width={100}
       height={100}
-      className={cn("h-8 w-auto", className)}
+      className={cn('h-8 w-auto', className)}
     />
-  );
-};
+  )
+}

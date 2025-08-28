@@ -14,23 +14,23 @@ export interface PopoverOptions {
 }
 
 export function createPopover(options: PopoverOptions): BrowserWindow {
-  console.log('[PopoverManager] createPopover called with options:', options);
+  console.log('[PopoverManager] createPopover called with options:', options)
   const { id, parent, url, width, height } = options
 
   if (openPopovers.has(id)) {
     const existing = openPopovers.get(id)
     if (existing && !existing.isDestroyed()) {
-      console.log(`[PopoverManager] Focusing existing popover: ${id}`);
+      console.log(`[PopoverManager] Focusing existing popover: ${id}`)
       existing.focus()
       return existing
     }
   }
 
   const parentBounds = parent.getBounds()
-  console.log('[PopoverManager] Parent window bounds:', parentBounds);
+  console.log('[PopoverManager] Parent window bounds:', parentBounds)
   const x = options.x ?? parentBounds.x + Math.round((parentBounds.width - width) / 2)
   const y = options.y ?? parentBounds.y + parentBounds.height + 8
-  console.log(`[PopoverManager] Calculated popover position: x=${x}, y=${y}`);
+  console.log(`[PopoverManager] Calculated popover position: x=${x}, y=${y}`)
 
   const popover = new BrowserWindow({
     width,
@@ -53,17 +53,17 @@ export function createPopover(options: PopoverOptions): BrowserWindow {
       sandbox: false
     }
   })
-  console.log(`[PopoverManager] Created new BrowserWindow for id: ${id}`);
+  console.log(`[PopoverManager] Created new BrowserWindow for id: ${id}`)
 
   popover.loadURL(url)
-  console.log(`[PopoverManager] Loading URL: ${url}`);
+  console.log(`[PopoverManager] Loading URL: ${url}`)
   openPopovers.set(id, popover)
 
   popover.show()
-  console.log(`[PopoverManager] Called show() on popover: ${id}`);
+  console.log(`[PopoverManager] Called show() on popover: ${id}`)
 
   popover.on('closed', () => {
-    console.log(`[PopoverManager] Popover closed: ${id}`);
+    console.log(`[PopoverManager] Popover closed: ${id}`)
     openPopovers.delete(id)
   })
 

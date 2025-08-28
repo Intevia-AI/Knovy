@@ -160,13 +160,11 @@ The application is organized in **three layers** that communicate via Electron's
 ```
 
 1. **Electron Main Process** (`electron/main.mjs`)
-
    - Creates the application window, registers global shortcuts, manages permissions, and handles heavy-weight native tasks (screenshot capture, settings persistence, OAuth callbacks).
    - Exposes functionality to the renderer via `ipcMain` listeners (e.g.
      `electronAPI:minimizeWindow`, `electronAPI:selectSource`).
 
 2. **Preload Script** (`electron/preload.mjs`)
-
    - Runs in an isolated context and exposes a whitelisted API (`window.electronAPI`) to the React app using `contextBridge`.
    - Forwards calls to the main process using `ipcRenderer` and streams events back to the UI.
 

@@ -4,19 +4,13 @@
  * settings system and provides language switching functionality.
  */
 
-"use client"
-import React, {
-  createContext,
-  useState,
-  useContext,
-  ReactNode,
-  useEffect,
-} from "react";
+"use client";
+import React, { createContext, useState, useContext, ReactNode, useEffect } from "react";
 import { SupportedLanguage } from "@/lib/translations"; // Adjust path if needed
 
 /**
  * Language context type definition.
- * 
+ *
  * @interface LanguageContextType
  * @property {SupportedLanguage} language - Currently selected language
  * @property {Function} setLanguage - Function to change the current language
@@ -27,23 +21,19 @@ interface LanguageContextType {
 }
 
 /** @type {React.Context} Language context instance */
-const LanguageContext = createContext<LanguageContextType | undefined>(
-  undefined,
-);
+const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
 /**
  * Language provider component that manages user language preferences.
  * Loads language settings from Electron's persistent storage on mount
  * and provides language switching functionality with automatic persistence.
- * 
+ *
  * @component
  * @param {Object} props - Component props
  * @param {ReactNode} props.children - Child components to wrap with language context
  * @returns {JSX.Element} Provider component wrapping children with language context
  */
-export const LanguageProvider: React.FC<{ children: ReactNode }> = ({
-  children,
-}) => {
+export const LanguageProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   /** @type {SupportedLanguage} Current language state */
   const [language, setLanguageState] = useState<SupportedLanguage>("zh-TW"); // Default language
 
@@ -55,7 +45,7 @@ export const LanguageProvider: React.FC<{ children: ReactNode }> = ({
     /**
      * Loads the initial language setting from Electron's persistent storage.
      * Falls back to default language if loading fails or no setting exists.
-     * 
+     *
      * @async
      * @function loadInitialLanguage
      * @returns {Promise<void>}
@@ -80,7 +70,7 @@ export const LanguageProvider: React.FC<{ children: ReactNode }> = ({
   /**
    * Sets the current language and persists it to Electron's settings storage.
    * Updates both the local state and the persistent storage simultaneously.
-   * 
+   *
    * @async
    * @function setLanguage
    * @param {SupportedLanguage} newLanguage - The language to set as current
@@ -112,7 +102,7 @@ export const LanguageProvider: React.FC<{ children: ReactNode }> = ({
 /**
  * Custom hook to access the language context.
  * Must be used within a LanguageProvider component tree.
- * 
+ *
  * @hook useLanguage
  * @returns {LanguageContextType} Language context value with current language and setter
  * @throws {Error} When used outside of LanguageProvider

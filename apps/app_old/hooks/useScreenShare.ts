@@ -23,7 +23,7 @@ const SYSTEM_AUDIO_CHUNK_MS = 1000; // Internal chunk collection interval
 
 /**
  * React hook for screen sharing and recording with audio
- * 
+ *
  * @returns {Object} Screen sharing controls and state
  * @returns {boolean} isScreenSharing - Whether screen sharing is active
  * @returns {number} recordingDuration - Current recording duration in seconds
@@ -36,16 +36,16 @@ const SYSTEM_AUDIO_CHUNK_MS = 1000; // Internal chunk collection interval
  * @returns {React.RefObject<MediaStream|null>} screenStreamRef - Reference to the screen MediaStream
  * @returns {React.RefObject<HTMLVideoElement>} screenPreviewRef - Reference to the video preview element
  * @returns {function} toggleScreenShare - Function to toggle screen sharing on/off
- * 
+ *
  * @example
  * ```tsx
- * const { 
- *   isScreenSharing, 
+ * const {
+ *   isScreenSharing,
  *   recordingDuration,
  *   screenPreviewRef,
- *   toggleScreenShare 
+ *   toggleScreenShare
  * } = useScreenShare();
- * 
+ *
  * return (
  *   <div>
  *     <video ref={screenPreviewRef} />
@@ -60,8 +60,9 @@ const SYSTEM_AUDIO_CHUNK_MS = 1000; // Internal chunk collection interval
 export function useScreenShare() {
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
-  const [currentSystemAudioStream, setCurrentSystemAudioStream] =
-    useState<MediaStream | null>(null);
+  const [currentSystemAudioStream, setCurrentSystemAudioStream] = useState<MediaStream | null>(
+    null,
+  );
   const [systemAudioSegments, setSystemAudioSegments] = useState<Segment[]>([]);
   const [systemAudioMimeType, setSystemAudioMimeType] = useState<string>("");
 
@@ -84,21 +85,14 @@ export function useScreenShare() {
 
   // --- Mic Segment Event Listener ---
   useEffect(() => {
-    const handleMicSegment = (
-      event: CustomEvent<{ blob: Blob; timestamp: number }>,
-    ) => {
-      console.log(
-        `[ScreenShare] Received mic_segment event, size: ${event.detail.blob.size}`,
-      );
+    const handleMicSegment = (event: CustomEvent<{ blob: Blob; timestamp: number }>) => {
+      console.log(`[ScreenShare] Received mic_segment event, size: ${event.detail.blob.size}`);
       setMicSegments((prev) => [...prev, event.detail]);
     };
 
     window.addEventListener("mic_segment", handleMicSegment as EventListener);
     return () => {
-      window.removeEventListener(
-        "mic_segment",
-        handleMicSegment as EventListener,
-      );
+      window.removeEventListener("mic_segment", handleMicSegment as EventListener);
     };
   }, []);
 
@@ -111,21 +105,13 @@ export function useScreenShare() {
       });
       systemAudioChunksRef.current = []; // Clear chunks
       if (blob.size > 0) {
-        console.log(
-          `[ScreenShare] Dispatching system_segment event, size: ${blob.size}`,
-        );
-        setSystemAudioSegments((prev) => [
-          ...prev,
-          { blob, timestamp: Date.now() },
-        ]);
+        console.log(`[ScreenShare] Dispatching system_segment event, size: ${blob.size}`);
+        setSystemAudioSegments((prev) => [...prev, { blob, timestamp: Date.now() }]);
       } else {
         console.warn("[ScreenShare] System audio blob created but size is 0.");
       }
     } catch (error) {
-      console.error(
-        "[ScreenShare] Error creating/dispatching system audio blob:",
-        error,
-      );
+      console.error("[ScreenShare] Error creating/dispatching system audio blob:", error);
       systemAudioChunksRef.current = [];
     }
   }, [systemAudioMimeType]);
@@ -195,10 +181,7 @@ export function useScreenShare() {
         );
         recorder.start(SYSTEM_AUDIO_CHUNK_MS);
       } catch (recorderError) {
-        console.error(
-          "[ScreenShare] Failed to create/start system MediaRecorder:",
-          recorderError,
-        );
+        console.error("[ScreenShare] Failed to create/start system MediaRecorder:", recorderError);
         alert(
           `無法建立系統音訊錄製器: ${recorderError instanceof Error ? recorderError.message : String(recorderError)}`,
         );
@@ -237,26 +220,25 @@ export function useScreenShare() {
       screenStreamRef.current?.getVideoTracks().length
     ) {
       console.log("[ScreenShare] Setting up video preview...");
-      const videoStream = new MediaStream(
-        screenStreamRef.current.getVideoTracks(),
-      );
+      const videoStream = new MediaStream(screenStreamRef.current.getVideoTracks());
       console.log("[ScreenShare] Created video stream:", videoStream);
-      
+
       // Ensure the video element is ready
       if (screenPreviewRef.current) {
         screenPreviewRef.current.srcObject = videoStream;
         screenPreviewRef.current.muted = true;
-        
+
         // Add event listeners for debugging
         screenPreviewRef.current.onloadedmetadata = () => {
           console.log("[ScreenShare] Video metadata loaded");
         };
-        
+
         screenPreviewRef.current.onerror = (e) => {
           console.error("[ScreenShare] Video error:", e);
         };
-        
-        screenPreviewRef.current.play()
+
+        screenPreviewRef.current
+          .play()
           .then(() => console.log("[ScreenShare] Video started playing"))
           .catch((e) => console.error("[ScreenShare] Video play error:", e));
       }
@@ -264,7 +246,7 @@ export function useScreenShare() {
       console.log("[ScreenShare] Clearing video preview");
       screenPreviewRef.current.srcObject = null;
     }
-    
+
     // Cleanup function
     return () => {
       console.log("[ScreenShare] Cleaning up video preview");
@@ -284,10 +266,7 @@ export function useScreenShare() {
       clearInterval(systemAudioTimerRef.current);
       systemAudioTimerRef.current = null;
     }
-    if (
-      systemAudioRecorderRef.current &&
-      systemAudioRecorderRef.current.state !== "inactive"
-    ) {
+    if (systemAudioRecorderRef.current && systemAudioRecorderRef.current.state !== "inactive") {
       try {
         systemAudioRecorderRef.current.stop(); // Trigger final onstop
       } catch (e) {
@@ -333,9 +312,7 @@ export function useScreenShare() {
     try {
       // --- Step 1: Check for API support & Get Display Media ---
       if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
-        throw new Error(
-          "getDisplayMedia is not supported by this environment.",
-        );
+        throw new Error("getDisplayMedia is not supported by this environment.");
       }
       console.log("Requesting screen share via getDisplayMedia...");
       displayStream = await navigator.mediaDevices.getDisplayMedia({
@@ -359,9 +336,7 @@ export function useScreenShare() {
         systemAudioStreamOnly = new MediaStream(audioTracks);
         setCurrentSystemAudioStream(systemAudioStreamOnly);
       } else {
-        console.warn(
-          "[ScreenShare] System audio track *NOT* found. Recording mic only.",
-        );
+        console.warn("[ScreenShare] System audio track *NOT* found. Recording mic only.");
         alert("警告：無法擷取系統音訊。錄音將只包含麥克風。");
         setCurrentSystemAudioStream(null);
       }
@@ -370,22 +345,17 @@ export function useScreenShare() {
       console.log("[ScreenShare] Starting microphone recording...");
       capturedMicStream = await startMicRecording();
       if (!capturedMicStream) {
-        throw new Error(
-          "Failed to start microphone recording. Check permissions.",
-        );
+        throw new Error("Failed to start microphone recording. Check permissions.");
       }
       console.log("[ScreenShare] Microphone recording started.");
 
       // --- Step 3: Setup System Audio Recorder (if audio track exists) ---
       if (systemAudioStreamOnly) {
-        console.log(
-          "[ScreenShare] Setting up system audio recording process...",
-        );
+        console.log("[ScreenShare] Setting up system audio recording process...");
         startSystemAudioRecorderInternal(systemAudioStreamOnly);
 
         // Setup interval timer for system audio segmentation
-        if (systemAudioTimerRef.current)
-          clearInterval(systemAudioTimerRef.current);
+        if (systemAudioTimerRef.current) clearInterval(systemAudioTimerRef.current);
         console.log(
           `[ScreenShare] Setting system audio segment interval timer: ${SYSTEM_AUDIO_SEGMENT_MS}ms`,
         );
@@ -399,15 +369,11 @@ export function useScreenShare() {
             );
             systemAudioRecorderRef.current.stop(); // Triggers onstop
           } else {
-            console.warn(
-              "[ScreenShare] Interval timer: System recorder not active.",
-            );
+            console.warn("[ScreenShare] Interval timer: System recorder not active.");
           }
         }, SYSTEM_AUDIO_SEGMENT_MS);
       } else {
-        console.log(
-          "[ScreenShare] No system audio stream, skipping system audio recorder setup.",
-        );
+        console.log("[ScreenShare] No system audio stream, skipping system audio recorder setup.");
         setSystemAudioMimeType("");
       }
 

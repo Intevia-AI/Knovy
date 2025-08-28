@@ -146,6 +146,7 @@ apps/web/
 Primary AI processing endpoint for chat interactions and audio analysis.
 
 **Request Body:**
+
 ```json
 {
   "messages": [
@@ -167,6 +168,7 @@ Primary AI processing endpoint for chat interactions and audio analysis.
 ```
 
 **Response:**
+
 ```json
 {
   "id": "ai-1626984512345",
@@ -180,6 +182,7 @@ Primary AI processing endpoint for chat interactions and audio analysis.
 Contact form submission endpoint.
 
 **Request Body:**
+
 ```json
 {
   "name": "User Name",
@@ -319,6 +322,7 @@ pnpm lint:fix
 ### Common Issues
 
 #### AI API Errors
+
 ```bash
 # Check API key validity
 # Verify Google AI Studio quota and billing
@@ -326,6 +330,7 @@ pnpm lint:fix
 ```
 
 #### Audio Recording Issues
+
 ```bash
 # Verify browser permissions for microphone and screen sharing
 # Check MediaRecorder API support in target browsers
@@ -333,6 +338,7 @@ pnpm lint:fix
 ```
 
 #### Build Failures
+
 ```bash
 # Clear Next.js cache
 rm -rf .next
@@ -346,6 +352,7 @@ pnpm typecheck
 ```
 
 #### Email Functionality
+
 ```bash
 # Verify Gmail app password is correct
 # Check Gmail SMTP settings and 2FA configuration

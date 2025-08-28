@@ -3,8 +3,7 @@
  * @description Client for connecting to the Gemini AI service via WebSocket proxy
  * @requires dotenv
  */
-const PROXY_SERVER_URL =
-  process.env.NEXT_PUBLIC_PROXY_SERVER_URL || "ws://localhost:4567";
+const PROXY_SERVER_URL = process.env.NEXT_PUBLIC_PROXY_SERVER_URL || "ws://localhost:4567";
 
 /**
  * @class GeminiClient
@@ -51,13 +50,11 @@ export class GeminiClient {
     onSetupComplete: () => void,
     onPlayingStateChange: (isPlaying: boolean) => void,
     onAudioLevelChange: (level: number) => void,
-    onTranscription: (text: string) => void
+    onTranscription: (text: string) => void,
   ) {
     // Security check: Ensure we're not running in production without proper proxy configuration
     if (process.env.NODE_ENV === "production" && !PROXY_SERVER_URL) {
-      throw new Error(
-        "Proxy server configuration is required in production environment"
-      );
+      throw new Error("Proxy server configuration is required in production environment");
     }
 
     this.onMessageCallback = onMessage;
@@ -136,7 +133,7 @@ export class GeminiClient {
       this.reconnectAttempts++;
       setTimeout(() => {
         console.log(
-          `Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts})`
+          `Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts})`,
         );
         this.connect();
       }, this.reconnectTimeout * this.reconnectAttempts);
@@ -198,10 +195,7 @@ export class GeminiClient {
    */
   sendMediaChunk(data: string, mimeType: string) {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      console.log(
-        "[GeminiClient] Sending media chunk, data size:",
-        data.length
-      );
+      console.log("[GeminiClient] Sending media chunk, data size:", data.length);
       const message = {
         type: "media_chunk",
         mimeType,
@@ -214,10 +208,7 @@ export class GeminiClient {
         console.error("[GeminiClient] Error sending media chunk:", error);
       }
     } else {
-      console.error(
-        "[GeminiClient] WebSocket not ready, state:",
-        this.ws?.readyState
-      );
+      console.error("[GeminiClient] WebSocket not ready, state:", this.ws?.readyState);
     }
   }
 
@@ -253,9 +244,7 @@ export class GeminiClient {
   onTextResponse(text: string) {
     if (this.streamingBuffer.includes("TRANSCRIPTION:")) {
       // 使用正則表達式提取實際內容，完全移除標籤
-      const transcriptionMatch = this.streamingBuffer.match(
-        /TRANSCRIPTION:\s*(.*?)(?:\n|$)/s
-      );
+      const transcriptionMatch = this.streamingBuffer.match(/TRANSCRIPTION:\s*(.*?)(?:\n|$)/s);
       if (transcriptionMatch && transcriptionMatch[1]) {
         const cleanTranscription = transcriptionMatch[1]
           .replace(/^TRANSCRIPTION:\s*/i, "") // 再次確保移除開頭的標籤
@@ -265,9 +254,7 @@ export class GeminiClient {
         // 如果有關鍵字部分，也一併處理
         let keywords = "";
         if (this.streamingBuffer.includes("KEYWORDS:")) {
-          const keywordsMatch = this.streamingBuffer.match(
-            /KEYWORDS:\s*(.*?)(?:\n|$)/s
-          );
+          const keywordsMatch = this.streamingBuffer.match(/KEYWORDS:\s*(.*?)(?:\n|$)/s);
           if (keywordsMatch && keywordsMatch[1]) {
             keywords = keywordsMatch[1].trim();
           }
@@ -275,8 +262,7 @@ export class GeminiClient {
 
         // 組合最終回應，確保格式乾淨
         const finalResponse =
-          cleanTranscription +
-          (keywords ? `\nDetected Keywords: ${keywords}` : "");
+          cleanTranscription + (keywords ? `\nDetected Keywords: ${keywords}` : "");
         this.onTranscriptionCallback?.(finalResponse);
         this.streamingBuffer = "";
       }

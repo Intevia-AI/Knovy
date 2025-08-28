@@ -6,7 +6,7 @@ import { NextResponse } from "next/server";
 export async function POST(request: Request) {
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
   );
   const { email } = await request.json();
 
@@ -16,17 +16,11 @@ export async function POST(request: Request) {
 
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!emailRegex.test(email)) {
-    return NextResponse.json(
-      { error: "Invalid email format" },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "Invalid email format" }, { status: 400 });
   }
 
   try {
-    const { data, error } = await supabase
-      .from("waitlist")
-      .insert([{ email }])
-      .select();
+    const { data, error } = await supabase.from("waitlist").insert([{ email }]).select();
 
     if (error) {
       // Log the full error to the console for better debugging
@@ -34,10 +28,7 @@ export async function POST(request: Request) {
 
       if (error.code === "23505") {
         // Unique violation
-        return NextResponse.json(
-          { error: "Email already on waitlist" },
-          { status: 409 }
-        );
+        return NextResponse.json({ error: "Email already on waitlist" }, { status: 409 });
       }
 
       return NextResponse.json(
@@ -45,14 +36,11 @@ export async function POST(request: Request) {
           error: "Error adding to waitlist",
           details: error.message,
         },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
-    return NextResponse.json(
-      { message: "Successfully added to waitlist", data },
-      { status: 201 }
-    );
+    return NextResponse.json({ message: "Successfully added to waitlist", data }, { status: 201 });
   } catch (error: any) {
     console.error("Unexpected error:", error);
     return NextResponse.json(
@@ -60,7 +48,7 @@ export async function POST(request: Request) {
         error: "An unexpected error occurred",
         details: error.message,
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

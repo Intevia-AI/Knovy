@@ -22,20 +22,17 @@ const members = [
 export function TeamSection() {
   const { t } = useLanguage();
   return (
-    <section
-      className="bg-gray-50 py-16 md:py-32 dark:bg-transparent"
-      id="teams"
-    >
+    <section className="bg-gray-50 py-16 md:py-32 dark:bg-transparent" id="teams">
       <div className="mx-auto max-w-5xl border-t px-6">
-        <span className="text-caption -ml-6 -mt-3.5 block w-max bg-gray-50 px-6 dark:bg-gray-950">{t("team.our_team")}</span>
+        <span className="text-caption -ml-6 -mt-3.5 block w-max bg-gray-50 px-6 dark:bg-gray-950">
+          {t("team.our_team")}
+        </span>
 
         <div className="mt-12 gap-4 sm:grid sm:grid-cols-2 md:mt-24">
           {/* <div className="sm:w-2/5">
               <h2 className="text-3xl font-bold sm:text-4xl">我們的團隊</h2>
           </div> */}
-          <p className="text-muted-foreground">
-            {t("team.description")}
-          </p>
+          <p className="text-muted-foreground">{t("team.description")}</p>
           {/* <div className="mt-6 sm:mt-0">
             {/* <p className="text-muted-foreground">
               認識 Knovy 背後的核心團隊。

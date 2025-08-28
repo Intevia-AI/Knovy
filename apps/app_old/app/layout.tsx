@@ -9,7 +9,7 @@ import "@workspace/ui/globals.css";
 import { Providers } from "@/components/providers";
 import { Toaster } from "@workspace/ui/components/sonner";
 import { LanguageProvider } from "@/context/LanguageContext";
-import { AuthProvider } from '../context/AuthContext';
+import { AuthProvider } from "../context/AuthContext";
 import { validateEnv } from "@/lib/validateEnv";
 
 // Validate environment variables on application startup
@@ -28,7 +28,7 @@ export const metadata: Metadata = {
 /**
  * Root layout component that wraps the entire application.
  * Provides global context providers, styling, and notification system.
- * 
+ *
  * @component
  * @param {Object} props - Component props
  * @param {React.ReactNode} props.children - Child components to render

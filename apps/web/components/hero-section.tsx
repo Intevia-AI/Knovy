@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 
-import { WaitlistForm } from './waitlist-form'
+import { WaitlistForm } from "./waitlist-form";
 import { TextEffect } from "@workspace/ui/components/text-effect";
 // import { Button } from "@workspace/ui/components/button";
 import { useState } from "react";
@@ -16,10 +16,7 @@ interface HeroSectionProps {
   animationDuration?: number;
 }
 
-export function HeroSection({ 
-  stripCount = 5,
-  animationDuration = 1.25
-}: HeroSectionProps = {}) {
+export function HeroSection({ stripCount = 5, animationDuration = 1.25 }: HeroSectionProps = {}) {
   const { t } = useLanguage();
   const [showStrips, setShowStrips] = useState(true);
 
@@ -33,7 +30,7 @@ export function HeroSection({
               {Array.from({ length: stripCount }, (_, index) => {
                 const isOdd = index % 2 === 0;
                 const stripHeight = 100 / stripCount;
-                
+
                 return (
                   <motion.div
                     key={index}
@@ -44,11 +41,11 @@ export function HeroSection({
                     }}
                     initial={{
                       x: 0,
-                      background: '#000',
+                      background: "#000",
                     }}
                     animate={{
-                      x: isOdd ? '-100%' : '100%',
-                      background: isOdd 
+                      x: isOdd ? "-100%" : "100%",
+                      background: isOdd
                         ? `linear-gradient(to right, #000 0%, #000 70%, transparent 100%)`
                         : `linear-gradient(to left, #000 0%, #000 70%, transparent 100%)`,
                     }}

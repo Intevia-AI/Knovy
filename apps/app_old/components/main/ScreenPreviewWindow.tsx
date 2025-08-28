@@ -3,7 +3,6 @@ import { MonitorIcon, XIcon } from "lucide-react";
 import AudioVisualizer from "@/components/AudioVisualizer";
 import { useI18n } from "@/hooks/useI18n";
 
-
 interface ScreenPreviewWindowProps {
   isOpen: boolean;
   onClose: () => void;
@@ -24,7 +23,6 @@ export default function ScreenPreviewWindow({
   const screenPreviewRef = useRef<HTMLVideoElement>(null);
   const { t } = useI18n();
 
-
   useEffect(() => {
     console.log("[ScreenPreviewWindow] Effect triggered:", {
       isOpen,
@@ -40,23 +38,22 @@ export default function ScreenPreviewWindow({
       screenStreamRef.current?.getVideoTracks().length
     ) {
       console.log("[ScreenPreviewWindow] Setting up video preview...");
-      const videoStream = new MediaStream(
-        screenStreamRef.current.getVideoTracks(),
-      );
+      const videoStream = new MediaStream(screenStreamRef.current.getVideoTracks());
       console.log("[ScreenPreviewWindow] Created video stream:", videoStream);
-      
+
       screenPreviewRef.current.srcObject = videoStream;
       screenPreviewRef.current.muted = true;
-      
+
       screenPreviewRef.current.onloadedmetadata = () => {
         console.log("[ScreenPreviewWindow] Video metadata loaded");
       };
-      
+
       screenPreviewRef.current.onerror = (e) => {
         console.error("[ScreenPreviewWindow] Video error:", e);
       };
-      
-      screenPreviewRef.current.play()
+
+      screenPreviewRef.current
+        .play()
         .then(() => console.log("[ScreenPreviewWindow] Video started playing"))
         .catch((e) => console.error("[ScreenPreviewWindow] Video play error:", e));
     } else if (!isScreenSharing && screenPreviewRef.current) {
@@ -109,7 +106,6 @@ export default function ScreenPreviewWindow({
               <div className="flex items-center gap-1.5">
                 <div className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse" />
                 <span className="text-[10px] font-medium text-white">{t("systemAudioLabel")}</span>
-
               </div>
               {isScreenSharing && (
                 <span className="text-[10px] font-medium text-blue-500">
@@ -119,8 +115,8 @@ export default function ScreenPreviewWindow({
             </div>
             <div className="w-full h-[6px] flex items-center bg-black/50 rounded-full overflow-hidden">
               {isScreenSharing && systemAnalyserNode ? (
-                <AudioVisualizer 
-                  analyserNode={systemAnalyserNode} 
+                <AudioVisualizer
+                  analyserNode={systemAnalyserNode}
                   height={6}
                   barColor="#3b82f6"
                   backgroundColor="transparent"
@@ -134,4 +130,4 @@ export default function ScreenPreviewWindow({
       </div>
     </div>
   );
-} 
+}

@@ -78,9 +78,7 @@ export async function POST(request: Request) {
     // If there's a screenshot or audio, add it to the last user message
     const lastUserMessage = formatted[formatted.length - 1];
     if (lastUserMessage && lastUserMessage.role === "user") {
-      const content: UserContent = [
-        { type: "text", text: lastUserMessage.content as string },
-      ];
+      const content: UserContent = [{ type: "text", text: lastUserMessage.content as string }];
 
       if (data?.screenshot) {
         console.log("Processing screenshot data...");
@@ -126,7 +124,7 @@ export async function POST(request: Request) {
         role: "assistant",
         content: text,
       },
-      { headers }
+      { headers },
     );
   } catch (error) {
     console.error("Detailed error in AI route:", error);
@@ -138,7 +136,7 @@ export async function POST(request: Request) {
       {
         error: `Failed to process AI request: ${error instanceof Error ? error.message : String(error)}`,
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

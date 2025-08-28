@@ -43,9 +43,7 @@ export function validateEnv(): boolean {
     },
   ];
 
-  const missingVars = requiredVars.filter(
-    (variable) => !process.env[variable.name]
-  );
+  const missingVars = requiredVars.filter((variable) => !process.env[variable.name]);
 
   if (missingVars.length > 0) {
     console.error("\n❌ Environment Validation Error ❌");
@@ -57,12 +55,8 @@ export function validateEnv(): boolean {
       console.error(`    Hint: ${variable.hint}`);
     });
 
-    console.error(
-      "\nPlease check your .env file and ensure all required variables are set."
-    );
-    console.error(
-      "You can copy the .env.example file to .env to get started:\n"
-    );
+    console.error("\nPlease check your .env file and ensure all required variables are set.");
+    console.error("You can copy the .env.example file to .env to get started:\n");
     console.error("  cp .env.example .env\n");
 
     // In development, we'll show the error but allow the app to continue

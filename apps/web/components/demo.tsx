@@ -27,7 +27,12 @@ import RealTimeAnalysis from "@/components/RealTimeAnalysis";
 import AudioVisualizer from "./AudioVisualizer";
 import { cn } from "@workspace/ui/lib/utils";
 import { useSegmentRecorder } from "@/hooks/useSegmentRecorder";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@workspace/ui/components/accordion";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@workspace/ui/components/accordion";
 import { useLanguage } from "@/context/language-context";
 
 /**
@@ -35,7 +40,7 @@ import { useLanguage } from "@/context/language-context";
  * @description Data structure for AI context containing audio inputs
  */
 interface AIContextData {
-  audioInputs?: { data: string; mimeType: string; label: string; }[];
+  audioInputs?: { data: string; mimeType: string; label: string }[];
 }
 
 /**
@@ -84,23 +89,27 @@ export function DemoSection() {
   const blobToBase64 = (b: Blob): Promise<string> =>
     new Promise((res, rej) => {
       const reader = new FileReader();
-      reader.onload = () =>
-        typeof reader.result === "string" ? res(reader.result) : rej();
+      reader.onload = () => (typeof reader.result === "string" ? res(reader.result) : rej());
       reader.onerror = rej;
       reader.readAsDataURL(b);
     });
 
-  const formatTime = (s: number) =>
-    `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, "0")}`;
+  const formatTime = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, "0")}`;
 
   const gatherContext = useCallback(async (): Promise<AIContextData | null> => {
     const lastMicSegment = segments.length > 0 ? segments[segments.length - 1] : null;
-    const lastSystemSegment = systemAudioSegments.length > 0 ? systemAudioSegments[systemAudioSegments.length - 1] : null;
+    const lastSystemSegment =
+      systemAudioSegments.length > 0 ? systemAudioSegments[systemAudioSegments.length - 1] : null;
     const currentMicRecordingChunks = currentMicChunks;
 
-    console.log("[Demo] gatherContext - Mic segments:", segments.length, "System segments:", systemAudioSegments.length);
+    console.log(
+      "[Demo] gatherContext - Mic segments:",
+      segments.length,
+      "System segments:",
+      systemAudioSegments.length,
+    );
 
-    const blobsToProcess: { blob: Blob; type: string; label: string; }[] = [];
+    const blobsToProcess: { blob: Blob; type: string; label: string }[] = [];
 
     if (lastMicSegment) {
       blobsToProcess.push({
@@ -258,26 +267,29 @@ export function DemoSection() {
     }
   }, [aiMessages]);
 
-  const handleTextResponse = useCallback((text: string) => {
-    setAiMessages((prev) => {
-      const lastMessage = prev[prev.length - 1];
-      if (lastMessage?.role === "assistant" && lastMessage.content.startsWith(t("demo.transcription_prefix"))) {
-        return [
-          ...prev.slice(0, -1),
-          { ...lastMessage, content: lastMessage.content + text },
-        ];
-      } else {
-        return [
-          ...prev,
-          {
-            id: `realtime-${Date.now()}`,
-            role: "assistant",
-            content: t("demo.transcription_prefix") + ` ${text}`,
-          },
-        ];
-      }
-    });
-  }, [t]);
+  const handleTextResponse = useCallback(
+    (text: string) => {
+      setAiMessages((prev) => {
+        const lastMessage = prev[prev.length - 1];
+        if (
+          lastMessage?.role === "assistant" &&
+          lastMessage.content.startsWith(t("demo.transcription_prefix"))
+        ) {
+          return [...prev.slice(0, -1), { ...lastMessage, content: lastMessage.content + text }];
+        } else {
+          return [
+            ...prev,
+            {
+              id: `realtime-${Date.now()}`,
+              role: "assistant",
+              content: t("demo.transcription_prefix") + ` ${text}`,
+            },
+          ];
+        }
+      });
+    },
+    [t],
+  );
 
   const handleKeywords = useCallback((newKeywords: string[]) => {
     setKeywords((prev) => {
@@ -286,42 +298,51 @@ export function DemoSection() {
     });
   }, []);
 
-  const handleKeywordClick = useCallback(async (keyword: string) => {
-    setSelectedKeyword(keyword);
-    setIsLoading(true);
-    try {
-      const response = await fetch("/api/ai", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          messages: [{ role: "user", content: t("demo.keyword_explanation.prompt").replace("{keyword}", keyword) }],
-          data: {},
-        }),
-      });
-      if (!response.ok) throw new Error(t("demo.keyword_explanation.error_fetch"));
-      const data = await response.json();
-      setAiMessages((prev) => [
-        ...prev,
-        {
-          id: `explanation-${Date.now()}`,
-          role: "assistant",
-          content: t("demo.keyword_explanation_prefix").replace("{keyword}", keyword) + data.content,
-        },
-      ]);
-    } catch {
-      setAiMessages((prev) => [
-        ...prev,
-        {
-          id: `err-explanation-${Date.now()}`,
-          role: "assistant",
-          content: t("demo.keyword_explanation_error").replace("{keyword}", keyword),
-        },
-      ]);
-    } finally {
-      setIsLoading(false);
-      setSelectedKeyword(null);
-    }
-  }, [t]);
+  const handleKeywordClick = useCallback(
+    async (keyword: string) => {
+      setSelectedKeyword(keyword);
+      setIsLoading(true);
+      try {
+        const response = await fetch("/api/ai", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            messages: [
+              {
+                role: "user",
+                content: t("demo.keyword_explanation.prompt").replace("{keyword}", keyword),
+              },
+            ],
+            data: {},
+          }),
+        });
+        if (!response.ok) throw new Error(t("demo.keyword_explanation.error_fetch"));
+        const data = await response.json();
+        setAiMessages((prev) => [
+          ...prev,
+          {
+            id: `explanation-${Date.now()}`,
+            role: "assistant",
+            content:
+              t("demo.keyword_explanation_prefix").replace("{keyword}", keyword) + data.content,
+          },
+        ]);
+      } catch {
+        setAiMessages((prev) => [
+          ...prev,
+          {
+            id: `err-explanation-${Date.now()}`,
+            role: "assistant",
+            content: t("demo.keyword_explanation_error").replace("{keyword}", keyword),
+          },
+        ]);
+      } finally {
+        setIsLoading(false);
+        setSelectedKeyword(null);
+      }
+    },
+    [t],
+  );
 
   const handleIsActiveChange = useCallback((isActive: boolean) => {
     setIsSessionActive(isActive);
@@ -337,7 +358,11 @@ export function DemoSection() {
   }, []);
 
   const handleStreamsReady = useCallback(
-    (streams: { mic: MediaStream | null; system: MediaStream | null; screen: MediaStream | null; }) => {
+    (streams: {
+      mic: MediaStream | null;
+      system: MediaStream | null;
+      screen: MediaStream | null;
+    }) => {
       if (streams.mic) {
         const audioCtx = new AudioContext();
         const source = audioCtx.createMediaStreamSource(streams.mic);
@@ -378,7 +403,9 @@ export function DemoSection() {
     <section id="demo" className="hidden lg:block">
       <div className="flex flex-col gap-16 mx-auto max-w-5xl p-6 mt-12 lg:mt-16">
         <div className="h-px w-full bg-border my-8"></div>
-        <h2 className="text-balance text-3xl font-semibold lg:text-4xl text-center">{t("demo.title")}</h2>
+        <h2 className="text-balance text-3xl font-semibold lg:text-4xl text-center">
+          {t("demo.title")}
+        </h2>
 
         <div className="flex flex-1 overflow-hidden border rounded-lg shadow-lg bg-card max-h-[75vh]">
           <main className="flex flex-col flex-1 overflow-hidden">
@@ -431,7 +458,9 @@ export function DemoSection() {
                   value={customPrompt}
                   onChange={(e) => setCustomPrompt(e.target.value)}
                   placeholder={
-                    isSessionActive ? t("demo.custom_prompt_placeholder") : t("demo.custom_prompt_disabled_placeholder")
+                    isSessionActive
+                      ? t("demo.custom_prompt_placeholder")
+                      : t("demo.custom_prompt_disabled_placeholder")
                   }
                   className="flex-grow"
                   disabled={isLoading || !isSessionActive}
@@ -454,12 +483,13 @@ export function DemoSection() {
               <div className="flex items-center justify-between gap-2">
                 <span className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
                   <span
-                    className={`flex h-3 w-3 rounded-full ${isSessionActive
-                      ? isLoading
-                        ? "bg-yellow-400"
-                        : "bg-destructive animate-pulse"
-                      : "bg-muted"
-                      }`}
+                    className={`flex h-3 w-3 rounded-full ${
+                      isSessionActive
+                        ? isLoading
+                          ? "bg-yellow-400"
+                          : "bg-destructive animate-pulse"
+                        : "bg-muted"
+                    }`}
                   ></span>
                   {isLoading
                     ? t("demo.status.processing")
@@ -522,9 +552,7 @@ export function DemoSection() {
                     variant="outline"
                     size="sm"
                     disabled={isLoading || !isSessionActive}
-                    onClick={() =>
-                      sendContextToAI(action as "answer" | "summary" | "search")
-                    }
+                    onClick={() => sendContextToAI(action as "answer" | "summary" | "search")}
                     className="flex items-center justify-start gap-2"
                   >
                     <Icon className="h-4 w-4" />
@@ -578,30 +606,50 @@ export function DemoSection() {
           </p>
           <Accordion type="single" collapsible className="w-full">
             <AccordionItem value="item-1">
-              <AccordionTrigger className="w-full text-xl">{t("demo.instructions.recommendations.title")}</AccordionTrigger>
+              <AccordionTrigger className="w-full text-xl">
+                {t("demo.instructions.recommendations.title")}
+              </AccordionTrigger>
               <AccordionContent className="whitespace-pre-wrap w-full">
                 <ul className="list-disc list-inside space-y-2 pl-4">
-                  <li className="text-lg"><span className="text-lg font-bold">{t("demo.instructions.recommendations.item1")}</span>{t("demo.instructions.recommendations.item1_suffix")}</li>
-                  <li className="text-lg"><span className="text-lg font-bold">{t("demo.instructions.recommendations.item2")}</span>{t("demo.instructions.recommendations.item2_suffix")}</li>
+                  <li className="text-lg">
+                    <span className="text-lg font-bold">
+                      {t("demo.instructions.recommendations.item1")}
+                    </span>
+                    {t("demo.instructions.recommendations.item1_suffix")}
+                  </li>
+                  <li className="text-lg">
+                    <span className="text-lg font-bold">
+                      {t("demo.instructions.recommendations.item2")}
+                    </span>
+                    {t("demo.instructions.recommendations.item2_suffix")}
+                  </li>
                 </ul>
               </AccordionContent>
             </AccordionItem>
             <AccordionItem value="item-2">
-              <AccordionTrigger className="w-full text-xl">{t("demo.instructions.steps.title")}</AccordionTrigger>
+              <AccordionTrigger className="w-full text-xl">
+                {t("demo.instructions.steps.title")}
+              </AccordionTrigger>
               <AccordionContent className="whitespace-pre-wrap w-full">
                 <ol className="list-decimal list-inside space-y-2 pl-4">
                   <li className="text-lg my-4">
-                    <span className="text-lg font-bold">{t("demo.instructions.steps.item1_action")}</span>
+                    <span className="text-lg font-bold">
+                      {t("demo.instructions.steps.item1_action")}
+                    </span>
                     <br />
                     {t("demo.instructions.steps.item1_description")}
                   </li>
                   <li className="text-lg my-4">
-                    <span className="text-lg font-bold">{t("demo.instructions.steps.item2_action")}</span>
+                    <span className="text-lg font-bold">
+                      {t("demo.instructions.steps.item2_action")}
+                    </span>
                     <br />
                     {t("demo.instructions.steps.item2_description")}
                   </li>
                   <li className="text-lg my-4">
-                    <span className="text-lg font-bold">{t("demo.instructions.steps.item3_action")}</span>
+                    <span className="text-lg font-bold">
+                      {t("demo.instructions.steps.item3_action")}
+                    </span>
                     <br />
                     {t("demo.instructions.steps.item3_description")}
                   </li>
@@ -609,18 +657,47 @@ export function DemoSection() {
               </AccordionContent>
             </AccordionItem>
             <AccordionItem value="item-3">
-              <AccordionTrigger className="w-full text-xl">{t("demo.instructions.features.title")}</AccordionTrigger>
+              <AccordionTrigger className="w-full text-xl">
+                {t("demo.instructions.features.title")}
+              </AccordionTrigger>
               <AccordionContent className="whitespace-pre-wrap w-full">
                 <p className="mb-2 pl-4 text-lg">{t("demo.instructions.features.intro")}</p>
                 <ul className="list-disc list-inside space-y-2 pl-4">
-                  <li className="text-lg">{t("demo.instructions.features.item1_part1")}<span className="text-lg font-bold">{t("demo.instructions.features.item1_part2")}</span>{t("demo.instructions.features.item1_part3")}</li>
-                  <li className="text-lg">{t("demo.instructions.features.item2_part1")}<span className="text-lg font-bold">{t("demo.instructions.features.item2_part2")}</span>{t("demo.instructions.features.item2_part3")}</li>
+                  <li className="text-lg">
+                    {t("demo.instructions.features.item1_part1")}
+                    <span className="text-lg font-bold">
+                      {t("demo.instructions.features.item1_part2")}
+                    </span>
+                    {t("demo.instructions.features.item1_part3")}
+                  </li>
+                  <li className="text-lg">
+                    {t("demo.instructions.features.item2_part1")}
+                    <span className="text-lg font-bold">
+                      {t("demo.instructions.features.item2_part2")}
+                    </span>
+                    {t("demo.instructions.features.item2_part3")}
+                  </li>
                   <li className="text-lg">
                     {t("demo.instructions.features.item3_intro")}
                     <ul className="list-disc list-inside ml-4 mt-2">
-                      <li className="text-lg mt-2"><span className="text-lg font-bold">{t("demo.instructions.features.item3_action1")}</span>{t("demo.instructions.features.item3_action1_desc")}</li>
-                      <li className="text-lg mt-2"><span className="text-lg font-bold">{t("demo.instructions.features.item3_action2")}</span>{t("demo.instructions.features.item3_action2_desc")}</li>
-                      <li className="text-lg mt-2"><span className="text-lg font-bold">{t("demo.instructions.features.item3_action3")}</span>{t("demo.instructions.features.item3_action3_desc")}</li>
+                      <li className="text-lg mt-2">
+                        <span className="text-lg font-bold">
+                          {t("demo.instructions.features.item3_action1")}
+                        </span>
+                        {t("demo.instructions.features.item3_action1_desc")}
+                      </li>
+                      <li className="text-lg mt-2">
+                        <span className="text-lg font-bold">
+                          {t("demo.instructions.features.item3_action2")}
+                        </span>
+                        {t("demo.instructions.features.item3_action2_desc")}
+                      </li>
+                      <li className="text-lg mt-2">
+                        <span className="text-lg font-bold">
+                          {t("demo.instructions.features.item3_action3")}
+                        </span>
+                        {t("demo.instructions.features.item3_action3_desc")}
+                      </li>
                     </ul>
                   </li>
                 </ul>
@@ -628,17 +705,23 @@ export function DemoSection() {
               </AccordionContent>
             </AccordionItem>
             <AccordionItem value="item-4">
-              <AccordionTrigger className="w-full text-xl">{t("demo.instructions.scenarios.title")}</AccordionTrigger>
+              <AccordionTrigger className="w-full text-xl">
+                {t("demo.instructions.scenarios.title")}
+              </AccordionTrigger>
               <AccordionContent className="whitespace-pre-wrap w-full">
                 <p className="mb-2 pl-4 text-lg">{t("demo.instructions.scenarios.intro")}</p>
                 <ol className="list-decimal list-inside space-y-2 pl-4">
                   <li className="text-lg my-4">
-                    <span className="text-lg font-bold">{t("demo.instructions.scenarios.item1_title")}</span>
+                    <span className="text-lg font-bold">
+                      {t("demo.instructions.scenarios.item1_title")}
+                    </span>
                     <br />
                     {t("demo.instructions.scenarios.item1_desc")}
                   </li>
                   <li className="text-lg my-4">
-                    <span className="text-lg font-bold">{t("demo.instructions.scenarios.item2_title")}</span>
+                    <span className="text-lg font-bold">
+                      {t("demo.instructions.scenarios.item2_title")}
+                    </span>
                     <br />
                     {t("demo.instructions.scenarios.item2_desc")}
                   </li>

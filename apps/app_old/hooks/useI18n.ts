@@ -9,18 +9,18 @@ import { translations, TranslationKey } from "@/lib/translations"; // Adjust pat
 
 /**
  * React hook for internationalization (i18n) functionality
- * 
+ *
  * @returns {Object} i18n utilities
  * @returns {function} t - Translation function that takes a key and returns the translated string
  * @returns {string} language - Current active language code
- * 
+ *
  * @example
  * ```tsx
  * const { t, language } = useI18n();
- * 
+ *
  * // Get a translated string
  * const greeting = t('greeting');
- * 
+ *
  * // Use in JSX
  * return (
  *   <div>
@@ -35,7 +35,7 @@ export const useI18n = () => {
 
   /**
    * Translates a key to the current language
-   * 
+   *
    * @param {TranslationKey} key - The translation key to look up
    * @returns {string} The translated string or the key itself if translation is missing
    */

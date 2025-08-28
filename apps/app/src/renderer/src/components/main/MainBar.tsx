@@ -26,17 +26,18 @@ export function MainBar() {
   const { isScreenSharing, toggleScreenShare, currentSystemAudioStream } = useScreenShare()
 
   // AI Interaction Logic
-  const { customPrompt, handleTranscriptionResponse, handleTranscriptionKeywords } = useAIInteraction()
+  const { customPrompt, handleTranscriptionResponse, handleTranscriptionKeywords } =
+    useAIInteraction()
 
   useEffect(() => {
     // When screen sharing stops, close any popovers that should only be open during sharing
     if (!isScreenSharing) {
       if (activePopover === 'screen-preview' || activePopover === 'transcriptions') {
-        window.electronAPI.send('popover:close', activePopover);
-        setActivePopover(null);
+        window.electronAPI.send('popover:close', activePopover)
+        setActivePopover(null)
       }
     }
-  }, [isScreenSharing, activePopover]);
+  }, [isScreenSharing, activePopover])
 
   const handleTogglePopover = (popover: {
     id: string
@@ -67,7 +68,12 @@ export function MainBar() {
         isScreenSharing={isScreenSharing}
         onToggleScreenShare={toggleScreenShare}
         onToggleTranscriptionWindow={() =>
-          handleTogglePopover({ id: 'transcriptions', hash: 'transcriptions', width: 480, height: 300 })
+          handleTogglePopover({
+            id: 'transcriptions',
+            hash: 'transcriptions',
+            width: 480,
+            height: 300
+          })
         }
         isTranscriptionWindowVisible={activePopover === 'transcriptions'}
         onToggleFeaturesWindow={() =>

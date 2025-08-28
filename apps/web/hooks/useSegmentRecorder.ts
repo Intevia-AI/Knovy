@@ -22,7 +22,7 @@ const CHUNK_MS = 1_000;
 /**
  * @hook useSegmentRecorder
  * @description React hook for recording audio with automatic segmentation
- * 
+ *
  * @returns {Object} Recording control object
  * @returns {boolean} recording - Whether recording is currently active
  * @returns {function} start - Function to start recording, returns the MediaStream or null
@@ -30,11 +30,11 @@ const CHUNK_MS = 1_000;
  * @returns {string} mimeType - MIME type of the recorded audio
  * @returns {MediaStream|null} micStream - Current microphone MediaStream
  * @returns {Blob[]} currentMicChunks - Current audio chunks being recorded
- * 
+ *
  * @example
  * ```tsx
  * const { recording, start, stop, mimeType } = useSegmentRecorder();
- * 
+ *
  * // Start recording
  * const handleStart = async () => {
  *   const stream = await start();
@@ -42,7 +42,7 @@ const CHUNK_MS = 1_000;
  *     console.error("Failed to start recording");
  *   }
  * };
- * 
+ *
  * // Listen for segments
  * useEffect(() => {
  *   const handleSegment = (e) => {
@@ -73,8 +73,7 @@ export function useSegmentRecorder() {
   const [mimeType, setMime] = useState("audio/webm;codecs=opus");
 
   // assemble and dispatch a complete segment
-  const makeBlob = () =>
-    new Blob(chunksRef.current.splice(0), { type: mimeType });
+  const makeBlob = () => new Blob(chunksRef.current.splice(0), { type: mimeType });
 
   const startRecorder = useCallback(() => {
     if (!streamRef.current || !MediaRecorder) return; // Check MediaRecorder support
@@ -88,9 +87,7 @@ export function useSegmentRecorder() {
           // 每次收到新的數據時，都檢查是否有足夠的內容
           const currentBlob = new Blob(chunksRef.current, { type: mimeType });
           if (currentBlob.size > 0) {
-            window.dispatchEvent(
-              new CustomEvent("segment", { detail: currentBlob }),
-            );
+            window.dispatchEvent(new CustomEvent("segment", { detail: currentBlob }));
           }
         }
       };

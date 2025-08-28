@@ -251,11 +251,7 @@ export default function MediaWiki(props: SVGProps<SVGSVGElement>) {
         />
         <style id="style9">{".petal{opacity:.65}"}</style>
       </defs>
-      <g
-        id="petals"
-        fill="url(#linearGradient921)"
-        transform="matrix(.5 0 0 .5 0 .026)"
-      >
+      <g id="petals" fill="url(#linearGradient921)" transform="matrix(.5 0 0 .5 0 .026)">
         <path
           id="path13"
           fill="url(#linearGradient873)"

@@ -29,12 +29,7 @@ import { useI18n } from "@/hooks/useI18n"; // Import useI18n
 import { useLanguage } from "@/context/LanguageContext"; // Import useLanguage
 import { SupportedLanguage, TranslationKey } from "@/lib/translations"; // Import translations and SupportedLanguage
 import ScreenPreviewWindow from "./ScreenPreviewWindow";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@workspace/ui/components/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@workspace/ui/components/dialog";
 import { useAuth } from "@/context/AuthContext"; // Import useAuth
 import { toast } from "sonner"; // Corrected import for toast from sonner itself
 import { AIAction } from "@/hooks/useAIInteraction";
@@ -49,7 +44,7 @@ interface ControlPanelProps {
   systemAnalyserNode: AnalyserNode | null;
   micLevel: number; // Add micLevel prop
   systemLevel: number; // Add systemLevel prop
-  screenStreamRef: React.RefObject<MediaStream | null>; 
+  screenStreamRef: React.RefObject<MediaStream | null>;
   screenPreviewRef: React.RefObject<HTMLVideoElement | null>; // Allow null
 
   currentSystemAudioStream: MediaStream | null; // For RealTimeAnalysis
@@ -101,9 +96,7 @@ export function ControlPanel({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // State for the *currently displayed* prompt in the UI
-  const [confirmedPrompt, setConfirmedPromptState] = useState<
-    string | undefined
-  >(undefined);
+  const [confirmedPrompt, setConfirmedPromptState] = useState<string | undefined>(undefined);
   // State for the draft/input value
   const [draftPrompt, setDraftPrompt] = useState<string>("");
   const [isAdvancedSettingsOpen, setIsAdvancedSettingsOpen] = useState(false); // State for expansion
@@ -147,7 +140,6 @@ export function ControlPanel({
     }
   };
 
-
   const aiActions = [
     {
       action: "answer",
@@ -179,7 +171,7 @@ export function ControlPanel({
   const supportedLanguagesData = [
     { code: "zh-TW", name: "繁體中文" },
     { code: "en-US", name: "English" },
-    { code: "ja-JP", name: "日本語" }
+    { code: "ja-JP", name: "日本語" },
   ];
 
   // Scroll to bottom when advanced settings are opened
@@ -229,8 +221,7 @@ export function ControlPanel({
   }, [isAiLoading, isScreenSharing, originalOnAiAction, aiActions]); // Add dependencies
 
   // Determine modifier key display based on OS (simple check)
-  const modifierKey =
-    navigator.platform.toUpperCase().indexOf("MAC") >= 0 ? "⌘" : "Ctrl";
+  const modifierKey = navigator.platform.toUpperCase().indexOf("MAC") >= 0 ? "⌘" : "Ctrl";
 
   const handleToggleScreenShare = () => {
     // if (!isAuthenticated && !isScreenSharing) { // Check only when trying to START sharing
@@ -251,29 +242,38 @@ export function ControlPanel({
     //   });
     //   return;
     // }
-    console.log('[ControlPanel] protectedStartScreenshot called');
+    console.log("[ControlPanel] protectedStartScreenshot called");
     if (window.electronAPI?.startScreenshot) {
-      console.log('[ControlPanel] Starting screenshot via electronAPI...');
+      console.log("[ControlPanel] Starting screenshot via electronAPI...");
       const handleScreenshotEvent = (screenshotPath: string) => {
-        console.log('[ControlPanel] Screenshot taken event received:', screenshotPath);
-        if (typeof handleScreenshot === 'function') {
+        console.log("[ControlPanel] Screenshot taken event received:", screenshotPath);
+        if (typeof handleScreenshot === "function") {
           handleScreenshot(screenshotPath); // This prop is from useAIInteraction hook
         } else {
-          console.error('[ControlPanel] handleScreenshot prop is not a function:', handleScreenshot);
+          console.error(
+            "[ControlPanel] handleScreenshot prop is not a function:",
+            handleScreenshot,
+          );
         }
       };
-      const cleanupScreenshot = window.electronAPI.on('electronAPI:screenshotTaken', handleScreenshotEvent);
-      const cleanupError = window.electronAPI.on('electronAPI:screenshotError', (error: unknown) => {
-        console.error('[ControlPanel] Screenshot error event received:', error);
-      });
+      const cleanupScreenshot = window.electronAPI.on(
+        "electronAPI:screenshotTaken",
+        handleScreenshotEvent,
+      );
+      const cleanupError = window.electronAPI.on(
+        "electronAPI:screenshotError",
+        (error: unknown) => {
+          console.error("[ControlPanel] Screenshot error event received:", error);
+        },
+      );
       window.electronAPI.startScreenshot(); // Actually trigger the screenshot
       setTimeout(() => {
-        console.log('[ControlPanel] Attempting to clean up screenshot listeners after timeout.');
-        if (typeof cleanupScreenshot === 'function') cleanupScreenshot();
-        if (typeof cleanupError === 'function') cleanupError();
+        console.log("[ControlPanel] Attempting to clean up screenshot listeners after timeout.");
+        if (typeof cleanupScreenshot === "function") cleanupScreenshot();
+        if (typeof cleanupError === "function") cleanupError();
       }, 10000);
     } else {
-      console.error('[ControlPanel] window.electronAPI.startScreenshot is not available');
+      console.error("[ControlPanel] window.electronAPI.startScreenshot is not available");
     }
   };
 
@@ -342,7 +342,7 @@ export function ControlPanel({
             />
           </div>
         )} */}
-       <div className="flex items-center justify-between gap-1">
+        <div className="flex items-center justify-between gap-1">
           <span className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
             <span
               className={`flex h-2.5 w-2.5 rounded-full ${
@@ -392,21 +392,20 @@ export function ControlPanel({
           </Button>
         </div>
 
-
-
         {/* Keywords Section */}
         {keywords.length > 0 && (
           <div className="pt-1.5 space-y-1">
-            <h4 className="text-xs font-medium text-foreground">
-              {t("keywordsTitle")}
-            </h4>
+            <h4 className="text-xs font-medium text-foreground">{t("keywordsTitle")}</h4>
             <div className="flex flex-wrap gap-1.5 max-h-[80px] overflow-y-auto pr-1">
               {keywords.map((keyword, index) => (
                 <Button
                   key={`${keyword}-${index}`}
                   size="sm"
                   onClick={() => onKeywordClick(keyword)}
-                  disabled={(isAiLoading && selectedKeyword === keyword) || isAuthLoading /*|| !isAuthenticated*/}
+                  disabled={
+                    (isAiLoading && selectedKeyword === keyword) ||
+                    isAuthLoading /*|| !isAuthenticated*/
+                  }
                   className="flex items-center gap-0.5 text-xs h-4 px-1.5 py-2"
                   title={`${t("explainKeywordTooltipPrefix")} "${keyword}"`}
                 >
@@ -445,9 +444,7 @@ export function ControlPanel({
 
       {/* AI Actions */}
       <div className="p-2 space-y-1.5 border-b border-border/30">
-        <h4 className="text-xs font-medium text-foreground">
-          {t("aiActionsTitle")}
-        </h4>
+        <h4 className="text-xs font-medium text-foreground">{t("aiActionsTitle")}</h4>
         <div className="grid grid-cols-2 gap-1">
           {aiActions.map(({ action, labelKey, icon: Icon, shortcut }) => (
             <Button
@@ -528,9 +525,7 @@ export function ControlPanel({
           onClick={() => setIsAdvancedSettingsOpen(true)}
           role="button"
         >
-          <h4 className="text-xs font-medium text-foreground">
-            {t("advancedSettingsTitle")}
-          </h4>
+          <h4 className="text-xs font-medium text-foreground">{t("advancedSettingsTitle")}</h4>
           <SettingsIcon className="h-3 w-3 text-muted-foreground" />
         </div>
       </div>
@@ -561,11 +556,7 @@ export function ControlPanel({
                   </SelectTrigger>
                   <SelectContent>
                     {supportedLanguagesData.map((lang) => (
-                      <SelectItem
-                        key={lang.code}
-                        value={lang.code}
-                        className="text-xs"
-                      >
+                      <SelectItem key={lang.code} value={lang.code} className="text-xs">
                         {lang.name}
                       </SelectItem>
                     ))}
@@ -577,10 +568,7 @@ export function ControlPanel({
             {/* Custom Prompt Input - Show only if NO prompt is confirmed */}
             {setCustomPrompt && !confirmedPrompt && (
               <div className="space-y-1">
-                <Label
-                  htmlFor="custom-prompt"
-                  className="text-xs font-medium text-foreground"
-                >
+                <Label htmlFor="custom-prompt" className="text-xs font-medium text-foreground">
                   {t("customPromptLabel")}
                 </Label>
                 <Textarea
@@ -589,11 +577,7 @@ export function ControlPanel({
                   value={draftPrompt}
                   onChange={(e) => setDraftPrompt(e.target.value)}
                   onKeyDown={(e) => {
-                    if (
-                      e.key === "Enter" && 
-                      !e.shiftKey &&
-                      draftPrompt.trim()
-                    ) {
+                    if (e.key === "Enter" && !e.shiftKey && draftPrompt.trim()) {
                       // Confirm and save the prompt
                       setConfirmedPromptState(draftPrompt);
                       setCustomPrompt(draftPrompt); // Update AI hook state
@@ -604,9 +588,7 @@ export function ControlPanel({
                   }}
                   className="h-7 text-xs border-border/30 bg-muted/50 focus-visible:ring-0 focus-visible:border-primary focus-visible:outline-none"
                 />
-                <p className="text-[10px] text-muted-foreground">
-                  {t("textareaHint")}
-                </p>
+                <p className="text-[10px] text-muted-foreground">{t("textareaHint")}</p>
               </div>
             )}
 
@@ -633,15 +615,12 @@ export function ControlPanel({
                     {t("clearButton")}
                   </Button>
                 </div>
-                <div className="text-xs text-muted-foreground break-words">
-                  {confirmedPrompt}
-                </div>
+                <div className="text-xs text-muted-foreground break-words">{confirmedPrompt}</div>
               </div>
             )}
           </div>
         </DialogContent>
       </Dialog>
-
     </aside>
   );
 }

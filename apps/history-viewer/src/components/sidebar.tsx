@@ -1,4 +1,3 @@
-
 import { ThemeSwitcher } from "./theme-switcher";
 
 interface Session {
@@ -12,14 +11,17 @@ interface SidebarProps {
 }
 
 export function Sidebar({ sessions, onSelectDate }: SidebarProps) {
-  const groupedSessions = sessions.reduce((acc, session) => {
-    const date = new Date(session.started_at).toLocaleDateString();
-    if (!acc[date]) {
-      acc[date] = [];
-    }
-    acc[date].push(session);
-    return acc;
-  }, {} as Record<string, Session[]>);
+  const groupedSessions = sessions.reduce(
+    (acc, session) => {
+      const date = new Date(session.started_at).toLocaleDateString();
+      if (!acc[date]) {
+        acc[date] = [];
+      }
+      acc[date].push(session);
+      return acc;
+    },
+    {} as Record<string, Session[]>,
+  );
 
   return (
     <aside className="w-64 bg-muted p-4 flex flex-col justify-between">
@@ -28,7 +30,12 @@ export function Sidebar({ sessions, onSelectDate }: SidebarProps) {
         <div className="space-y-2">
           {Object.keys(groupedSessions).map((date) => (
             <div key={date}>
-              <h3 className="text-sm font-semibold mb-1 cursor-pointer" onClick={() => onSelectDate(date)}>{new Date(date).toLocaleDateString("zh-TW").replace(/-/g, "/")}</h3>
+              <h3
+                className="text-sm font-semibold mb-1 cursor-pointer"
+                onClick={() => onSelectDate(date)}
+              >
+                {new Date(date).toLocaleDateString("zh-TW").replace(/-/g, "/")}
+              </h3>
             </div>
           ))}
         </div>
@@ -39,4 +46,3 @@ export function Sidebar({ sessions, onSelectDate }: SidebarProps) {
     </aside>
   );
 }
-

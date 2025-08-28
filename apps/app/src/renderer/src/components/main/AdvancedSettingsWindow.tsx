@@ -1,26 +1,26 @@
-import React from "react";
-import { Button } from "@/components/ui/button";
-import { LanguagesIcon } from "lucide-react";
+import React from 'react'
+import { Button } from '@/components/ui/button'
+import { LanguagesIcon } from 'lucide-react'
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+  SelectValue
+} from '@/components/ui/select'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 
 interface AdvancedSettingsWindowProps {
-  isOpen: boolean;
-  onClose: () => void;
-  language?: string;
-  setLanguage?: (language: string) => void;
-  customPrompt?: string;
-  setCustomPrompt?: (prompt: string) => void;
-  isScreenSharing: boolean;
-  onToggleScreenShare: () => void;
+  isOpen: boolean
+  onClose: () => void
+  language?: string
+  setLanguage?: (language: string) => void
+  customPrompt?: string
+  setCustomPrompt?: (prompt: string) => void
+  isScreenSharing: boolean
+  onToggleScreenShare: () => void
 }
 
 export default function AdvancedSettingsWindow({
@@ -31,61 +31,61 @@ export default function AdvancedSettingsWindow({
   customPrompt,
   setCustomPrompt,
   isScreenSharing,
-  onToggleScreenShare,
+  onToggleScreenShare
 }: AdvancedSettingsWindowProps) {
-  const [draftPrompt, setDraftPrompt] = React.useState(customPrompt || "");
-  const [confirmedPrompt, setConfirmedPrompt] = React.useState(customPrompt);
+  const [draftPrompt, setDraftPrompt] = React.useState(customPrompt || '')
+  const [confirmedPrompt, setConfirmedPrompt] = React.useState(customPrompt)
 
   const languages = [
-    { code: "zh-TW", name: "繁體中文" },
-    { code: "en-US", name: "English" },
-    { code: "ja-JP", name: "日本語" },
-    { code: "original", name: "原始語言" },
-  ];
+    { code: 'zh-TW', name: '繁體中文' },
+    { code: 'en-US', name: 'English' },
+    { code: 'ja-JP', name: '日本語' },
+    { code: 'original', name: '原始語言' }
+  ]
 
   // 處理語言選擇
   const handleLanguageChange = (value: string) => {
-    console.log("[AdvancedSettingsWindow] 選擇語言:", value);
+    console.log('[AdvancedSettingsWindow] 選擇語言:', value)
     if (setLanguage) {
       // 如果正在螢幕分享，先停止分享
       if (isScreenSharing) {
-        console.log("[AdvancedSettingsWindow] 正在螢幕分享，先停止分享");
-        onToggleScreenShare();
+        console.log('[AdvancedSettingsWindow] 正在螢幕分享，先停止分享')
+        onToggleScreenShare()
       }
-      setLanguage(value);
+      setLanguage(value)
     }
-  };
+  }
 
   // 處理 custom prompt 確認
   const handleCustomPromptConfirm = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Enter" && !e.shiftKey) {
+    if (e.key === 'Enter' && !e.shiftKey) {
       // 如果正在螢幕分享，先停止分享
       if (isScreenSharing) {
-        console.log("[AdvancedSettingsWindow] 正在螢幕分享，先停止分享");
-        onToggleScreenShare();
+        console.log('[AdvancedSettingsWindow] 正在螢幕分享，先停止分享')
+        onToggleScreenShare()
       }
       // 確認提示詞
-      setConfirmedPrompt(draftPrompt);
+      setConfirmedPrompt(draftPrompt)
       if (setCustomPrompt) {
-        setCustomPrompt(draftPrompt);
+        setCustomPrompt(draftPrompt)
       }
-      e.currentTarget.blur();
+      e.currentTarget.blur()
     }
-  };
+  }
 
   // 處理清除 custom prompt
   const handleClearCustomPrompt = () => {
     // 如果正在螢幕分享，先停止分享
     if (isScreenSharing) {
-      console.log("[AdvancedSettingsWindow] 正在螢幕分享，先停止分享");
-      onToggleScreenShare();
+      console.log('[AdvancedSettingsWindow] 正在螢幕分享，先停止分享')
+      onToggleScreenShare()
     }
-    setConfirmedPrompt(undefined);
+    setConfirmedPrompt(undefined)
     if (setCustomPrompt) {
-      setCustomPrompt('');
+      setCustomPrompt('')
     }
-    setDraftPrompt('');
-  };
+    setDraftPrompt('')
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -102,23 +102,14 @@ export default function AdvancedSettingsWindow({
                 <h3 className="text-xs font-medium text-foreground">語言設定</h3>
               </div>
               <div className="flex items-center justify-between">
-                <Label className="text-xs text-muted-foreground">
-                  選擇輸出語言
-                </Label>
-                <Select
-                  value={language || "zh-TW"}
-                  onValueChange={handleLanguageChange}
-                >
+                <Label className="text-xs text-muted-foreground">選擇輸出語言</Label>
+                <Select value={language || 'zh-TW'} onValueChange={handleLanguageChange}>
                   <SelectTrigger className="w-[100px] h-6 text-xs px-2 bg-muted/95 border-border/50">
                     <SelectValue placeholder="選擇語言" />
                   </SelectTrigger>
                   <SelectContent className="bg-muted/95 border-border/50">
                     {languages.map((lang) => (
-                      <SelectItem
-                        key={lang.code}
-                        value={lang.code}
-                        className="text-xs"
-                      >
+                      <SelectItem key={lang.code} value={lang.code} className="text-xs">
                         {lang.name}
                       </SelectItem>
                     ))}
@@ -149,13 +140,10 @@ export default function AdvancedSettingsWindow({
                 </svg>
                 <h3 className="text-xs font-medium text-foreground">模型要求</h3>
               </div>
-              
+
               {!confirmedPrompt ? (
                 <div className="space-y-1">
-                  <Label
-                    htmlFor="custom-prompt"
-                    className="text-xs text-muted-foreground"
-                  >
+                  <Label htmlFor="custom-prompt" className="text-xs text-muted-foreground">
                     輸入自定義提示詞
                   </Label>
                   <Textarea
@@ -173,9 +161,7 @@ export default function AdvancedSettingsWindow({
               ) : (
                 <div className="space-y-1">
                   <div className="flex items-center justify-between">
-                    <Label className="text-xs text-muted-foreground">
-                      當前模型要求
-                    </Label>
+                    <Label className="text-xs text-muted-foreground">當前模型要求</Label>
                     <Button
                       variant="ghost"
                       size="sm"
@@ -195,5 +181,5 @@ export default function AdvancedSettingsWindow({
         </div>
       </DialogContent>
     </Dialog>
-  );
-} 
+  )
+}

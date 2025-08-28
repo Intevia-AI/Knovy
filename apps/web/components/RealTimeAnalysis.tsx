@@ -132,15 +132,11 @@ export default function RealTimeAnalysis({
           const transcriptionMatch = textBufferRef.current.match(
             /TRANSCRIPTION: (.*?)(?:\n|$|$|$)KEYWORDS:/s,
           );
-          const keywordsMatch = textBufferRef.current.match(
-            /KEYWORDS: (.*?)(?:\n|$)/s,
-          );
+          const keywordsMatch = textBufferRef.current.match(/KEYWORDS: (.*?)(?:\n|$)/s);
 
           if (transcriptionMatch?.[1]) {
             const transcription = transcriptionMatch[1].trim();
-            const cleanTranscription = transcription
-              .replace(/^TRANSCRIPTION:\s*/i, "")
-              .trim();
+            const cleanTranscription = transcription.replace(/^TRANSCRIPTION:\s*/i, "").trim();
             onTextResponse?.(cleanTranscription);
           }
 
@@ -164,7 +160,7 @@ export default function RealTimeAnalysis({
       },
       (isPlaying) => console.log("Playing state changed:", isPlaying),
       (level) => setAudioLevel(level),
-      () => { },
+      () => {},
     );
 
     return () => {
@@ -200,14 +196,10 @@ export default function RealTimeAnalysis({
 
       // Setup audio processing
       audioContextRef.current = new AudioContext({ sampleRate: 16000 });
-      await audioContextRef.current.audioWorklet.addModule(
-        "/worklets/audio-processor.js",
-      );
-      const workletNode = new AudioWorkletNode(
-        audioContextRef.current,
-        "audio-processor",
-        { processorOptions: { bufferSize: 8192 } },
-      );
+      await audioContextRef.current.audioWorklet.addModule("/worklets/audio-processor.js");
+      const workletNode = new AudioWorkletNode(audioContextRef.current, "audio-processor", {
+        processorOptions: { bufferSize: 8192 },
+      });
       audioWorkletNodeRef.current = workletNode;
 
       workletNode.port.onmessage = (event) => {
@@ -233,82 +225,87 @@ export default function RealTimeAnalysis({
       let systemAudioStream: MediaStream | null = null;
       if (systemAudioTracks.length > 0) {
         systemAudioStream = new MediaStream(systemAudioTracks);
-        const systemSource = audioContextRef.current.createMediaStreamSource(
-          systemAudioStream,
-        );
+        const systemSource = audioContextRef.current.createMediaStreamSource(systemAudioStream);
         systemSource.connect(workletNode);
         systemAudioSourceRef.current = systemSource;
 
         // Start system audio recording for segment capture
         try {
-          const systemRecorder = new MediaRecorder(systemAudioStream, { 
-            mimeType: "audio/webm;codecs=opus" 
+          const systemRecorder = new MediaRecorder(systemAudioStream, {
+            mimeType: "audio/webm;codecs=opus",
           });
-          
+
           systemRecorder.ondataavailable = (e) => {
             if (e.data.size > 0) {
               systemAudioChunksRef.current.push(e.data);
             }
           };
-          
+
           systemRecorder.onstop = () => {
             if (systemAudioChunksRef.current.length > 0) {
-              const blob = new Blob(systemAudioChunksRef.current, { 
-                type: "audio/webm;codecs=opus"
+              const blob = new Blob(systemAudioChunksRef.current, {
+                type: "audio/webm;codecs=opus",
               });
               if (blob.size > 0) {
-                console.log("[RealTimeAnalysis] Dispatching system audio segment:", blob.size, "bytes");
-                window.dispatchEvent(
-                  new CustomEvent("systemAudioSegment", { detail: blob })
+                console.log(
+                  "[RealTimeAnalysis] Dispatching system audio segment:",
+                  blob.size,
+                  "bytes",
                 );
+                window.dispatchEvent(new CustomEvent("systemAudioSegment", { detail: blob }));
               }
               systemAudioChunksRef.current = [];
             }
           };
-          
+
           systemRecorder.start(1000); // Record in 1-second chunks
           systemAudioRecorderRef.current = systemRecorder;
-          
+
           // Create segments every 20 seconds (matching microphone behavior)
           systemAudioTimerRef.current = setInterval(() => {
-            if (systemAudioRecorderRef.current && 
-                systemAudioRecorderRef.current.state === "recording") {
+            if (
+              systemAudioRecorderRef.current &&
+              systemAudioRecorderRef.current.state === "recording"
+            ) {
               systemAudioRecorderRef.current.stop();
               // Restart recording
               setTimeout(() => {
                 if (systemAudioStream && systemAudioRecorderRef.current) {
-                  const newRecorder = new MediaRecorder(systemAudioStream, { 
-                    mimeType: "audio/webm;codecs=opus"
+                  const newRecorder = new MediaRecorder(systemAudioStream, {
+                    mimeType: "audio/webm;codecs=opus",
                   });
-                  
+
                   newRecorder.ondataavailable = (e) => {
                     if (e.data.size > 0) {
                       systemAudioChunksRef.current.push(e.data);
                     }
                   };
-                  
+
                   newRecorder.onstop = () => {
                     if (systemAudioChunksRef.current.length > 0) {
-                      const blob = new Blob(systemAudioChunksRef.current, { 
-                        type: "audio/webm;codecs=opus"
+                      const blob = new Blob(systemAudioChunksRef.current, {
+                        type: "audio/webm;codecs=opus",
                       });
                       if (blob.size > 0) {
-                        console.log("[RealTimeAnalysis] Dispatching system audio segment (restart):", blob.size, "bytes");
+                        console.log(
+                          "[RealTimeAnalysis] Dispatching system audio segment (restart):",
+                          blob.size,
+                          "bytes",
+                        );
                         window.dispatchEvent(
-                          new CustomEvent("systemAudioSegment", { detail: blob })
+                          new CustomEvent("systemAudioSegment", { detail: blob }),
                         );
                       }
                       systemAudioChunksRef.current = [];
                     }
                   };
-                  
+
                   newRecorder.start(1000);
                   systemAudioRecorderRef.current = newRecorder;
                 }
               }, 100);
             }
           }, 20000); // 20 seconds to match SEGMENT_MS
-          
         } catch (error) {
           console.warn("Failed to start system audio recording:", error);
         }
@@ -329,10 +326,7 @@ export default function RealTimeAnalysis({
       onIsActiveChange(true);
 
       // Start session timer
-      sessionTimerRef.current = setTimeout(
-        () => stopSession(true),
-        SESSION_TIMEOUT,
-      );
+      sessionTimerRef.current = setTimeout(() => stopSession(true), SESSION_TIMEOUT);
     } catch (error) {
       console.error("Error starting session:", error);
       alert(t("demo.session_start_error") + error);
@@ -380,9 +374,7 @@ export default function RealTimeAnalysis({
           />
         </div>
       )}
-      <p className="text-xs text-muted-foreground">
-        {t("demo.session_timeout_notice")}
-      </p>
+      <p className="text-xs text-muted-foreground">{t("demo.session_timeout_notice")}</p>
     </div>
   );
 }

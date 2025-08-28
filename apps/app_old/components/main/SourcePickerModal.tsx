@@ -16,21 +16,14 @@ interface SourcePickerModalProps {
   onCancel: () => void;
 }
 
-export function SourcePickerModal({
-  show,
-  sources,
-  onSelect,
-  onCancel,
-}: SourcePickerModalProps) {
+export function SourcePickerModal({ show, sources, onSelect, onCancel }: SourcePickerModalProps) {
   const { t } = useI18n();
 
   return (
     <Dialog open={show} onOpenChange={(isOpen) => !isOpen && onCancel()}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle className="text-sm">
-            {t("sourcePickerTitle")}
-          </DialogTitle>
+          <DialogTitle className="text-sm">{t("sourcePickerTitle")}</DialogTitle>
         </DialogHeader>
         <div className="max-h-60 overflow-y-auto space-y-1 p-1.5 bg-background border rounded">
           {sources.length > 0 ? (
@@ -51,12 +44,7 @@ export function SourcePickerModal({
           )}
         </div>
         <DialogFooter>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onCancel}
-            className="text-xs"
-          >
+          <Button variant="ghost" size="sm" onClick={onCancel} className="text-xs">
             {t("cancelButton")}
           </Button>
         </DialogFooter>

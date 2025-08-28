@@ -65,9 +65,7 @@ function getAudioDuration(filePath: string): Promise<number | null> {
       ) {
         resolve(metadata.format.duration);
       } else {
-        console.warn(
-          "Could not determine a valid audio duration from metadata.",
-        );
+        console.warn("Could not determine a valid audio duration from metadata.");
         resolve(null); // Resolve with null if duration is invalid/missing
       }
     });
@@ -90,27 +88,27 @@ interface ProcessAudioRequest {
  * @description Handles POST requests to process audio files - trimming and converting to WAV format
  * @route POST /api/process-audio
  * @param {Request} req - The incoming HTTP request object
- * 
+ *
  * @requestBody {ProcessAudioRequest} - The request body containing audio data and MIME type
  * @requestExample
  * {
  *   "audioData": "base64-encoded-audio-data",
  *   "originalMimeType": "audio/webm"
  * }
- * 
+ *
  * @responseBody {Object} - The processed audio data and MIME type
  * @responseExample
  * {
  *   "processedAudioData": "base64-encoded-wav-data",
  *   "processedMimeType": "audio/wav"
  * }
- * 
+ *
  * @errorResponse {Object} - Error message when processing fails
  * @errorExample
  * {
  *   "error": "Audio processing failed: Missing audioData"
  * }
- * 
+ *
  * @returns {Promise<NextResponse>} JSON response with processed audio or error message
  */
 export async function POST(req: Request) {
@@ -118,11 +116,8 @@ export async function POST(req: Request) {
   let tempOutputPath: string | null = null;
 
   try {
-    const { audioData, originalMimeType }: ProcessAudioRequest =
-      await req.json();
-    console.log(
-      `[Server Process] Received audio. Original type: ${originalMimeType}`,
-    );
+    const { audioData, originalMimeType }: ProcessAudioRequest = await req.json();
+    console.log(`[Server Process] Received audio. Original type: ${originalMimeType}`);
 
     // Validate required fields
     if (!audioData) {
@@ -147,9 +142,7 @@ export async function POST(req: Request) {
       // 3. Calculate trim start time ONLY if duration is valid
       startSec = Math.max(duration - MAX_TRIM_SECONDS, 0);
     } else {
-      console.warn(
-        `[Server Process] Could not get valid duration. Processing entire audio.`,
-      );
+      console.warn(`[Server Process] Could not get valid duration. Processing entire audio.`);
       // Keep startSec = 0
     }
 
@@ -199,10 +192,7 @@ export async function POST(req: Request) {
       if (tempOutputPath) await fs.unlink(tempOutputPath);
       console.log("[Server Process] Cleaned up temp files.");
     } catch (cleanupError) {
-      console.error(
-        "[Server Process] Error cleaning up temp files:",
-        cleanupError,
-      );
+      console.error("[Server Process] Error cleaning up temp files:", cleanupError);
     }
   }
 }

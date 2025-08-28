@@ -41,17 +41,17 @@ export function useElectron() {
   useEffect(() => {
     if (window.electronAPI) {
       const removeAlwaysOnTopListener = window.electronAPI.on(
-        "always-on-top-changed",
+        'always-on-top-changed',
         (value: boolean) => {
-          setIsAlwaysOnTop(value);
+          setIsAlwaysOnTop(value)
         }
-      );
+      )
 
       return () => {
-        removeAlwaysOnTopListener();
-      };
+        removeAlwaysOnTopListener()
+      }
     }
-  }, []);
+  }, [])
 
   const toggleAlwaysOnTop = useCallback(() => {
     if (window.electronAPI) {
@@ -86,6 +86,6 @@ export function useElectron() {
     isAlwaysOnTop,
     toggleAlwaysOnTop,
     minimizeWindow,
-    closeWindow,
+    closeWindow
   }
 }

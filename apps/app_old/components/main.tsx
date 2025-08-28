@@ -52,11 +52,10 @@ export function Main() {
   } = useScreenShare();
 
   // Audio Analysis (Visualizers)
-  const { micAnalyserNode, systemAnalyserNode, micLevel, systemLevel } =
-    useAudioAnalysis(
-      isScreenSharing ? micStream : null, // Pass stream only when sharing
-      isScreenSharing ? currentSystemAudioStream : null, // Pass stream only when sharing
-    );
+  const { micAnalyserNode, systemAnalyserNode, micLevel, systemLevel } = useAudioAnalysis(
+    isScreenSharing ? micStream : null, // Pass stream only when sharing
+    isScreenSharing ? currentSystemAudioStream : null, // Pass stream only when sharing
+  );
 
   // AI Interaction Logic
   const {

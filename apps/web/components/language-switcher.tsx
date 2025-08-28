@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -14,11 +13,7 @@ import {
   CommandItem,
   CommandList,
 } from "@workspace/ui/components/command";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@workspace/ui/components/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@workspace/ui/components/popover";
 import { useLanguage } from "@/context/language-context";
 
 export function LanguageSwitcher() {
@@ -42,7 +37,12 @@ export function LanguageSwitcher() {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="icon" aria-label="Change language" className="transition-colors hover:bg-gray-100 dark:hover:bg-gray-800">
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label="Change language"
+          className="transition-colors hover:bg-gray-100 dark:hover:bg-gray-800"
+        >
           <Languages className="h-[1.2rem] w-[1.2rem]" />
         </Button>
       </PopoverTrigger>
@@ -64,7 +64,7 @@ export function LanguageSwitcher() {
                   <Check
                     className={cn(
                       "mr-2 h-4 w-4",
-                      locale === language.value ? "opacity-100" : "opacity-0"
+                      locale === language.value ? "opacity-100" : "opacity-0",
                     )}
                   />
                   {language.label}

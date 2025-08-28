@@ -56,85 +56,91 @@ export function HeaderBar({
       style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
     >
       {/* Left side controls */}
-      <div className="flex items-center gap-1" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
+      <div
+        className="flex items-center gap-1"
+        style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
+      >
         {isScreenSharing && (
           <Button
             variant={isScreenPreviewWindowVisible ? 'default' : 'ghost'} // Highlight if open
-            size='icon'
-            className='h-7 w-7 rounded-full'
+            size="icon"
+            className="h-7 w-7 rounded-full"
             onClick={onToggleScreenPreviewWindow} // Use new toggle function
-            title='Screen Preview'
+            title="Screen Preview"
           >
-            <MonitorIcon className='h-4 w-4' />
+            <MonitorIcon className="h-4 w-4" />
           </Button>
         )}
         <Button
           variant={isScreenSharing ? 'destructive' : 'default'}
-          size='sm'
+          size="sm"
           onClick={onToggleScreenShare}
-          className='h-7 rounded-full text-xs'
+          className="h-7 rounded-full text-xs"
         >
-          <MicIcon className='h-5 w-5' />
+          <MicIcon className="h-5 w-5" />
           {isScreenSharing ? 'Stop' : 'Listen'}
         </Button>
 
         {isScreenSharing && (
           <Button
             variant={isTranscriptionWindowVisible ? 'default' : 'default'} // Highlight if open
-            size='icon'
+            size="icon"
             onClick={onToggleTranscriptionWindow} // Use new toggle function
-            className='h-7 w-7 rounded-full'
-            title='Show Transcriptions'
+            className="h-7 w-7 rounded-full"
+            title="Show Transcriptions"
           >
-            <MessageSquare className='h-4 w-4' />
+            <MessageSquare className="h-4 w-4" />
           </Button>
         )}
       </div>
 
       {/* Right side controls */}
-      <div className="flex items-center gap-1" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
+      <div
+        className="flex items-center gap-1"
+        style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
+      >
         <Button
           variant={isFeaturesWindowVisible ? 'default' : 'ghost'} // Highlight if open
-          size='icon'
-          className='h-7 w-7 rounded-full'
+          size="icon"
+          className="h-7 w-7 rounded-full"
           onClick={onToggleFeaturesWindow} // Use new toggle function
-          title='Features'
+          title="Features"
         >
-          <LayoutGrid className='h-4 w-4' />
+          <LayoutGrid className="h-4 w-4" />
         </Button>
         <Button
           variant={isSettingsWindowVisible ? 'default' : 'ghost'} // Highlight if open
-          size='icon'
-          className='h-7 w-7 rounded-full'
+          size="icon"
+          className="h-7 w-7 rounded-full"
           onClick={onToggleSettingsWindow} // Use new toggle function
-          title='Settings'
+          title="Settings"
         >
-          <SettingsIcon className='h-4 w-4' />
+          <SettingsIcon className="h-4 w-4" />
         </Button>
 
         {/* Window Controls */}
         <Button
-          variant='ghost'
-          size='icon'
-          className='h-7 w-7 rounded-full'
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7 rounded-full"
           onClick={toggleAlwaysOnTop}
           title={isAlwaysOnTop ? t('unpinWindowTooltip') : t('pinWindowTooltip')}
         >
           {isAlwaysOnTop ? <PinOffIcon size={14} /> : <PinIcon size={14} />}
         </Button>
         <Button
-          variant='ghost'
-          size='icon'
-          className='h-7 w-7 rounded-full'
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7 rounded-full"
           onClick={minimizeWindow}
           title={t('minimizeWindowTooltip')}
         >
           <MinusIcon size={14} />
         </Button>
         <Button
-          variant='ghost'
-          size='icon'
-          className='h-7 w-7 rounded-full hover:bg-destructive/80'
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7 rounded-full hover:bg-destructive/80"
           onClick={closeWindow}
           title={t('closeWindowTooltip')}
         >

@@ -36,11 +36,7 @@ const FloatingMenu: React.FC<{
         top: y - 60,
       }}
     >
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={onAskAI}
-      >
+      <Button variant="ghost" size="sm" onClick={onAskAI}>
         {t("askAIButton")}
       </Button>
     </div>
@@ -66,8 +62,7 @@ export default function ChatPanel({
     const container = messagesContainerRef.current;
     if (container) {
       const isScrolledToBottom =
-        container.scrollHeight - container.clientHeight <=
-        container.scrollTop + 100;
+        container.scrollHeight - container.clientHeight <= container.scrollTop + 100;
       if (isScrolledToBottom) {
         container.scrollTop = container.scrollHeight;
       }
@@ -77,7 +72,7 @@ export default function ChatPanel({
 
   const handleTextSelection = (event: React.MouseEvent<HTMLDivElement>) => {
     const targetElement = event.target as Element;
-    if (targetElement.closest('.chat-selection-menu-container')) {
+    if (targetElement.closest(".chat-selection-menu-container")) {
       return;
     }
 
@@ -88,39 +83,40 @@ export default function ChatPanel({
       setSelectedText("");
       return;
     }
-    
+
     const range = selection.getRangeAt(0);
     const messagesDiv = messagesContainerRef.current;
 
     if (messagesDiv && messagesDiv.contains(range.commonAncestorContainer)) {
-        const currentSelectedText = selection.toString();
-        console.log(`[ChatPanel] Text selected: "${currentSelectedText}"`);
-        setSelectedText(currentSelectedText);
-        const rect = range.getBoundingClientRect();
-        setMenuPosition({
-          x: rect.left + rect.width / 2,
-          y: rect.top,
-        });
+      const currentSelectedText = selection.toString();
+      console.log(`[ChatPanel] Text selected: "${currentSelectedText}"`);
+      setSelectedText(currentSelectedText);
+      const rect = range.getBoundingClientRect();
+      setMenuPosition({
+        x: rect.left + rect.width / 2,
+        y: rect.top,
+      });
     } else {
-        if (menuPosition || selectedText) console.log("[ChatPanel] Selection outside messages or invalid, clearing selection.");
-        setMenuPosition(null);
-        setSelectedText("");
+      if (menuPosition || selectedText)
+        console.log("[ChatPanel] Selection outside messages or invalid, clearing selection.");
+      setMenuPosition(null);
+      setSelectedText("");
     }
   };
-  
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const targetElement = event.target as Element;
-      if (menuPosition && !targetElement.closest('.chat-selection-menu-container')) {
+      if (menuPosition && !targetElement.closest(".chat-selection-menu-container")) {
         console.log("[ChatPanel] Click outside menu, clearing selection and hiding menu.");
         setMenuPosition(null);
-        setSelectedText(""); 
+        setSelectedText("");
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [menuPosition]);
 
@@ -129,8 +125,7 @@ export default function ChatPanel({
     const handleScroll = () => {
       if (container) {
         const isScrolledToBottom =
-          container.scrollHeight - container.clientHeight <=
-          container.scrollTop + 10;
+          container.scrollHeight - container.clientHeight <= container.scrollTop + 10;
         setShowScrollToBottom(!isScrolledToBottom);
       }
     };
@@ -155,7 +150,9 @@ export default function ChatPanel({
       setMenuPosition(null);
       setSelectedText("");
     } else {
-      console.warn(`[ChatPanel] handleAskAI: selectedText is empty or whitespace. Value: "${selectedText}"`);
+      console.warn(
+        `[ChatPanel] handleAskAI: selectedText is empty or whitespace. Value: "${selectedText}"`,
+      );
     }
   };
 
@@ -186,9 +183,7 @@ export default function ChatPanel({
               m.role === "user"
                 ? "bg-primary ml-auto text-primary-foreground"
                 : "bg-muted mr-auto text-foreground",
-              (m.content.startsWith("[即時轉錄]") &&
-                !isSubtitleVisible &&
-                "hidden") ||
+              (m.content.startsWith("[即時轉錄]") && !isSubtitleVisible && "hidden") ||
                 m.content.includes("search web"),
             )}
           >
@@ -202,11 +197,7 @@ export default function ChatPanel({
         )}
       </div>
       {menuPosition && selectedText.trim() && (
-        <FloatingMenu
-          x={menuPosition.x}
-          y={menuPosition.y}
-          onAskAI={handleAskAI}
-        />
+        <FloatingMenu x={menuPosition.x} y={menuPosition.y} onAskAI={handleAskAI} />
       )}
       {showScrollToBottom && (
         <Button
@@ -239,7 +230,6 @@ export default function ChatPanel({
             disabled={isLoading || !isScreenSharing || !customPrompt.trim()}
             className="bg-primary hover:bg-primary/90 text-primary-foreground h-7 w-7"
             aria-label={t("sendChatButtonLabel")}
-
           >
             <ArrowUpRight className="h-3 w-3" />
           </Button>

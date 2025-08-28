@@ -7,8 +7,8 @@ import {
   Html,
   Preview,
   Text,
-} from 'https://esm.sh/@react-email/components';
-import * as React from 'https://esm.sh/react';
+} from "https://esm.sh/@react-email/components";
+import * as React from "https://esm.sh/react";
 
 interface WaitlistWelcomeEmailProps {
   username: string;
@@ -20,13 +20,10 @@ const translations = {
     preview: "Welcome to Knovy Waitlist!",
     h1: "Welcome to Knovy Waitlist!",
     hi: "Hi",
-    thanks:
-      "Thanks for joining the waitlist for Knovy. We're excited to have you on board!",
-    moreInfo:
-      "We'll be in touch soon with more information about the beta launch.",
+    thanks: "Thanks for joining the waitlist for Knovy. We're excited to have you on board!",
+    moreInfo: "We'll be in touch soon with more information about the beta launch.",
     button: "Visit our Website",
-    questions:
-      "If you have any questions, please don't hesitate to contact us.",
+    questions: "If you have any questions, please don't hesitate to contact us.",
     best: "Sincerely,",
     team: "Archi @ INTEVIA",
   },
@@ -43,12 +40,9 @@ const translations = {
   },
 };
 
-const baseUrl = 'https://intevia.app';
+const baseUrl = "https://intevia.app";
 
-export const WaitlistWelcomeEmail = ({
-  username,
-  locale,
-}: WaitlistWelcomeEmailProps) => {
+export const WaitlistWelcomeEmail = ({ username, locale }: WaitlistWelcomeEmailProps) => {
   const t = translations[locale as keyof typeof translations] || translations["en"];
   return (
     <Html>
@@ -62,10 +56,7 @@ export const WaitlistWelcomeEmail = ({
           </Text>
           <Text style={text}>{t.thanks}</Text>
           <Text style={text}>{t.moreInfo}</Text>
-          <Button
-            style={btn}
-            href={baseUrl}
-          >
+          <Button style={btn} href={baseUrl}>
             {t.button}
           </Button>
           <Text style={text}>{t.questions}</Text>
@@ -83,48 +74,48 @@ export const WaitlistWelcomeEmail = ({
 export default WaitlistWelcomeEmail;
 
 const main = {
-  backgroundColor: '#f6f9fc',
-  padding: '20px',
+  backgroundColor: "#f6f9fc",
+  padding: "20px",
 };
 
 const container = {
-  backgroundColor: '#ffffff',
-  border: '1px solid #f0f0f0',
-  borderRadius: '5px',
-  padding: '20px',
-  margin: '0 auto',
-  maxWidth: '600px',
+  backgroundColor: "#ffffff",
+  border: "1px solid #f0f0f0",
+  borderRadius: "5px",
+  padding: "20px",
+  margin: "0 auto",
+  maxWidth: "600px",
 };
 
 const h1 = {
-  color: '#333',
+  color: "#333",
   fontFamily:
     "-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif",
-  fontSize: '24px',
-  fontWeight: 'bold',
-  margin: '40px 0',
-  padding: '0',
-  textAlign: 'center' as const,
+  fontSize: "24px",
+  fontWeight: "bold",
+  margin: "40px 0",
+  padding: "0",
+  textAlign: "center" as const,
 };
 
 const text = {
-  color: '#333',
+  color: "#333",
   fontFamily:
     "-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif",
-  fontSize: '16px',
-  lineHeight: '24px',
-  margin: '24px 0',
+  fontSize: "16px",
+  lineHeight: "24px",
+  margin: "24px 0",
 };
 
 const btn = {
-  backgroundColor: '#000',
-  color: '#fff',
+  backgroundColor: "#000",
+  color: "#fff",
   fontFamily:
     "-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif",
-  fontSize: '16px',
-  textDecoration: 'none',
-  borderRadius: '5px',
-  padding: '12px 20px',
-  display: 'inline-block',
-  margin: '24px 0',
+  fontSize: "16px",
+  textDecoration: "none",
+  borderRadius: "5px",
+  padding: "12px 20px",
+  display: "inline-block",
+  margin: "24px 0",
 };

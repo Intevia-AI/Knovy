@@ -10,69 +10,66 @@ import dotenv from "dotenv";
 dotenv.config();
 
 /** @type {string} WebSocket proxy server URL from environment or default localhost */
-const PROXY_SERVER_URL = 
-  process.env.NEXT_PUBLIC_GEMINI_WS_URL || "ws://localhost:4567";
+const PROXY_SERVER_URL = process.env.NEXT_PUBLIC_GEMINI_WS_URL || "ws://localhost:4567";
 console.log(PROXY_SERVER_URL);
 
 /**
  * WebSocket client for Gemini AI proxy server communication.
  * Provides real-time audio streaming, transcription, and AI response capabilities
  * with automatic reconnection, error handling, and multiple operation modes.
- * 
+ *
  * @class GeminiClient
  */
 export class GeminiClient {
   /** @type {WebSocket|null} WebSocket connection instance */
   private ws: WebSocket | null = null;
-  
+
   /** @type {boolean} Connection status flag */
   private isConnected: boolean = false;
-  
+
   /** @type {boolean} Setup completion status flag */
   private isSetupComplete: boolean = false;
-  
+
   /** @type {Function|null} Callback for AI response messages */
-  private onMessageCallback:
-    | ((text: string, turnComplete: boolean) => void)
-    | null = null;
-    
+  private onMessageCallback: ((text: string, turnComplete: boolean) => void) | null = null;
+
   /** @type {Function|null} Callback for setup completion */
   private onSetupCompleteCallback: (() => void) | null = null;
-  
+
   /** @type {Function|null} Callback for audio playing state changes */
   private onPlayingStateChange: ((isPlaying: boolean) => void) | null = null;
-  
+
   /** @type {Function|null} Callback for audio level changes */
   private onAudioLevelChange: ((level: number) => void) | null = null;
-  
+
   /** @type {Function|null} Callback for transcription results */
   private onTranscriptionCallback: ((text: string) => void) | null = null;
-  
+
   /** @type {number} Current number of reconnection attempts */
   private reconnectAttempts: number = 0;
-  
+
   /** @type {number} Maximum allowed reconnection attempts */
   private maxReconnectAttempts: number = 5;
-  
+
   /** @type {number} Base timeout for reconnection attempts in milliseconds */
   private reconnectTimeout: number = 1000;
-  
+
   /** @type {string} Buffer for streaming text responses */
   private streamingBuffer: string = "";
-  
+
   /** @type {"transcription"|"answer"} Current operation mode */
   private mode: "transcription" | "answer";
-  
+
   /** @type {string|null} Custom AI prompt for responses */
   private customPrompt: string | null = null;
-  
+
   /** @type {string|undefined} User's preferred language setting */
   private language?: string;
 
   /**
    * Creates a new GeminiClient instance with callback handlers and configuration.
    * Validates production environment requirements and initializes client state.
-   * 
+   *
    * @constructor
    * @param {Function} onMessage - Callback for AI response messages (text, turnComplete)
    * @param {Function} onSetupComplete - Callback when WebSocket setup is complete
@@ -96,9 +93,7 @@ export class GeminiClient {
   ) {
     // Security check: Ensure we're not running in production without proper proxy configuration
     if (process.env.NODE_ENV === "production" && !PROXY_SERVER_URL) {
-      throw new Error(
-        "Proxy server configuration is required in production environment",
-      );
+      throw new Error("Proxy server configuration is required in production environment");
     }
 
     this.onMessageCallback = onMessage;
@@ -115,7 +110,7 @@ export class GeminiClient {
    * Establishes WebSocket connection to the Gemini proxy server.
    * Sends initial configuration including custom prompt, language, and mode settings.
    * Sets up event handlers for connection lifecycle and message processing.
-   * 
+   *
    * @async
    * @function connect
    * @returns {Promise<void>}
@@ -146,9 +141,7 @@ export class GeminiClient {
         // Send language setting if available
         if (this.language) {
           console.log("[Gemini] 發送語言設置:", this.language);
-          this.ws?.send(
-            JSON.stringify({ type: "language", language: this.language }),
-          );
+          this.ws?.send(JSON.stringify({ type: "language", language: this.language }));
         }
         // Send mode information
         console.log("[Gemini] 發送模式信息:", this.mode);
@@ -190,7 +183,7 @@ export class GeminiClient {
   /**
    * Attempts to reconnect to the WebSocket server with exponential backoff.
    * Limits reconnection attempts to prevent infinite retry loops.
-   * 
+   *
    * @private
    * @function reconnect
    * @returns {void}
@@ -210,7 +203,7 @@ export class GeminiClient {
   /**
    * Sends raw audio data to the WebSocket server for processing.
    * Only sends data when WebSocket connection is open and ready.
-   * 
+   *
    * @function sendAudioData
    * @param {ArrayBuffer} data - Raw audio data buffer to send
    * @returns {void}
@@ -224,7 +217,7 @@ export class GeminiClient {
   /**
    * Handles WebSocket error events.
    * Currently a placeholder for future error handling implementation.
-   * 
+   *
    * @private
    * @function onError
    * @param {Error} error - Error object from WebSocket
@@ -237,7 +230,7 @@ export class GeminiClient {
   /**
    * Handles WebSocket close events.
    * Currently a placeholder for future close handling implementation.
-   * 
+   *
    * @private
    * @function onClose
    * @returns {void}
@@ -249,7 +242,7 @@ export class GeminiClient {
   /**
    * Sends media chunk data (audio/video) to the WebSocket server.
    * Formats data as JSON message with type, MIME type, and chunk data.
-   * 
+   *
    * @function sendMediaChunk
    * @param {string} data - Base64 encoded media chunk data
    * @param {string} mimeType - MIME type of the media chunk
@@ -273,17 +266,14 @@ export class GeminiClient {
         console.error("[GeminiClient] Error sending media chunk:", error);
       }
     } else {
-      console.error(
-        "[GeminiClient] WebSocket not ready, state:",
-        this.ws?.readyState,
-      );
+      console.error("[GeminiClient] WebSocket not ready, state:", this.ws?.readyState);
     }
   }
 
   /**
    * Disconnects from the WebSocket server and cleans up client state.
    * Closes the WebSocket connection and resets all status flags.
-   * 
+   *
    * @function disconnect
    * @returns {void}
    */
@@ -300,7 +290,7 @@ export class GeminiClient {
    * Processes text responses from the AI server and extracts transcription content.
    * Parses streaming buffer for TRANSCRIPTION and KEYWORDS tags, cleans the content,
    * and triggers the transcription callback with formatted results.
-   * 
+   *
    * @function onTextResponse
    * @param {string} text - Raw text response from the AI server
    * @returns {void}
@@ -308,9 +298,7 @@ export class GeminiClient {
   onTextResponse(text: string) {
     if (this.streamingBuffer.includes("TRANSCRIPTION:")) {
       // Use regex to extract actual content, completely removing tags
-      const transcriptionMatch = this.streamingBuffer.match(
-        /TRANSCRIPTION:\s*(.*?)(?:\n|$)/s,
-      );
+      const transcriptionMatch = this.streamingBuffer.match(/TRANSCRIPTION:\s*(.*?)(?:\n|$)/s);
       if (transcriptionMatch && transcriptionMatch[1]) {
         const cleanTranscription = transcriptionMatch[1]
           .replace(/^TRANSCRIPTION:\s*/i, "") // Ensure removal of leading tag
@@ -320,17 +308,14 @@ export class GeminiClient {
         // Process keywords section if present
         let keywords = "";
         if (this.streamingBuffer.includes("KEYWORDS:")) {
-          const keywordsMatch = this.streamingBuffer.match(
-            /KEYWORDS:\s*(.*?)(?:\n|$)/s,
-          );
+          const keywordsMatch = this.streamingBuffer.match(/KEYWORDS:\s*(.*?)(?:\n|$)/s);
           if (keywordsMatch && keywordsMatch[1]) {
             keywords = keywordsMatch[1].trim();
           }
         }
 
         // Combine final response with clean formatting
-        const finalResponse =
-          cleanTranscription + (keywords ? `\n關鍵字：${keywords}` : "");
+        const finalResponse = cleanTranscription + (keywords ? `\n關鍵字：${keywords}` : "");
         this.onTranscriptionCallback?.(finalResponse);
         this.streamingBuffer = "";
       }

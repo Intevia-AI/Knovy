@@ -23,9 +23,7 @@ export default function AuthCallbackPage() {
         // Handle cases where there's no hash or query string
         const error = t("auth.callback.no_data_error");
         console.error(error);
-        redirectUrl = `intevia://auth/callback#error=${encodeURIComponent(
-          error,
-        )}`;
+        redirectUrl = `intevia://auth/callback#error=${encodeURIComponent(error)}`;
       }
 
       console.log(`Attempting to redirect to: ${redirectUrl}`);
@@ -57,15 +55,9 @@ export default function AuthCallbackPage() {
     <section className="flex min-h-screen flex-col items-center justify-center bg-zinc-50 px-4 py-16 dark:bg-transparent">
       <div className="w-full max-w-sm text-center">
         <Logo className="mx-auto h-12 w-auto" />
-        <h1 className="mt-8 text-2xl font-semibold tracking-tight">
-          {t("auth.callback.title")}
-        </h1>
-        <p className="mt-2 text-muted-foreground">
-          {t("auth.callback.redirecting")}
-        </p>
-        <p className="mt-8 text-xs text-muted-foreground">
-          {t("auth.callback.can_close")}
-        </p>
+        <h1 className="mt-8 text-2xl font-semibold tracking-tight">{t("auth.callback.title")}</h1>
+        <p className="mt-2 text-muted-foreground">{t("auth.callback.redirecting")}</p>
+        <p className="mt-8 text-xs text-muted-foreground">{t("auth.callback.can_close")}</p>
       </div>
     </section>
   );

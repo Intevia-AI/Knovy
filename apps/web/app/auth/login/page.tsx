@@ -50,17 +50,12 @@ export default function LoginPage() {
             <Link href="/" aria-label="go home" className="mx-auto block w-fit">
               <Logo />
             </Link>
-            <h1 className="mb-1 mt-4 text-xl font-semibold">
-              {t("auth.login.title")}
-            </h1>
+            <h1 className="mb-1 mt-4 text-xl font-semibold">{t("auth.login.title")}</h1>
             <p className="text-sm">{t("auth.login.subtitle")}</p>
           </div>
 
           <Form {...form}>
-            <form
-              onSubmit={form.handleSubmit(onSubmit)}
-              className="mt-6 space-y-6"
-            >
+            <form onSubmit={form.handleSubmit(onSubmit)} className="mt-6 space-y-6">
               <FormField
                 control={form.control}
                 name="email"
@@ -88,10 +83,7 @@ export default function LoginPage() {
                 render={({ field }) => (
                   <FormItem className="space-y-0.5">
                     <div className="flex items-center justify-between">
-                      <FormLabel
-                        htmlFor="password"
-                        className="text-title text-sm"
-                      >
+                      <FormLabel htmlFor="password" className="text-title text-sm">
                         {t("auth.form.password_label")}
                       </FormLabel>
                       <Button variant="link" size="sm">

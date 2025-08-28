@@ -1,35 +1,35 @@
-import React, { useEffect, useRef, useState } from "react";
-import { MonitorIcon, Loader2 } from "lucide-react";
+import React, { useEffect, useRef, useState } from 'react'
+import { MonitorIcon, Loader2 } from 'lucide-react'
 
 export function ScreenPreviewPopup() {
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const [videoStream, setVideoStream] = useState<MediaStream | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const [videoStream, setVideoStream] = useState<MediaStream | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     // This effect handles the auto-closing of the window
     const removeListener = window.electronAPI.on('screenshare:state-changed', (isSharing) => {
       if (!isSharing) {
-        console.log('[ScreenPreviewPopup] Screen sharing stopped, closing window.');
-        window.electronAPI.send('popover:close', 'screen-preview');
+        console.log('[ScreenPreviewPopup] Screen sharing stopped, closing window.')
+        window.electronAPI.send('popover:close', 'screen-preview')
       }
-    });
+    })
 
-    return () => removeListener();
-  }, []);
+    return () => removeListener()
+  }, [])
 
   useEffect(() => {
     // This effect handles fetching the stream
-    let attempts = 0;
-    const maxAttempts = 10; // Poll for 5 seconds
-    let intervalId: NodeJS.Timeout | null = null;
+    let attempts = 0
+    const maxAttempts = 10 // Poll for 5 seconds
+    let intervalId: NodeJS.Timeout | null = null
 
     const getSourceAndSetupStream = async () => {
       try {
-        const sourceId = await window.electronAPI.invoke('electronAPI:getActiveScreenSourceId');
+        const sourceId = await window.electronAPI.invoke('electronAPI:getActiveScreenSourceId')
         if (sourceId) {
-          if (intervalId) clearInterval(intervalId);
-          setIsLoading(false);
+          if (intervalId) clearInterval(intervalId)
+          setIsLoading(false)
 
           const stream = await navigator.mediaDevices.getUserMedia({
             audio: false,
@@ -39,51 +39,53 @@ export function ScreenPreviewPopup() {
                 chromeMediaSourceId: sourceId
               }
             }
-          });
-          setVideoStream(stream);
+          })
+          setVideoStream(stream)
         } else {
-          attempts++;
+          attempts++
           if (attempts >= maxAttempts) {
-            if (intervalId) clearInterval(intervalId);
-            setIsLoading(false);
+            if (intervalId) clearInterval(intervalId)
+            setIsLoading(false)
           }
         }
       } catch (error) {
-        console.error('[ScreenPreviewPopup] Error getting source or stream:', error);
-        if (intervalId) clearInterval(intervalId);
-        setIsLoading(false);
+        console.error('[ScreenPreviewPopup] Error getting source or stream:', error)
+        if (intervalId) clearInterval(intervalId)
+        setIsLoading(false)
       }
-    };
+    }
 
     const start = async () => {
-      const isInitiallySharing = await window.electronAPI.invoke('get-screenshare-state');
+      const isInitiallySharing = await window.electronAPI.invoke('get-screenshare-state')
       if (!isInitiallySharing) {
-        console.log('[ScreenPreviewPopup] Not sharing initially, showing placeholder.');
-        setIsLoading(false);
-        return;
+        console.log('[ScreenPreviewPopup] Not sharing initially, showing placeholder.')
+        setIsLoading(false)
+        return
       }
 
-      console.log('[ScreenPreviewPopup] Initially sharing, starting to poll for source ID.');
-      getSourceAndSetupStream();
-      intervalId = setInterval(getSourceAndSetupStream, 500);
-    };
+      console.log('[ScreenPreviewPopup] Initially sharing, starting to poll for source ID.')
+      getSourceAndSetupStream()
+      intervalId = setInterval(getSourceAndSetupStream, 500)
+    }
 
-    start();
+    start()
 
     return () => {
-      if (intervalId) clearInterval(intervalId);
+      if (intervalId) clearInterval(intervalId)
       if (videoStream) {
-        videoStream.getTracks().forEach(track => track.stop());
+        videoStream.getTracks().forEach((track) => track.stop())
       }
-    };
-  }, []); // This effect should still only run once on mount
+    }
+  }, []) // This effect should still only run once on mount
 
   useEffect(() => {
     if (videoRef.current && videoStream) {
-      videoRef.current.srcObject = videoStream;
-      videoRef.current.play().catch(e => console.error("[ScreenPreviewPopup] Video play error:", e));
+      videoRef.current.srcObject = videoStream
+      videoRef.current
+        .play()
+        .catch((e) => console.error('[ScreenPreviewPopup] Video play error:', e))
     }
-  }, [videoStream]);
+  }, [videoStream])
 
   return (
     <div className="grid gap-4 bg-muted/10 rounded-2xl">
@@ -99,5 +101,5 @@ export function ScreenPreviewPopup() {
         </div>
       )}
     </div>
-  );
+  )
 }

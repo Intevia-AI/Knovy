@@ -8,20 +8,17 @@ import { useState, useEffect, useRef } from "react";
 
 /**
  * Calculates volume level from frequency data
- * 
+ *
  * @param {AnalyserNode} analyser - Web Audio API analyser node
  * @param {Uint8Array} dataArray - Array to store frequency data
  * @returns {number} Volume level normalized to 0-100 scale
- * 
+ *
  * @private
  * @description
  * This helper function processes raw frequency data from an AnalyserNode
  * and converts it to a normalized volume level between 0-100.
  */
-function getVolumeFromFrequencyData(
-  analyser: AnalyserNode,
-  dataArray: Uint8Array,
-): number {
+function getVolumeFromFrequencyData(analyser: AnalyserNode, dataArray: Uint8Array): number {
   analyser.getByteFrequencyData(dataArray);
   let sum = 0;
   for (let i = 0; i < dataArray.length; i++) {
@@ -37,7 +34,7 @@ function getVolumeFromFrequencyData(
 
 /**
  * React hook for real-time audio level analysis
- * 
+ *
  * @param {MediaStream | null} micStream - Microphone audio stream to analyze
  * @param {MediaStream | null} systemStream - System audio stream to analyze
  * @returns {Object} Audio analysis state and nodes
@@ -45,11 +42,11 @@ function getVolumeFromFrequencyData(
  * @returns {AnalyserNode | null} systemAnalyserNode - System audio analyzer node
  * @returns {number} micLevel - Current microphone audio level (0-100)
  * @returns {number} systemLevel - Current system audio level (0-100)
- * 
+ *
  * @example
  * ```tsx
  * const { micLevel, systemLevel } = useAudioAnalysis(microphoneStream, systemAudioStream);
- * 
+ *
  * // Display audio levels
  * return (
  *   <div>
@@ -59,21 +56,15 @@ function getVolumeFromFrequencyData(
  * );
  * ```
  */
-export function useAudioAnalysis(
-  micStream: MediaStream | null,
-  systemStream: MediaStream | null,
-) {
+export function useAudioAnalysis(micStream: MediaStream | null, systemStream: MediaStream | null) {
   const micAudioContextRef = useRef<AudioContext | null>(null);
   const micSourceNodeRef = useRef<MediaStreamAudioSourceNode | null>(null);
-  const [micAnalyserNode, setMicAnalyserNode] = useState<AnalyserNode | null>(
-    null,
-  );
+  const [micAnalyserNode, setMicAnalyserNode] = useState<AnalyserNode | null>(null);
   const [micLevel, setMicLevel] = useState(0); // Mic audio level state
 
   const systemAudioContextRef = useRef<AudioContext | null>(null);
   const systemSourceNodeRef = useRef<MediaStreamAudioSourceNode | null>(null);
-  const [systemAnalyserNode, setSystemAnalyserNode] =
-    useState<AnalyserNode | null>(null);
+  const [systemAnalyserNode, setSystemAnalyserNode] = useState<AnalyserNode | null>(null);
   const [systemLevel, setSystemLevel] = useState(0); // System audio level state
 
   const animationFrameRef = useRef<number | undefined>(undefined);
@@ -116,10 +107,7 @@ export function useAudioAnalysis(
 
     // Cleanup function
     return () => {
-      if (
-        micAudioContextRef.current &&
-        micAudioContextRef.current.state !== "closed"
-      ) {
+      if (micAudioContextRef.current && micAudioContextRef.current.state !== "closed") {
         console.log("Unmount cleanup for mic analyser...");
         micSourceNodeRef.current?.disconnect();
         micSourceNodeRef.current = null;
@@ -169,10 +157,7 @@ export function useAudioAnalysis(
 
     // Cleanup function
     return () => {
-      if (
-        systemAudioContextRef.current &&
-        systemAudioContextRef.current.state !== "closed"
-      ) {
+      if (systemAudioContextRef.current && systemAudioContextRef.current.state !== "closed") {
         console.log("Unmount cleanup for system audio analyser...");
         systemSourceNodeRef.current?.disconnect();
         systemSourceNodeRef.current = null;
@@ -201,16 +186,10 @@ export function useAudioAnalysis(
       let currentSystemLevel = 0;
 
       if (micAnalyserNode && micDataArray) {
-        currentMicLevel = getVolumeFromFrequencyData(
-          micAnalyserNode,
-          micDataArray,
-        );
+        currentMicLevel = getVolumeFromFrequencyData(micAnalyserNode, micDataArray);
       }
       if (systemAnalyserNode && systemDataArray) {
-        currentSystemLevel = getVolumeFromFrequencyData(
-          systemAnalyserNode,
-          systemDataArray,
-        );
+        currentSystemLevel = getVolumeFromFrequencyData(systemAnalyserNode, systemDataArray);
       }
 
       setMicLevel(currentMicLevel);
