@@ -7,16 +7,26 @@ export function ScreenPreviewPopup() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    // This effect handles the auto-closing of the window
+    const removeListener = window.electronAPI.on('screenshare:state-changed', (isSharing) => {
+      if (!isSharing) {
+        console.log('[ScreenPreviewPopup] Screen sharing stopped, closing window.');
+        window.electronAPI.send('popover:close', 'screen-preview');
+      }
+    });
+
+    return () => removeListener();
+  }, []);
+
+  useEffect(() => {
+    // This effect handles fetching the stream
     let attempts = 0;
-    const maxAttempts = 10; // Poll for 5 seconds (10 * 500ms)
+    const maxAttempts = 10; // Poll for 5 seconds
     let intervalId: NodeJS.Timeout | null = null;
 
     const getSourceAndSetupStream = async () => {
-      console.log(`[ScreenPreviewPopup] Attempting to get source ID (Attempt: ${attempts + 1})`);
       try {
         const sourceId = await window.electronAPI.invoke('electronAPI:getActiveScreenSourceId');
-        console.log(`[ScreenPreviewPopup] Received source ID: ${sourceId}`);
-
         if (sourceId) {
           if (intervalId) clearInterval(intervalId);
           setIsLoading(false);
@@ -35,8 +45,7 @@ export function ScreenPreviewPopup() {
           attempts++;
           if (attempts >= maxAttempts) {
             if (intervalId) clearInterval(intervalId);
-            console.warn('[ScreenPreviewPopup] Max attempts reached. Could not get source ID.');
-            setIsLoading(false); // Stop loading, show placeholder
+            setIsLoading(false);
           }
         }
       } catch (error) {
@@ -46,8 +55,20 @@ export function ScreenPreviewPopup() {
       }
     };
 
-    getSourceAndSetupStream();
-    intervalId = setInterval(getSourceAndSetupStream, 500);
+    const start = async () => {
+      const isInitiallySharing = await window.electronAPI.invoke('get-screenshare-state');
+      if (!isInitiallySharing) {
+        console.log('[ScreenPreviewPopup] Not sharing initially, showing placeholder.');
+        setIsLoading(false);
+        return;
+      }
+
+      console.log('[ScreenPreviewPopup] Initially sharing, starting to poll for source ID.');
+      getSourceAndSetupStream();
+      intervalId = setInterval(getSourceAndSetupStream, 500);
+    };
+
+    start();
 
     return () => {
       if (intervalId) clearInterval(intervalId);
@@ -55,7 +76,7 @@ export function ScreenPreviewPopup() {
         videoStream.getTracks().forEach(track => track.stop());
       }
     };
-  }, []); // Empty dependency array ensures this runs only once on mount
+  }, []); // This effect should still only run once on mount
 
   useEffect(() => {
     if (videoRef.current && videoStream) {
@@ -65,7 +86,7 @@ export function ScreenPreviewPopup() {
   }, [videoStream]);
 
   return (
-    <div className="grid gap-4 p-4 bg-muted/10 rounded-2xl">
+    <div className="grid gap-4 bg-muted/10 rounded-2xl">
       {videoStream ? (
         <video ref={videoRef} autoPlay muted className="w-full rounded-md border bg-muted" />
       ) : (

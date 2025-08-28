@@ -28,6 +28,16 @@ export function MainBar() {
   // AI Interaction Logic
   const { customPrompt, handleTranscriptionResponse, handleTranscriptionKeywords } = useAIInteraction()
 
+  useEffect(() => {
+    // When screen sharing stops, close any popovers that should only be open during sharing
+    if (!isScreenSharing) {
+      if (activePopover === 'screen-preview' || activePopover === 'transcriptions') {
+        window.electronAPI.send('popover:close', activePopover);
+        setActivePopover(null);
+      }
+    }
+  }, [isScreenSharing, activePopover]);
+
   const handleTogglePopover = (popover: {
     id: string
     hash: string

@@ -57,15 +57,17 @@ export function HeaderBar({
     >
       {/* Left side controls */}
       <div className="flex items-center gap-1" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
-        <Button
-          variant={isScreenPreviewWindowVisible ? 'default' : 'ghost'} // Highlight if open
-          size='icon'
-          className='h-7 w-7 rounded-full'
-          onClick={onToggleScreenPreviewWindow} // Use new toggle function
-          title='Screen Preview'
-        >
-          <MonitorIcon className='h-4 w-4' />
-        </Button>
+        {isScreenSharing && (
+          <Button
+            variant={isScreenPreviewWindowVisible ? 'default' : 'ghost'} // Highlight if open
+            size='icon'
+            className='h-7 w-7 rounded-full'
+            onClick={onToggleScreenPreviewWindow} // Use new toggle function
+            title='Screen Preview'
+          >
+            <MonitorIcon className='h-4 w-4' />
+          </Button>
+        )}
         <Button
           variant={isScreenSharing ? 'destructive' : 'default'}
           size='sm'
