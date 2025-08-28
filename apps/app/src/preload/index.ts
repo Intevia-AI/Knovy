@@ -121,7 +121,8 @@ const api = {
       'get-screenshare-state',
       'session:start',
       'session:end',
-      'session:get-id'
+      'session:get-id',
+      'electronAPI:getActiveScreenSourceId'
     ]
     if (!validChannels.includes(channel)) {
       return Promise.reject(new Error(`Invalid invoke channel: ${channel}`))

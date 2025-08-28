@@ -23,6 +23,7 @@ console.log('[Debug] Imported dbService module:', dbService)
 
 let isScreenSharing = false
 let currentSessionId: string | null = null
+let activeScreenSourceId: string | null = null
 let mainWindow: BrowserWindow | null
 let selectionWindow: BrowserWindow | null
 
@@ -123,6 +124,10 @@ ipcMain.handle('session:end', endCurrentSession)
 ipcMain.handle('session:get-id', () => {
   return currentSessionId
 })
+
+ipcMain.handle('electronAPI:getActiveScreenSourceId', () => {
+  return activeScreenSourceId;
+});
 
 // Example of sending a message to a popover, remains the same.
 ipcMain.on('popover:sendMessage', (event, { action, prompt }) => {
@@ -362,19 +367,23 @@ app.on('ready', async () => {
         const primarySource = sources.find((s) => s.display_id === String(primaryDisplay.id))
 
         if (primarySource) {
+          activeScreenSourceId = primarySource.id; // Store the source ID
           callback({ video: primarySource, audio: 'loopback' })
         } else if (sources.length > 0) {
           console.warn(
             'Primary display source not found, falling back to the first available screen.'
           )
+          activeScreenSourceId = sources[0].id; // Store the source ID
           callback({ video: sources[0], audio: 'loopback' })
         } else {
           console.error('No screen sources found!')
+          activeScreenSourceId = null; // Clear the source ID
           callback({ video: null, audio: null })
         }
       })
       .catch((error) => {
         console.error('Error getting desktop sources:', error)
+        activeScreenSourceId = null; // Clear the source ID
         callback({ video: null, audio: null })
       })
   })
@@ -409,6 +418,7 @@ app.on('ready', async () => {
       await startSession()
     } else {
       await endCurrentSession()
+      activeScreenSourceId = null; // Clear the source ID when screen sharing ends
     }
 
     // Broadcast to all windows (including the sender, which is simpler and harmless)

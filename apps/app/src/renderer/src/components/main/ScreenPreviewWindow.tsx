@@ -26,50 +26,57 @@ export default function ScreenPreviewWindow({
 
 
   useEffect(() => {
-    console.log("[ScreenPreviewWindow] Effect triggered:", {
-      isOpen,
-      isScreenSharing,
-      hasVideoTracks: screenStreamRef.current?.getVideoTracks().length,
-      screenPreviewRef: screenPreviewRef.current,
-    });
+    const setupStream = async () => {
+      if (isOpen && isScreenSharing && screenPreviewRef.current) {
+        console.log('[ScreenPreviewWindow] Attempting to get screen source ID.');
+        try {
+          const sourceId = await window.electronAPI.invoke('electronAPI:getActiveScreenSourceId');
+          console.log(`[ScreenPreviewWindow] Received source ID: ${sourceId}`);
 
-    if (
-      isOpen &&
-      isScreenSharing &&
-      screenPreviewRef.current &&
-      screenStreamRef.current?.getVideoTracks().length
-    ) {
-      console.log("[ScreenPreviewWindow] Setting up video preview...");
-      const videoStream = new MediaStream(
-        screenStreamRef.current.getVideoTracks(),
-      );
-      console.log("[ScreenPreviewWindow] Created video stream:", videoStream);
-      
-      screenPreviewRef.current.srcObject = videoStream;
-      screenPreviewRef.current.muted = true;
-      
-      screenPreviewRef.current.onloadedmetadata = () => {
-        console.log("[ScreenPreviewWindow] Video metadata loaded");
-      };
-      
-      screenPreviewRef.current.onerror = (e) => {
-        console.error("[ScreenPreviewWindow] Video error:", e);
-      };
-      
-      screenPreviewRef.current.play()
-        .then(() => console.log("[ScreenPreviewWindow] Video started playing"))
-        .catch((e) => console.error("[ScreenPreviewWindow] Video play error:", e));
-    } else if (!isScreenSharing && screenPreviewRef.current) {
-      console.log("[ScreenPreviewWindow] Clearing video preview");
-      screenPreviewRef.current.srcObject = null;
-    }
+          if (sourceId) {
+            const stream = await navigator.mediaDevices.getUserMedia({
+              audio: false,
+              video: {
+                mandatory: {
+                  chromeMediaSource: 'desktop',
+                  chromeMediaSourceId: sourceId
+                }
+              }
+            });
 
-    return () => {
-      if (screenPreviewRef.current) {
+            if (screenPreviewRef.current) {
+              screenPreviewRef.current.srcObject = stream;
+              screenPreviewRef.current.onloadedmetadata = () => {
+                screenPreviewRef.current?.play().catch((e) => console.error('[ScreenPreviewWindow] Video play error:', e));
+              };
+              screenPreviewRef.current.onerror = (e) => {
+                console.error('[ScreenPreviewWindow] Video error:', e);
+              };
+            }
+          } else {
+            console.warn('[ScreenPreviewWindow] No active screen source ID received.');
+            if (screenPreviewRef.current) screenPreviewRef.current.srcObject = null;
+          }
+        } catch (error) {
+          console.error('[ScreenPreviewWindow] Error setting up screen preview:', error);
+          if (screenPreviewRef.current) screenPreviewRef.current.srcObject = null;
+        }
+      } else if (screenPreviewRef.current) {
+        console.log('[ScreenPreviewWindow] Clearing video preview.');
         screenPreviewRef.current.srcObject = null;
       }
     };
-  }, [isOpen, isScreenSharing, screenStreamRef]);
+
+    setupStream();
+
+    return () => {
+      if (screenPreviewRef.current && screenPreviewRef.current.srcObject) {
+        const stream = screenPreviewRef.current.srcObject as MediaStream;
+        stream.getTracks().forEach((track) => track.stop());
+        screenPreviewRef.current.srcObject = null;
+      }
+    };
+  }, [isOpen, isScreenSharing]);
 
   if (!isOpen) return null;
 
