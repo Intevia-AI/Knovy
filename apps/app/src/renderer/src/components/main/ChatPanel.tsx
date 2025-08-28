@@ -114,8 +114,8 @@ export default function ChatPanel({}: ChatPanelProps) {
             className={cn(
               'p-2 rounded-md text-xs w-fit max-w-[95%] whitespace-pre-wrap',
               m.role === 'user'
-                ? 'bg-blue-500/20 border border-blue-500/30 ml-auto text-white'
-                : 'bg-white/10 border border-white/20 mr-auto text-gray-200'
+                ? 'bg-blue-500/20 border border-blue-500/30 ml-auto text-black'
+                : 'bg-black/5 border border-black/10 mr-auto text-black'
             )}
           >
             <Markdown>{m.content}</Markdown>
@@ -123,12 +123,12 @@ export default function ChatPanel({}: ChatPanelProps) {
         ))}
         {isLoading && (
           <div className="flex justify-center py-2">
-            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white/50"></div>
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-black/50"></div>
           </div>
         )}
       </div>
 
-      <div className="flex-none p-2 border-t border-white/10">
+      <div className="flex-none p-2 border-t border-black/10">
         <form onSubmit={handleSubmit} className="flex gap-2">
           <Input
             value={input}
@@ -136,7 +136,7 @@ export default function ChatPanel({}: ChatPanelProps) {
             placeholder={
               isScreenSharing ? t('chatPlaceholderSharing') : t('chatPlaceholderNotSharing')
             }
-            className="flex-grow h-8 text-xs bg-black/20 border-white/20 placeholder:text-gray-400"
+            className="flex-grow h-8 text-xs bg-black/5 border-black/20 placeholder:text-gray-500 text-black"
             disabled={isLoading || !isScreenSharing}
             aria-label="Custom prompt input"
           />
@@ -145,7 +145,7 @@ export default function ChatPanel({}: ChatPanelProps) {
             variant="ghost"
             size="icon"
             disabled={isLoading || !isScreenSharing || !input.trim()}
-            className="h-8 w-8 bg-white/10 hover:bg-white/20 text-white"
+            className="h-8 w-8 bg-black/10 hover:bg-black/20 text-black"
             aria-label={t('sendChatButtonLabel')}
           >
             <ArrowUpRight className="h-4 w-4" />

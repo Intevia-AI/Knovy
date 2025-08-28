@@ -4,58 +4,50 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --background: 255 100% 100%; /* White */
+    --foreground: 0 0% 0%; /* Black */
+    --card: 255 100% 100%;
+    --card-foreground: 0 0% 0%;
+    --popover: 255 100% 100%;
+    --popover-foreground: 0 0% 0%;
+    --primary: 0 0% 0%;
+    --primary-foreground: 255 100% 100%;
+    --secondary: 0 0% 96.1%;
+    --secondary-foreground: 0 0% 9%;
+    --muted: 0 0% 96.1%;
+    --muted-foreground: 0 0% 45.1%;
+    --accent: 0 0% 96.1%;
+    --accent-foreground: 0 0% 9%;
     --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
-    --radius: 0.5rem;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 0% / 0.1;
+    --input: 0 0% 89.8%;
+    --ring: 0 0% 0%;
+    --radius: 1rem;
   }
 
-  .dark {
-    --background: 224 71% 4%;
-    --foreground: 213 31% 91%;
-    --card: 224 71% 4%;
-    --card-foreground: 213 31% 91%;
-    --popover: 224 71% 4%;
-    --popover-foreground: 213 31% 91%;
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 215 28% 17%;
-    --secondary-foreground: 213 31% 91%;
-    --muted: 215 28% 17%;
-    --muted-foreground: 215 20% 65%;
-    --accent: 215 28% 17%;
-    --accent-foreground: 213 31% 91%;
-    --destructive: 0 63% 31%;
-    --destructive-foreground: 213 31% 91%;
-    --border: 215 28% 17%;
-    --input: 215 28% 17%;
-    --ring: 216 34% 65%;
+  body {
+    @apply bg-transparent;
   }
-}
 
-@layer base {
   * {
     @apply border-border;
   }
 }
 
-/* Add a class for the glassmorphism effect on popovers */
 .glass-popover {
-  @apply bg-muted/80 backdrop-blur-md border border-white/10 rounded-lg;
+  @apply bg-muted/80 backdrop-blur-md border border-black/10 rounded-3xl;
+}
+
+@keyframes breathing {
+  0%, 100% {
+    box-shadow: 0 0 5px 2px rgba(0, 0, 0, 0.05);
+  }
+  50% {
+    box-shadow: 0 0 20px 5px rgba(0, 0, 0, 0.15);
+  }
+}
+
+.breathing-light {
+  animation: breathing 2s ease-in-out infinite;
 }

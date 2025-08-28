@@ -23,13 +23,17 @@ export function MainBar() {
   const { isAlwaysOnTop, toggleAlwaysOnTop, minimizeWindow, closeWindow } = useElectron()
 
   // Screen Sharing and Recording
-  const { isScreenSharing, toggleScreenShare, currentSystemAudioStream } = useScreenShare()
+  const { isScreenSharing, toggleScreenShare, currentSystemAudioStream, recordingDuration } =
+    useScreenShare()
 
   // AI Interaction Logic
   const { customPrompt, handleTranscriptionResponse, handleTranscriptionKeywords } =
     useAIInteraction()
 
   useEffect(() => {
+    const newWidth = isScreenSharing ? 440 : 360
+    window.electronAPI.send('app:resize-window', { width: newWidth, height: 50 })
+
     // When screen sharing stops, close any popovers that should only be open during sharing
     if (!isScreenSharing) {
       if (activePopover === 'screen-preview' || activePopover === 'transcriptions') {
@@ -59,7 +63,7 @@ export function MainBar() {
   }
 
   return (
-    <div className="flex flex-col h-screen rounded-lg bg-transparent">
+    <div className="flex flex-col h-screen rounded-lg glass-popover">
       <HeaderBar
         isAlwaysOnTop={isAlwaysOnTop}
         toggleAlwaysOnTop={toggleAlwaysOnTop}
@@ -67,28 +71,29 @@ export function MainBar() {
         closeWindow={closeWindow}
         isScreenSharing={isScreenSharing}
         onToggleScreenShare={toggleScreenShare}
+        recordingDuration={recordingDuration}
         onToggleTranscriptionWindow={() =>
           handleTogglePopover({
             id: 'transcriptions',
             hash: 'transcriptions',
-            width: 480,
+            width: 440,
             height: 300
           })
         }
         isTranscriptionWindowVisible={activePopover === 'transcriptions'}
         onToggleFeaturesWindow={() =>
-          handleTogglePopover({ id: 'features', hash: 'features', width: 200, height: 150 })
+          handleTogglePopover({ id: 'features', hash: 'features', width: 360, height: 200 })
         }
         isFeaturesWindowVisible={activePopover === 'features'}
         onToggleSettingsWindow={() =>
-          handleTogglePopover({ id: 'settings', hash: 'settings', width: 350, height: 300 })
+          handleTogglePopover({ id: 'settings', hash: 'settings', width: 360, height: 300 })
         }
         isSettingsWindowVisible={activePopover === 'settings'}
         onToggleScreenPreviewWindow={() =>
           handleTogglePopover({
             id: 'screen-preview',
             hash: 'screen-preview',
-            width: 480,
+            width: 440,
             height: 300
           })
         }

@@ -34,7 +34,7 @@ export function Main() {
   const [view, setView] = useState(getInitialView)
 
   useEffect(() => {
-    setTheme('dark')
+    setTheme('light')
     const handleHashChange = () => {
       setView(getInitialView())
     }

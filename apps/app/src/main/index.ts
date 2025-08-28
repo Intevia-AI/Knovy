@@ -251,14 +251,20 @@ function createSelectionWindow() {
 }
 
 const createWindow = async () => {
+  const primaryDisplay = screen.getPrimaryDisplay()
+  const { height: screenHeight } = primaryDisplay.workAreaSize
+
   mainWindow = new BrowserWindow({
-    width: 480,
+    width: 250,
     height: 50,
     frame: false,
     transparent: true,
     hasShadow: false,
+    alwaysOnTop: true, // Set always on top
     visualEffectState: 'active',
     backgroundMaterial: 'acrylic',
+    x: 30, // Position at bottom-left
+    y: screenHeight - 50 - 30, // Position at bottom-left with margin
     webPreferences: {
       preload: path.join(__dirname, '../preload/index.cjs'),
       contextIsolation: true,
@@ -270,7 +276,6 @@ const createWindow = async () => {
   // mainWindow.setContentProtection(true)
 
   mainWindow.webContents.on('did-finish-load', () => {
-    mainWindow?.webContents.send('electronAPI:forceDarkMode')
     if (oauthCallbackUrlOnStartup) {
       mainWindow?.webContents.send('electronAPI:oauth-callback', oauthCallbackUrlOnStartup)
       oauthCallbackUrlOnStartup = null
@@ -326,7 +331,7 @@ app.on('ready', async () => {
   if (is.dev) {
     await installExtension(REACT_DEVELOPER_TOOLS).catch(console.log)
   }
-  nativeTheme.themeSource = 'dark'
+  nativeTheme.themeSource = 'light'
 
   if (process.defaultApp) {
     if (process.argv.length >= 2) {

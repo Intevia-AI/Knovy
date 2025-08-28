@@ -29,7 +29,7 @@ export function createPopover(options: PopoverOptions): BrowserWindow {
   const parentBounds = parent.getBounds()
   console.log('[PopoverManager] Parent window bounds:', parentBounds)
   const x = options.x ?? parentBounds.x + Math.round((parentBounds.width - width) / 2)
-  const y = options.y ?? parentBounds.y + parentBounds.height + 8
+  const y = options.y ?? parentBounds.y - height - 8 // Position above the parent
   console.log(`[PopoverManager] Calculated popover position: x=${x}, y=${y}`)
 
   const popover = new BrowserWindow({
@@ -41,8 +41,8 @@ export function createPopover(options: PopoverOptions): BrowserWindow {
     frame: false,
     transparent: true,
     hasShadow: false,
-    resizable: false,
-    movable: false,
+    resizable: true, // Allow resizing
+    movable: true, // Allow moving
     focusable: true,
     alwaysOnTop: true,
     skipTaskbar: true,

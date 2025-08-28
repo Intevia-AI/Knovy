@@ -39,8 +39,7 @@ export default function AdvancedSettingsWindow({
   const languages = [
     { code: 'zh-TW', name: '繁體中文' },
     { code: 'en-US', name: 'English' },
-    { code: 'ja-JP', name: '日本語' },
-    { code: 'original', name: '原始語言' }
+    { code: 'ja-JP', name: '日本語' }
   ]
 
   // 處理語言選擇
