@@ -21,7 +21,7 @@ export class GeminiClient {
   private _isConnected: boolean = false
 
   public get isConnected(): boolean {
-    return this._isConnected && this.ws?.readyState === WebSocket.OPEN;
+    return this._isConnected && this.ws?.readyState === WebSocket.OPEN
   }
 
   /** @type {boolean} Setup completion status flag */
@@ -63,6 +63,9 @@ export class GeminiClient {
   /** @type {string|undefined} User's preferred language setting */
   private language?: string
 
+  private transcriptionQueue: string[] = []
+  private processingInterval: number | null = null
+
   constructor(
     onMessage: (text: string, turnComplete: boolean) => void,
     onSetupComplete: () => void,
@@ -85,6 +88,15 @@ export class GeminiClient {
     this.mode = mode
     this.customPrompt = customPrompt || null
     this.language = language
+  }
+
+  private processQueue() {
+    if (this.transcriptionQueue.length === 0) {
+      return;
+    }
+    const batchedText = this.transcriptionQueue.join(' ');
+    this.transcriptionQueue = [];
+    this.onTranscriptionCallback?.(batchedText);
   }
 
   async connect() {
@@ -117,14 +129,24 @@ export class GeminiClient {
         this.onSetupCompleteCallback?.()
         this._isConnected = true
         this.reconnectAttempts = 0
+
+        // Start processing the queue
+        if (this.processingInterval) {
+          clearInterval(this.processingInterval);
+        }
+        this.processingInterval = window.setInterval(() => this.processQueue(), 2000);
       }
 
       this.ws.onmessage = (event) => {
-        console.log('[Gemini] Raw WebSocket message received:', event.data); // New log
         try {
           const data = JSON.parse(event.data)
           if (data.text) {
-            this.onMessageCallback?.(data.text, data.turnComplete || false)
+            // Route based on mode
+            if (this.mode === 'transcription') {
+              this.transcriptionQueue.push(data.text);
+            } else {
+              this.onMessageCallback?.(data.text, data.turnComplete || false)
+            }
           } else if (data.setupComplete) {
             this.isSetupComplete = true
           }
@@ -177,10 +199,10 @@ export class GeminiClient {
 
   sendMediaChunk(data: string, mimeType: string) {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      console.log(
-        "[GeminiClient] Sending media chunk, data size:",
-        data.length,
-      );
+      // console.log(
+      //   "[GeminiClient] Sending media chunk, data size:",
+      //   data.length,
+      // );
       const message = {
         type: 'media_chunk',
         mimeType,
@@ -188,7 +210,7 @@ export class GeminiClient {
       }
       try {
         this.ws.send(JSON.stringify(message))
-        console.log("[GeminiClient] Media chunk sent successfully");
+        // console.log('[GeminiClient] Media chunk sent successfully')
       } catch (error) {
         console.error('[GeminiClient] Error sending media chunk:', error)
       }

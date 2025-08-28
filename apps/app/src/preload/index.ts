@@ -62,7 +62,9 @@ const api = {
       'source-picker:select',
       'source-picker:cancel',
       'ai:message',
-      'ai:custom-prompt'
+      'ai:custom-prompt',
+      'transcription:data',
+      'screenshare:state-changed' // Changed
     ]
     if (validChannels.includes(channel)) {
       const subscription = (event, ...args) => callback(...args)
@@ -90,7 +92,10 @@ const api = {
       'popover:close',
       'popover:close-all', // Added this channel
       'popover:sendMessage',
-      'electronAPI:requestSources'
+      'electronAPI:requestSources',
+      'set-screenshare-state',
+      'ai:loading-state-change',
+      'transcription:data' // Added this channel
     ]
     if (!validChannels.includes(channel)) {
       console.warn(`[Preload] Attempted to send on invalid channel: ${channel}`)
@@ -112,7 +117,11 @@ const api = {
       'db:get-sessions',
       'db:get-transcripts',
       'db:end-session',
-      'popover:create'
+      'popover:create',
+      'get-screenshare-state',
+      'session:start',
+      'session:end',
+      'session:get-id'
     ]
     if (!validChannels.includes(channel)) {
       return Promise.reject(new Error(`Invalid invoke channel: ${channel}`))

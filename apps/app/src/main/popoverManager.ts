@@ -1,10 +1,9 @@
 import { BrowserWindow } from 'electron'
 import path from 'path'
-import internalBridge from './internalBridge'
 
 const openPopovers = new Map<string, BrowserWindow>()
 
-interface PopoverOptions {
+export interface PopoverOptions {
   id: string
   parent: BrowserWindow
   url: string
@@ -14,7 +13,7 @@ interface PopoverOptions {
   y?: number
 }
 
-function createPopover(options: PopoverOptions): BrowserWindow {
+export function createPopover(options: PopoverOptions): BrowserWindow {
   console.log('[PopoverManager] createPopover called with options:', options);
   const { id, parent, url, width, height } = options
 
@@ -27,11 +26,10 @@ function createPopover(options: PopoverOptions): BrowserWindow {
     }
   }
 
-  // If x and y are not provided, calculate them to center the popover below the parent
   const parentBounds = parent.getBounds()
   console.log('[PopoverManager] Parent window bounds:', parentBounds);
   const x = options.x ?? parentBounds.x + Math.round((parentBounds.width - width) / 2)
-  const y = options.y ?? parentBounds.y + parentBounds.height + 8 // 8px margin
+  const y = options.y ?? parentBounds.y + parentBounds.height + 8
   console.log(`[PopoverManager] Calculated popover position: x=${x}, y=${y}`);
 
   const popover = new BrowserWindow({
@@ -61,7 +59,7 @@ function createPopover(options: PopoverOptions): BrowserWindow {
   console.log(`[PopoverManager] Loading URL: ${url}`);
   openPopovers.set(id, popover)
 
-  popover.show() // Explicitly show the window after creating it
+  popover.show()
   console.log(`[PopoverManager] Called show() on popover: ${id}`);
 
   popover.on('closed', () => {
@@ -72,37 +70,18 @@ function createPopover(options: PopoverOptions): BrowserWindow {
   return popover
 }
 
-function closePopover(id: string): void {
+export function closePopover(id: string): void {
   const popover = openPopovers.get(id)
   if (popover && !popover.isDestroyed()) {
     popover.close()
   }
 }
 
-function closeAllPopovers(): void {
+export function closeAllPopovers(): void {
   for (const popover of openPopovers.values()) {
     if (popover && !popover.isDestroyed()) {
       popover.close()
     }
   }
   openPopovers.clear()
-}
-
-export function initializePopoverManager() {
-  console.log('[PopoverManager] Initializing and attaching listeners...');
-
-  internalBridge.on('popover:create', (options: PopoverOptions) => {
-    console.log('[PopoverManager] Received popover:create event on internalBridge');
-    createPopover(options);
-  });
-
-  internalBridge.on('popover:close', (id: string) => {
-    closePopover(id)
-  })
-
-  internalBridge.on('popover:close-all', () => {
-    closeAllPopovers()
-  })
-
-  console.log('[PopoverManager] Initialized and listening for events.')
 }

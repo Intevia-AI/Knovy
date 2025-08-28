@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react'
+import React, { useRef, useState, useEffect } from 'react'
 import { Message as AIMessage } from 'ai'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -7,25 +7,84 @@ import { Markdown } from '@/components/markdown'
 import { cn } from '@/lib/utils'
 import { useI18n } from '@/hooks/useI18n'
 
-interface ChatPanelProps {
-  messages: AIMessage[]
-  isLoading: boolean
-  isScreenSharing: boolean
-  customPrompt: string
-  setCustomPrompt: (prompt: string) => void
-  onSendMessage: (action: 'custom', prompt: string) => void
-  isSubtitleVisible?: boolean
+// Define the message type received from IPC
+interface TranscriptionMessage extends AIMessage {
+  timestamp: number;
+  type: "transcription";
 }
 
-export default function ChatPanel({
-  messages,
-  isLoading,
-  isScreenSharing,
-  customPrompt,
-  setCustomPrompt,
-}: ChatPanelProps) {
+interface ChatPanelProps {}
+
+export default function ChatPanel({}: ChatPanelProps) {
+  const [messages, setMessages] = useState<AIMessage[]>([])
+  const [input, setInput] = useState('') // Local state for the input
+  const [isLoading, setIsLoading] = useState(false) // Local loading state
+  const [isScreenSharing, setIsScreenSharing] = useState(false) // Internal state
   const messagesContainerRef = useRef<HTMLDivElement>(null)
   const { t } = useI18n()
+
+  // Fetch initial state and data when the component mounts
+  useEffect(() => {
+    const getInitialData = async () => {
+      if (window.electronAPI) {
+        try {
+          // 1. Fetch screen sharing state
+          const sharingState = await window.electronAPI.invoke('get-screenshare-state');
+          setIsScreenSharing(sharingState);
+          console.log(`[ChatPanel] Initial isScreenSharing state: ${sharingState}`);
+
+          if (sharingState) {
+            // 2. If sharing, get the current session ID
+            const sessionId = await window.electronAPI.invoke('session:get-id');
+            console.log(`[ChatPanel] Fetched current session ID: ${sessionId}`);
+
+            if (sessionId) {
+              // 3. If we have a session ID, get its transcripts
+              const transcripts = await window.electronAPI.invoke('db:get-transcripts', sessionId);
+              console.log(`[ChatPanel] Received ${transcripts.length} historical transcripts for session ${sessionId}.`);
+              const historicalMessages: AIMessage[] = transcripts.map((t: any) => ({
+                id: t.id,
+                role: 'assistant',
+                content: t.content,
+              }));
+              setMessages(historicalMessages);
+            } else {
+              console.warn('[ChatPanel] Screen is sharing, but no session ID was found in the main process.');
+            }
+          }
+        } catch (error) {
+          console.error('[ChatPanel] Error fetching initial data:', error);
+        }
+      }
+    };
+    getInitialData();
+  }, []);
+
+  // Effect to listen for screen sharing state changes
+  useEffect(() => {
+    const unsubscribe = window.electronAPI.on(
+      'screenshare:state-changed',
+      (isScreenSharing: boolean) => {
+        console.log(`[ChatPanel] Received screenshare:state-changed = ${isScreenSharing}`);
+        setIsScreenSharing(isScreenSharing)
+      }
+    )
+    return () => unsubscribe()
+  }, [])
+
+  // Effect to listen for transcription data from the main process
+  useEffect(() => {
+    const unsubscribe = window.electronAPI.on(
+      'transcription:data',
+      (newMessage: TranscriptionMessage) => {
+        setMessages((prevMessages) => [...prevMessages, newMessage])
+      }
+    )
+
+    return () => {
+      unsubscribe()
+    }
+  }, []) // Empty dependency array ensures this runs only once on mount
 
   useEffect(() => {
     const container = messagesContainerRef.current
@@ -36,13 +95,14 @@ export default function ChatPanel({
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    if (!customPrompt.trim() || isLoading || !isScreenSharing) return
-    window.electronAPI.send('popover:sendMessage', { action: 'custom', prompt: customPrompt })
-    setCustomPrompt('')
+    if (!input.trim() || isLoading || !isScreenSharing) return
+    // Send the message to the main window via the main process
+    window.electronAPI.send('popover:sendMessage', { action: 'custom', prompt: input })
+    setInput('') // Clear the input
   }
 
   return (
-    <div className="grid gap-4 p-4 bg-muted/10 rounded-2xl">
+    <div className="flex flex-col h-full glass-popover p-1">
       <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-2 space-y-2">
         {messages.map((m) => (
           <div
@@ -50,8 +110,8 @@ export default function ChatPanel({
             className={cn(
               'p-2 rounded-md text-xs w-fit max-w-[95%] whitespace-pre-wrap',
               m.role === 'user'
-                ? 'bg-blue-500/20 border border-blue-500/30 ml-auto text-black'
-                : 'bg-white/10 border border-white/20 mr-auto text-black'
+                ? 'bg-blue-500/20 border border-blue-500/30 ml-auto text-white'
+                : 'bg-white/10 border border-white/20 mr-auto text-gray-200'
             )}
           >
             <Markdown>{m.content}</Markdown>
@@ -65,23 +125,23 @@ export default function ChatPanel({
       </div>
 
       <div className="flex-none p-2 border-t border-white/10">
-        <form onSubmit={handleSubmit} className="flex gap-2 text-black">
+        <form onSubmit={handleSubmit} className="flex gap-2">
           <Input
-            value={customPrompt}
-            onChange={(e) => setCustomPrompt(e.target.value)}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
             placeholder={
               isScreenSharing ? t('chatPlaceholderSharing') : t('chatPlaceholderNotSharing')
             }
-            className="flex-grow h-8 text-xs bg-black/20 border-white/20 placeholder:text-black/40 text-black"
+            className="flex-grow h-8 text-xs bg-black/20 border-white/20 placeholder:text-gray-400"
             disabled={isLoading || !isScreenSharing}
             aria-label="Custom prompt input"
           />
           <Button
             type="submit"
-            variant="default"
+            variant="ghost"
             size="icon"
-            disabled={isLoading || !isScreenSharing || !customPrompt.trim()}
-            className="h-8 w-8 bg-white/10 hover:bg-white/20 text-black"
+            disabled={isLoading || !isScreenSharing || !input.trim()}
+            className="h-8 w-8 bg-white/10 hover:bg-white/20 text-white"
             aria-label={t('sendChatButtonLabel')}
           >
             <ArrowUpRight className="h-4 w-4" />

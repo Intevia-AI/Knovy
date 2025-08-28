@@ -1,4 +1,4 @@
-import { dbPromise } from './database.js'
+import { dbPromise } from './database'
 
 export async function getSessions() {
   const db = await dbPromise
@@ -29,10 +29,12 @@ export async function deleteSession(sessionId: string) {
 }
 
 export async function createSession(session: { id: string; started_at: string; status: string }) {
+  console.log('[DB] Attempting to create session:', session)
   const db = await dbPromise
   const { id, started_at, status } = session
   const stmt = await db.prepare('INSERT INTO sessions (id, started_at, status) VALUES (?, ?, ?)')
-  await stmt.run(id, started_at, status)
+  const result = await stmt.run(id, started_at, status)
+  console.log('[DB] Session create result:', { changes: result.changes, lastID: result.lastID })
   return { id }
 }
 
@@ -42,12 +44,14 @@ export async function addTranscript(transcript: {
   timestamp: string
   content: string
 }) {
+  console.log('[DB] Attempting to add transcript for session:', transcript.session_id)
   const db = await dbPromise
   const { id, session_id, timestamp, content } = transcript
   const stmt = await db.prepare(
     'INSERT INTO transcripts (id, session_id, timestamp, content) VALUES (?, ?, ?, ?)'
   )
-  await stmt.run(id, session_id, timestamp, content)
+  const result = await stmt.run(id, session_id, timestamp, content)
+  console.log('[DB] Transcript add result:', { changes: result.changes, lastID: result.lastID })
   return { id }
 }
 

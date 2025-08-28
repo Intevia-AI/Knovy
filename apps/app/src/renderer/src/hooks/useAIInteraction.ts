@@ -70,54 +70,51 @@ export function useAIInteraction() {
     }
   }, [aiMessages]);
 
-  const handleTranscriptionResponse = useCallback(
-    async (text: string) => {
-      const sessionId = sessionIdRef.current;
-      if (!sessionId || !text) return;
+  const handleTranscriptionResponse = useCallback((text: string) => {
+    // The sole responsibility of this function is to send the raw transcription text
+    // to the main process. The main process will handle saving to the DB and
+    // broadcasting the final transcript object back to all renderer processes.
+    if (window.electronAPI && text) {
+      window.electronAPI.send('transcription:data', text);
+    }
+  }, []);
 
-      const newTranscription: TranscriptionMessage = {
-        id: `transcription-${Date.now()}-${Math.random()}`,
-        role: "assistant",
-        content: text,
-        timestamp: Date.now(),
-        type: "transcription",
-      };
+  // This effect listens for the final, processed transcript object from the main process.
+  useEffect(() => {
+    if (window.electronAPI) {
+      const unsubscribe = window.electronAPI.on(
+        'transcription:data',
+        (newTranscription: TranscriptionMessage) => {
+          if (!newTranscription || !newTranscription.content) return;
 
-      if (window.electronAPI) {
-        await window.electronAPI.addTranscript({
-          id: newTranscription.id,
-          session_id: sessionId,
-          timestamp: new Date(newTranscription.timestamp).toISOString(),
-          content: newTranscription.content,
-        });
-      }
+          setTranscriptions((prev) => [...prev, newTranscription]);
 
-      setTranscriptions((prev) => [...prev, newTranscription]);
-
-      setAiMessages((prev) => {
-        const lastMessage = prev[prev.length - 1];
-        if (
-          lastMessage?.role === "assistant" &&
-          lastMessage.content.startsWith("[即時轉錄]")
-        ) {
-          return [
-            ...prev.slice(0, -1),
-            { ...lastMessage, content: lastMessage.content + text },
-          ];
-        } else {
-          return [
-            ...prev,
-            {
-              id: `realtime-${Date.now()}`,
-              role: "assistant",
-              content: `[即時轉錄] ${text}`,
-            },
-          ];
+          setAiMessages((prev) => {
+            const lastMessage = prev[prev.length - 1];
+            if (
+              lastMessage?.role === 'assistant' &&
+              lastMessage.content.startsWith('[即時轉錄]')
+            ) {
+              return [
+                ...prev.slice(0, -1),
+                { ...lastMessage, content: lastMessage.content + newTranscription.content }
+              ];
+            } else {
+              return [
+                ...prev,
+                {
+                  id: `realtime-${Date.now()}`,
+                  role: 'assistant',
+                  content: `[即時轉錄] ${newTranscription.content}`
+                }
+              ];
+            }
+          });
         }
-      });
-    },
-    [],
-  );
+      );
+      return () => unsubscribe();
+    }
+  }, []);
 
   const handleTranscriptionKeywords = useCallback((newKeywords: string[]) => {
     setKeywords((prev) => {
@@ -205,81 +202,99 @@ export function useAIInteraction() {
   }, [isScreenSharing, startAudioProcessing, stopAudioProcessing]);
 
   useEffect(() => {
-    let currentGeminiClient: GeminiClient | null = null;
+    if (isScreenSharing) {
+      let currentGeminiClient: GeminiClient | null = null;
 
-    const initializeSessionAndClient = async () => {
-      console.trace('[AIInteraction] initializeSessionAndClient called');
-      if (window.electronAPI) {
-        const newSession = {
-          id: `session-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`, // More unique ID
-          started_at: new Date().toISOString(),
-          status: 'active'
+      const initializeSessionAndClient = async () => {
+        console.trace('[AIInteraction] initializeSessionAndClient called');
+        if (window.electronAPI) {
+          try {
+            console.log('[Debug] Attempting to invoke session:start from renderer');
+            const sessionId = await window.electronAPI.invoke('session:start');
+            if (!sessionId) {
+              throw new Error('Main process failed to start a session.');
+            }
+            setCurrentSessionId(sessionId);
+            sessionIdRef.current = sessionId;
+            console.log('Started new session:', sessionId);
+
+            // Load existing transcripts for this session
+            const existingTranscripts = await window.electronAPI.getTranscripts(sessionId);
+            if (existingTranscripts && existingTranscripts.length > 0) {
+              console.log(`[AIInteraction] Loaded ${existingTranscripts.length} existing transcripts.`);
+              // Ensure they are in the correct format for the state
+              const formattedTranscripts = existingTranscripts.map(t => ({
+                ...t,
+                role: 'assistant',
+                type: 'transcription'
+              }));
+              setTranscriptions(formattedTranscripts);
+            } else {
+              // Clear any old transcripts from a previous session
+              setTranscriptions([]);
+            }
+
+
+            currentGeminiClient = new GeminiClient(
+              (text, turnComplete) => { 
+                  console.log('[GeminiClient Message]:', text, 'Turn Complete:', turnComplete);
+              },
+              () => { 
+                  console.log('[GeminiClient] Setup complete.');
+                  shouldSendAudioRef.current = true;
+              },
+              () => {}, // onPlayingStateChange
+              () => {}, // onAudioLevelChange
+              (text) => { 
+                  const transcriptionMatch = text.match(/TRANSCRIPTION:\s*(.*)/);
+                  const keywordsMatch = text.match(/KEYWORDS:\s*(.*)/);
+
+                  if (transcriptionMatch && transcriptionMatch[1]) {
+                      const transcription = transcriptionMatch[1].trim();
+                      if (transcription) {
+                          handleTranscriptionResponse(transcription);
+                      }
+                  }
+
+                  if (keywordsMatch && keywordsMatch[1]) {
+                      const keywords = keywordsMatch[1].split(',').map(k => k.trim()).filter(k => k);
+                      if (keywords.length > 0) {
+                          handleTranscriptionKeywords(keywords);
+                      }
+                  }
+              },
+              'transcription',
+              customPrompt,
+              language
+            );
+            geminiClientRef.current = currentGeminiClient; // Assign to ref
+            await currentGeminiClient.connect();
+          } catch (error) {
+            console.error('[AIInteraction] Error creating session or connecting GeminiClient:', error);
+          }
         }
-        try {
-          const { id } = await window.electronAPI.createSession(newSession)
-          setCurrentSessionId(id);
-          sessionIdRef.current = id;
-          console.log('Started new session:', id)
+      };
 
-          currentGeminiClient = new GeminiClient(
-            (text, turnComplete) => { 
-                console.log('[GeminiClient Message]:', text, 'Turn Complete:', turnComplete);
-            },
-            () => { 
-                console.log('[GeminiClient] Setup complete.');
-                shouldSendAudioRef.current = true;
-            },
-            () => {}, // onPlayingStateChange
-            () => {}, // onAudioLevelChange
-            (text) => { 
-                const transcriptionMatch = text.match(/TRANSCRIPTION:\s*(.*)/);
-                const keywordsMatch = text.match(/KEYWORDS:\s*(.*)/);
-
-                if (transcriptionMatch && transcriptionMatch[1]) {
-                    const transcription = transcriptionMatch[1].trim();
-                    if (transcription) {
-                        handleTranscriptionResponse(transcription);
-                    }
-                }
-
-                if (keywordsMatch && keywordsMatch[1]) {
-                    const keywords = keywordsMatch[1].split(',').map(k => k.trim()).filter(k => k);
-                    if (keywords.length > 0) {
-                        handleTranscriptionKeywords(keywords);
-                    }
-                }
-            },
-            'transcription',
-            customPrompt,
-            language
-          );
-          geminiClientRef.current = currentGeminiClient; // Assign to ref
-          await currentGeminiClient.connect();
-        } catch (error) {
-          console.error('[AIInteraction] Error creating session or connecting GeminiClient:', error);
+      const cleanupSessionAndClient = async () => {
+        if (currentGeminiClient) {
+            currentGeminiClient.disconnect();
+            currentGeminiClient = null;
         }
-      }
-    };
+        if (window.electronAPI && sessionIdRef.current) {
+          window.electronAPI.invoke('session:end', sessionIdRef.current);
+          console.log('Ended session:', sessionIdRef.current)
+          setCurrentSessionId(null);
+          sessionIdRef.current = null;
+        }
+      };
 
-    const cleanupSessionAndClient = async () => {
-      if (currentGeminiClient) {
-          currentGeminiClient.disconnect();
-          currentGeminiClient = null;
-      }
-      if (window.electronAPI && sessionIdRef.current) {
-        await window.electronAPI.endSession(sessionIdRef.current)
-        console.log('Ended session:', sessionIdRef.current)
-        setCurrentSessionId(null);
-        sessionIdRef.current = null;
-      }
-    };
+      initializeSessionAndClient();
 
-    initializeSessionAndClient();
-
-    return () => {
-      cleanupSessionAndClient();
-    };
-  }, [customPrompt, language, handleTranscriptionResponse, handleTranscriptionKeywords]);
+      return () => {
+        cleanupSessionAndClient();
+      };
+    }
+  }, [isScreenSharing, customPrompt, language, handleTranscriptionResponse, handleTranscriptionKeywords]);
 
   const gatherContext = useCallback(
     async (action?: AIAction): Promise<AIContextData | null> => {
@@ -572,6 +587,20 @@ export function useAIInteraction() {
     },
     [gatherContext, customPrompt, t, language],
   );
+
+  // Listen for custom prompts sent from popover windows
+  useEffect(() => {
+    if (window.electronAPI) {
+      const unsubscribe = window.electronAPI.on(
+        'ai:custom-prompt',
+        ({ action, prompt }: { action: AIAction, prompt: string }) => {
+          console.log(`[useAIInteraction] Received custom prompt from popover: ${prompt}`);
+          sendContextToAI(action, prompt);
+        }
+      );
+      return () => unsubscribe();
+    }
+  }, [sendContextToAI]); // Re-run if sendContextToAI changes
 
   const handleKeywordClick = useCallback(
     async (keyword: string) => {

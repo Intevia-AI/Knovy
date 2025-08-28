@@ -17,9 +17,12 @@ import { is } from '@electron-toolkit/utils'
 import express from 'express'
 import cors from 'cors'
 import * as dbService from './database-service'
-import { initializePopoverManager } from './popoverManager'
-import internalBridge from './internalBridge'
+import { createPopover, closePopover, closeAllPopovers } from './popoverManager'
 
+console.log('[Debug] Imported dbService module:', dbService)
+
+let isScreenSharing = false
+let currentSessionId: string | null = null
 let mainWindow: BrowserWindow | null
 let selectionWindow: BrowserWindow | null
 
@@ -53,14 +56,72 @@ ipcMain.handle('popover:create', (event, options) => {
     parent: parentWindow
   }
 
-  console.log('[index.ts] Emitting popover:create on internalBridge')
-  internalBridge.emit('popover:create', popoverOptions)
-  console.log('[index.ts] "popover:create" event emitted successfully.')
+  const popover = createPopover(popoverOptions)
+  // The old did-finish-load handler was removed to prevent race conditions.
+  // The popover now requests its state when it's ready.
 })
 
 // The popover:close IPC handler now emits an internal event.
 ipcMain.on('popover:close', (event, id) => {
-  internalBridge.emit('popover:close', id)
+  closePopover(id)
+})
+
+ipcMain.on('popover:close-all', () => {
+  closeAllPopovers()
+})
+
+ipcMain.handle('get-screenshare-state', () => {
+  return isScreenSharing
+})
+
+// Refactored session management functions
+async function startSession() {
+  console.log('[Debug] startSession invoked.')
+  if (currentSessionId) {
+    console.warn(
+      `[main/index.ts] Tried to start a new session, but one is already active: ${currentSessionId}`
+    )
+    return currentSessionId
+  }
+  const newSession = {
+    id: `session-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+    started_at: new Date().toISOString(),
+    status: 'active'
+  }
+  try {
+    const { id } = await dbService.createSession(newSession)
+    currentSessionId = id
+    console.log(`[main/index.ts] Started and set new session ID: ${id}`)
+    return id
+  } catch (error) {
+    console.error('[main/index.ts] Failed to start session:', error)
+    return null
+  }
+}
+
+async function endCurrentSession() {
+  if (!currentSessionId) {
+    console.warn('[main/index.ts] Request to end session received without an active session ID.')
+    return { success: false }
+  }
+  const sessionIdToEnd = currentSessionId
+  currentSessionId = null // Clear session ID immediately
+  try {
+    const result = await dbService.endSession(sessionIdToEnd)
+    console.log(`[main/index.ts] Ended session: ${sessionIdToEnd}`)
+    return result
+  } catch (error) {
+    console.error(`[main/index.ts] Failed to end session ${sessionIdToEnd}:`, error)
+    return { success: false }
+  }
+}
+
+ipcMain.handle('session:start', startSession)
+
+ipcMain.handle('session:end', endCurrentSession)
+
+ipcMain.handle('session:get-id', () => {
+  return currentSessionId
 })
 
 // Example of sending a message to a popover, remains the same.
@@ -211,10 +272,9 @@ const createWindow = async () => {
     }
   })
 
-  mainWindow.on('blur', () => {
-    // When the main window loses focus, close all popovers.
-    // internalBridge.emit('popover:close-all') // Temporarily disabled to debug popover closing issue
-  })
+  // mainWindow.on('blur', () => {
+  //   closeAllPopovers();
+  // })
 
   if (is.dev) {
     const devServerUrl = import.meta.env['VITE_DEV_SERVER_URL']
@@ -256,8 +316,7 @@ const toggleWindow = () => {
 }
 
 app.on('ready', async () => {
-  // Initialize the popover manager to listen for events
-  initializePopoverManager()
+  console.log('[DB Path] User data path:', app.getPath('userData'))
 
   if (is.dev) {
     await installExtension(REACT_DEVELOPER_TOOLS).catch(console.log)
@@ -339,102 +398,57 @@ app.on('ready', async () => {
     return newSettings
   })
 
-  // Refactored handlers to use the internal event bridge
-  ipcMain.on('app:show-transcriptions', (event) => {
-    const parentWindow = BrowserWindow.fromWebContents(event.sender) || mainWindow
-    if (!parentWindow) return
-    const devServerUrl = import.meta.env['VITE_DEV_SERVER_URL']
-    let url
-    if (is.dev) {
-      const baseUrl = devServerUrl || 'http://localhost:5173'
-      url = `${baseUrl}#transcriptions`
+  // IPC handler for setting and broadcasting screen share state
+  ipcMain.on('set-screenshare-state', async (event, newState: boolean) => {
+    isScreenSharing = newState
+    console.log(
+      `[main/index.ts] Set isScreenSharing = ${isScreenSharing}. Broadcasting to all windows.`
+    )
+
+    if (newState) {
+      await startSession()
     } else {
-      url = `file://${path.join(__dirname, '../renderer/index.html')}#transcriptions`
+      await endCurrentSession()
     }
-    internalBridge.emit('popover:create', {
-      id: 'transcriptions',
-      parent: parentWindow,
-      url,
-      width: 480,
-      height: 300
-    })
-  })
 
-  ipcMain.on('app:hide-transcriptions', () => {
-    internalBridge.emit('popover:close', 'transcriptions')
-  })
-
-  ipcMain.on('app:show-features', (event) => {
-    const parentWindow = BrowserWindow.fromWebContents(event.sender) || mainWindow
-    if (!parentWindow) return
-    const devServerUrl = import.meta.env['VITE_DEV_SERVER_URL']
-    let url
-    if (is.dev) {
-      const baseUrl = devServerUrl || 'http://localhost:5173'
-      url = `${baseUrl}#features`
-    } else {
-      url = `file://${path.join(__dirname, '../renderer/index.html')}#features`
+    // Broadcast to all windows (including the sender, which is simpler and harmless)
+    for (const win of BrowserWindow.getAllWindows()) {
+      if (!win.isDestroyed()) {
+        win.webContents.send('screenshare:state-changed', isScreenSharing)
+      }
     }
-    internalBridge.emit('popover:create', {
-      id: 'features',
-      parent: parentWindow,
-      url,
-      width: 280,
-      height: 300
-    })
   })
 
-  ipcMain.on('app:hide-features', () => {
-    internalBridge.emit('popover:close', 'features')
-  })
-
-  ipcMain.on('app:show-settings', (event) => {
-    const parentWindow = BrowserWindow.fromWebContents(event.sender) || mainWindow
-    if (!parentWindow) return
-    const devServerUrl = import.meta.env['VITE_DEV_SERVER_URL']
-    let url
-    if (is.dev) {
-      const baseUrl = devServerUrl || 'http://localhost:5173'
-      url = `${baseUrl}#settings`
-    } else {
-      url = `file://${path.join(__dirname, '../renderer/index.html')}#settings`
+  // IPC relay for transcription data
+  ipcMain.on('transcription:data', (event, transcriptionContent: string) => {
+    if (!currentSessionId) {
+      console.warn('[main/index.ts] Received transcription data, but no active session. Ignoring.');
+      return;
     }
-    internalBridge.emit('popover:create', {
-      id: 'settings',
-      parent: parentWindow,
-      url,
-      width: 280,
-      height: 300
-    })
-  })
 
-  ipcMain.on('app:hide-settings', () => {
-    internalBridge.emit('popover:close', 'settings')
-  })
+    // 1. Create the full transcript object
+    const newTranscript = {
+      id: `transcript-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+      session_id: currentSessionId,
+      timestamp: new Date().toISOString(),
+      content: transcriptionContent,
+      // Add role and type for consistency with the frontend's TranscriptionMessage type
+      role: 'assistant',
+      type: 'transcription'
+    };
 
-  ipcMain.on('app:show-screen-preview', (event) => {
-    const parentWindow = BrowserWindow.fromWebContents(event.sender) || mainWindow
-    if (!parentWindow) return
-    const devServerUrl = import.meta.env['VITE_DEV_SERVER_URL']
-    let url
-    if (is.dev) {
-      const baseUrl = devServerUrl || 'http://localhost:5173'
-      url = `${baseUrl}#screen-preview`
-    } else {
-      url = `file://${path.join(__dirname, '../renderer/index.html')}#screen-preview`
+    // 2. Save to database
+    dbService.addTranscript(newTranscript).catch((error) => {
+      console.error('[main/index.ts] Failed to save transcript:', error);
+    });
+
+    // 3. Broadcast the full transcript object to all windows for real-time display
+    for (const win of BrowserWindow.getAllWindows()) {
+      if (!win.isDestroyed()) {
+        win.webContents.send('transcription:data', newTranscript);
+      }
     }
-    internalBridge.emit('popover:create', {
-      id: 'screen-preview',
-      parent: parentWindow,
-      url,
-      width: 480,
-      height: 300
-    })
-  })
-
-  ipcMain.on('app:hide-screen-preview', () => {
-    internalBridge.emit('popover:close', 'screen-preview')
-  })
+  });
 
   ipcMain.on('electronAPI:startScreenshot', () => createSelectionWindow())
 

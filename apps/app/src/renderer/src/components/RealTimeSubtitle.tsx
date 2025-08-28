@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { GeminiClient } from "./geminiClient.js";
+import { GeminiClient } from "@/lib/geminiClient.js";
 import { Switch } from "@/components/ui/switch";
 import { useI18n } from "@/hooks/useI18n";
 

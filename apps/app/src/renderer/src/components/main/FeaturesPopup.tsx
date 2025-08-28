@@ -7,16 +7,21 @@ import { AIAction } from '@/hooks/useAIInteraction'
 interface FeaturesPopupProps {
   onAiAction: (action: AIAction) => void
   isScreenSharing: boolean
-  onShowHistory: () => void
 }
 
-export function FeaturesPopup({ onAiAction, isScreenSharing, onShowHistory }: FeaturesPopupProps) {
+export function FeaturesPopup({ onAiAction, isScreenSharing }: FeaturesPopupProps) {
   const { t } = useI18n()
 
   const features = [
     { action: 'summary', labelKey: 'aiActionSummary', icon: ListCollapseIcon },
     { action: 'screenshot', labelKey: 'aiActionScreenshot', icon: CameraIcon }
   ] as const
+
+  const onShowHistory = () => {
+    if (window.electronAPI) {
+      window.electronAPI.send('history:open');
+    }
+  };
 
   return (
     <div className="grid gap-2 p-2 bg-muted/10 rounded-2xl">

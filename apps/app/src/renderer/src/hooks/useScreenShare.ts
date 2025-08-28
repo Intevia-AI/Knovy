@@ -58,6 +58,7 @@ const SYSTEM_AUDIO_CHUNK_MS = 1000; // Internal chunk collection interval
  * ```
  */
 export function useScreenShare() {
+  const [videoStream, setVideoStream] = useState<MediaStream | null>(null);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
   const [currentSystemAudioStream, setCurrentSystemAudioStream] =
@@ -133,6 +134,7 @@ export function useScreenShare() {
     // Cleanup screen stream
     cleanupStream(screenStreamRef);
     if (screenPreviewRef.current) screenPreviewRef.current.srcObject = null;
+    setVideoStream(null);
 
     setCurrentSystemAudioStream(null);
     setIsScreenSharing(false);
@@ -233,8 +235,13 @@ export function useScreenShare() {
     [makeSystemAudioBlobAndDispatch, currentSystemAudioStream, stopScreenShare],
   );
 
-  // Timer effect
   useEffect(() => {
+    // Only the main window (no hash) should broadcast its state.
+    if (window.location.hash === '' && window.electronAPI) {
+      console.log(`[useScreenShare] Sending state to main process: isScreenSharing = ${isScreenSharing}`);
+      window.electronAPI.send('set-screenshare-state', isScreenSharing);
+    }
+
     let timer: NodeJS.Timeout | null = null;
     if (isScreenSharing) {
       setRecordingDuration(0);
@@ -330,6 +337,7 @@ export function useScreenShare() {
       }
 
       screenStreamRef.current = stream;
+      setVideoStream(stream);
       setIsScreenSharing(true);
 
       // Handle when the user stops sharing via the browser/OS UI
@@ -371,6 +379,7 @@ export function useScreenShare() {
     micMimeType,
     systemAudioMimeType,
     screenStreamRef, // Ref for the video element
+    videoStream,
     screenPreviewRef,
     toggleScreenShare,
     cancelScreenShare, // Expose the cancel function

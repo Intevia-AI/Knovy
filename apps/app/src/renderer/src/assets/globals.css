@@ -53,12 +53,9 @@
   * {
     @apply border-border;
   }
-  body {
-    @apply mx-auto;
-  }
 }
 
 /* Add a class for the glassmorphism effect on popovers */
 .glass-popover {
-  @apply bg-white backdrop-blur-md border border-white/10 rounded-lg;
+  @apply bg-muted/80 backdrop-blur-md border border-white/10 rounded-lg;
 }

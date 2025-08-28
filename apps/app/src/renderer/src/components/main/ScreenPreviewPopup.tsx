@@ -3,21 +3,29 @@ import { MonitorIcon } from "lucide-react";
 
 interface ScreenPreviewPopupProps {
   isScreenSharing: boolean;
-  screenStreamRef: React.RefObject<MediaStream | null>;
+  videoStream: MediaStream | null;
 }
 
-export function ScreenPreviewPopup({ isScreenSharing, screenStreamRef }: ScreenPreviewPopupProps) {
+export function ScreenPreviewPopup({ isScreenSharing, videoStream }: ScreenPreviewPopupProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
-    if (isScreenSharing && videoRef.current && screenStreamRef.current) {
-      videoRef.current.srcObject = screenStreamRef.current;
+    if (videoRef.current && videoStream) {
+      videoRef.current.srcObject = videoStream;
+    } else if (videoRef.current) {
+      videoRef.current.srcObject = null;
     }
-  }, [isScreenSharing, screenStreamRef]);
+  }, [videoStream]);
 
   return (
     <div className="grid gap-4 p-4 bg-muted/10 rounded-2xl">
-      <video ref={videoRef} autoPlay muted className="w-full rounded-md border bg-muted" />
+      {isScreenSharing && videoStream ? (
+        <video ref={videoRef} autoPlay muted className="w-full rounded-md border bg-muted" />
+      ) : (
+        <div className="w-full aspect-video rounded-md border bg-muted flex items-center justify-center">
+          <MonitorIcon className="h-12 w-12 text-muted-foreground" />
+        </div>
+      )}
     </div>
   );
 }
