@@ -4,7 +4,7 @@
  * with automatic reconnection and error handling capabilities.
  */
 
-const PROXY_SERVER_URL = import.meta.env.VITE_GEMINI_WS_URL || 'ws://localhost:4567'
+const PROXY_SERVER_URL = import.meta.env.VITE_GEMINI_WS_URL || 'ws://localhost:4568'
 console.log(PROXY_SERVER_URL)
 
 /**
