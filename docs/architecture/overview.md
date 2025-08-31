@@ -1,225 +1,79 @@
-# System Architecture Overview
+# Knovy Architecture Overview
 
-> [!IMPORTANT]
-> This document is AI generated. Please verify the information before using it.
+## 1. Introduction
 
-This document provides a comprehensive overview of the Intevia AI system architecture, explaining how the different components interact and work together.
+Knovy is an AI assistant platform composed of a desktop application, a web-based demo, and a robust backend. This document provides a high-level overview of the system architecture, focusing on its target state which is designed for security, efficiency, and scalability.
 
-## System Components
+## 2. Current Architecture & Future Plans
 
-The Intevia AI project consists of three main applications:
+The project currently uses a monolithic proxy server (`apps/proxy`) for real-time transcription, while leveraging Supabase for authentication and database services.
 
-1. **Web Application** (Next.js)
-2. **Desktop Application** (Electron)
-3. **WebSocket Proxy Server**
+The immediate future plan is to migrate all stateless AI actions (e.g., summarization, custom queries) away from the proxy and into secure **Supabase Edge Functions**. This will improve security, efficiency, and maintainability.
 
-### High-Level Architecture
+### System Diagram (Current)
 
 ```mermaid
 graph TD
-    User[User] --> WebApp[Web Application]
-    User --> DesktopApp[Desktop Application]
-    WebApp --> ProxyServer[WebSocket Proxy Server]
-    DesktopApp --> ProxyServer
-    ProxyServer --> GoogleAI[Google Generative AI]
-    WebApp --> Database[(Supabase Database)]
-    DesktopApp --> Database
+    subgraph User Devices
+        WebApp[Web Application]
+        DesktopApp[Desktop Application]
+    end
+
+    subgraph "Backend Infrastructure"
+        Auth[Supabase Auth]
+        DB[(Supabase DB <br/> User Data, etc.)]
+        EdgeFunctions[Supabase Edge Functions <br/> Future Migration]
+        Proxy[Legacy Proxy <br/> Transcription & AI Actions]
+    end
+
+    subgraph "Third-Party Services"
+        GoogleAI[Google Generative AI]
+    end
+
+    User[User] --> WebApp
+    User --> DesktopApp
+
+    WebApp -- "Login" --> Auth
+    DesktopApp -- "Login" --> Auth
+
+    WebApp -- "Real-time Transcription" --> Proxy
+    DesktopApp -- "Real-time Transcription & AI Actions" --> Proxy
+
+    Proxy -- "Proxies Requests" --> GoogleAI
+
+    DesktopApp -.->|Future AI Actions| EdgeFunctions
+    WebApp -.->|Future AI Actions| EdgeFunctions
+    EdgeFunctions -.->|Secure API Calls| GoogleAI
+
+    classDef future fill:#43a1b6
+    class EdgeFunctions future
 ```
 
-## Component Details
+## 3. Application Components
 
-### Web Application (Next.js)
+### 3.1. Desktop Application (`apps/app`)
 
-The web application provides a browser-based interface for users to interact with the AI capabilities.
+- **Framework**: Electron + React (using Vite).
+- **Core Functionality**: Provides the full Knovy experience, including real-time audio capture, transcription, and AI actions.
+- **Backend Interaction**:
+  - **Authentication**: Uses Supabase for user login (OAuth).
+  - **All Backend Logic**: Currently connects to the central WebSocket proxy (`apps/proxy`) for both real-time transcription and other AI actions.
 
-**Key Technologies:**
+### 3.2. Web Application (`apps/web`)
 
-- Next.js 14+ (React framework)
-- TypeScript
-- Tailwind CSS
-- React Hooks for state management
+- **Framework**: Next.js.
+- **Core Functionality**: Serves as the project's public-facing website and provides a demo of the real-time transcription feature.
+- **Backend Interaction**:
+  - **Authentication**: Uses Supabase for user login.
+  - **Real-time Transcription**: Connects to the central WebSocket proxy (`apps/proxy`).
 
-**Main Components:**
+### 3.3. Backend Services
 
-- Landing page and marketing content (Hero section, Features, Team, Call-to-action)
-- Demo interface with screen sharing and audio recording
-- Real-time audio processing and visualization
-- AI interaction interface (chat panel, keyword extraction)
-- Feedback collection system (email form)
-- Authentication UI pages (login/register - UI only, no backend implementation)
+Our backend is composed of several key pieces:
 
-**Directory Structure:**
+- **Supabase**: The core of our backend for non-real-time tasks.
+  - **Auth**: Manages all user authentication and provides JWTs.
+  - **Database**: A PostgreSQL database for storing user data, application state, etc.
+  - **Edge Functions (Future)**: The target for migrating all stateless AI actions (e.g., summarization) to secure, serverless functions.
 
-```
-apps/web/
-├── app/              # Next.js App Router
-│   ├── (landing)/    # Landing page routes
-│   ├── api/          # API routes
-│   └── auth/         # Authentication routes
-├── components/       # React components
-├── hooks/            # Custom React hooks
-├── lib/              # Utility functions
-└── public/           # Static assets
-```
-
-### Desktop Application (Electron)
-
-The desktop application provides a native experience with additional capabilities like screen sharing and system integration.
-
-**Key Technologies:**
-
-- Electron
-- Next.js (for UI)
-- TypeScript
-- Native system APIs
-
-**Main Components:**
-
-- Screen sharing and recording with system-level permissions
-- System tray integration and native notifications
-- Real-time audio processing (microphone and system audio)
-- AI interaction interface with chat panel and keyword extraction
-- Screenshot capture with area selection
-- Settings persistence (language, custom prompts)
-- Global shortcuts and always-on-top mode
-- Cross-platform native experience
-
-**Directory Structure:**
-
-```
-apps/app/
-├── app/              # Next.js App Router
-├── components/       # React components
-├── context/          # React context providers
-├── electron/         # Electron main process
-├── hooks/            # Custom React hooks
-└── lib/              # Utility functions
-```
-
-### WebSocket Proxy Server
-
-The proxy server handles real-time communication between the client applications and the Google Generative AI API, managing streaming responses and connection state.
-
-**Key Technologies:**
-
-- Node.js
-- WebSocket
-- Google Generative AI SDK
-
-**Main Responsibilities:**
-
-- Maintain persistent connections to clients
-- Handle authentication and rate limiting
-- Stream AI responses in real-time
-- Manage connection state and reconnection logic
-
-**Directory Structure:**
-
-```
-apps/proxy/
-├── startProxy.js     # Main server entry point
-└── Dockerfile        # Container configuration
-```
-
-## Data Flow
-
-### AI Interaction Flow
-
-1. User initiates an AI interaction (text or voice)
-2. Client application (web or desktop) processes the input
-3. Input is sent to the WebSocket proxy server
-4. Proxy server forwards the request to Google Generative AI
-5. AI generates a response and streams it back through the proxy
-6. Client application receives and displays the streaming response
-7. Interaction is optionally logged to the database
-
-### Authentication Flow
-
-1. User logs in through the web or desktop application
-2. Authentication request is sent to Supabase
-3. Supabase validates credentials and returns a session token
-4. Client application stores the session token
-5. Subsequent requests include the session token for authorization
-
-## Shared Components
-
-The project uses a monorepo structure with shared packages:
-
-### UI Component Library
-
-Located in `packages/ui/`, this package contains reusable UI components used across both web and desktop applications.
-
-### TypeScript Configuration
-
-Located in `packages/typescript-config/`, this package provides shared TypeScript configurations to ensure consistency across all applications.
-
-### ESLint Configuration
-
-Located in `packages/eslint-config/`, this package provides shared linting rules to maintain code quality standards.
-
-## Infrastructure Architecture
-
-### Development Environment
-
-- Local development using Next.js development server
-- Local WebSocket proxy server
-- Optional local Docker containers
-
-### Production Environment
-
-- Web application deployed to a cloud provider (Vercel, AWS, etc.)
-- WebSocket proxy server deployed as a containerized service
-- Desktop application distributed through app stores or direct download
-
-## Deployment & Infrastructure Notes
-
-This section addresses common questions regarding the deployment and operational limits of the production environment.
-
-### Backend Deployment (`@apps/proxy`)
-
-- **Platform**: The WebSocket proxy server is designed to be deployed to **Google Cloud Run**.
-- **Why Cloud Run?**:
-  - **WebSocket Support**: Natively supports WebSockets, which is essential for real-time communication.
-  - **Long-Lived Connections**: Supports connections for up to **60 minutes**, accommodating the application's requirements.
-  - **Scalability**: Scales automatically with traffic, including scaling to zero for cost-effectiveness.
-  - **It's cheap**: We are poor, you know it.
-- **Deployment Artifact**: The `apps/proxy/Dockerfile` is the sole artifact required for deployment. It contains all instructions to build and run the container on Cloud Run.
-- **`docker-compose.yml`**: This file is for **local development only** and should not be used for production deployment.
-
-### Frontend Deployment (`@apps/web`)
-
-- **Platform**: The frontend is deployed to **Vercel**.
-- **WebSocket Connection Handling**: The WebSocket connection to the backend proxy is initiated directly from the **user's browser** (client-side). This connection is not proxied through or limited by Vercel's serverless function execution timeouts.
-
-### Connection Timeouts and Reconnection
-
-- **Cloud Run Timeout**: If a WebSocket connection to the proxy server exceeds the 60-minute limit, Cloud Run will terminate the instance, and the client's connection will be closed.
-- **Automatic Reconnection**: The client-side application (`apps/web/app/api/ai/proxy/geminiClient.ts`) includes an automatic reconnection mechanism. When a connection is closed unexpectedly, it will attempt to re-establish the connection, ensuring a seamless user experience.
-
-## Security Considerations
-
-- API keys and secrets are stored in environment variables, never in code
-- Authentication handled by Supabase with proper JWT implementation
-- HTTPS/WSS used for all communications
-- Input validation on all user inputs
-- Rate limiting on API endpoints
-
-## Performance Considerations
-
-- Streaming responses for real-time AI interactions
-- Optimized audio processing for low latency
-- Efficient state management to minimize re-renders
-- Lazy loading of components and assets
-
-## Future Architecture Considerations
-
-- Scaling the WebSocket proxy server with a load balancer
-- Implementing a caching layer for common AI responses
-- Adding support for multiple AI providers
-- Enhancing offline capabilities in the desktop application
-
-## Related Documentation
-
-- [API Reference](./api-reference.md)
-- [Database Schema](./database-schema.md)
-- [Authentication Flow](./authentication-flow.md)
+- **Proxy Server (`apps/proxy`)**: The original WebSocket proxy. It currently handles all real-time transcription and AI actions for both the desktop and web applications. It will be simplified in the future to handle only real-time transcription.

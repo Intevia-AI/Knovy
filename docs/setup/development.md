@@ -1,290 +1,154 @@
 # Development Environment Setup
 
-> [!IMPORTANT]
-> This document is AI generated. Please verify the information before using it.
+This guide provides detailed instructions for setting up your development environment for the Knovy project.
 
-This guide provides detailed instructions for setting up your development environment for the Intevia AI project.
-
-## Prerequisites
+## 1. Prerequisites
 
 Before you begin, ensure you have the following installed:
 
-- **Node.js**: Version 20.0.0 or later
-  - [Download Node.js](https://nodejs.org/)
-  - Verify with: `node --version`
+-   **Node.js**: Version 20.0.0 or later (`node --version`)
+-   **pnpm**: Version 10.0.0 or later (`pnpm --version`)
+-   **Git**: Latest version recommended (`git --version`)
 
-- **pnpm**: Version 10.0.0 or later
-  - Install with: `npm install -g pnpm`
-  - Verify with: `pnpm --version`
+## 2. Repository Setup
 
-- **Git**: Latest version recommended
-  - [Download Git](https://git-scm.com/downloads)
-  - Verify with: `git --version`
+1.  **Clone the repository**
 
-- **Code Editor**: VSCode, Cursor or Kiro
-  - Recommended extensions:
-    - ESLint
-    - Prettier
-    - TypeScript and JavaScript Language Features
-    - Docker
+    ```bash
+    git clone https://github.com/your-org/knovy.git
+    cd knovy
+    ```
 
-## Setting Up the Repository
+2.  **Install dependencies**
 
-1. **Clone the repository**
+    ```bash
+    pnpm install
+    ```
 
-   ```bash
-   git clone https://github.com/your-org/intevia-ai.git
-   cd intevia-ai
-   ```
+3.  **Set up environment variables**
 
-2. **Install dependencies**
+    For each application in the `apps/` directory, you need to create a `.env` file. Manually copy the contents of `.env.example` to a new `.env` file within the same directory.
 
-   ```bash
-   pnpm install
-   ```
+    -   `apps/app/.env.example` -> `apps/app/.env`
+    -   `apps/web/.env.example` -> `apps/web/.env`
+    -   `apps/proxy/.env.example` -> `apps/proxy/.env`
 
-   This will install all dependencies for the monorepo, including all applications and shared packages.
+    After creating the files, edit them to add your actual API keys and configuration values.
 
-3. **Set up environment variables**
-
-   ```bash
-   bash scripts/setup-env.sh
-   ```
-
-   This script will copy all `.env.example` files to `.env` files in each application directory. You'll need to edit these files with your actual values.
-
-## Required API Keys and Services
+## 3. API Keys and Services
 
 ### Google Generative AI (Gemini)
 
-1. Go to [Google AI Studio](https://aistudio.google.com/app/apikey)
-2. Create a new API key
-3. Add the key to:
-   - `apps/web/.env`: `GOOGLE_GENERATIVE_AI_API_KEY`
-   - `apps/proxy/.env`: `GOOGLE_GENERATIVE_AI_API_KEY`
+1.  Go to [Google AI Studio](https://aistudio.google.com/app/apikey).
+2.  Create a new API key.
+3.  Add the key to:
+    -   `apps/web/.env`: `GOOGLE_GENERATIVE_AI_API_KEY`
+    -   `apps/proxy/.env`: `GOOGLE_GENERATIVE_AI_API_KEY`
 
-### Supabase (Optional for Authentication)
+### Supabase
 
-1. Create a new project at [Supabase](https://supabase.com/)
-2. Navigate to Project Settings > API
-3. Copy the URL and anon key
-4. Add to `apps/app/.env`:
-   - `NEXT_PUBLIC_SUPABASE_URL`
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+Supabase is used for authentication in the desktop app and for backend services.
+
+1.  Create a new project at [Supabase](https://supabase.com/).
+2.  Navigate to **Project Settings > API**.
+3.  Copy the **Project URL** and **Project API Keys** (the `anon` key).
+4.  Add them to `apps/app/.env` and `apps/web/.env`:
+    -   `NEXT_PUBLIC_SUPABASE_URL`
+    -   `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 
 ### OAuth Configuration for Desktop App
 
-To enable OAuth providers (like Google or GitHub) to work correctly with the Electron desktop application, you must configure the correct redirect URL in your Supabase project settings.
+To enable Google/GitHub login in the Electron app, you must configure the redirect URL in Supabase.
 
-1.  **Navigate to your Supabase Project.**
+1.  Navigate to your Supabase Project.
 2.  Go to **Authentication** -> **URL Configuration**.
-3.  In the **Redirect URLs** section, ensure the following URL is present:
-
+3.  In the **Redirect URLs** section, add the following URL:
     ```
     http://localhost:3000/auth/callback
     ```
+4.  Click **Save**.
 
-4.  **Important**: Make sure to **remove** the old `intevia://auth/callback` URL if it exists. Only the `http://localhost:3001` URL should be used for the development environment.
-5.  Click **Save**.
+## 4. Running the Applications
 
-This URL points to the web-based callback page that handles the authentication flow and redirects back to the desktop app. It is a required step for the login process to function correctly.
+### Web Application (Demo)
 
-### Gmail (For Feedback System)
+The web app requires both the Next.js server and the proxy server to be running.
 
-1. Create a Gmail account or use an existing one
-2. Enable 2-Step Verification
-3. Generate an App Password:
-   - Go to Google Account > Security > 2-Step Verification > App passwords
-4. Add to `apps/web/.env`:
-   - `GMAIL_USER`: Your Gmail address
-   - `GMAIL_PASS`: The generated app password
+```bash
+# Terminal 1: Start the Next.js development server
+pnpm --filter web dev
 
-## Running the Applications
+# Terminal 2: Start the WebSocket proxy server
+pnpm --filter web proxy
+```
 
-### Web Application
-
-1. **Start the Next.js development server**
-
-   ```bash
-   cd apps/web
-   pnpm dev
-   ```
-
-   The web application will be available at http://localhost:3000
-
-2. **Start the WebSocket proxy server**
-
-   ```bash
-   # In a separate terminal
-   cd apps/web
-   pnpm proxy
-   ```
-
-   The proxy server will be available at ws://localhost:4567
+Access the web application at `http://localhost:3000`.
 
 ### Desktop Application
 
-```bash
-cd apps/app
-pnpm dev
-```
-
-This will start both the Next.js development server and the Electron application.
-
-### Proxy Server (Standalone)
+This command starts the Electron application and its development server.
 
 ```bash
-cd apps/proxy
-pnpm start
+# In a separate terminal
+pnpm --filter app dev
 ```
 
-## Backend Deployment (Google Cloud Run)
+### Local Supabase Development
 
-The WebSocket proxy server (`apps/proxy`) is designed for deployment to Google Cloud Run.
+For local development, you can run a full Supabase stack on your machine.
 
-### Prerequisites
+-   **Start local Supabase services:**
+    ```bash
+    pnpm dlx supabase start
+    ```
 
-1.  **Google Cloud SDK**: Ensure the `gcloud` CLI is [installed and authenticated](httpss://cloud.google.com/sdk/docs/install).
-2.  **APIs**: Enable the **Cloud Build API**, **Cloud Run API**, and **Secret Manager API** in your GCP project.
-3.  **Permissions**: Your GCP user or service account needs `roles/run.admin`, `roles/storage.admin`, and `roles/secretmanager.admin` permissions.
+-   **View status and API keys:**
+    ```bash
+    pnpm dlx supabase status
+    ```
+
+-   **Stop local Supabase services:**
+    ```bash
+    pnpm dlx supabase stop
+    ```
+
+-   **Reset the local database:**
+    ```bash
+    pnpm dlx supabase db reset
+    ```
+
+## 5. Backend Deployment (Proxy Server)
+
+The WebSocket proxy server (`apps/proxy`) is designed for deployment as a container to **Google Cloud Run**.
 
 ### Storing the API Key Securely
 
-Before deploying, you must store your Google AI API key in **Google Secret Manager** for security.
+Before deploying, store your Google AI API key in **Google Secret Manager**.
 
-1.  **Navigate to Secret Manager** in the Google Cloud Console.
-2.  Click **"Create Secret"**.
-3.  **Name**: `intevia-google-ai-key` (this name is used in the deployment script).
-4.  **Secret value**: Paste your Google AI API key.
-5.  Click **"Create secret"**.
-6.  **Grant Access**: On the secret's details page, go to the **Permissions** tab and grant the **Default compute service account** the **"Secret Manager Secret Accessor"**, **Connector Admin** and **Tag User** roles. (Probably not this much, I didn't test it yet).
+1.  In the Google Cloud Console, navigate to **Secret Manager**.
+2.  Create a new secret named `intevia-google-ai-key`.
+3.  Set the secret value to your Google AI API key.
+4.  Grant the **Default compute service account** the **Secret Manager Secret Accessor** role for this secret.
 
-### Deployment Steps
+### Deployment to Cloud Run
 
-A deployment script is provided at `scripts/deploy-proxy.sh` to automate the process. This is the recommended method for the **initial deployment**.
+While you can deploy manually, the recommended approach is to set up continuous deployment from your GitHub repository.
 
-1.  **Make the script executable:**
+1.  In the Google Cloud Console, go to your Cloud Run service.
+2.  Click **Edit & Deploy New Revision**.
+3.  Under "Source", select **Continuously deploy new revisions from a source repository** and set up a Cloud Build trigger connected to your `main` branch.
+4.  **Crucially**, in the build settings, set the **Build Type** to `Dockerfile` and the **Source Location** to `/apps/proxy/Dockerfile` to ensure it builds the correct application from the monorepo.
+5.  Save the trigger. Future pushes to your selected branch will automatically deploy.
 
+## 6. Code Style and Linting
+
+This project uses ESLint and Prettier to maintain a consistent code style.
+
+-   **Check for linting errors:**
     ```bash
-    # chmod means change mode, +x means make the script executable. Used to make the script executable.
-    chmod +x scripts/deploy-proxy.sh
+    pnpm lint
     ```
-
-2.  **Configure the script:**
-
-    Open `scripts/deploy-proxy.sh` and update the following variables:
-    - `PROJECT_ID`: Your Google Cloud Project ID.
-    - `SERVICE_NAME`: The desired name for your Cloud Run service (e.g., `intevia-proxy`).
-    - `REGION`: The GCP region for deployment (e.g., `us-central1`).
-    - `GOOGLE_GENERATIVE_AI_API_KEY`: Your Google AI API key.
-
-3.  **Run the deployment script:**
-
+-   **Automatically format all files:**
     ```bash
-    ./scripts/deploy-proxy.sh
+    pnpm format
     ```
-
-The script will build the Docker image using Cloud Build and deploy it to Cloud Run.
-
-### Automated Deployment with GitHub (CI/CD)
-
-For a more efficient workflow, you can set up continuous deployment to automatically update your service every time you push to your GitHub repository. This is the recommended approach for all subsequent deployments after the initial one.
-
-1.  **Navigate to your Service**: In the Google Cloud Console, go to your Cloud Run service (e.g., `intevia-proxy`).
-2.  **Edit and Deploy**: Click **"Edit & Deploy New Revision"**.
-3.  **Configure Source**:
-    - Under the "Source" section, select **"Continuously deploy new revisions from a source repository"**.
-    - Click **"Set up with Cloud Build"**.
-4.  **Connect Repository**:
-    - Authenticate with your GitHub account and select the `intevia-ai` repository.
-    - In the trigger settings, choose the branch that will trigger deployments (e.g., `main`).
-5.  **Configure Build Settings**:
-    - **Build Type**: Select `Dockerfile`.
-    - **Source Location**: This is critical for a monorepo. Set the path to your proxy's `Dockerfile` to: `/apps/proxy/Dockerfile`.
-6.  **Save**: Save the trigger configuration.
-
-Once saved, any new commits pushed to the specified branch will automatically build and deploy a new revision to your Cloud Run service.
-
-### Using a Custom Domain (Recommended)
-
-For a professional setup, you should map a custom subdomain (e.g., `proxy.intevia.app`) to your Cloud Run service.
-
-1.  **Deploy the Service**: Complete the deployment steps above to get your service running.
-2.  **Map Custom Domain in GCP**:
-    - In the Google Cloud Console, navigate to **Cloud Run**.
-    - Click the **"intevia-proxy"** service.
-    - Click the **"Network"** tab.
-    - Click the **"Custom Domains"** tab.
-    - Click **"Add Mapping"**
-    - Select your deployed service (e.g., `intevia-proxy`) and enter the subdomain you want to use (e.g., `proxy.intevia.app`).
-    - You will be redirected to the Google Search Console and you select the property type as **"Domain"**.
-    - You will be redirected to the Cloudflare, we verify the ownership by adding the TXT record.
-3.  **Update DNS Records**:
-    - Google will provide you with the necessary DNS records (e.g. type `CNAME`, name `proxy` and data `ghs.googlehosted.com`).
-    - Add these records in your domain provider's DNS settings (e.g., Cloudflare) and wait for the changes to take effect.
-4.  **Wait for Propagation**: It may take a few minutes for the SSL certificate to be provisioned and for DNS changes to take effect.
-
-### Updating the Frontend
-
-Once your backend is deployed and the custom domain is mapped, you must update the frontend to use the new production URL.
-
-1.  Open the environment file for the web application: `apps/web/.env`.
-2.  Set the `PROXY_SERVER_URL` variable to your custom domain, making sure to use the secure WebSocket protocol (`wss://`):
-
-    ```env
-    PROXY_SERVER_URL=wss://proxy.intevia.app
-    ```
-
-3.  Redeploy your web application to Vercel for the changes to take effect.
-
-## Development Workflow
-
-### Running Tests
-
-```bash
-# Run all tests across the monorepo
-pnpm test
-
-# Run tests for a specific application
-cd apps/web
-pnpm test
-```
-
-### Linting and Formatting
-
-```bash
-# Run linting across the monorepo
-pnpm lint
-
-# Format code across the monorepo
-pnpm format
-```
-
-### Building for Production
-
-```bash
-# Build all applications
-pnpm build
-
-# Build a specific application
-cd apps/web
-pnpm build
-```
-
-## Troubleshooting Common Issues
-
-See [troubleshooting.md](./troubleshooting.md) for solutions to common development issues.
-
-## Next Steps
-
-- Review the [architecture overview](../architecture/overview.md) to understand the system design
-- Check out the [CONTRIBUTING.md](../../CONTRIBUTING.md) file for development guidelines
-- Explore the codebase to familiarize yourself with the project structure
-
-## Additional Resources
-
-- [Next.js Documentation](https://nextjs.org/docs)
-- [Electron Documentation](https://www.electronjs.org/docs)
-- [React Documentation](https://reactjs.org/docs)
-- [TypeScript Documentation](https://www.typescriptlang.org/docs)
-- [Google Generative AI Documentation](https://ai.google.dev/docs)
