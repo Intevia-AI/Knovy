@@ -106,7 +106,7 @@ export class GeminiClient {
     }
 
     try {
-      console.log('[Gemini] 正在連接到代理服務器...')
+      console.log('[Gemini] 正在連接到代理伺服器...')
       this.ws = new WebSocket(PROXY_SERVER_URL)
 
       this.ws.onopen = () => {
@@ -124,7 +124,7 @@ export class GeminiClient {
           console.log('[Gemini] 發送語言設置:', this.language)
           this.ws?.send(JSON.stringify({ type: 'language', language: this.language }))
         }
-        console.log('[Gemini] 發送模式信息:', this.mode)
+        console.log('[Gemini] 發送模式訊息:', this.mode)
         this.ws?.send(JSON.stringify({ type: 'mode', mode: this.mode }))
         this.onSetupCompleteCallback?.()
         this._isConnected = true
@@ -167,7 +167,7 @@ export class GeminiClient {
         this.reconnect()
       }
     } catch (error) {
-      console.error('[Gemini] 連接到代理服務器時發生錯誤:', error)
+      console.error('[Gemini] 連接到代理伺服器時發生錯誤:', error)
     }
   }
 
