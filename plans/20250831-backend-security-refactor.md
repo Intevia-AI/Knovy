@@ -26,7 +26,11 @@ This project is executed by a team of specialized AI agents. Each task in the fo
   - **Description**: Build the business logic for all stateless AI actions as new Supabase Edge Functions, using the latest Google AI Gemini SDK.
   - **Agent**: `@agents/universal/backend-developer`
 
-- **Task 1.3: Update Desktop App to Use Edge Functions**
+- **Task 1.3: Write Unit Tests for Edge Functions**
+  - **Description**: Create unit tests for the implemented Edge Functions to verify their logic and error handling. This will not include testing the failing `screenshot-analysis` function.
+  - **Agent**: `@agents/universal/backend-developer`
+
+- **Task 1.4: Update Desktop App to Use Edge Functions**
   - **Description**: Refactor the Electron app's data fetching logic for AI actions. All non-transcription AI requests must be routed to the new Supabase Edge Functions, including the user's JWT in the authorization header. This includes updating `apps/app/src/preload/index.ts` to expose any new API-calling functions.
   - **Agent**: `@agents/specialized/react-nextjs-expert`
 
