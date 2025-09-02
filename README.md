@@ -63,6 +63,12 @@ This is a monorepo managed with pnpm workspaces and Turborepo.
 
     You can get the local API keys by running `pnpm dlx supabase status`.
 
+    You can also start the Supabase functions:
+
+    ```bash
+    supabase functions serve --env-file .env
+    ```
+
 4.  **Set up environment variables**
 
     Manually copy the `.env.example` file to a new `.env` file in each application directory (`apps/app`, `apps/web`, `apps/proxy`). Then, fill in the required API keys and configuration values, including the Supabase keys from the previous step.
