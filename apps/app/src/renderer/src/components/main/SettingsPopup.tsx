@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { LanguagesIcon } from 'lucide-react'
 import { useI18n } from '@/hooks/useI18n'
 import { useLanguage } from '@/context/LanguageContext'
@@ -16,18 +16,41 @@ import { Textarea } from '@/components/ui/textarea'
 interface SettingsPopupProps {
   customPrompt?: string
   setCustomPrompt?: (prompt: string) => void
-  isScreenSharing: boolean
-  onToggleScreenShare: () => void
 }
 
 export function SettingsPopup({
   customPrompt,
-  setCustomPrompt,
-  isScreenSharing,
-  onToggleScreenShare
+  setCustomPrompt
 }: SettingsPopupProps) {
   const { t, language } = useI18n()
   const { setLanguage } = useLanguage()
+  const [isScreenSharing, setIsScreenSharing] = useState(false)
+
+  useEffect(() => {
+    const getInitialData = async () => {
+      if (window.electronAPI) {
+        try {
+          const sharingState = await window.electronAPI.invoke('get-screenshare-state')
+          setIsScreenSharing(sharingState)
+        } catch (error) {
+          console.error('[SettingsPopup] Error fetching screen share state:', error)
+        }
+      }
+    }
+    getInitialData()
+  }, [])
+
+  useEffect(() => {
+    if (window.electronAPI) {
+      const unsubscribe = window.electronAPI.on(
+        'screenshare:state-changed',
+        (isScreenSharing: boolean) => {
+          setIsScreenSharing(isScreenSharing)
+        }
+      )
+      return () => unsubscribe()
+    }
+  }, [])
 
   const languages = [
     { code: 'zh-TW', name: '繁體中文' },
@@ -38,7 +61,9 @@ export function SettingsPopup({
   const handleLanguageChange = (value: string) => {
     if (setLanguage) {
       if (isScreenSharing) {
-        onToggleScreenShare()
+        if (window.electronAPI) {
+          window.electronAPI.send('screenshare:toggle')
+        }
       }
       setLanguage(value as SupportedLanguage)
     }

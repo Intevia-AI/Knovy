@@ -34,6 +34,10 @@ This project is executed by a team of specialized AI agents. Each task in the fo
   - **Description**: Refactor the Electron app's data fetching logic for AI actions. All non-transcription AI requests must be routed to the new Supabase Edge Functions, including the user's JWT in the authorization header. This includes updating `apps/app/src/preload/index.ts` to expose any new API-calling functions.
   - **Agent**: `@agents/specialized/react-nextjs-expert`
 
+- **Task 1.5: Update Frontend Components and Finalize AI Action Integration**
+  - **Description**: Update the frontend UI components to correctly trigger the new Edge Function data flow. Ensure the context gathering mechanism is working as intended and the UI is responsive to the screen sharing state.
+  - **Agent**: `@agents/specialized/react-nextjs-expert`
+
 ### Phase 2: Verification
 
 **Goal**: Finalize the migration by ensuring code quality and updating documentation.

@@ -7,8 +7,8 @@ export function ScreenPreviewPopup() {
 
   useEffect(() => {
     // This effect handles the auto-closing of the window
-    const removeListener = window.electronAPI.on('screenshare:state-changed', (isSharing) => {
-      if (!isSharing) {
+    const removeListener = window.electronAPI.on('screenshare:state-changed', (isScreenSharing) => {
+      if (!isScreenSharing) {
         console.log('[ScreenPreviewPopup] Screen sharing stopped, closing window.')
         window.electronAPI.send('popover:close', 'screen-preview')
       }

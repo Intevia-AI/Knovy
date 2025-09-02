@@ -1,19 +1,42 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
-import { ListCollapseIcon, CameraIcon, History } from 'lucide-react'
+import { ListCollapseIcon, CameraIcon, History, MessageSquareQuote } from 'lucide-react'
 import { useI18n } from '@/hooks/useI18n'
 import { AIAction } from '@/hooks/useAIInteraction'
 
-interface FeaturesPopupProps {
-  onAiAction: (action: AIAction) => void
-  isScreenSharing: boolean
-}
-
-export function FeaturesPopup({ onAiAction, isScreenSharing }: FeaturesPopupProps) {
+export function FeaturesPopup() {
   const { t } = useI18n()
+  const [isScreenSharing, setIsScreenSharing] = useState(false)
+
+  useEffect(() => {
+    const getInitialData = async () => {
+      if (window.electronAPI) {
+        try {
+          const sharingState = await window.electronAPI.invoke('get-screenshare-state')
+          setIsScreenSharing(sharingState)
+        } catch (error) {
+          console.error('[FeaturesPopup] Error fetching screen share state:', error)
+        }
+      }
+    }
+    getInitialData()
+  }, [])
+
+  useEffect(() => {
+    if (window.electronAPI) {
+      const unsubscribe = window.electronAPI.on(
+        'screenshare:state-changed',
+        (isScreenSharing: boolean) => {
+          setIsScreenSharing(isScreenSharing)
+        }
+      )
+      return () => unsubscribe()
+    }
+  }, [])
 
   const features = [
     { action: 'summary', labelKey: 'aiActionSummary', icon: ListCollapseIcon },
+    { action: 'answer', labelKey: 'aiActionAnswer', icon: MessageSquareQuote },
     { action: 'screenshot', labelKey: 'aiActionScreenshot', icon: CameraIcon }
   ] as const
 
