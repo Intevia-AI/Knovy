@@ -1,24 +1,19 @@
 {
-  "name": "proxy",
+  "name": "intevia-proxy",
   "version": "1.0.0",
-  "description": "Rate-limited WebSocket proxy for Knovy web demo",
-  "main": "dist/index.js",
+  "description": "Proxy server for Intevia AI",
+  "main": "startProxy.js",
+  "type": "module",
   "scripts": {
-    "build": "tsc",
-    "start": "node dist/index.js",
-    "dev": "ts-node src/index.ts"
+    "start": "node startProxy.js"
   },
   "dependencies": {
     "cors": "^2.8.5",
-    "dotenv": "^17.2.1",
-    "express": "^5.1.0",
-    "ws": "^8.17.1"
+    "dotenv": "^16.0.0",
+    "ws": "^8.0.0",
+    "express": "^5.1.0"
   },
-  "devDependencies": {
-    "@types/cors": "^2.8.19",
-    "@types/express": "^5.0.3",
-    "@types/ws": "^8.5.10",
-    "ts-node": "^10.9.2",
-    "typescript": "^5.5.2"
+  "engines": {
+    "node": ">=18.0.0"
   }
 }
