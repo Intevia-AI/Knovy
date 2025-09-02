@@ -9,12 +9,6 @@ import { FeaturesPopup } from './main/FeaturesPopup'
 import { SettingsPopup } from './main/SettingsPopup'
 import { ScreenPreviewPopup } from './main/ScreenPreviewPopup'
 
-/**
- * This is the root component for all renderer windows.
- * It acts as a router, rendering the correct component based on the URL hash.
- * It contains no complex state management hooks itself to avoid cross-window conflicts
- * and to respect the Rules of Hooks.
- */
 const getInitialView = () => {
   if (typeof window === 'undefined') return 'main'
   const hash = window.location.hash.substring(1)
@@ -29,37 +23,54 @@ const getInitialView = () => {
   }
 }
 
-export function Main() {
-  const { setTheme } = useTheme()
+/**
+ * This component now holds the state and logic for the application.
+ * It calls the necessary hooks and passes props down to the view components.
+ */
+function AppContainer() {
   const [view, setView] = useState(getInitialView)
 
   useEffect(() => {
-    setTheme('light')
     const handleHashChange = () => {
       setView(getInitialView())
     }
-
     window.addEventListener('hashchange', handleHashChange)
-
     return () => {
       window.removeEventListener('hashchange', handleHashChange)
     }
-  }, [setTheme])
+  }, [])
 
-  // Render the correct component based on the view
+  // Render the correct component based on the view, passing necessary props
   switch (view) {
     case 'main':
       return <MainBar />
+    case 'screen-preview':
+      // ScreenPreviewPopup might need props in the future
+      return <ScreenPreviewPopup />
     case 'transcriptions':
+      // ChatPanel might need props in the future
       return <ChatPanel />
     case 'features':
+      // Pass the required props to FeaturesPopup
       return <FeaturesPopup />
     case 'settings':
+      // SettingsPopup might need props in the future
       return <SettingsPopup />
-    case 'screen-preview':
-      return <ScreenPreviewPopup />
     default:
-      // Render nothing or a loading indicator while the view is being determined
       return null
   }
+}
+
+/**
+ * This is the root component for all renderer windows.
+ * It sets up global providers like Theme and delegates rendering to AppContainer.
+ */
+export function Main() {
+  const { setTheme } = useTheme()
+
+  useEffect(() => {
+    setTheme('light')
+  }, [setTheme])
+
+  return <AppContainer />
 }
