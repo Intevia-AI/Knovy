@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { ListCollapseIcon, CameraIcon, History, MessageSquareQuote } from 'lucide-react'
 import { useI18n } from '@/hooks/useI18n'
-import { AIAction } from '@/hooks/useAIInteraction'
+import { useAIInteraction } from '@/hooks/useAIInteraction'
 
 export function FeaturesPopup() {
   const { t } = useI18n()
+  const { sendContextToAI } = useAIInteraction()
   const [isScreenSharing, setIsScreenSharing] = useState(false)
 
   useEffect(() => {
@@ -54,7 +55,7 @@ export function FeaturesPopup() {
           variant="ghost"
           size="sm"
           disabled={!isScreenSharing}
-          onClick={() => onAiAction(action)}
+          onClick={() => sendContextToAI(action)}
           className="w-full justify-start text-xs h-8 text-black hover:bg-black/10 hover:text-black"
         >
           <Icon className="mr-2 h-3 w-3" />

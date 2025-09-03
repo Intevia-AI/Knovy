@@ -10,6 +10,7 @@ import html2canvas from 'html2canvas-pro'
 import { useI18n } from '@/hooks/useI18n'
 import { GeminiClient } from '@/lib/geminiClient'
 import { useScreenShare } from './useScreenShare'
+import { supabase } from '@/lib/supabaseClient'
 
 const API_URL = import.meta.env.VITE_AI_API_URL || 'http://localhost:4567/api/ai'
 
@@ -88,6 +89,7 @@ export function useAIInteraction() {
       const unsubscribe = window.electronAPI.on(
         'transcription:data',
         (newTranscription: TranscriptionMessage) => {
+          console.log('[Renderer] Received transcription:data event:', newTranscription)
           if (!newTranscription || !newTranscription.content) return
 
           setTranscriptions((prev) => [...prev, newTranscription])
@@ -217,7 +219,7 @@ export function useAIInteraction() {
             console.log('Started new session:', sessionId)
 
             // Load existing transcripts for this session
-            const existingTranscripts = await window.electronAPI.getTranscripts(sessionId)
+            const existingTranscripts = await window.electronAPI.invoke('db:get-transcripts', sessionId)
             if (existingTranscripts && existingTranscripts.length > 0) {
               console.log(
                 `[AIInteraction] Loaded ${existingTranscripts.length} existing transcripts.`
@@ -317,8 +319,8 @@ export function useAIInteraction() {
           timestamp: Date.now()
         }
       }
-      const contextTranscriptions =
-        action === 'answer' || action === 'summary' ? transcriptions : transcriptions.slice(-5)
+      const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
+      const contextTranscriptions = (action === 'answer' || action === 'summary' ? transcriptions : transcriptions.slice(-5)).filter(t => t.timestamp >= fiveMinutesAgo);
 
       const contextText = contextTranscriptions.map((t) => t.content).join('\n')
 
@@ -557,34 +559,62 @@ export function useAIInteraction() {
       }
 
       try {
-        const res = await fetch(API_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            messages: [userMsg],
-            action: action,
-            data: {
-              text: context.text,
-              timestamp: context.timestamp,
-              screenshot: context.screenshot
-            }
-          })
-        })
+        let functionName = ''
+        let functionPayload: Record<string, any> = {}
 
-        if (!res.ok) {
-          const errorText = await res.text()
-          throw new Error(`AI API Error (${res.status}): ${errorText}`)
+        switch (action) {
+          case 'summary':
+            functionName = 'ai-action-summarize'
+            functionPayload = { text: context.text }
+            break
+          case 'keyword_search':
+            functionName = 'ai-action-keyword-search'
+            functionPayload = { text: query } // Pass the keyword query
+            break
+          case 'answer': // Mapping 'answer' to the recommend-response function
+            functionName = 'ai-action-recommend-response'
+            // The function expects a messages array
+            functionPayload = { messages: [userMsg] }
+            break
+          case 'screen':
+            functionName = 'ai-action-screenshot-analysis'
+            functionPayload = { prompt: query, screenshot: screenshot }
+            break
+          default:
+            // For actions not migrated, we can either do nothing or keep the old logic.
+            // For now, we'll throw an error to indicate it's not supported by this new path.
+            throw new Error(`AI Action '${action}' is not supported by Supabase Edge Functions.`)
         }
 
-        const aiResponse: AIMessage = await res.json()
-        setAiMessages((prev) => [
-          ...prev,
-          {
-            id: aiResponse.id || `ai-${Date.now()}`,
-            role: 'assistant',
-            content: aiResponse.content || '[AI 回應為空]'
-          }
-        ])
+        console.log(`[useAIInteraction] Invoking Supabase function '${functionName}' with payload:`, functionPayload);
+
+        const { data, error } = await supabase.functions.invoke(functionName, {
+          body: functionPayload
+        })
+
+        console.log('[useAIInteraction] Received response from Supabase function:', { data, error });
+
+        if (error) {
+          throw error
+        }
+
+        // Adapt the function response to the AIMessage format
+        const responseMapping = {
+          summary: (d) => d.summary,
+          keyword_search: (d) => `Keywords found: ${d.keywords.join(', ')}`,
+          answer: (d) => d.recommendation,
+          screen: (d) => d.analysis
+        };
+
+        const content = responseMapping[action]?.(data) || JSON.stringify(data);
+
+        const aiResponse: AIMessage = {
+          id: `ai-${Date.now()}`,
+          role: 'assistant',
+          content: content
+        }
+
+        setAiMessages((prev) => [...prev, aiResponse])
       } catch (e: unknown) {
         setAiMessages((prev) => [
           ...prev,
