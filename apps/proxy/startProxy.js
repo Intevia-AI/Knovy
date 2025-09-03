@@ -64,9 +64,7 @@ function validateEnvironment() {
     },
   ];
 
-  const missingVars = requiredVars.filter(
-    (variable) => !process.env[variable.name]
-  );
+  const missingVars = requiredVars.filter((variable) => !process.env[variable.name]);
 
   if (missingVars.length > 0) {
     console.error("\n❌ Environment Validation Error ❌");
@@ -78,12 +76,8 @@ function validateEnvironment() {
       console.error(`    Hint: ${variable.hint}`);
     });
 
-    console.error(
-      "\nPlease check your .env file and ensure all required variables are set."
-    );
-    console.error(
-      "You can copy the .env.example file to .env to get started:\n"
-    );
+    console.error("\nPlease check your .env file and ensure all required variables are set.");
+    console.error("You can copy the .env.example file to .env to get started:\n");
     console.error("  cp .env.example .env\n");
 
     throw new Error("Missing required environment variables");
@@ -169,7 +163,7 @@ class GeminiProxyServer {
       const now = Date.now();
       const clientConnections = connectionCounts.get(clientIp) || [];
       const recentConnections = clientConnections.filter(
-        (time) => now - time < RATE_LIMIT.windowMs
+        (time) => now - time < RATE_LIMIT.windowMs,
       );
 
       if (recentConnections.length >= RATE_LIMIT.maxConnections) {
@@ -182,9 +176,7 @@ class GeminiProxyServer {
       connectionCounts.set(clientIp, recentConnections);
 
       const clientId = this.generateClientId();
-      console.log(
-        `[Proxy] New client connected: ${clientId} from IP: ${clientIp}`
-      );
+      console.log(`[Proxy] New client connected: ${clientId} from IP: ${clientIp}`);
 
       // Create client connection object with default settings
       const clientConnection = {
@@ -204,9 +196,7 @@ class GeminiProxyServer {
         const now = Date.now();
         if (now - clientConnection.lastActivity > 5 * 60 * 1000) {
           // 5 minutes inactivity
-          console.log(
-            `[Proxy] Client ${clientId} inactive for too long, disconnecting`
-          );
+          console.log(`[Proxy] Client ${clientId} inactive for too long, disconnecting`);
           this.cleanupClient(clientId);
         }
       }, 60 * 1000); // Check every minute
@@ -275,12 +265,7 @@ class GeminiProxyServer {
       console.log(`[Proxy] Client ${clientId} set mode to: ${data.mode}`);
       client.mode = data.mode;
       if (client.geminiWs) {
-        this.sendInitialSetup(
-          client.geminiWs,
-          data.mode,
-          client.customPrompt,
-          client.language
-        );
+        this.sendInitialSetup(client.geminiWs, data.mode, client.customPrompt, client.language);
       }
       return;
     }
@@ -289,28 +274,16 @@ class GeminiProxyServer {
       console.log(`[Proxy] Client ${clientId} set custom prompt`);
       client.customPrompt = data.prompt;
       if (client.geminiWs) {
-        this.sendInitialSetup(
-          client.geminiWs,
-          client.mode,
-          client.customPrompt,
-          client.language
-        );
+        this.sendInitialSetup(client.geminiWs, client.mode, client.customPrompt, client.language);
       }
       return;
     }
 
     if (data.type === "language") {
-      console.log(
-        `[Proxy] Client ${clientId} set language to: ${data.language}`
-      );
+      console.log(`[Proxy] Client ${clientId} set language to: ${data.language}`);
       client.language = data.language;
       if (client.geminiWs) {
-        this.sendInitialSetup(
-          client.geminiWs,
-          client.mode,
-          client.customPrompt,
-          client.language
-        );
+        this.sendInitialSetup(client.geminiWs, client.mode, client.customPrompt, client.language);
       }
       return;
     }
@@ -324,10 +297,7 @@ class GeminiProxyServer {
       console.log(`[Proxy] Client ${clientId} disconnecting...`);
       this.cleanupClient(clientId);
     } else {
-      console.log(
-        `[Proxy] Unknown message type from client ${clientId}:`,
-        data.type
-      );
+      console.log(`[Proxy] Unknown message type from client ${clientId}:`, data.type);
     }
   }
 
@@ -358,15 +328,15 @@ class GeminiProxyServer {
           geminiWs,
           client.mode || "transcription",
           client.customPrompt || null,
-          client.language || "zh-TW"
+          client.language || "zh-TW",
         );
       });
 
       geminiWs.on("message", (data) => {
-        console.log(
-          `[Proxy] Received raw data from Gemini for client ${client.id}:`,
-          data.toString()
-        );
+        // console.log(
+        //   `[Proxy] Received raw data from Gemini for client ${client.id}:`,
+        //   data.toString(),
+        // );
         this.forwardToClient(client, data);
       });
 
@@ -376,29 +346,18 @@ class GeminiProxyServer {
       });
 
       geminiWs.on("error", (error) => {
-        console.error(
-          `[Proxy] Gemini connection error for client ${client.id}:`,
-          error
-        );
+        console.error(`[Proxy] Gemini connection error for client ${client.id}:`, error);
         this.cleanupGeminiConnection(client.id);
       });
     } catch (error) {
-      console.error(
-        `[Proxy] Error connecting to Gemini for client ${client.id}:`,
-        error
-      );
+      console.error(`[Proxy] Error connecting to Gemini for client ${client.id}:`, error);
       this.cleanupGeminiConnection(client.id);
     }
   }
 
-  sendInitialSetup(
-    ws,
-    mode = "transcription",
-    customPrompt = null,
-    language = "zh-TW"
-  ) {
+  sendInitialSetup(ws, mode = "transcription", customPrompt = null, language = "zh-TW") {
     console.log(
-      `[Proxy] Sending initial setup for mode: ${mode}, customPrompt: ${customPrompt}, language: ${language}`
+      `[Proxy] Sending initial setup for mode: ${mode}, customPrompt: ${customPrompt}, language: ${language}`,
     );
     let systemInstruction;
 
@@ -467,7 +426,7 @@ Please answer in ${language} !!!!!`;
   forwardToGemini(client, data) {
     if (!client.geminiWs || !client.isSetupComplete) {
       console.log(
-        `[Proxy] Cannot forward to Gemini: geminiWs=${!!client.geminiWs}, isSetupComplete=${client.isSetupComplete}`
+        `[Proxy] Cannot forward to Gemini: geminiWs=${!!client.geminiWs}, isSetupComplete=${client.isSetupComplete}`,
       );
       return;
     }
@@ -483,9 +442,7 @@ Please answer in ${language} !!!!!`;
           ],
         },
       };
-      console.log(
-        `[Proxy] Forwarding media chunk to Gemini, size: ${data.chunk.length}`
-      );
+      console.log(`[Proxy] Forwarding media chunk to Gemini, size: ${data.chunk.length}`);
       client.geminiWs.send(JSON.stringify(message));
     } catch (error) {
       console.error(`[Proxy] Error forwarding to Gemini:`, error);
@@ -496,10 +453,7 @@ Please answer in ${language} !!!!!`;
     try {
       console.log(`[Proxy] Processing Gemini response for client ${client.id}`);
       const messageData = JSON.parse(data);
-      console.log(
-        `[Proxy] Parsed message data:`,
-        JSON.stringify(messageData, null, 2)
-      );
+      console.log(`[Proxy] Parsed message data:`, JSON.stringify(messageData, null, 2));
 
       if (messageData.setupComplete) {
         console.log(`[Proxy] Setup complete for client ${client.id}`);
@@ -509,20 +463,16 @@ Please answer in ${language} !!!!!`;
       }
 
       if (messageData.serverContent?.modelTurn?.parts) {
-        console.log(
-          `[Proxy] Received response from Gemini for client ${client.id}`
-        );
+        console.log(`[Proxy] Received response from Gemini for client ${client.id}`);
         const parts = messageData.serverContent.modelTurn.parts;
         for (const part of parts) {
           if (part.text) {
-            console.log(
-              `[Proxy] Forwarding text to client ${client.id}: ${part.text}`
-            );
+            console.log(`[Proxy] Forwarding text to client ${client.id}: ${part.text}`);
             client.ws.send(
               JSON.stringify({
                 text: part.text,
                 turnComplete: false,
-              })
+              }),
             );
           }
         }
@@ -532,17 +482,14 @@ Please answer in ${language} !!!!!`;
           JSON.stringify({
             text: "search web",
             turnComplete: true,
-          })
+          }),
         );
       } else if (messageData.error) {
         console.error(`[Proxy] Gemini returned an error:`, messageData.error);
         client.ws.send(JSON.stringify({ error: messageData.error }));
       } else {
         console.log("[WebSocket] Message data:", messageData);
-        console.log(
-          "[WebSocket] Turn complete value:",
-          messageData.serverContent?.turnComplete
-        );
+        console.log("[WebSocket] Turn complete value:", messageData.serverContent?.turnComplete);
       }
     } catch (error) {
       console.error(`[Proxy] Error processing Gemini response:`, error);
@@ -592,8 +539,7 @@ Please answer in ${language} !!!!!`;
       apiRes.on("end", () => {
         try {
           const geminiResponse = JSON.parse(apiResBody);
-          const content =
-            geminiResponse.candidates[0]?.content?.parts[0]?.text || "";
+          const content = geminiResponse.candidates[0]?.content?.parts[0]?.text || "";
           const responsePayload = {
             id: `ai-${Date.now()}`,
             role: "assistant",
@@ -605,9 +551,7 @@ Please answer in ${language} !!!!!`;
           console.error("[Proxy] Error parsing Gemini API response:", e);
           console.error("[Proxy] Raw Gemini Response:", apiResBody);
           res.writeHead(500, { "Content-Type": "application/json" });
-          res.end(
-            JSON.stringify({ error: "Error processing Gemini response" })
-          );
+          res.end(JSON.stringify({ error: "Error processing Gemini response" }));
         }
       });
     });
