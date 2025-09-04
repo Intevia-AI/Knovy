@@ -21,6 +21,36 @@ import http from "http";
 import https from "https"; // Use the native https module
 import cors from "cors";
 import express from "express";
+import fs from "fs";
+
+const promptsDirPath = path.resolve(process.cwd(), "prompts");
+
+function loadPrompts() {
+  try {
+    // Prefer human-editable .md files if present
+    const transcriptionMdPath = path.join(promptsDirPath, "transcription.md");
+    const answerMdPath = path.join(promptsDirPath, "answer.md");
+    if (fs.existsSync(transcriptionMdPath) && fs.existsSync(answerMdPath)) {
+      const transcription = fs.readFileSync(transcriptionMdPath, "utf-8");
+      const answer = fs.readFileSync(answerMdPath, "utf-8");
+      return {
+        transcription: { system_instruction: transcription },
+        answer: { system_instruction: answer },
+      };
+    }
+  } catch (e) {
+    console.warn("[Proxy] Failed reading markdown prompts, falling back to JSON:", e);
+  }
+
+  // Last resort minimal defaults to avoid crash
+  console.warn("[Proxy] No prompts found. Using minimal defaults.");
+  return {
+    transcription: { system_instruction: "" },
+    answer: { system_instruction: "" },
+  };
+}
+
+const prompts = loadPrompts();
 
 /**
  * Load environment variables from .env file
@@ -362,45 +392,15 @@ class GeminiProxyServer {
     let systemInstruction;
 
     if (mode === "transcription") {
-      systemInstruction = `You are a real-time transcription assistant. For each audio input, respond in the following format, please respond as fast as possible:
-
-TRANSCRIPTION: [transcribe the audio content here. If the language is different from ${language}, please translate to ${language}. But if the language is original, please only do transcription.]
-KEYWORDS: [list any technical terms, specialized vocabulary, or complex concepts that might be difficult for a general audience to understand, separated by commas. If none, leave empty]
-
-Example:
-TRANSCRIPTION: The quantum entanglement phenomenon demonstrates non-local correlations between particles.
-KEYWORDS: quantum entanglement, non-local correlations
-
-If there are no difficult terms, respond with empty keywords:
-TRANSCRIPTION: The weather is nice today.
-KEYWORDS:
-`;
+      systemInstruction = prompts.transcription.system_instruction.replace(
+        /{{language}}/g,
+        language,
+      );
     } else {
       if (customPrompt) {
         systemInstruction = customPrompt;
       } else {
-        systemInstruction = `You are an AI assistant in a meeting. Your job is to listen silently and only respond when truly necessary, with natural spoken-style answers that the user can directly read out loud. Follow these strict rules:
-
-
-1. Wait until a full speaker turn or a complete sentence is received before making any decision. Do NOT react to partial input.
-2. Do NOT ask questions or take any initiative. You are purely reactive.
-3. Do NOT respond to greetings, small talk, or simple confirmations (such as "okay," "hi," "do you get it?").
-4. Only respond if the full utterance clearly:
-   - Contains a request for help or request for information
-   - Includes a complex or technical question
-   - Shows confusion or ambiguity that needs clarification
-   - If the input uses imperative language (e.g., "Explain this", "Fix the code", "Give me an answer", "Summarize this", "Help me with this"), treat it as a valid request and respond accordingly
-
-5. Please respond at least 50 words.
-6. If none of these are detected, respond with: NULL
-7. Please answer the question detailed, business-oriented, professional and academically.
-8. For web-related questions (such as real-time info or news), or if you think search web is needed for answering the question, respond with: [WEB] {user question here}
-
-
-User: What is the stock price of NVIDIA?
-Assistant: [WEB] What is the stock price of NVIDIA?
-
-Please answer in ${language} !!!!!`;
+        systemInstruction = prompts.answer.system_instruction.replace(/{{language}}/g, language);
       }
     }
 
