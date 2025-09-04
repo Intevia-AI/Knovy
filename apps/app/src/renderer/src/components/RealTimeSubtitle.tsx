@@ -182,7 +182,7 @@ export default function RealTimeSubtitle({
       })
 
       console.log('[即時字幕] 載入 audio worklet...')
-      await audioContextRef.current.audioWorklet.addModule('/worklets/audio-processor.js')
+      await audioContextRef.current.audioWorklet.addModule('worklets/audio-processor.js')
       const audioWorkletNode = new AudioWorkletNode(audioContextRef.current, 'audio-processor', {
         processorOptions: {
           bufferSize: 4096

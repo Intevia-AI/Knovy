@@ -113,7 +113,7 @@ export default function RealTimeAnalysis({
 
     try {
       audioContextRef.current = new AudioContext({ sampleRate: 16000 })
-      await audioContextRef.current.audioWorklet.addModule('/worklets/audio-processor.js')
+      await audioContextRef.current.audioWorklet.addModule('worklets/audio-processor.js')
 
       const audioWorkletNode = new AudioWorkletNode(audioContextRef.current, 'audio-processor', {
         processorOptions: {
