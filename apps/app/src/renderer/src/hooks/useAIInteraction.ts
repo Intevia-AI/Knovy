@@ -8,7 +8,6 @@ import { useState, useCallback, useRef, useEffect } from 'react'
 import { Message as AIMessage } from 'ai'
 import html2canvas from 'html2canvas-pro'
 import { useI18n } from '@/hooks/useI18n'
-import { GeminiClient } from '@/lib/geminiClient'
 import { useScreenShare } from './useScreenShare'
 import { supabase } from '@/lib/supabaseClient'
 
@@ -44,29 +43,11 @@ export function useAIInteraction() {
   const [keywords, setKeywords] = useState<string[]>([])
   const [selectedKeyword, setSelectedKeyword] = useState<string | null>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
-  const accumulatedTextRef = useRef('')
   const [isSubtitleVisible, setIsSubtitleVisible] = useState(true)
   const { t, language = 'en-US' } = useI18n()
   const currentLanguage = language as 'en-US' | 'zh-TW' | 'ja-JP'
 
-  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null)
-  const sessionIdRef = useRef<string | null>(null)
-
-  const geminiClientRef = useRef<GeminiClient | null>(null)
-  const audioContextRef = useRef<AudioContext | null>(null)
-  const audioWorkletNodeRef = useRef<AudioWorkletNode | null>(null)
-  const micAudioSourceRef = useRef<MediaStreamAudioSourceNode | null>(null)
-  const systemAudioSourceRef = useRef<MediaStreamAudioSourceNode | null>(null)
-  const shouldSendAudioRef = useRef(false)
-
-  const {
-    isScreenSharing,
-    toggleScreenShare,
-    screenStreamRef,
-    micStream,
-    currentSystemAudioStream,
-    cancelScreenShare
-  } = useScreenShare()
+  const { isScreenSharing, toggleScreenShare, screenStreamRef, cancelScreenShare } = useScreenShare()
 
   useEffect(() => {
     if (messagesContainerRef.current) {
@@ -75,21 +56,16 @@ export function useAIInteraction() {
   }, [aiMessages])
 
   const handleTranscriptionResponse = useCallback((text: string) => {
-    // The sole responsibility of this function is to send the raw transcription text
-    // to the main process. The main process will handle saving to the DB and
-    // broadcasting the final transcript object back to all renderer processes.
     if (window.electronAPI && text) {
       window.electronAPI.send('transcription:data', text)
     }
   }, [])
 
-  // This effect listens for the final, processed transcript object from the main process.
   useEffect(() => {
     if (window.electronAPI) {
       const unsubscribe = window.electronAPI.on(
         'transcription:data',
         (newTranscription: TranscriptionMessage) => {
-          console.log('[Renderer] Received transcription:data event:', newTranscription)
           if (!newTranscription || !newTranscription.content) return
 
           setTranscriptions((prev) => [...prev, newTranscription])
@@ -128,192 +104,9 @@ export function useAIInteraction() {
     })
   }, [])
 
-  const stopAudioProcessing = useCallback(() => {
-    console.log('[AIInteraction] Stopping audio processing...')
-    shouldSendAudioRef.current = false
-
-    micAudioSourceRef.current?.disconnect()
-    micAudioSourceRef.current = null
-    systemAudioSourceRef.current?.disconnect()
-    systemAudioSourceRef.current = null
-
-    audioWorkletNodeRef.current?.disconnect()
-    audioWorkletNodeRef.current = null
-
-    audioContextRef.current?.close().catch(console.error)
-    audioContextRef.current = null
-  }, [])
-
-  const startAudioProcessing = useCallback(async () => {
-    if (!isScreenSharing || !geminiClientRef.current) return
-    console.log('[AIInteraction] Starting audio processing...')
-
-    try {
-      audioContextRef.current = new AudioContext({ sampleRate: 16000 })
-      await audioContextRef.current.audioWorklet.addModule('/worklets/audio-processor.js')
-
-      const audioWorkletNode = new AudioWorkletNode(audioContextRef.current, 'audio-processor', {
-        processorOptions: {
-          bufferSize: 8192
-        }
-      })
-      audioWorkletNodeRef.current = audioWorkletNode
-
-      audioWorkletNode.port.onmessage = (event) => {
-        const { pcmData } = event.data
-        if (geminiClientRef.current && shouldSendAudioRef.current) {
-          try {
-            const pcmArray = new Uint8Array(pcmData)
-            const b64Data = btoa(String.fromCharCode.apply(null, Array.from(pcmArray) as any))
-            geminiClientRef.current.sendMediaChunk(b64Data, 'audio/pcm')
-          } catch (error) {
-            console.error('[AIInteraction] Error sending audio chunk:', error)
-          }
-        }
-      }
-
-      if (micStream) {
-        micAudioSourceRef.current = audioContextRef.current.createMediaStreamSource(micStream)
-        micAudioSourceRef.current.connect(audioWorkletNode)
-      }
-
-      if (currentSystemAudioStream) {
-        systemAudioSourceRef.current =
-          audioContextRef.current.createMediaStreamSource(currentSystemAudioStream)
-        systemAudioSourceRef.current.connect(audioWorkletNode)
-      }
-
-      shouldSendAudioRef.current = true
-    } catch (error) {
-      console.error('[AIInteraction] Error starting audio processing:', error)
-    }
-  }, [isScreenSharing, micStream, currentSystemAudioStream])
-
-  useEffect(() => {
-    if (isScreenSharing) {
-      startAudioProcessing()
-    } else {
-      stopAudioProcessing()
-    }
-
-    return () => {
-      stopAudioProcessing()
-    }
-  }, [isScreenSharing, startAudioProcessing, stopAudioProcessing])
-
-  useEffect(() => {
-    if (isScreenSharing) {
-      let currentGeminiClient: GeminiClient | null = null
-
-      const initializeSessionAndClient = async () => {
-        console.trace('[AIInteraction] initializeSessionAndClient called')
-        if (window.electronAPI) {
-          try {
-            console.log('[Debug] Attempting to invoke session:start from renderer')
-            const sessionId = await window.electronAPI.invoke('session:start')
-            if (!sessionId) {
-              throw new Error('Main process failed to start a session.')
-            }
-            setCurrentSessionId(sessionId)
-            sessionIdRef.current = sessionId
-            console.log('Started new session:', sessionId)
-
-            // Load existing transcripts for this session
-            const existingTranscripts = await window.electronAPI.invoke('db:get-transcripts', sessionId)
-            if (existingTranscripts && existingTranscripts.length > 0) {
-              console.log(
-                `[AIInteraction] Loaded ${existingTranscripts.length} existing transcripts.`
-              )
-              // Ensure they are in the correct format for the state
-              const formattedTranscripts = existingTranscripts.map((t) => ({
-                ...t,
-                role: 'assistant',
-                type: 'transcription'
-              }))
-              setTranscriptions(formattedTranscripts)
-            } else {
-              // Clear any old transcripts from a previous session
-              setTranscriptions([])
-            }
-
-            currentGeminiClient = new GeminiClient(
-              (text, turnComplete) => {
-                console.log('[GeminiClient Message]:', text, 'Turn Complete:', turnComplete)
-              },
-              () => {
-                console.log('[GeminiClient] Setup complete.')
-                shouldSendAudioRef.current = true
-              },
-              () => {}, // onPlayingStateChange
-              () => {}, // onAudioLevelChange
-              (text) => {
-                const transcriptionMatch = text.match(/TRANSCRIPTION:\s*(.*)/)
-                const keywordsMatch = text.match(/KEYWORDS:\s*(.*)/)
-
-                if (transcriptionMatch && transcriptionMatch[1]) {
-                  const transcription = transcriptionMatch[1].trim()
-                  if (transcription) {
-                    handleTranscriptionResponse(transcription)
-                  }
-                }
-
-                if (keywordsMatch && keywordsMatch[1]) {
-                  const keywords = keywordsMatch[1]
-                    .split(',')
-                    .map((k) => k.trim())
-                    .filter((k) => k)
-                  if (keywords.length > 0) {
-                    handleTranscriptionKeywords(keywords)
-                  }
-                }
-              },
-              'transcription',
-              customPrompt,
-              language
-            )
-            geminiClientRef.current = currentGeminiClient // Assign to ref
-            await currentGeminiClient.connect()
-          } catch (error) {
-            console.error(
-              '[AIInteraction] Error creating session or connecting GeminiClient:',
-              error
-            )
-          }
-        }
-      }
-
-      const cleanupSessionAndClient = async () => {
-        if (currentGeminiClient) {
-          currentGeminiClient.disconnect()
-          currentGeminiClient = null
-        }
-        if (window.electronAPI && sessionIdRef.current) {
-          window.electronAPI.invoke('session:end', sessionIdRef.current)
-          console.log('Ended session:', sessionIdRef.current)
-          setCurrentSessionId(null)
-          sessionIdRef.current = null
-        }
-      }
-
-      initializeSessionAndClient()
-
-      return () => {
-        cleanupSessionAndClient()
-      }
-    }
-  }, [
-    isScreenSharing,
-    customPrompt,
-    language,
-    handleTranscriptionResponse,
-    handleTranscriptionKeywords
-  ])
-
   const gatherContext = useCallback(
     async (action?: AIAction): Promise<AIContextData | null> => {
-      console.log('[AIInteraction] Gathering context from transcriptions...')
       if (transcriptions.length === 0) {
-        console.log('[AIInteraction] No transcriptions available, using empty context')
         return {
           text: '',
           timestamp: Date.now()
@@ -335,9 +128,6 @@ export function useAIInteraction() {
   const sendContextToAI = useCallback(
     async (action: AIAction, query?: string, screenshot?: string) => {
       setIsLoading(true)
-      console.log(
-        `Sending AI request. Action: ${action}, Custom Query: ${query}, Screenshot: ${screenshot}`
-      )
 
       let context: AIContextData
       let finalUserMsgContent: string
@@ -581,24 +371,17 @@ export function useAIInteraction() {
             functionPayload = { prompt: query, screenshot: screenshot }
             break
           default:
-            // For actions not migrated, we can either do nothing or keep the old logic.
-            // For now, we'll throw an error to indicate it's not supported by this new path.
-            throw new Error(`AI Action '${action}' is not supported by Supabase Edge Functions.`)
+            throw new Error(`AI Action '${action}' is not supported by Supabase Edge Functions.`) 
         }
-
-        console.log(`[useAIInteraction] Invoking Supabase function '${functionName}' with payload:`, functionPayload);
 
         const { data, error } = await supabase.functions.invoke(functionName, {
           body: functionPayload
         })
 
-        console.log('[useAIInteraction] Received response from Supabase function:', { data, error });
-
         if (error) {
           throw error
         }
 
-        // Adapt the function response to the AIMessage format
         const responseMapping = {
           summary: (d) => d.summary,
           keyword_search: (d) => `Keywords found: ${d.keywords.join(', ')}`,
@@ -637,13 +420,12 @@ export function useAIInteraction() {
       const unsubscribe = window.electronAPI.on(
         'ai:custom-prompt',
         ({ action, prompt }: { action: AIAction; prompt: string }) => {
-          console.log(`[useAIInteraction] Received custom prompt from popover: ${prompt}`)
           sendContextToAI(action, prompt)
         }
       )
       return () => unsubscribe()
     }
-  }, [sendContextToAI]) // Re-run if sendContextToAI changes
+  }, [sendContextToAI])
 
   const handleKeywordClick = useCallback(
     async (keyword: string) => {
@@ -676,7 +458,6 @@ export function useAIInteraction() {
     setCustomPrompt('')
     setIsLoading(false)
     setSelectedKeyword(null)
-    console.log('Chat and keywords reset.')
   }, [])
 
   const setSubtitleVisibility = (visible: boolean) => {

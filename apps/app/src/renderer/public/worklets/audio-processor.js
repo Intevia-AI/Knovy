@@ -22,7 +22,7 @@ class AudioProcessor extends AudioWorkletProcessor {
       const level = Math.min(1, rms * 100);
 
       // 更新靜音狀態
-      // this.isSilent = level < this.silenceThreshold; // Temporarily disabled for debugging
+      this.isSilent = level < this.silenceThreshold;
 
       // Fill the buffer
       for (let i = 0; i < inputChannel.length; i++) {
@@ -30,7 +30,7 @@ class AudioProcessor extends AudioWorkletProcessor {
 
         if (this.bufferIndex >= this.bufferSize) {
           // 只有在非靜音狀態下才發送數據
-          // if (!this.isSilent) { // Temporarily disabled for debugging
+          if (!this.isSilent) {
             // Convert to PCM data
             const pcmData = new Int16Array(this.bufferSize);
             for (let j = 0; j < this.bufferSize; j++) {
@@ -46,7 +46,7 @@ class AudioProcessor extends AudioWorkletProcessor {
               },
               [pcmData.buffer]
             );
-          // } // Temporarily disabled for debugging
+          }
 
           this.bufferIndex = 0;
         }

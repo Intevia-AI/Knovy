@@ -26,6 +26,7 @@ export default function RealTimeAnalysis({
   const mediaStreamRef = useRef<MediaStream | null>(null)
   const systemAudioSourceRef = useRef<MediaStreamAudioSourceNode | null>(null)
   const shouldSendAudioRef = useRef(false)
+  const textBufferRef = useRef('')
 
   const setupSystemAudioSource = (stream: MediaStream) => {
     if (!audioContextRef.current || !audioWorkletNodeRef.current) {
@@ -67,24 +68,42 @@ export default function RealTimeAnalysis({
       () => {}, // onAudioLevelChange
       (text) => {
         // onTranscription (This is the one we care about for subtitles)
-        const transcriptionMatch = text.match(/TRANSCRIPTION:\s*(.*)/)
-        const keywordsMatch = text.match(/KEYWORDS:\s*(.*)/)
+        textBufferRef.current += text
 
-        if (transcriptionMatch && transcriptionMatch[1]) {
-          const transcription = transcriptionMatch[1].trim()
-          if (transcription && onTextResponse) {
-            onTextResponse(transcription, false) // Assume not turn complete for transcription
-          }
-        }
+        if (
+          textBufferRef.current.includes('TRANSCRIPTION:') &&
+          textBufferRef.current.includes('KEYWORDS:')
+        ) {
+          const transcriptionMatch = textBufferRef.current.match(
+            /TRANSCRIPTION: (.*?)(?:\n|$|KEYWORDS:)/s
+          )
+          const keywordsMatch = textBufferRef.current.match(/KEYWORDS: (.*?)(?:\n|$)/s)
 
-        if (keywordsMatch && keywordsMatch[1]) {
-          const keywords = keywordsMatch[1]
-            .split(',')
-            .map((k) => k.trim())
-            .filter((k) => k)
-          if (keywords.length > 0 && onKeywords) {
-            onKeywords(keywords)
+          if (transcriptionMatch && transcriptionMatch[1]) {
+            const transcription = transcriptionMatch[1]
+              .replace(/TRANSCRIPTION:\s*/gi, '')
+              .replace(/search web/g, '')
+              .replace(/\s+/g, ' ')
+              .trim()
+            if (transcription && onTextResponse) {
+              onTextResponse(transcription, false) // Assume not turn complete for transcription
+            }
           }
+
+          if (keywordsMatch && keywordsMatch[1]) {
+            const keywordsStr = keywordsMatch[1].trim()
+            if (keywordsStr) {
+              const keywords = keywordsStr
+                .split(',')
+                .map((k) => k.trim())
+                .filter((k) => k)
+              if (keywords.length > 0 && onKeywords) {
+                onKeywords(keywords)
+              }
+            }
+          }
+
+          textBufferRef.current = ''
         }
       },
       'transcription', // mode

@@ -5,7 +5,6 @@
  */
 
 const PROXY_SERVER_URL = import.meta.env.VITE_GEMINI_WS_URL || 'ws://localhost:4567'
-console.log(PROXY_SERVER_URL)
 
 /**
  * WebSocket client for Gemini AI proxy server communication.
@@ -18,11 +17,8 @@ export class GeminiClient {
   /** @type {WebSocket|null} WebSocket connection instance */
   private ws: WebSocket | null = null
 
-  private _isConnected: boolean = false
-
-  public get isConnected(): boolean {
-    return this._isConnected && this.ws?.readyState === WebSocket.OPEN
-  }
+  /** @type {boolean} Connection status flag */
+  private isConnected: boolean = false
 
   /** @type {boolean} Setup completion status flag */
   private isSetupComplete: boolean = false
@@ -63,9 +59,6 @@ export class GeminiClient {
   /** @type {string|undefined} User's preferred language setting */
   private language?: string
 
-  private transcriptionQueue: string[] = []
-  private processingInterval: number | null = null
-
   constructor(
     onMessage: (text: string, turnComplete: boolean) => void,
     onSetupComplete: () => void,
@@ -88,15 +81,6 @@ export class GeminiClient {
     this.mode = mode
     this.customPrompt = customPrompt || null
     this.language = language
-  }
-
-  private processQueue() {
-    if (this.transcriptionQueue.length === 0) {
-      return
-    }
-    const batchedText = this.transcriptionQueue.join(' ')
-    this.transcriptionQueue = []
-    this.onTranscriptionCallback?.(batchedText)
   }
 
   async connect() {
@@ -127,26 +111,15 @@ export class GeminiClient {
         console.log('[Gemini] 發送模式訊息:', this.mode)
         this.ws?.send(JSON.stringify({ type: 'mode', mode: this.mode }))
         this.onSetupCompleteCallback?.()
-        this._isConnected = true
+        this.isConnected = true
         this.reconnectAttempts = 0
-
-        // Start processing the queue
-        if (this.processingInterval) {
-          clearInterval(this.processingInterval)
-        }
-        this.processingInterval = window.setInterval(() => this.processQueue(), 2000)
       }
 
       this.ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data)
           if (data.text) {
-            // Route based on mode
-            if (this.mode === 'transcription') {
-              this.transcriptionQueue.push(data.text)
-            } else {
-              this.onMessageCallback?.(data.text, data.turnComplete || false)
-            }
+            this.onMessageCallback?.(data.text, data.turnComplete || false)
           } else if (data.setupComplete) {
             this.isSetupComplete = true
           }
@@ -162,7 +135,7 @@ export class GeminiClient {
 
       this.ws.onclose = () => {
         console.log('[Gemini] WebSocket 已關閉')
-        this._isConnected = false
+        this.isConnected = false
         this.onClose()
         this.reconnect()
       }
@@ -199,10 +172,6 @@ export class GeminiClient {
 
   sendMediaChunk(data: string, mimeType: string) {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      // console.log(
-      //   "[GeminiClient] Sending media chunk, data size:",
-      //   data.length,
-      // );
       const message = {
         type: 'media_chunk',
         mimeType,
@@ -210,7 +179,6 @@ export class GeminiClient {
       }
       try {
         this.ws.send(JSON.stringify(message))
-        // console.log('[GeminiClient] Media chunk sent successfully')
       } catch (error) {
         console.error('[GeminiClient] Error sending media chunk:', error)
       }
@@ -225,7 +193,7 @@ export class GeminiClient {
       this.ws.close()
       this.ws = null
     }
-    this._isConnected = false
+    this.isConnected = false
   }
 
   onTextResponse(text: string) {
