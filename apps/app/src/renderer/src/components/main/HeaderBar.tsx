@@ -53,9 +53,9 @@ export function HeaderBar({
           variant={'ghost'}
           size="sm"
           onClick={onToggleScreenShare}
-          className={`h-7 rounded-full text-xs w-24 ${isScreenSharing ? 'bg-destructive/80 text-white breathing-light' : 'bg-muted text-black hover:bg-destructive/80 hover:text-white'} `}
+          className={`h-8 rounded-full text-sm w-24 ${isScreenSharing ? 'bg-destructive/80 text-white breathing-light' : 'bg-muted text-black hover:bg-destructive/80 hover:text-white'} `}
         >
-          <MicIcon className="h-5 w-5" />
+          <MicIcon className="h-8 w-8" />
           {isScreenSharing ? formatTime(recordingDuration) : 'Listen'}
         </Button>
         {isScreenSharing && (
@@ -63,7 +63,7 @@ export function HeaderBar({
             <Button
               variant={isScreenPreviewWindowVisible ? 'secondary' : 'ghost'} // Highlight if open
               size="icon"
-              className="h-7 w-7 rounded-full text-black hover:bg-muted hover:text-black"
+              className="h-8 w-8 rounded-full text-black hover:bg-white hover:text-black"
               onClick={onToggleScreenPreviewWindow} // Use new toggle function
               title="Screen Preview"
             >
@@ -73,7 +73,7 @@ export function HeaderBar({
               variant={isTranscriptionWindowVisible ? 'secondary' : 'ghost'} // Highlight if open
               size="icon"
               onClick={onToggleTranscriptionWindow} // Use new toggle function
-              className="h-7 w-7 rounded-full text-black hover:bg-muted hover:text-black"
+              className="h-8 w-8 rounded-full text-black hover:bg-white hover:text-black"
               title="Show Transcriptions"
             >
               <MessageSquare className="h-4 w-4" />
@@ -90,7 +90,7 @@ export function HeaderBar({
         <Button
           variant={isFeaturesWindowVisible ? 'secondary' : 'ghost'} // Highlight if open
           size="icon"
-          className="h-7 w-7 rounded-full text-black hover:bg-muted hover:text-black"
+          className="h-8 w-8 rounded-full text-black hover:bg-white hover:text-black"
           onClick={onToggleFeaturesWindow} // Use new toggle function
           title="Features"
         >
@@ -99,7 +99,7 @@ export function HeaderBar({
         <Button
           variant={isSettingsWindowVisible ? 'secondary' : 'ghost'} // Highlight if open
           size="icon"
-          className="h-7 w-7 rounded-full text-black hover:bg-muted hover:text-black"
+          className="h-8 w-8 rounded-full text-black hover:bg-white hover:text-black"
           onClick={onToggleSettingsWindow} // Use new toggle function
           title="Settings"
         >

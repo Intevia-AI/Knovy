@@ -30,7 +30,7 @@ const CodeBlock: React.FC<{
         )}
       >
         <button
-          className="bg-background absolute right-2 top-2 rounded-md border p-1 text-xs"
+          className="bg-background absolute right-2 top-2 rounded-md border p-1 text-sm"
           onClick={() => {
             const content = children?.toString() || ''
             navigator.clipboard.writeText(content)

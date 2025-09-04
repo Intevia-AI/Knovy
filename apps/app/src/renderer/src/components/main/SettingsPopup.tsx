@@ -18,10 +18,7 @@ interface SettingsPopupProps {
   setCustomPrompt?: (prompt: string) => void
 }
 
-export function SettingsPopup({
-  customPrompt,
-  setCustomPrompt
-}: SettingsPopupProps) {
+export function SettingsPopup({ customPrompt, setCustomPrompt }: SettingsPopupProps) {
   const { t, language } = useI18n()
   const { setLanguage } = useLanguage()
   const [isScreenSharing, setIsScreenSharing] = useState(false)
@@ -72,17 +69,17 @@ export function SettingsPopup({
   return (
     <div className="glass-popover grid gap-2 p-2">
       <div className="space-y-1.5">
-        <Label htmlFor="language" className="text-xs text-black">
+        <Label htmlFor="language" className="text-sm text-black">
           Language
         </Label>
         <Select value={language || 'zh-TW'} onValueChange={handleLanguageChange}>
-          <SelectTrigger className="w-full h-8 text-xs bg-black/5 border-black/20 text-black">
+          <SelectTrigger className="w-full h-8 text-sm bg-black/5 border-black/20 text-black">
             <LanguagesIcon className="h-3 w-3" />
             <SelectValue placeholder={t('languageSelectPlaceholder')} />
           </SelectTrigger>
           <SelectContent className="bg-muted/80 backdrop-blur-md border-black/20 text-black">
             {languages.map((lang) => (
-              <SelectItem key={lang.code} value={lang.code} className="text-xs">
+              <SelectItem key={lang.code} value={lang.code} className="text-sm">
                 {lang.name}
               </SelectItem>
             ))}
@@ -90,7 +87,7 @@ export function SettingsPopup({
         </Select>
       </div>
       <div className="space-y-1.5">
-        <Label htmlFor="custom-prompt" className="text-xs text-black">
+        <Label htmlFor="custom-prompt" className="text-sm text-black">
           Custom Prompt
         </Label>
         <Textarea
@@ -98,7 +95,7 @@ export function SettingsPopup({
           placeholder="Enter a custom prompt for the AI..."
           value={customPrompt}
           onChange={(e) => setCustomPrompt?.(e.target.value)}
-          className="h-24 text-xs resize-none bg-black/5 border-black/20 placeholder:text-gray-500 text-black"
+          className="h-24 text-sm resize-none bg-black/5 border-black/20 placeholder:text-gray-500 text-black"
         />
       </div>
     </div>

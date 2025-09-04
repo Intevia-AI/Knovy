@@ -56,7 +56,7 @@ export function FeaturesPopup() {
           size="sm"
           disabled={!isScreenSharing}
           onClick={() => sendContextToAI(action)}
-          className="w-full justify-start text-xs h-8 text-black hover:bg-black/10 hover:text-black"
+          className="w-full justify-start text-sm h-8 text-black hover:bg-black/10 hover:text-black"
         >
           <Icon className="mr-2 h-3 w-3" />
           {t(labelKey as any)}
@@ -66,7 +66,7 @@ export function FeaturesPopup() {
         variant="ghost"
         size="sm"
         onClick={onShowHistory}
-        className="w-full justify-start text-xs h-8 text-black hover:bg-black/10 hover:text-black"
+        className="w-full justify-start text-sm h-8 text-black hover:bg-black/10 hover:text-black"
       >
         <History className="mr-2 h-3 w-3" />
         View History

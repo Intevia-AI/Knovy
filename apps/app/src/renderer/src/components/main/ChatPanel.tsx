@@ -112,7 +112,7 @@ export default function ChatPanel({}: ChatPanelProps) {
           <div
             key={m.id}
             className={cn(
-              'p-2 rounded-md text-xs w-fit max-w-[95%] whitespace-pre-wrap',
+              'p-2 rounded-md text-sm w-fit max-w-[95%] whitespace-pre-wrap',
               m.role === 'user'
                 ? 'bg-blue-500/20 border border-blue-500/30 ml-auto text-black'
                 : 'bg-black/5 border border-black/10 mr-auto text-black'
@@ -136,7 +136,7 @@ export default function ChatPanel({}: ChatPanelProps) {
             placeholder={
               isScreenSharing ? t('chatPlaceholderSharing') : t('chatPlaceholderNotSharing')
             }
-            className="flex-grow h-8 text-xs bg-black/5 border-black/20 placeholder:text-gray-500 text-black"
+            className="flex-grow h-8 text-sm bg-black/5 border-black/20 placeholder:text-gray-500 text-black"
             disabled={isLoading || !isScreenSharing}
             aria-label="Custom prompt input"
           />

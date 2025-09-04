@@ -98,17 +98,17 @@ export default function AdvancedSettingsWindow({
             <div className="space-y-1.5 p-2 rounded-lg border border-border/50 bg-background/30">
               <div className="flex items-center space-x-2">
                 <LanguagesIcon className="h-3 w-3 text-muted-foreground" />
-                <h3 className="text-xs font-medium text-foreground">語言設定</h3>
+                <h3 className="text-sm font-medium text-foreground">語言設定</h3>
               </div>
               <div className="flex items-center justify-between">
-                <Label className="text-xs text-muted-foreground">選擇輸出語言</Label>
+                <Label className="text-sm text-muted-foreground">選擇輸出語言</Label>
                 <Select value={language || 'zh-TW'} onValueChange={handleLanguageChange}>
-                  <SelectTrigger className="w-[100px] h-6 text-xs px-2 bg-muted/95 border-border/50">
+                  <SelectTrigger className="w-[100px] h-6 text-sm px-2 bg-muted/95 border-border/50">
                     <SelectValue placeholder="選擇語言" />
                   </SelectTrigger>
                   <SelectContent className="bg-muted/95 border-border/50">
                     {languages.map((lang) => (
-                      <SelectItem key={lang.code} value={lang.code} className="text-xs">
+                      <SelectItem key={lang.code} value={lang.code} className="text-sm">
                         {lang.name}
                       </SelectItem>
                     ))}
@@ -137,12 +137,12 @@ export default function AdvancedSettingsWindow({
                   <path d="M12 20h9" />
                   <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
                 </svg>
-                <h3 className="text-xs font-medium text-foreground">模型要求</h3>
+                <h3 className="text-sm font-medium text-foreground">模型要求</h3>
               </div>
 
               {!confirmedPrompt ? (
                 <div className="space-y-1">
-                  <Label htmlFor="custom-prompt" className="text-xs text-muted-foreground">
+                  <Label htmlFor="custom-prompt" className="text-sm text-muted-foreground">
                     輸入自定義提示詞
                   </Label>
                   <Textarea
@@ -151,7 +151,7 @@ export default function AdvancedSettingsWindow({
                     value={draftPrompt}
                     onChange={(e) => setDraftPrompt(e.target.value)}
                     onKeyDown={handleCustomPromptConfirm}
-                    className="h-16 text-xs border-border/50 bg-muted/95 focus-visible:ring-0 focus-visible:border-primary focus-visible:outline-none"
+                    className="h-16 text-sm border-border/50 bg-muted/95 focus-visible:ring-0 focus-visible:border-primary focus-visible:outline-none"
                   />
                   <p className="text-[10px] text-muted-foreground">
                     按 Enter 確認，Shift + Enter 換行
@@ -160,17 +160,17 @@ export default function AdvancedSettingsWindow({
               ) : (
                 <div className="space-y-1">
                   <div className="flex items-center justify-between">
-                    <Label className="text-xs text-muted-foreground">當前模型要求</Label>
+                    <Label className="text-sm text-muted-foreground">當前模型要求</Label>
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={handleClearCustomPrompt}
-                      className="h-5 text-xs bg-muted/95"
+                      className="h-5 text-sm bg-muted/95"
                     >
                       清除
                     </Button>
                   </div>
-                  <div className="text-xs text-muted-foreground break-words bg-muted/95 p-2 rounded-md border border-border/50">
+                  <div className="text-sm text-muted-foreground break-words bg-muted/95 p-2 rounded-md border border-border/50">
                     {confirmedPrompt}
                   </div>
                 </div>
