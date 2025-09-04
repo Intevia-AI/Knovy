@@ -20,6 +20,9 @@ export class GeminiClient {
   /** @type {boolean} Connection status flag */
   private isConnected: boolean = false
 
+  /** @type {boolean} Flag to indicate intentional disconnect */
+  private isIntentionalDisconnect: boolean = false
+
   /** @type {boolean} Setup completion status flag */
   private isSetupComplete: boolean = false
 
@@ -84,6 +87,7 @@ export class GeminiClient {
   }
 
   async connect() {
+    this.isIntentionalDisconnect = false
     if (this.ws) {
       console.warn('[Gemini] WebSocket 已經連接')
       return
@@ -137,7 +141,9 @@ export class GeminiClient {
         console.log('[Gemini] WebSocket 已關閉')
         this.isConnected = false
         this.onClose()
-        this.reconnect()
+        if (!this.isIntentionalDisconnect) {
+          this.reconnect()
+        }
       }
     } catch (error) {
       console.error('[Gemini] 連接到代理伺服器時發生錯誤:', error)
@@ -190,6 +196,7 @@ export class GeminiClient {
   disconnect() {
     this.isSetupComplete = false
     if (this.ws) {
+      this.isIntentionalDisconnect = true
       this.ws.close()
       this.ws = null
     }
