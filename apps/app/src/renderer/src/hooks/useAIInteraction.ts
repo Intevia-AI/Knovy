@@ -6,7 +6,6 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { Message as AIMessage } from 'ai'
-import html2canvas from 'html2canvas-pro'
 import { useI18n } from '@/hooks/useI18n'
 import { useScreenShare } from './useScreenShare'
 import { supabase } from '@/lib/supabaseClient'
@@ -47,7 +46,8 @@ export function useAIInteraction() {
   const { t, language = 'en-US' } = useI18n()
   const currentLanguage = language as 'en-US' | 'zh-TW' | 'ja-JP'
 
-  const { isScreenSharing, toggleScreenShare, screenStreamRef, cancelScreenShare } = useScreenShare()
+  const { isScreenSharing, toggleScreenShare, screenStreamRef, cancelScreenShare } =
+    useScreenShare()
 
   useEffect(() => {
     if (messagesContainerRef.current) {
@@ -112,8 +112,10 @@ export function useAIInteraction() {
           timestamp: Date.now()
         }
       }
-      const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
-      const contextTranscriptions = (action === 'answer' || action === 'summary' ? transcriptions : transcriptions.slice(-5)).filter(t => t.timestamp >= fiveMinutesAgo);
+      const fiveMinutesAgo = Date.now() - 5 * 60 * 1000
+      const contextTranscriptions = (
+        action === 'answer' || action === 'summary' ? transcriptions : transcriptions.slice(-5)
+      ).filter((t) => t.timestamp >= fiveMinutesAgo)
 
       const contextText = contextTranscriptions.map((t) => t.content).join('\n')
 
@@ -371,7 +373,7 @@ export function useAIInteraction() {
             functionPayload = { prompt: query, screenshot: screenshot }
             break
           default:
-            throw new Error(`AI Action '${action}' is not supported by Supabase Edge Functions.`) 
+            throw new Error(`AI Action '${action}' is not supported by Supabase Edge Functions.`)
         }
 
         const { data, error } = await supabase.functions.invoke(functionName, {
@@ -387,9 +389,9 @@ export function useAIInteraction() {
           keyword_search: (d) => `Keywords found: ${d.keywords.join(', ')}`,
           answer: (d) => d.recommendation,
           screen: (d) => d.analysis
-        };
+        }
 
-        const content = responseMapping[action]?.(data) || JSON.stringify(data);
+        const content = responseMapping[action]?.(data) || JSON.stringify(data)
 
         const aiResponse: AIMessage = {
           id: `ai-${Date.now()}`,
