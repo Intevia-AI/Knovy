@@ -5,3 +5,7 @@ out
 .eslintcache
 *.log*
 src/renderer/public/history
+
+# Build
+certificate.p12
+build-mac-signed.sh

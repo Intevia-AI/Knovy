@@ -1,4 +1,4 @@
-# Intevia AI Desktop App (electron-vite)
+# Knovy Desktop App (electron-vite)
 
 > [!IMPORTANT]
 > This document is AI generated. Please verify the information before using it.
@@ -7,7 +7,7 @@ A cross-platform Electron desktop application that provides real-time AI-powered
 
 ## Overview
 
-The Intevia AI Desktop App is an intelligent screen companion that captures and analyzes your screen content in real-time, providing contextual AI assistance through natural language interactions. The application combines powerful screen capture capabilities with advanced AI processing to deliver actionable insights and automated assistance.
+The Knovy Desktop App is an intelligent screen companion that captures and analyzes your screen content in real-time, providing contextual AI assistance through natural language interactions. The application combines powerful screen capture capabilities with advanced AI processing to deliver actionable insights and automated assistance.
 
 ### Key Features
 
@@ -66,6 +66,31 @@ cp .env.example .env
 # - NEXT_PUBLIC_AI_API_URL: API endpoint for AI interactions
 # - NEXT_PUBLIC_SUPABASE_URL: Your Supabase project URL
 # - NEXT_PUBLIC_SUPABASE_ANON_KEY: Supabase anonymous key
+```
+
+### 3. Setup Code Signing
+
+> [!NOTE]
+> This step is optional. You can skip it if you don't want to sign the app for distribution.
+
+#### Add certificate.p12 file
+
+1. Contact your manager to get the certificate.p12 file.
+2. Put it in the root of `apps/app` of the project as `certificate.p12`.
+
+#### Set up code signing for macOS
+
+```bash
+# Copy the code signing template
+cp build-mac-signed.sh.example build-mac-signed.sh
+
+# Edit the build-mac-signed.sh file with your configuration (optional)
+# Required variables:
+# - APPLE_ID: Your Apple ID email
+# - APPLE_APP_SPECIFIC_PASSWORD: Your App Specific Password
+# - APPLE_TEAM_ID: Your Team ID
+# - CSC_LINK: Path to your certificate.p12 file
+# - CSC_KEY_PASSWORD: Your Certificate Password
 ```
 
 ## Development

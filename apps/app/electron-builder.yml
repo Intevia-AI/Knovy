@@ -1,5 +1,5 @@
-appId: com.intevia.app
-productName: Intevia AI
+appId: com.knovy.app
+productName: Knovy
 directories:
   buildResources: build
 files:
@@ -9,23 +9,33 @@ files:
   - '!{.eslintcache,eslint.config.mjs,.prettierignore,.prettierrc.yaml,dev-app-update.yml,CHANGELOG.md,README.md}'
   - '!{.env,.env.*,.npmrc,pnpm-lock.yaml}'
   - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
+  - out/**/*
+  - package.json
+# asar: true
+# compression: maximum
 asarUnpack:
   - resources/**
 win:
-  executableName: Intevia AI
+  executableName: Knovy
+  icon: src/renderer/public/logo/intevia_logo.png
 nsis:
   artifactName: ${name}-${version}-setup.${ext}
   shortcutName: ${productName}
   uninstallDisplayName: ${productName}
   createDesktopShortcut: always
 mac:
-  entitlementsInherit: build/entitlements.mac.plist
+  icon: src/renderer/public/logo/intevia_logo.png
+  type: distribution
+  target:
+    - dmg
+  category: public.app-category.productivity
+  entitlementsInherit: entitlements.mac.plist
   extendInfo:
     - NSCameraUsageDescription: Application requests access to the device's camera.
     - NSMicrophoneUsageDescription: Application requests access to the device's microphone.
     - NSDocumentsFolderUsageDescription: Application requests access to the user's Documents folder.
     - NSDownloadsFolderUsageDescription: Application requests access to the user's Downloads folder.
-  notarize: false
+  notarize: true
 dmg:
   artifactName: ${name}-${version}.${ext}
 linux:
@@ -35,6 +45,7 @@ linux:
     - deb
   maintainer: electronjs.org
   category: Utility
+  icon: src/renderer/public/logo/intevia_logo.png
 appImage:
   artifactName: ${name}-${version}.${ext}
 npmRebuild: false
