@@ -53,21 +53,8 @@ export default function RealTimeAnalysis({
     console.log('[RealTimeAnalysis] Starting audio processing...')
 
     geminiClientRef.current = new GeminiClient(
-      (text, turnComplete) => {
-        // onMessage
-        if (onTextResponse) {
-          onTextResponse(text, turnComplete)
-        }
-      },
-      () => {
-        // onSetupComplete
-        console.log('[RealTimeAnalysis] WebSocket setup complete')
-        shouldSendAudioRef.current = true
-      },
-      () => {}, // onPlayingStateChange
-      () => {}, // onAudioLevelChange
       (text) => {
-        // onTranscription (This is the one we care about for subtitles)
+        // onMessage
         textBufferRef.current += text
 
         if (
@@ -105,6 +92,17 @@ export default function RealTimeAnalysis({
 
           textBufferRef.current = ''
         }
+      },
+      () => {
+        // onSetupComplete
+        console.log('[RealTimeAnalysis] WebSocket setup complete')
+        shouldSendAudioRef.current = true
+      },
+      () => {}, // onPlayingStateChange
+      () => {}, // onAudioLevelChange
+      () => {
+        // onTranscription (This is the one we care about for subtitles)
+        // Logic moved to onMessage
       },
       'transcription', // mode
       customPrompt,
