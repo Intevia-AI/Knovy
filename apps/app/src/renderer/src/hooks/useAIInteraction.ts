@@ -10,7 +10,11 @@ import { useI18n } from '@/hooks/useI18n'
 import { useScreenShare } from './useScreenShare'
 import { supabase } from '@/lib/supabaseClient'
 
-const API_URL = import.meta.env.VITE_AI_API_URL || 'http://localhost:4567/api/ai'
+const API_URL = import.meta.env.VITE_AI_API_URL
+
+if (!API_URL) {
+  throw new Error('VITE_AI_API_URL is not defined. Please check your .env file.')
+}
 
 export type AIAction =
   | 'real-time'

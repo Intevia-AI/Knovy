@@ -9,3 +9,7 @@ src/renderer/public/history
 # Build
 certificate.p12
 build-mac-signed.sh
+
+# Environment variables
+.env.development
+.env.production

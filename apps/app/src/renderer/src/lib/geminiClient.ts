@@ -4,7 +4,11 @@
  * with automatic reconnection and error handling capabilities.
  */
 
-const PROXY_SERVER_URL = import.meta.env.VITE_GEMINI_WS_URL || 'ws://localhost:4567'
+const PROXY_SERVER_URL = import.meta.env.VITE_GEMINI_WS_URL
+
+if (!PROXY_SERVER_URL) {
+  throw new Error('VITE_GEMINI_WS_URL is not defined. Please check your .env file.')
+}
 
 /**
  * WebSocket client for Gemini AI proxy server communication.
