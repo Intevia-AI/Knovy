@@ -65,12 +65,10 @@ double_confirm_changes = true
 # If enabled, users need to confirm their email address before signing in.
 enable_confirmations = false
 
-# Disable Google provider for now
 [auth.external.google]
-enabled = false
-client_id = ""
-secret = ""
-redirect_uri = ""
+enabled = true
+client_id = "env(GOOGLE_CLIENT_ID)"
+secret = "env(GOOGLE_CLIENT_SECRET)"
 
 [functions.add-to-waitlist]
 enabled = true

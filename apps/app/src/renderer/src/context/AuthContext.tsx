@@ -112,8 +112,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         console.error('[AuthContext] Error processing OAuth callback URL:', e)
       } finally {
         setTimeout(() => {
-          setIsLoading(false)
-          setIsExchangingCode(false) // Release the lock
+          setIsLoading(false) // Release the lock
         }, 500)
       }
     }
@@ -166,7 +165,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         provider,
         options: {
           skipBrowserRedirect: true,
-          redirectTo: 'https://intevia.app/auth/callback', // Redirect to the web app's callback page
+          redirectTo: import.meta.env.DEV
+            ? 'http://localhost:3000/auth/callback'
+            : 'https://intevia.app/auth/callback',
           // For PKCE flow, skipBrowserRedirect might be an option if not automatically handled
           queryParams: { access_type: 'offline', prompt: 'consent' } // Example for Google
         }

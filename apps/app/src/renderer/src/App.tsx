@@ -30,8 +30,6 @@ export default function App() {
         window.electronAPI.send('window:center')
       }
     }
-
-    console.log('user', user)
   }, [user, isLoading])
 
   // Show a loading spinner while the auth state is being determined
