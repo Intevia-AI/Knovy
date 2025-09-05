@@ -63,6 +63,33 @@ export function useAIInteraction() {
     }
   }, [])
 
+  useEffect(() => {
+    const loadInitialTranscripts = async () => {
+      if (window.electronAPI) {
+        try {
+          const sessionId = await window.electronAPI.invoke('session:get-id')
+          if (sessionId) {
+            const loadedTranscripts = await window.electronAPI.invoke('db:get-transcripts', sessionId)
+            if (loadedTranscripts && loadedTranscripts.length > 0) {
+              const formattedTranscripts = loadedTranscripts.map((t: any) => ({
+                id: t.id,
+                content: t.content,
+                role: 'assistant',
+                type: 'transcription',
+                timestamp: new Date(t.timestamp).getTime()
+              }))
+              setTranscriptions(formattedTranscripts)
+            }
+          }
+        } catch (error) {
+          console.error('Failed to load initial transcripts:', error)
+        }
+      }
+    }
+
+    loadInitialTranscripts()
+  }, [])
+
   const handleTranscriptionKeywords = useCallback((newKeywords: string[]) => {
     setKeywords((prev) => {
       const uniqueNewKeywords = newKeywords.filter((k) => k && !prev.includes(k))
