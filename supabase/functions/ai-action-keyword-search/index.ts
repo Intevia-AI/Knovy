@@ -4,7 +4,7 @@ import { authenticateUser } from "../_shared/auth.ts";
 // Set CORS headers based on environment
 const allowedOrigin = Deno.env.get("ENVIRONMENT") === "dev"
   ? "http://localhost:5173"
-  : "https://intevia.app";
+  : Deno.env.get("PRODUCTION_APP_ORIGIN") ?? "https://intevia.app";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": allowedOrigin,
