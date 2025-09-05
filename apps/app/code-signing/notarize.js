@@ -1,6 +1,10 @@
 import { notarize } from '@electron/notarize'
 
 export default async function (context) {
+  if (process.env.SKIP_NOTARIZE === 'true') {
+    console.log('Skipping notarization because SKIP_NOTARIZE is set to true.')
+    return
+  }
   const { electronPlatformName, appOutDir } = context
 
   if (electronPlatformName !== 'darwin') {
