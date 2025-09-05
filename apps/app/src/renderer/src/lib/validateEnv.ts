@@ -17,11 +17,6 @@ export function validateEnv(): boolean {
       hint: 'Should point to your running proxy server (e.g., ws://localhost:4567)'
     },
     {
-      name: 'VITE_AI_API_URL',
-      description: 'API endpoint for AI interactions',
-      hint: 'Should point to your API endpoint (e.g., http://localhost:3000/api/ai)'
-    },
-    {
       name: 'VITE_SUPABASE_URL',
       description: 'Supabase project URL',
       hint: 'Obtain from your Supabase project settings'
