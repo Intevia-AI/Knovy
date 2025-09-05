@@ -1,7 +1,13 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { authenticateUser } from "../_shared/auth.ts";
+
+// Set CORS headers based on environment
+const allowedOrigin = Deno.env.get("ENVIRONMENT") === "dev"
+  ? "http://localhost:5173"
+  : "https://intevia.app";
 
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Origin": allowedOrigin,
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
@@ -12,7 +18,11 @@ export async function handler(req: Request): Promise<Response> {
   }
 
   try {
-    // TODO: Add JWT authentication check here
+    console.log(`[ai-action-recommend-response] function invoked at: ${new Date().toISOString()}`);
+    const userOrResponse = await authenticateUser(req);
+    if (userOrResponse instanceof Response) {
+      return userOrResponse;
+    }
 
     const { messages } = await req.json();
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
