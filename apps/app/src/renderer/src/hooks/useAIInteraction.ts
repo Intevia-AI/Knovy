@@ -69,7 +69,10 @@ export function useAIInteraction() {
         try {
           const sessionId = await window.electronAPI.invoke('session:get-id')
           if (sessionId) {
-            const loadedTranscripts = await window.electronAPI.invoke('db:get-transcripts', sessionId)
+            const loadedTranscripts = await window.electronAPI.invoke(
+              'db:get-transcripts',
+              sessionId
+            )
             if (loadedTranscripts && loadedTranscripts.length > 0) {
               const formattedTranscripts = loadedTranscripts.map((t: any) => ({
                 id: t.id,
@@ -157,9 +160,11 @@ export function useAIInteraction() {
           }
           case 'answer': {
             functionName = 'ai-action-recommend-response'
-            // Directly use the transcriptions from state for conversational context
-            const history = transcriptions.map((t) => ({ role: t.role, content: t.content }))
-            functionPayload.message_history = history
+            const context = await gatherContext(action)
+            if (!context?.text?.trim()) {
+              throw new Error('There is no transcription history to recommend a response.')
+            }
+            functionPayload.text_input = context.text
             break
           }
           case 'keyword_search': {

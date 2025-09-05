@@ -2,9 +2,10 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { authenticateUser } from "../_shared/auth.ts";
 
 // Set CORS headers based on environment
-const allowedOrigin = Deno.env.get("ENVIRONMENT") === "dev"
-  ? "http://localhost:5173"
-  : Deno.env.get("PRODUCTION_APP_ORIGIN") ?? "https://intevia.app";
+const allowedOrigin =
+  Deno.env.get("ENVIRONMENT") === "dev"
+    ? "http://localhost:5173"
+    : (Deno.env.get("PRODUCTION_APP_ORIGIN") ?? "https://intevia.app");
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": allowedOrigin,
@@ -37,7 +38,7 @@ export async function handler(req: Request): Promise<Response> {
       throw new Error("GOOGLE_GENERATIVE_AI_API_KEY is not set");
     }
 
-    const prompt = `Summarize the following text:\n\n${text_input}`;
+    const prompt = `Summarize the following text:\n\n${text_input} \n\nPlease return a short response, no more than 50 words.`;
     const contents = [{ role: "user", parts: [{ text: prompt }] }];
     const postData = JSON.stringify({ contents });
 

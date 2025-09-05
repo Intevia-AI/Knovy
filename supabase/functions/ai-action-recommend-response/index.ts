@@ -2,9 +2,10 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { authenticateUser } from "../_shared/auth.ts";
 
 // Set CORS headers based on environment
-const allowedOrigin = Deno.env.get("ENVIRONMENT") === "dev"
-  ? "http://localhost:5173"
-  : Deno.env.get("PRODUCTION_APP_ORIGIN") ?? "https://intevia.app";
+const allowedOrigin =
+  Deno.env.get("ENVIRONMENT") === "dev"
+    ? "http://localhost:5173"
+    : (Deno.env.get("PRODUCTION_APP_ORIGIN") ?? "https://intevia.app");
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": allowedOrigin,
@@ -24,9 +25,9 @@ export async function handler(req: Request): Promise<Response> {
       return userOrResponse;
     }
 
-    const { message_history } = await req.json();
-    if (!message_history || !Array.isArray(message_history) || message_history.length === 0) {
-      return new Response(JSON.stringify({ error: "Messages are required" }), {
+    const { text_input } = await req.json();
+    if (!text_input) {
+      return new Response(JSON.stringify({ error: "Text is required" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -37,10 +38,8 @@ export async function handler(req: Request): Promise<Response> {
       throw new Error("GOOGLE_GENERATIVE_AI_API_KEY is not set");
     }
 
-    const contents = message_history.map((m) => ({
-      role: m.role === "assistant" ? "model" : "user",
-      parts: [{ text: m.content }],
-    }));
+    const prompt = `Recommend a response to the following text:\n\n${text_input}. \n\nPlease return a short response, no more than 50 words.`;
+    const contents = [{ role: "user", parts: [{ text: prompt }] }];
     const postData = JSON.stringify({ contents });
 
     const res = await fetch(
