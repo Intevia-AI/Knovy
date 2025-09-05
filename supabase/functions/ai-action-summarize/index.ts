@@ -24,8 +24,8 @@ export async function handler(req: Request): Promise<Response> {
       return userOrResponse;
     }
 
-    const { text } = await req.json();
-    if (!text) {
+    const { text_input } = await req.json();
+    if (!text_input) {
       return new Response(JSON.stringify({ error: "Text is required" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -37,7 +37,7 @@ export async function handler(req: Request): Promise<Response> {
       throw new Error("GOOGLE_GENERATIVE_AI_API_KEY is not set");
     }
 
-    const prompt = `Summarize the following text:\n\n${text}`;
+    const prompt = `Summarize the following text:\n\n${text_input}`;
     const contents = [{ role: "user", parts: [{ text: prompt }] }];
     const postData = JSON.stringify({ contents });
 

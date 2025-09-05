@@ -138,7 +138,12 @@ export function useAIInteraction() {
         if (!session) throw new Error('User is not authenticated.')
 
         let functionName: string
-        let functionPayload: Record<string, any>
+        const functionPayload: Record<string, any> = {
+          text_input: null,
+          message_history: null,
+          image_input: null,
+          language: currentLanguage
+        }
 
         switch (action) {
           case 'summary': {
@@ -147,23 +152,25 @@ export function useAIInteraction() {
               throw new Error('There is no transcription history to summarize.')
             }
             functionName = 'ai-action-summarize'
-            functionPayload = { text: context?.text }
+            functionPayload.text_input = context.text
             break
           }
           case 'answer': {
-            const context = await gatherContext(action)
             functionName = 'ai-action-recommend-response'
-            functionPayload = { messages: [{ role: 'user', content: context?.text }] }
+            // Directly use the transcriptions from state for conversational context
+            const history = transcriptions.map((t) => ({ role: t.role, content: t.content }))
+            functionPayload.message_history = history
             break
           }
           case 'keyword_search': {
             functionName = 'ai-action-keyword-search'
-            functionPayload = { text: query }
+            functionPayload.text_input = query
             break
           }
           case 'screenshot': {
             functionName = 'ai-action-screenshot-analysis'
-            functionPayload = { prompt: query, screenshot }
+            functionPayload.text_input = query
+            functionPayload.image_input = screenshot
             break
           }
           case 'chat':

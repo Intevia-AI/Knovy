@@ -24,8 +24,8 @@ serve(async (req) => {
       return userOrResponse;
     }
 
-    const { prompt, screenshot } = await req.json();
-    if (!prompt || !screenshot) {
+    const { text_input, image_input } = await req.json();
+    if (!text_input || !image_input) {
       return new Response(JSON.stringify({ error: "Prompt and screenshot are required" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -41,11 +41,11 @@ serve(async (req) => {
       {
         role: "user",
         parts: [
-          { text: prompt },
+          { text: text_input },
           {
             inlineData: {
               mimeType: "image/jpeg",
-              data: screenshot.split(",")[1], // Remove base64 prefix
+              data: image_input.split(",")[1], // Remove base64 prefix
             },
           },
         ],

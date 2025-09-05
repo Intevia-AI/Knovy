@@ -24,8 +24,8 @@ export async function handler(req: Request): Promise<Response> {
       return userOrResponse;
     }
 
-    const { messages } = await req.json();
-    if (!messages || !Array.isArray(messages) || messages.length === 0) {
+    const { message_history } = await req.json();
+    if (!message_history || !Array.isArray(message_history) || message_history.length === 0) {
       return new Response(JSON.stringify({ error: "Messages are required" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -37,7 +37,7 @@ export async function handler(req: Request): Promise<Response> {
       throw new Error("GOOGLE_GENERATIVE_AI_API_KEY is not set");
     }
 
-    const contents = messages.map((m) => ({
+    const contents = message_history.map((m) => ({
       role: m.role === "assistant" ? "model" : "user",
       parts: [{ text: m.content }],
     }));
