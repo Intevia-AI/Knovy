@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils'
 export const Logo = ({ className }: { className?: string }) => {
   return (
     <img
-      src="/meeting/intevia_logo.svg"
+      src="/logo/intevia_logo.svg"
       alt="INTEVIA"
       width={100}
       height={100}

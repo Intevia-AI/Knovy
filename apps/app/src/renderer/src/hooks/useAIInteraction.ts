@@ -380,7 +380,18 @@ export function useAIInteraction() {
             throw new Error(`AI Action '${action}' is not supported by Supabase Edge Functions.`)
         }
 
+        const {
+          data: { session }
+        } = await supabase.auth.getSession()
+
+        if (!session) {
+          throw new Error('User is not authenticated.')
+        }
+
         const { data, error } = await supabase.functions.invoke(functionName, {
+          headers: {
+            Authorization: `Bearer ${session.access_token}`
+          },
           body: functionPayload
         })
 

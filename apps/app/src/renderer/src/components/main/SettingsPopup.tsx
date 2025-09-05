@@ -12,6 +12,8 @@ import {
 } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { useAuth } from '@/context/AuthContext'
+import { Button } from '@/components/ui/button'
 
 interface SettingsPopupProps {
   customPrompt?: string
@@ -21,6 +23,7 @@ interface SettingsPopupProps {
 export function SettingsPopup({ customPrompt, setCustomPrompt }: SettingsPopupProps) {
   const { t, language } = useI18n()
   const { setLanguage } = useLanguage()
+  const { signOut } = useAuth()
   const [isScreenSharing, setIsScreenSharing] = useState(false)
 
   useEffect(() => {
@@ -66,6 +69,16 @@ export function SettingsPopup({ customPrompt, setCustomPrompt }: SettingsPopupPr
     }
   }
 
+  const handleSignOut = async () => {
+    await signOut()
+    // Add a small delay to allow the auth state to propagate before closing the window
+    setTimeout(() => {
+      if (window.electronAPI) {
+        window.electronAPI.send('popover:close', 'settings')
+      }
+    }, 100)
+  }
+
   return (
     <div className="glass-popover grid gap-2 p-2">
       <div className="space-y-1.5">
@@ -98,6 +111,9 @@ export function SettingsPopup({ customPrompt, setCustomPrompt }: SettingsPopupPr
           className="h-24 text-sm resize-none bg-black/5 border-black/20 placeholder:text-gray-500 text-black"
         />
       </div>
+      <Button variant="destructive" onClick={handleSignOut} className="w-full h-8 text-sm mt-2">
+        Sign Out
+      </Button>
     </div>
   )
 }

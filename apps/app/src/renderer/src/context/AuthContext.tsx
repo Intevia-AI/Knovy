@@ -111,7 +111,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       } catch (e) {
         console.error('[AuthContext] Error processing OAuth callback URL:', e)
       } finally {
-        setTimeout(() => setIsLoading(false), 500)
+        setTimeout(() => {
+          setIsLoading(false)
+          setIsExchangingCode(false) // Release the lock
+        }, 500)
       }
     }
 
@@ -216,7 +219,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
    */
   const signOut = async () => {
     setIsLoading(true)
-    await supabase.auth.signOut()
+    await supabase.auth.signOut().then(async () => {
+      await supabase.auth.refreshSession()
+    })
     // onAuthStateChange will set user and session to null, and isLoading to false
   }
 
@@ -246,6 +251,3 @@ export const useAuth = () => {
   }
   return context
 }
-
-// The global declaration for window.electronAPI is now in apps/app/types/electron.d.ts
-// Ensure that file is included in your tsconfig.json and recognized by TypeScript.

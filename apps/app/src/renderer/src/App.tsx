@@ -1,20 +1,40 @@
-'use client' // Required for hooks like useAuth and client-side logic
+'use client'
+import { useEffect } from 'react'
 import { Main } from './components/main.js'
-import { useAuth } from './context/AuthContext.js' // Import useAuth
-import { Loader2 } from 'lucide-react' // For a loading spinner
+import { useAuth } from './context/AuthContext.js'
+import { Loader2 } from 'lucide-react'
+import { LoginPage } from './components/LoginPage.js'
 
 /**
  * Main page component that serves as the entry point for the application.
- * Shows a loading spinner during authentication initialization, then renders
- * the main application interface.
+ * Shows a loading spinner during authentication, then renders either the
+ * login page or the main application based on user authentication state.
+ * It also resizes the main window to fit the content.
  *
  * @component
- * @returns {JSX.Element} Loading spinner or main application interface
+ * @returns {JSX.Element} The rendered page.
  */
 export default function App() {
-  const { isLoading } = useAuth() // Only need isLoading here for the initial app load indication
+  const { user, isLoading } = useAuth()
 
-  // Show loading spinner while authentication context initializes
+  useEffect(() => {
+    if (isLoading) return // Wait until the auth state is resolved
+
+    if (window.electronAPI) {
+      if (user) {
+        // User is logged in, move to bottom-left
+        window.electronAPI.send('window:move-to-bottom-left')
+      } else {
+        // User is logged out, resize and move to center
+        window.electronAPI.send('app:resize-window', { width: 360, height: 300 })
+        window.electronAPI.send('window:center')
+      }
+    }
+
+    console.log('user', user)
+  }, [user, isLoading])
+
+  // Show a loading spinner while the auth state is being determined
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center h-screen">
@@ -24,6 +44,6 @@ export default function App() {
     )
   }
 
-  // Always render Main component after initial loading, login checks will be feature-specific
-  return <Main />
+  // If the user is authenticated, show the main app; otherwise, show the login page.
+  return user ? <Main /> : <LoginPage />
 }

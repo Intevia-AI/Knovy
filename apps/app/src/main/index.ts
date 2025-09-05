@@ -255,7 +255,7 @@ const createWindow = async () => {
   const { height: screenHeight } = primaryDisplay.workAreaSize
 
   mainWindow = new BrowserWindow({
-    width: 250,
+    width: 360,
     height: 50,
     frame: false,
     transparent: true,
@@ -399,6 +399,21 @@ app.on('ready', async () => {
 
   ipcMain.on('electronAPI:minimizeWindow', () => mainWindow?.minimize())
   ipcMain.on('electronAPI:closeWindow', () => mainWindow?.close())
+
+  ipcMain.on('window:center', () => {
+    if (mainWindow) {
+      mainWindow.center()
+    }
+  })
+
+  ipcMain.on('window:move-to-bottom-left', () => {
+    if (mainWindow) {
+      const primaryDisplay = screen.getPrimaryDisplay()
+      const { height: screenHeight } = primaryDisplay.workAreaSize
+      const y = screenHeight - mainWindow.getBounds().height + 10
+      mainWindow.setPosition(30, y, true) // Animate the move
+    }
+  })
   ipcMain.on('electronAPI:toggleAlwaysOnTop', (event, isAlwaysOnTop) => {
     mainWindow?.setAlwaysOnTop(isAlwaysOnTop)
     event.reply('electronAPI:alwaysOnTopChanged', mainWindow?.isAlwaysOnTop())

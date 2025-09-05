@@ -87,6 +87,8 @@ const api = {
       'app:hide-settings',
       'app:show-screen-preview',
       'app:hide-screen-preview',
+      'window:center',
+      'window:move-to-bottom-left',
       'source-picker:select',
       'source-picker:cancel',
       'popover:close',
