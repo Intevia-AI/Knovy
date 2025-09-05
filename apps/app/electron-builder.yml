@@ -35,7 +35,9 @@ mac:
     - NSMicrophoneUsageDescription: Application requests access to the device's microphone.
     - NSDocumentsFolderUsageDescription: Application requests access to the user's Documents folder.
     - NSDownloadsFolderUsageDescription: Application requests access to the user's Downloads folder.
-  notarize: true
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  notarize: false
 dmg:
   artifactName: ${name}-${version}.${ext}
 linux:
@@ -54,3 +56,4 @@ publish:
   url: https://example.com/auto-updates
 electronDownload:
   mirror: https://npmmirror.com/mirrors/electron/
+afterSign: './code-signing/notarize.js'

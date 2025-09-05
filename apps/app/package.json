@@ -24,7 +24,7 @@
     "dev": "concurrently \"pnpm --filter history-viewer dev\" \"electron-vite dev\"",
     "build:history": "pnpm --filter history-viewer build",
     "copy:history": "rm -rf src/renderer/public/history && cp -r ../history-viewer/out src/renderer/public/history",
-    "build": "sh build-mac-signed.sh && pnpm run build:history && pnpm run copy:history && electron-vite build && electron-builder",
+    "build": "source ./code-signing/build-mac-signed.sh && pnpm run build:history && pnpm run copy:history && electron-vite build && electron-builder",
     "postinstall": "electron-builder install-app-deps"
   },
   "dependencies": {
@@ -61,6 +61,7 @@
     "@electron-toolkit/eslint-config": "^1.0.2",
     "@electron-toolkit/tsconfig": "^1.0.1",
     "@electron-toolkit/utils": "^3.0.0",
+    "@electron/notarize": "^3.1.0",
     "@types/node": "^20.17.30",
     "@types/react": "^19.1.1",
     "@types/react-dom": "^19.1.2",
@@ -77,6 +78,7 @@
     "tailwindcss": "^3.4.4",
     "ts-node": "^10.9.2",
     "typescript": "^5.5.3",
-    "vite": "^5.3.3"
+    "vite": "^5.3.3",
+    "which": "^4.0.0"
   }
 }
