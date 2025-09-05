@@ -6,9 +6,9 @@ This guide provides detailed instructions for setting up your development enviro
 
 Before you begin, ensure you have the following installed:
 
--   **Node.js**: Version 20.0.0 or later (`node --version`)
--   **pnpm**: Version 10.0.0 or later (`pnpm --version`)
--   **Git**: Latest version recommended (`git --version`)
+- **Node.js**: Version 20.0.0 or later (`node --version`)
+- **pnpm**: Version 10.0.0 or later (`pnpm --version`)
+- **Git**: Latest version recommended (`git --version`)
 
 ## 2. Repository Setup
 
@@ -28,10 +28,9 @@ Before you begin, ensure you have the following installed:
 3.  **Set up environment variables**
 
     For each application in the `apps/` directory, you need to create a `.env` file. Manually copy the contents of `.env.example` to a new `.env` file within the same directory.
-
-    -   `apps/app/.env.example` -> `apps/app/.env`
-    -   `apps/web/.env.example` -> `apps/web/.env`
-    -   `apps/proxy/.env.example` -> `apps/proxy/.env`
+    - `apps/app/.env.example` -> `apps/app/.env`
+    - `apps/web/.env.example` -> `apps/web/.env`
+    - `apps/proxy/.env.example` -> `apps/proxy/.env`
 
     After creating the files, edit them to add your actual API keys and configuration values.
 
@@ -42,8 +41,8 @@ Before you begin, ensure you have the following installed:
 1.  Go to [Google AI Studio](https://aistudio.google.com/app/apikey).
 2.  Create a new API key.
 3.  Add the key to:
-    -   `apps/web/.env`: `GOOGLE_GENERATIVE_AI_API_KEY`
-    -   `apps/proxy/.env`: `GOOGLE_GENERATIVE_AI_API_KEY`
+    - `apps/web/.env`: `GOOGLE_GENERATIVE_AI_API_KEY`
+    - `apps/proxy/.env`: `GOOGLE_GENERATIVE_AI_API_KEY`
 
 ### Supabase
 
@@ -53,8 +52,8 @@ Supabase is used for authentication in the desktop app and for backend services.
 2.  Navigate to **Project Settings > API**.
 3.  Copy the **Project URL** and **Project API Keys** (the `anon` key).
 4.  Add them to `apps/app/.env` and `apps/web/.env`:
-    -   `NEXT_PUBLIC_SUPABASE_URL`
-    -   `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+    - `NEXT_PUBLIC_SUPABASE_URL`
+    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 
 ### OAuth Configuration for Desktop App
 
@@ -93,29 +92,45 @@ This command starts the Electron application and its development server.
 pnpm --filter app dev
 ```
 
-### Local Supabase Development
+### Supabase
 
-For local development, you can run a full Supabase stack on your machine.
+1. For local development, you can run a full Supabase stack on your machine.
+   - **Start local Supabase services:**
 
--   **Start local Supabase services:**
-    ```bash
-    pnpm dlx supabase start
-    ```
+     ```bash
+     pnpm dlx supabase start
+     ```
 
--   **View status and API keys:**
-    ```bash
-    pnpm dlx supabase status
-    ```
+   - **View status and API keys:**
 
--   **Stop local Supabase services:**
-    ```bash
-    pnpm dlx supabase stop
-    ```
+     ```bash
+     pnpm dlx supabase status
+     ```
 
--   **Reset the local database:**
-    ```bash
-    pnpm dlx supabase db reset
-    ```
+   - **Stop local Supabase services:**
+
+     ```bash
+     pnpm dlx supabase stop
+     ```
+
+   - **Reset the local database:**
+     ```bash
+     pnpm dlx supabase db reset
+     ```
+
+2. For production deployment
+
+   Check this [doc](https://supabase.com/docs/guides/deploy/multi-env-deployment) to deploy the Supabase project.
+   - **Deploy edge functions:**
+
+     ```bash
+     supabase functions deploy
+     ```
+
+   - **Deploy secrets:**
+     ```bash
+     supabase secrets set --env-file ./supabase/.env.production
+     ```
 
 ## 5. Backend Deployment (Proxy Server)
 
@@ -144,11 +159,11 @@ While you can deploy manually, the recommended approach is to set up continuous 
 
 This project uses ESLint and Prettier to maintain a consistent code style.
 
--   **Check for linting errors:**
-    ```bash
-    pnpm lint
-    ```
--   **Automatically format all files:**
-    ```bash
-    pnpm format
-    ```
+- **Check for linting errors:**
+  ```bash
+  pnpm lint
+  ```
+- **Automatically format all files:**
+  ```bash
+  pnpm format
+  ```
