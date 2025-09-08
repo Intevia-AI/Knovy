@@ -117,6 +117,9 @@
 }
 
 @layer base {
+  html {
+    @apply scroll-smooth;
+  }
   * {
     @apply border-border/30 outline-ring/50;
   }

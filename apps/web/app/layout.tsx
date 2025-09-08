@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import "@workspace/ui/globals.css";
 import { Providers } from "@/components/providers";
 import { validateEnv } from "@/lib/validateEnv";
+import { PageTransition } from '@/components/page-transition';
 import { LanguageProvider } from "@/context/language-context";
 import { getDictionary } from "@/lib/i18n";
 import { SpeedInsights } from "@vercel/speed-insights/next";
@@ -51,7 +52,7 @@ export default async function RootLayout({
       <body className={`${fontSans.variable} ${fontMono.variable} font-sans antialiased `}>
         <Providers>
           <LanguageProvider initialLocale={locale} initialTranslations={dictionary}>
-            {children}
+            <PageTransition>{children}</PageTransition>
           </LanguageProvider>
           <SpeedInsights />
           <Analytics />
