@@ -6,13 +6,17 @@ import React from "react";
 import { cn } from "@workspace/ui/lib/utils";
 import { useLanguage } from "@/context/language-context";
 import { LanguageSwitcher } from "./language-switcher";
+import { usePathname } from "next/navigation";
 
 export const HeroHeader = () => {
   const { t } = useLanguage();
+  const pathname = usePathname();
+  const isHomePage = pathname === "/";
+
   const menuItems = [
-    { name: t("nav.home"), href: "/#home" },
-    { name: t("nav.demo"), href: "#demo" },
-    { name: t("nav.features"), href: "#features" },
+    { name: t("nav.home"), href: isHomePage ? "#home" : "/#home" },
+    { name: t("nav.demo"), href: isHomePage ? "#demo" : "/#demo" },
+    { name: t("nav.features"), href: isHomePage ? "#features" : "/#features" },
     { name: t("nav.contact"), href: "#footer" },
   ];
 
