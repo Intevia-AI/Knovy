@@ -43,9 +43,7 @@ export const LanguageProvider: React.FC<LanguageProviderProps> = ({
       }
     };
 
-    if (locale !== initialLocale) {
-      fetchTranslations();
-    }
+    fetchTranslations();
   }, [locale, initialLocale]);
 
   useEffect(() => {
