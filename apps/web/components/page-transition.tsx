@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { motion, AnimatePresence } from 'framer-motion';
-import { usePathname } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { motion, AnimatePresence } from "motion/react";
+import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 
 export const PageTransition = ({ children }: { children: React.ReactNode }) => {
   const pathname = usePathname();
@@ -27,7 +27,7 @@ export const PageTransition = ({ children }: { children: React.ReactNode }) => {
     },
   };
 
-  const isHomePage = pathname === '/';
+  const isHomePage = pathname === "/";
 
   // On the home page, we don't want any transition, to avoid conflict with its own animations.
   if (isHomePage) {
@@ -44,7 +44,7 @@ export const PageTransition = ({ children }: { children: React.ReactNode }) => {
           initial="initial"
           animate="animate"
           exit="exit"
-          transition={{ duration: 0.3, ease: 'easeInOut' }}
+          transition={{ duration: 0.3, ease: "easeInOut" }}
         >
           {children}
         </motion.div>
