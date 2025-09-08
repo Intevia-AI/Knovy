@@ -98,24 +98,30 @@ pnpm --filter app dev
    - **Start local Supabase services:**
 
      ```bash
-     pnpm dlx supabase start
+     supabase start
      ```
 
    - **View status and API keys:**
 
      ```bash
-     pnpm dlx supabase status
+     supabase status
      ```
 
    - **Stop local Supabase services:**
 
      ```bash
-     pnpm dlx supabase stop
+     supabase stop
      ```
+
+   - **Start the Supabase functions:**
+
+   ```bash
+   supabase functions serve --env-file supabase/.env.development
+   ```
 
    - **Reset the local database:**
      ```bash
-     pnpm dlx supabase db reset
+     supabase db reset
      ```
 
 2. For production deployment
