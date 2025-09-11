@@ -11,7 +11,8 @@ interface ChatPanelProps {}
 
 export default function ChatPanel({}: ChatPanelProps) {
   const [activeTab, setActiveTab] = useState('transcription')
-  const { transcriptions, aiMessages, sendContextToAI, isLoading } = useAIInteraction()
+  const { transcriptions, aiMessages, sendContextToAI, isLoading, isSummarizing } =
+    useAIInteraction()
   const messagesContainerRef = useRef<HTMLDivElement>(null)
   const [isOpen, setIsOpen] = useState(true)
   const popoverId = 'transcriptions'
@@ -31,6 +32,17 @@ export default function ChatPanel({}: ChatPanelProps) {
       sendContextToAI('summary')
     }
   }
+
+  useEffect(() => {
+    if (activeTab === 'summary') {
+      const intervalId = setInterval(() => {
+        console.log('[ChatPanel] Periodically updating summary...')
+        sendContextToAI('summary')
+      }, 30000) // 30 seconds
+      return () => clearInterval(intervalId)
+    }
+    return undefined
+  }, [activeTab, sendContextToAI])
 
   const summary = aiMessages.find((m) => m.id === 'ai-summary')?.content || ''
 
@@ -114,12 +126,17 @@ export default function ChatPanel({}: ChatPanelProps) {
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                 >
-                  {isLoading ? (
+                  {isLoading || (isSummarizing && !summary) ? (
                     <div className="flex justify-center py-2">
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-black/50"></div>
                     </div>
                   ) : summary ? (
                     <div className="p-2 rounded-md text-sm whitespace-pre-wrap bg-black/5 border border-black/10 text-black">
+                      {isSummarizing && (
+                        <div className="absolute top-2 right-2">
+                          <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-black/50"></div>
+                        </div>
+                      )}
                       <AnimatedText text={summary} />
                     </div>
                   ) : (

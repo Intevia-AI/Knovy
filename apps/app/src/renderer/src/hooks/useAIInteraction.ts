@@ -27,6 +27,7 @@ export function useAIInteraction() {
   const [aiMessages, setAiMessages] = useState<AIMessage[]>([])
   const [transcriptions, setTranscriptions] = useState<TranscriptionMessage[]>([])
   const [isLoading, setIsLoading] = useState(false)
+  const [isSummarizing, setIsSummarizing] = useState(false)
   const [customPrompt, setCustomPrompt] = useState('')
   const [keywords, setKeywords] = useState<string[]>([])
   const [selectedKeyword, setSelectedKeyword] = useState<string | null>(null)
@@ -56,7 +57,12 @@ export function useAIInteraction() {
         'transcription:data',
         (newTranscription: TranscriptionMessage) => {
           if (!newTranscription || !newTranscription.content) return
-          setTranscriptions((prev) => [...prev, newTranscription])
+          // The object from IPC has a string timestamp, which needs to be converted to a number.
+          const formattedTranscription = {
+            ...newTranscription,
+            timestamp: new Date(newTranscription.timestamp as any).getTime()
+          }
+          setTranscriptions((prev) => [...prev, formattedTranscription])
         }
       )
       return () => unsubscribe()
@@ -69,24 +75,15 @@ export function useAIInteraction() {
         try {
           const sessionId = await window.electronAPI.invoke('session:get-id')
           if (sessionId) {
-            let page = 1
-            const limit = 50 // Fetch 50 transcripts per batch
-            let allTranscripts: any[] = []
-            while (true) {
-              const loadedTranscripts = await window.electronAPI.invoke('db:get-transcripts', {
-                sessionId,
-                page,
-                limit
-              })
-              if (loadedTranscripts && loadedTranscripts.length > 0) {
-                allTranscripts = [...allTranscripts, ...loadedTranscripts]
-                page++
-              } else {
-                break // No more transcripts to load
-              }
-            }
-            if (allTranscripts.length > 0) {
-              const formattedTranscripts = allTranscripts.map((t: any) => ({
+            // Performance: Only load the first page of transcripts initially.
+            const loadedTranscripts = await window.electronAPI.invoke('db:get-transcripts', {
+              sessionId,
+              page: 1,
+              limit: 50
+            })
+
+            if (loadedTranscripts && loadedTranscripts.length > 0) {
+              const formattedTranscripts = loadedTranscripts.map((t: any) => ({
                 id: t.id,
                 content: t.content,
                 role: 'assistant',
@@ -120,10 +117,17 @@ export function useAIInteraction() {
       if (transcriptions.length === 0) {
         return { text: '', timestamp: Date.now() }
       }
-      const fiveMinutesAgo = Date.now() - 5 * 60 * 1000
-      const contextTranscriptions = (
-        action === 'answer' || action === 'summary' ? transcriptions : transcriptions.slice(-5)
-      ).filter((t) => t.timestamp >= fiveMinutesAgo)
+
+      let contextTranscriptions: TranscriptionMessage[]
+
+      if (action === 'answer') {
+        const fiveMinutesAgo = Date.now() - 5 * 60 * 1000
+        contextTranscriptions = transcriptions.filter((t) => t.timestamp > fiveMinutesAgo)
+      } else {
+        // Default behavior for other actions, e.g., keyword_search from a popover
+        contextTranscriptions = transcriptions.slice(-10)
+      }
+
       const contextText = contextTranscriptions.map((t) => t.content).join('\n')
       return { text: contextText, timestamp: Date.now() }
     },
@@ -136,15 +140,22 @@ export function useAIInteraction() {
         query,
         hasScreenshot: !!screenshot
       })
-      setIsLoading(true)
-
-      const displayMsgContent = query || baseDisplayPromptMap[action][currentLanguage]
-      const displayMsg: AIMessage = {
-        id: `disp-${Date.now()}`,
-        role: 'user',
-        content: displayMsgContent
+      if (action === 'summary') {
+        setIsSummarizing(true)
+      } else {
+        setIsLoading(true)
       }
-      setAiMessages((prev) => [...prev, displayMsg])
+
+      // Avoid adding a display message for periodic summary updates
+      if (action !== 'summary') {
+        const displayMsgContent = query || baseDisplayPromptMap[action][currentLanguage]
+        const displayMsg: AIMessage = {
+          id: `disp-${Date.now()}`,
+          role: 'user',
+          content: displayMsgContent
+        }
+        setAiMessages((prev) => [...prev, displayMsg])
+      }
 
       try {
         const {
@@ -173,8 +184,9 @@ export function useAIInteraction() {
 
             const newTranscripts = transcriptions.filter((t) => t.timestamp > lastSummaryTime)
 
+            // Condition 1: No new content and a summary already exists.
             if (newTranscripts.length === 0 && existingSummary) {
-              // If no new transcripts and a summary exists, just display it without calling the function
+              console.log('[AIInteraction] No new transcripts. Displaying existing summary.')
               setAiMessages((prev) => {
                 const summaryMessage = {
                   id: 'ai-summary',
@@ -186,6 +198,14 @@ export function useAIInteraction() {
                 }
                 return [...prev, summaryMessage]
               })
+              setIsLoading(false)
+              return // Stop execution
+            }
+
+            // Condition 2: No transcripts at all to summarize.
+            if (newTranscripts.length === 0 && !existingSummary) {
+              console.log('[AIInteraction] No content available to create a summary.')
+              // Optionally, set a message indicating not enough content
               setIsLoading(false)
               return // Stop execution
             }
@@ -243,7 +263,7 @@ export function useAIInteraction() {
 
         if (action === 'summary') {
           const sessionId = await window.electronAPI.invoke('session:get-id')
-          if (sessionId) {
+          if (sessionId && content) {
             await window.electronAPI.invoke('db:save-summary', { sessionId, content })
           }
           setAiMessages((prev) => {
@@ -272,24 +292,15 @@ export function useAIInteraction() {
           }
         ])
       } finally {
-        setIsLoading(false)
+        if (action === 'summary') {
+          setIsSummarizing(false)
+        } else {
+          setIsLoading(false)
+        }
       }
     },
-    [gatherContext, t, language]
+    [gatherContext, t, language, transcriptions] // Added transcriptions dependency
   )
-
-  const SUMMARY_TIME_WINDOW_SECONDS = 60
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (isScreenSharing && aiMessages.some((m) => m.id === 'ai-summary')) {
-        console.log('[AIInteraction] Periodically updating summary...')
-        sendContextToAI('summary')
-      }
-    }, SUMMARY_TIME_WINDOW_SECONDS * 1000)
-
-    return () => clearInterval(interval)
-  }, [isScreenSharing, aiMessages, sendContextToAI])
 
   const handleKeywordClick = useCallback(
     async (keyword: string) => {
@@ -379,6 +390,7 @@ export function useAIInteraction() {
     isScreenSharing,
     toggleScreenShare,
     screenStreamRef,
-    cancelScreenShare
+    cancelScreenShare,
+    isSummarizing
   }
 }

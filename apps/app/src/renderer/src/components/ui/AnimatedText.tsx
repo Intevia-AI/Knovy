@@ -41,7 +41,7 @@ export function AnimatedText({ text, className }: AnimatedTextProps) {
       aria-label={text}
     >
       {words.map((word, index) => (
-        <motion.span key={index} variants={wordVariants} style={{ display: 'inline-block', marginRight: '0.25em' }}>
+        <motion.span key={index} variants={wordVariants} style={{ marginRight: '0.25em' }}>
           {word}
         </motion.span>
       ))}
