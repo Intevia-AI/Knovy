@@ -20,6 +20,17 @@ export default function ActionsPanel() {
   const [isScreenSharing, setIsScreenSharing] = useState(false)
   const [input, setInput] = useState('')
   const [isConversational, setIsConversational] = useState(false)
+  const [isOpen, setIsOpen] = useState(true)
+  const popoverId = 'actions'
+
+  useEffect(() => {
+    const unsubscribe = window.electronAPI.on('popover:prepare-to-close', (id) => {
+      if (id === popoverId) {
+        setIsOpen(false)
+      }
+    })
+    return () => unsubscribe()
+  }, [])
 
   useEffect(() => {
     const getInitialData = async () => {
@@ -43,7 +54,7 @@ export default function ActionsPanel() {
     return () => unsubscribe()
   }, [])
 
-  const features = [
+  const actions = [
     { action: 'summary', labelKey: 'aiActionSummary', icon: ListCollapseIcon },
     { action: 'answer', labelKey: 'aiActionAnswer', icon: MessageSquareQuote },
     { action: 'screenshot', labelKey: 'aiActionScreenshot', icon: CameraIcon },
@@ -77,113 +88,125 @@ export default function ActionsPanel() {
     visible: { opacity: 1, y: 0 }
   }
 
-  return (
-    <div className="flex flex-col h-screen w-full glass-popover p-2 space-y-2 overflow-y-auto">
-      <AnimatePresence initial={false}>
-        {isConversational ? (
-          <motion.div
-            key="conversation"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            className="flex flex-col h-full space-y-2"
-          >
-            {/* Conversational View */}
-            <motion.div
-              variants={messageContainerVariants}
-              initial="hidden"
-              animate="visible"
-              className="flex-grow overflow-y-auto p-2 space-y-4"
-            >
-              {aiMessages.map((m) => (
-                <motion.div
-                  key={m.id}
-                  variants={messageItemVariants}
-                  className={cn(
-                    'p-2 rounded-md text-sm w-fit max-w-[95%] whitespace-pre-wrap',
-                    m.role === 'user'
-                      ? 'bg-blue-500/10 border-blue-500/20 ml-auto text-right'
-                      : 'bg-black/5 border-black/10 mr-auto text-left'
-                  )}
-                >
-                  {m.role === 'assistant' ? (
-                    <AnimatedText text={m.content} />
-                  ) : (
-                    m.content
-                  )}
-                </motion.div>
-              ))}
-              {isLoading && (
-                <motion.div variants={messageItemVariants} className="text-sm text-black">
-                  Loading...
-                </motion.div>
-              )}
-            </motion.div>
-          </motion.div>
-        ) : (
-          <motion.div
-            key="grid"
-            exit={{ opacity: 0, scale: 0.9 }}
-            className="grid grid-cols-2 gap-2 flex-grow"
-          >
-            {features.map(({ action, labelKey, icon: Icon }) => (
-              <Button
-                key={action}
-                variant="ghost"
-                size="lg"
-                disabled={!isScreenSharing}
-                onClick={() => handleActionClick(action)}
-                className="flex flex-col items-center justify-center h-full text-black hover:bg-black/10 hover:text-black space-y-1"
-              >
-                <Icon className="h-6 w-6" />
-                <span className="text-xs">{t(labelKey as any)}</span>
-              </Button>
-            ))}
-          </motion.div>
-        )}
-      </AnimatePresence>
+  const handleAnimationComplete = () => {
+    if (!isOpen) {
+      window.electronAPI.send('popover:ready-to-close', popoverId)
+    }
+  }
 
-      {/* Bottom Bar */}
-      <div className="flex-none">
-        {isConversational && (
-          <div className="flex justify-center gap-2 mb-2">
-            {features.map(({ action, icon: Icon }) => (
+  return (
+    <AnimatePresence onExitComplete={handleAnimationComplete}>
+      {isOpen && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 20 }}
+          transition={{ duration: 0.2 }}
+          className="flex flex-col h-screen w-full glass-popover p-2 space-y-2 overflow-y-auto"
+        >
+          <AnimatePresence initial={false}>
+            {isConversational ? (
+              <motion.div
+                key="conversation"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="flex flex-col h-full space-y-2"
+              >
+                {/* Conversational View */}
+                <motion.div
+                  variants={messageContainerVariants}
+                  initial="hidden"
+                  animate="visible"
+                  className="flex-grow overflow-y-auto p-2 space-y-4"
+                >
+                  {aiMessages.map((m) => (
+                    <motion.div
+                      key={m.id}
+                      variants={messageItemVariants}
+                      className={cn(
+                        'p-2 rounded-md text-sm w-fit max-w-[95%] whitespace-pre-wrap',
+                        m.role === 'user'
+                          ? 'bg-blue-500/10 border-blue-500/20 ml-auto text-right'
+                          : 'bg-black/5 border-black/10 mr-auto text-left'
+                      )}
+                    >
+                      {m.role === 'assistant' ? <AnimatedText text={m.content} /> : m.content}
+                    </motion.div>
+                  ))}
+                  {isLoading && (
+                    <motion.div variants={messageItemVariants} className="text-sm text-black">
+                      Loading...
+                    </motion.div>
+                  )}
+                </motion.div>
+              </motion.div>
+            ) : (
+              <motion.div
+                key="grid"
+                exit={{ opacity: 0, scale: 0.9 }}
+                className="grid grid-cols-2 gap-2 flex-grow"
+              >
+                {actions.map(({ action, labelKey, icon: Icon }) => (
+                  <Button
+                    key={action}
+                    variant="ghost"
+                    size="lg"
+                    disabled={!isScreenSharing}
+                    onClick={() => handleActionClick(action)}
+                    className="flex flex-col items-center justify-center h-full text-black hover:bg-black/10 hover:text-black space-y-1"
+                  >
+                    <Icon className="h-6 w-6" />
+                    <span className="text-xs">{t(labelKey as any)}</span>
+                  </Button>
+                ))}
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Bottom Bar */}
+          <div className="flex-none">
+            {isConversational && (
+              <div className="flex justify-center gap-2 mb-2">
+                {actions.map(({ action, icon: Icon }) => (
+                  <Button
+                    key={action}
+                    variant="ghost"
+                    size="icon"
+                    disabled={!isScreenSharing || isLoading}
+                    onClick={() => handleActionClick(action)}
+                    className="h-8 w-8 bg-black/10 hover:bg-black/20 text-black"
+                  >
+                    <Icon className="h-4 w-4" />
+                  </Button>
+                ))}
+              </div>
+            )}
+            <form onSubmit={handleSubmit} className="flex gap-2">
+              <Input
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder={
+                  isScreenSharing ? t('chatPlaceholderSharing') : t('chatPlaceholderNotSharing')
+                }
+                className="flex-grow h-8 text-sm bg-black/5 border-black/20 placeholder:text-gray-500 text-black"
+                disabled={isLoading || !isScreenSharing}
+                aria-label="Custom prompt input"
+              />
               <Button
-                key={action}
+                type="submit"
                 variant="ghost"
                 size="icon"
-                disabled={!isScreenSharing || isLoading}
-                onClick={() => handleActionClick(action)}
+                disabled={isLoading || !isScreenSharing || !input.trim()}
                 className="h-8 w-8 bg-black/10 hover:bg-black/20 text-black"
+                aria-label={t('sendChatButtonLabel')}
               >
-                <Icon className="h-4 w-4" />
+                <ArrowUpRight className="h-4 w-4" />
               </Button>
-            ))}
+            </form>
           </div>
-        )}
-        <form onSubmit={handleSubmit} className="flex gap-2">
-          <Input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder={
-              isScreenSharing ? t('chatPlaceholderSharing') : t('chatPlaceholderNotSharing')
-            }
-            className="flex-grow h-8 text-sm bg-black/5 border-black/20 placeholder:text-gray-500 text-black"
-            disabled={isLoading || !isScreenSharing}
-            aria-label="Custom prompt input"
-          />
-          <Button
-            type="submit"
-            variant="ghost"
-            size="icon"
-            disabled={isLoading || !isScreenSharing || !input.trim()}
-            className="h-8 w-8 bg-black/10 hover:bg-black/20 text-black"
-            aria-label={t('sendChatButtonLabel')}
-          >
-            <ArrowUpRight className="h-4 w-4" />
-          </Button>
-        </form>
-      </div>
-    </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   )
 }

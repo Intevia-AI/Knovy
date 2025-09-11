@@ -14,9 +14,8 @@ import { useI18n } from '@/hooks/useI18n'
 import { useLanguage } from '@/context/LanguageContext'
 import { SupportedLanguage } from '@/lib/translations'
 import { useAuth } from '@/context/AuthContext'
+import { motion, AnimatePresence } from 'framer-motion'
 
-// Note: This is no longer a modal, but a view for a popover window.
-// The name is kept for consistency with the plan.
 export function SettingsModal() {
   const { t } = useI18n()
   const { language, setLanguage } = useLanguage()
@@ -24,6 +23,18 @@ export function SettingsModal() {
   const [isScreenSharing, setIsScreenSharing] = useState(false)
   const [draftPrompt, setDraftPrompt] = useState('')
   const [customPrompt, setCustomPrompt] = useState('')
+  const [isOpen, setIsOpen] = useState(true)
+
+  const popoverId = 'settings'
+
+  useEffect(() => {
+    const unsubscribe = window.electronAPI.on('popover:prepare-to-close', (id) => {
+      if (id === popoverId) {
+        setIsOpen(false)
+      }
+    })
+    return () => unsubscribe()
+  }, [])
 
   useEffect(() => {
     const getInitialData = async () => {
@@ -86,85 +97,99 @@ export function SettingsModal() {
 
   const handleSignOut = async () => {
     await signOut()
-    setTimeout(() => {
-      window.electronAPI.send('popover:close', 'settings')
-    }, 100)
+    setIsOpen(false)
+  }
+
+  const handleAnimationComplete = () => {
+    if (!isOpen) {
+      window.electronAPI.send('popover:ready-to-close', popoverId)
+    }
   }
 
   return (
-    <div className="glass-popover p-3 space-y-3 h-screen w-full overflow-y-auto">
-      {/* History Button */}
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={onShowHistory}
-        className="w-full justify-start text-sm h-10 text-black hover:bg-black/10 hover:text-black"
-      >
-        <History className="mr-2 h-4 w-4" />
-        {t('viewHistory')}
-      </Button>
-
-      {/* Language Selection */}
-      <div className="space-y-1.5 p-2 rounded-lg border border-border/50 bg-background/30">
-        <div className="flex items-center space-x-2">
-          <LanguagesIcon className="h-3 w-3 text-muted-foreground" />
-          <h3 className="text-sm font-medium text-foreground">{t('languageSettings')}</h3>
-        </div>
-        <div className="flex items-center justify-between">
-          <Label className="text-sm text-muted-foreground">{t('selectOutputLanguage')}</Label>
-          <Select value={language || 'zh-TW'} onValueChange={handleLanguageChange}>
-            <SelectTrigger className="w-[120px] h-7 text-sm px-2 bg-muted/95 border-border/50">
-              <SelectValue placeholder={t('languageSelectPlaceholder')} />
-            </SelectTrigger>
-            <SelectContent className="bg-muted/95 border-border/50">
-              {languages.map((lang) => (
-                <SelectItem key={lang.code} value={lang.code} className="text-sm">
-                  {lang.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
-      {/* Custom Prompt Section */}
-      <div className="space-y-1.5 p-2 rounded-lg border border-border/50 bg-background/30">
-        <div className="flex items-center space-x-2">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="14"
-            height="14"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="text-muted-foreground"
+    <AnimatePresence onExitComplete={handleAnimationComplete}>
+      {isOpen && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 20 }}
+          transition={{ duration: 0.2 }}
+          className="glass-popover p-3 space-y-3 h-screen w-full overflow-y-auto"
+        >
+          {/* History Button */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onShowHistory}
+            className="w-full justify-start text-sm h-10 text-black hover:bg-black/10 hover:text-black"
           >
-            <path d="M12 20h9" />
-            <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
-          </svg>
-          <h3 className="text-sm font-medium text-foreground">{t('customPromptTitle')}</h3>
-        </div>
-        <div className="space-y-1">
-          <Textarea
-            id="custom-prompt"
-            placeholder={t('customPromptPlaceholder')}
-            value={draftPrompt}
-            onChange={(e) => setDraftPrompt(e.target.value)}
-            onKeyDown={handleCustomPromptConfirm}
-            className="h-24 text-sm border-border/50 bg-muted/95 focus-visible:ring-0 focus-visible:border-primary focus-visible:outline-none"
-          />
-          <p className="text-[10px] text-muted-foreground">{t('customPromptHint')}</p>
-        </div>
-      </div>
+            <History className="mr-2 h-4 w-4" />
+            {t('viewHistory')}
+          </Button>
 
-      {/* Sign Out Button */}
-      <Button variant="destructive" onClick={handleSignOut} className="w-full h-9 text-sm mt-2">
-        <LogOut className="mr-2 h-4 w-4" />
-        {t('signOut')}
-      </Button>
-    </div>
+          {/* Language Selection */}
+          <div className="space-y-1.5 p-2 rounded-lg border border-border/50 bg-background/30">
+            <div className="flex items-center space-x-2">
+              <LanguagesIcon className="h-3 w-3 text-muted-foreground" />
+              <h3 className="text-sm font-medium text-foreground">{t('languageSettings')}</h3>
+            </div>
+            <div className="flex items-center justify-between">
+              <Label className="text-sm text-muted-foreground">{t('selectOutputLanguage')}</Label>
+              <Select value={language || 'zh-TW'} onValueChange={handleLanguageChange}>
+                <SelectTrigger className="w-[120px] h-7 text-sm px-2 bg-muted/95 border-border/50">
+                  <SelectValue placeholder={t('languageSelectPlaceholder')} />
+                </SelectTrigger>
+                <SelectContent className="bg-muted/95 border-border/50">
+                  {languages.map((lang) => (
+                    <SelectItem key={lang.code} value={lang.code} className="text-sm">
+                      {lang.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Custom Prompt Section */}
+          <div className="space-y-1.5 p-2 rounded-lg border border-border/50 bg-background/30">
+            <div className="flex items-center space-x-2">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="text-muted-foreground"
+              >
+                <path d="M12 20h9" />
+                <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+              </svg>
+              <h3 className="text-sm font-medium text-foreground">{t('customPromptTitle')}</h3>
+            </div>
+            <div className="space-y-1">
+              <Textarea
+                id="custom-prompt"
+                placeholder={t('customPromptPlaceholder')}
+                value={draftPrompt}
+                onChange={(e) => setDraftPrompt(e.target.value)}
+                onKeyDown={handleCustomPromptConfirm}
+                className="h-24 text-sm border-border/50 bg-muted/95 focus-visible:ring-0 focus-visible:border-primary focus-visible:outline-none"
+              />
+              <p className="text-[10px] text-muted-foreground">{t('customPromptHint')}</p>
+            </div>
+          </div>
+
+          {/* Sign Out Button */}
+          <Button variant="destructive" onClick={handleSignOut} className="w-full h-9 text-sm mt-2">
+            <LogOut className="mr-2 h-4 w-4" />
+            {t('signOut')}
+          </Button>
+        </motion.div>
+      )}
+    </AnimatePresence>
   )
 }

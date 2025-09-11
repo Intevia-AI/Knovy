@@ -31,7 +31,7 @@ export function MainController() {
     window.electronAPI.send('app:resize-window', { width: newWidth, height: 50 })
 
     if (!isScreenSharing) {
-      const popoversToClose = ['transcriptions', 'features', 'screen-preview']
+      const popoversToClose = ['transcriptions', 'actions', 'screen-preview']
       if (activePopover && popoversToClose.includes(activePopover)) {
         window.electronAPI.send('popover:close', activePopover)
         setActivePopover(null)
@@ -78,9 +78,9 @@ export function MainController() {
         }
         isTranscriptionWindowVisible={activePopover === 'transcriptions'}
         onToggleFeaturesWindow={() =>
-          handleTogglePopover({ id: 'features', hash: 'features', width: 440, height: 340 })
+          handleTogglePopover({ id: 'actions', hash: 'actions', width: 440, height: 340 })
         }
-        isFeaturesWindowVisible={activePopover === 'features'}
+        isFeaturesWindowVisible={activePopover === 'actions'}
         onToggleSettingsWindow={() =>
           handleTogglePopover({ id: 'settings', hash: 'settings', width: 440, height: 340 })
         }

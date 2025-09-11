@@ -73,15 +73,19 @@ export function createPopover(options: PopoverOptions): BrowserWindow {
 export function closePopover(id: string): void {
   const popover = openPopovers.get(id)
   if (popover && !popover.isDestroyed()) {
+    popover.webContents.send('popover:prepare-to-close', id)
+  }
+}
+
+export function forceClosePopover(id: string): void {
+  const popover = openPopovers.get(id)
+  if (popover && !popover.isDestroyed()) {
     popover.close()
   }
 }
 
 export function closeAllPopovers(): void {
-  for (const popover of openPopovers.values()) {
-    if (popover && !popover.isDestroyed()) {
-      popover.close()
-    }
+  for (const id of openPopovers.keys()) {
+    closePopover(id)
   }
-  openPopovers.clear()
 }

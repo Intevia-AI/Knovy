@@ -14,7 +14,7 @@ const getInitialView = () => {
   const hash = window.location.hash.substring(1)
   switch (hash) {
     case 'transcriptions':
-    case 'features':
+    case 'actions':
     case 'settings':
     case 'screen-preview':
       return hash
@@ -44,7 +44,7 @@ function AppContainer() {
       return <ScreenPreview systemAnalyserNode={null} />
     case 'transcriptions':
       return <ChatPanel />
-    case 'features':
+    case 'actions':
       return <ActionsPanel />
     case 'settings':
       return <SettingsModal />

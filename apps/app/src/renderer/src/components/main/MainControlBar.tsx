@@ -83,7 +83,7 @@ export function MainControlBar({
               size="icon"
               className="h-8 w-8 rounded-full text-black hover:bg-white hover:text-black"
               onClick={onToggleFeaturesWindow} // Use new toggle function
-              title="Features"
+              title="actions"
             >
               <LayoutGrid className="h-4 w-4" />
             </Button>

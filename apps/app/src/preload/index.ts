@@ -64,7 +64,8 @@ const api = {
       'ai:message',
       'ai:custom-prompt',
       'transcription:data',
-      'screenshare:state-changed' // Changed
+      'screenshare:state-changed',
+      'popover:prepare-to-close'
     ]
     if (validChannels.includes(channel)) {
       const subscription = (event, ...args) => callback(...args)
@@ -81,8 +82,8 @@ const api = {
       'app:show-transcriptions',
       'app:hide-transcriptions',
       'app:resize-window',
-      'app:show-features',
-      'app:hide-features',
+      'app:show-actions',
+      'app:hide-actions',
       'app:show-settings',
       'app:hide-settings',
       'app:show-screen-preview',
@@ -94,6 +95,7 @@ const api = {
       'popover:close',
       'popover:close-all', // Added this channel
       'popover:sendMessage',
+      'popover:ready-to-close',
       'electronAPI:requestSources',
       'set-screenshare-state',
       'ai:loading-state-change',

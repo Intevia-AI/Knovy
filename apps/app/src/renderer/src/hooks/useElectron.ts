@@ -1,7 +1,7 @@
 /**
  * @fileoverview Electron Integration Hook
  * @module useElectron
- * @description React hook for integrating with Electron desktop app features
+ * @description React hook for integrating with Electron desktop app actions
  */
 
 import { useState, useEffect, useCallback } from 'react'
