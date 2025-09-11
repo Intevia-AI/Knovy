@@ -228,6 +228,19 @@ export function useAIInteraction() {
     [gatherContext, t, language]
   )
 
+  const SUMMARY_TIME_WINDOW_SECONDS = 60
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (isScreenSharing && aiMessages.some((m) => m.id.startsWith('ai-summary'))) {
+        console.log('[AIInteraction] Periodically updating summary...')
+        sendContextToAI('summary')
+      }
+    }, SUMMARY_TIME_WINDOW_SECONDS * 1000)
+
+    return () => clearInterval(interval)
+  }, [isScreenSharing, aiMessages, sendContextToAI])
+
   const handleKeywordClick = useCallback(
     async (keyword: string) => {
       if (isLoading) return

@@ -11,10 +11,6 @@ import { useLanguage } from '@/context/LanguageContext'
 import { MainControlBar } from './MainControlBar'
 import RealTimeAnalysis from '../RealTimeAnalysis'
 
-/**
- * This component is the controller for the main application window (the header bar).
- * It contains all the core logic and state management hooks.
- */
 export function MainController() {
   const { language } = useLanguage()
   const [activePopover, setActivePopover] = useState<string | null>(null)
@@ -34,9 +30,9 @@ export function MainController() {
     const newWidth = isScreenSharing ? 440 : 360
     window.electronAPI.send('app:resize-window', { width: newWidth, height: 50 })
 
-    // When screen sharing stops, close any popovers that should only be open during sharing
     if (!isScreenSharing) {
-      if (activePopover === 'screen-preview' || activePopover === 'transcriptions') {
+      const popoversToClose = ['transcriptions', 'features', 'screen-preview']
+      if (activePopover && popoversToClose.includes(activePopover)) {
         window.electronAPI.send('popover:close', activePopover)
         setActivePopover(null)
       }
@@ -82,11 +78,11 @@ export function MainController() {
         }
         isTranscriptionWindowVisible={activePopover === 'transcriptions'}
         onToggleFeaturesWindow={() =>
-          handleTogglePopover({ id: 'features', hash: 'features', width: 360, height: 200 })
+          handleTogglePopover({ id: 'features', hash: 'features', width: 360, height: 300 })
         }
         isFeaturesWindowVisible={activePopover === 'features'}
         onToggleSettingsWindow={() =>
-          handleTogglePopover({ id: 'settings', hash: 'settings', width: 360, height: 300 })
+          handleTogglePopover({ id: 'settings', hash: 'settings', width: 360, height: 420 })
         }
         isSettingsWindowVisible={activePopover === 'settings'}
         onToggleScreenPreviewWindow={() =>
@@ -94,7 +90,7 @@ export function MainController() {
             id: 'screen-preview',
             hash: 'screen-preview',
             width: 440,
-            height: 300
+            height: 340
           })
         }
         isScreenPreviewWindowVisible={activePopover === 'screen-preview'}

@@ -78,6 +78,15 @@ export function MainControlBar({
             >
               <MessageSquare className="h-4 w-4" />
             </Button>
+            <Button
+              variant={isFeaturesWindowVisible ? 'secondary' : 'ghost'} // Highlight if open
+              size="icon"
+              className="h-8 w-8 rounded-full text-black hover:bg-white hover:text-black"
+              onClick={onToggleFeaturesWindow} // Use new toggle function
+              title="Features"
+            >
+              <LayoutGrid className="h-4 w-4" />
+            </Button>
           </>
         )}
       </div>
@@ -87,15 +96,6 @@ export function MainControlBar({
         className="flex items-center gap-1"
         style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
       >
-        <Button
-          variant={isFeaturesWindowVisible ? 'secondary' : 'ghost'} // Highlight if open
-          size="icon"
-          className="h-8 w-8 rounded-full text-black hover:bg-white hover:text-black"
-          onClick={onToggleFeaturesWindow} // Use new toggle function
-          title="Features"
-        >
-          <LayoutGrid className="h-4 w-4" />
-        </Button>
         <Button
           variant={isSettingsWindowVisible ? 'secondary' : 'ghost'} // Highlight if open
           size="icon"
