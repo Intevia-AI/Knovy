@@ -55,10 +55,10 @@ export default function ActionsPanel() {
   }, [])
 
   const actions = [
-    { action: 'summary', labelKey: 'aiActionSummary', icon: ListCollapseIcon },
+    // { action: 'summary', labelKey: 'aiActionSummary', icon: ListCollapseIcon },
     { action: 'answer', labelKey: 'aiActionAnswer', icon: MessageSquareQuote },
-    { action: 'screenshot', labelKey: 'aiActionScreenshot', icon: CameraIcon },
-    { action: 'file', labelKey: 'aiActionFile', icon: FileIcon }
+    { action: 'screenshot', labelKey: 'aiActionScreenshot', icon: CameraIcon }
+    // { action: 'file', labelKey: 'aiActionUpload', icon: FileIcon }
   ] as const
 
   const handleActionClick = (action: 'summary' | 'answer' | 'screenshot' | 'file') => {
