@@ -73,16 +73,16 @@ export function MainController() {
             id: 'transcriptions',
             hash: 'transcriptions',
             width: 440,
-            height: 300
+            height: 340
           })
         }
         isTranscriptionWindowVisible={activePopover === 'transcriptions'}
         onToggleFeaturesWindow={() =>
-          handleTogglePopover({ id: 'features', hash: 'features', width: 360, height: 300 })
+          handleTogglePopover({ id: 'features', hash: 'features', width: 440, height: 340 })
         }
         isFeaturesWindowVisible={activePopover === 'features'}
         onToggleSettingsWindow={() =>
-          handleTogglePopover({ id: 'settings', hash: 'settings', width: 360, height: 420 })
+          handleTogglePopover({ id: 'settings', hash: 'settings', width: 440, height: 340 })
         }
         isSettingsWindowVisible={activePopover === 'settings'}
         onToggleScreenPreviewWindow={() =>

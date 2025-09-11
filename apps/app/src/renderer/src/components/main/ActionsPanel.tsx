@@ -63,7 +63,7 @@ export default function ActionsPanel() {
   }
 
   return (
-    <div className="flex flex-col h-full w-full glass-popover p-2 space-y-2">
+    <div className="flex flex-col h-screen w-full glass-popover p-2 space-y-2 overflow-y-auto">
       <AnimatePresence initial={false}>
         {isConversational ? (
           <motion.div

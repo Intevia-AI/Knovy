@@ -59,7 +59,7 @@ export function ScreenPreview({ systemAnalyserNode }: ScreenPreviewProps) {
   }, [])
 
   return (
-    <div className="glass-popover p-2 flex flex-col h-full">
+    <div className="glass-popover p-2 flex flex-col h-screen">
       <div className="relative flex-grow w-full h-full bg-muted/30 rounded-lg overflow-hidden">
         <video ref={videoRef} autoPlay muted className="w-full h-full object-contain bg-muted" />
         {!videoRef.current?.srcObject && (

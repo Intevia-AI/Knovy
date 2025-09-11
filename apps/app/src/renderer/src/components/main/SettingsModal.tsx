@@ -92,7 +92,7 @@ export function SettingsModal() {
   }
 
   return (
-    <div className="glass-popover p-3 space-y-3 h-full w-full">
+    <div className="glass-popover p-3 space-y-3 h-screen w-full overflow-y-auto">
       {/* History Button */}
       <Button
         variant="ghost"
@@ -159,7 +159,7 @@ export function SettingsModal() {
           <p className="text-[10px] text-muted-foreground">{t('customPromptHint')}</p>
         </div>
       </div>
-      
+
       {/* Sign Out Button */}
       <Button variant="destructive" onClick={handleSignOut} className="w-full h-9 text-sm mt-2">
         <LogOut className="mr-2 h-4 w-4" />

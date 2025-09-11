@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from 'react'
+import React, { useRef, useState } from 'react'
 import { Message as AIMessage } from 'ai'
 import { Markdown } from '@/components/markdown'
 import { cn } from '@/lib/utils'
@@ -19,17 +19,17 @@ export default function ChatPanel({}: ChatPanelProps) {
     }
   }
 
-  const summary = aiMessages.find((m) => m.id.startsWith('ai-summary'))?.content || ''
+  const summary = aiMessages.find((m) => m.id === 'ai-summary')?.content || ''
 
   return (
-    <div className="flex flex-col h-full w-full glass-popover p-1">
+    <div className="flex flex-col h-screen w-full glass-popover p-1">
       <div className="flex-none p-1 flex justify-center">
-        <div className="bg-black/10 rounded-lg p-0.5 flex text-sm">
+        <div className="bg-black/10 rounded-lg p-1 gap-1 flex text-sm">
           <Button
             variant={activeTab === 'transcription' ? 'secondary' : 'ghost'}
             size="sm"
             onClick={() => handleTabChange('transcription')}
-            className="h-6 text-xs"
+            className="h-6 text-md"
           >
             Transcription
           </Button>
@@ -37,7 +37,7 @@ export default function ChatPanel({}: ChatPanelProps) {
             variant={activeTab === 'summary' ? 'secondary' : 'ghost'}
             size="sm"
             onClick={() => handleTabChange('summary')}
-            className="h-6 text-xs"
+            className="h-6 text-md"
           >
             Summary
           </Button>
