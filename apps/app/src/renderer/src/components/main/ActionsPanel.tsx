@@ -4,7 +4,7 @@ import { ListCollapseIcon, CameraIcon, History, MessageSquareQuote } from 'lucid
 import { useI18n } from '@/hooks/useI18n'
 import { useAIInteraction } from '@/hooks/useAIInteraction'
 
-export function FeaturesPopup() {
+export function ActionsPanel() {
   const { t } = useI18n()
   const { sendContextToAI } = useAIInteraction()
   const [isScreenSharing, setIsScreenSharing] = useState(false)
@@ -16,7 +16,7 @@ export function FeaturesPopup() {
           const sharingState = await window.electronAPI.invoke('get-screenshare-state')
           setIsScreenSharing(sharingState)
         } catch (error) {
-          console.error('[FeaturesPopup] Error fetching screen share state:', error)
+          console.error('[ActionsPanel] Error fetching screen share state:', error)
         }
       }
     }

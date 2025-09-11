@@ -1,13 +1,14 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 'use client'
 import { useEffect, useState } from 'react'
 import { useTheme } from 'next-themes'
 
 // Import the self-contained components for each view
-import { MainBar } from './main/MainBar'
+import { MainController } from './main/MainController'
 import ChatPanel from './main/ChatPanel'
-import { FeaturesPopup } from './main/FeaturesPopup'
-import { SettingsPopup } from './main/SettingsPopup'
-import { ScreenPreviewPopup } from './main/ScreenPreviewPopup'
+import { ActionsPanel } from './main/ActionsPanel'
+import { SettingsModal } from './main/SettingsModal'
+import { ScreenPreview } from './main/ScreenPreview'
 
 const getInitialView = () => {
   if (typeof window === 'undefined') return 'main'
@@ -23,10 +24,6 @@ const getInitialView = () => {
   }
 }
 
-/**
- * This component now holds the state and logic for the application.
- * It calls the necessary hooks and passes props down to the view components.
- */
 function AppContainer() {
   const [view, setView] = useState(getInitialView)
 
@@ -40,31 +37,27 @@ function AppContainer() {
     }
   }, [])
 
-  // Render the correct component based on the view, passing necessary props
+  // Render the correct component based on the view
   switch (view) {
     case 'main':
-      return <MainBar />
+      return <MainController />
     case 'screen-preview':
-      // ScreenPreviewPopup might need props in the future
-      return <ScreenPreviewPopup />
+      // This will be rendered in a popover window.
+      // The necessary props will be passed from the main process if needed.
+      return <ScreenPreview systemAnalyserNode={null} />
     case 'transcriptions':
-      // ChatPanel might need props in the future
       return <ChatPanel />
     case 'features':
-      // Pass the required props to FeaturesPopup
-      return <FeaturesPopup />
+      return <ActionsPanel />
     case 'settings':
-      // SettingsPopup might need props in the future
-      return <SettingsPopup />
+      // The modal is controlled from MainController, so this view is likely for a dedicated settings window if ever needed.
+      // For now, we can render it closed, or not at all.
+      return <SettingsModal isOpen={true} onClose={() => window.close()} />
     default:
       return null
   }
 }
 
-/**
- * This is the root component for all renderer windows.
- * It sets up global providers like Theme and delegates rendering to AppContainer.
- */
 export function Main() {
   const { setTheme } = useTheme()
 

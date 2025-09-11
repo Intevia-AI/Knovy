@@ -4,7 +4,7 @@ import { MicIcon, SettingsIcon, LayoutGrid, MonitorIcon, MessageSquare } from 'l
 import { useI18n } from '@/hooks/useI18n'
 import { formatTime } from '@/lib/utils'
 
-interface HeaderBarProps {
+interface MainControlBarProps {
   isAlwaysOnTop: boolean
   toggleAlwaysOnTop: () => void
   minimizeWindow: () => void
@@ -23,7 +23,7 @@ interface HeaderBarProps {
   isScreenPreviewWindowVisible: boolean
 }
 
-export function HeaderBar({
+export function MainControlBar({
   isScreenSharing,
   onToggleScreenShare,
   recordingDuration,
@@ -36,7 +36,7 @@ export function HeaderBar({
   isSettingsWindowVisible,
   onToggleScreenPreviewWindow,
   isScreenPreviewWindowVisible
-}: HeaderBarProps) {
+}: MainControlBarProps) {
   const { t } = useI18n()
 
   return (

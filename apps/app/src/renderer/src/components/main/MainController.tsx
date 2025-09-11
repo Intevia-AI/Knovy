@@ -8,14 +8,14 @@ import { useAIInteraction } from '@/hooks/useAIInteraction'
 import { useLanguage } from '@/context/LanguageContext'
 
 // Components
-import { HeaderBar } from './HeaderBar'
+import { MainControlBar } from './MainControlBar'
 import RealTimeAnalysis from '../RealTimeAnalysis'
 
 /**
  * This component is the controller for the main application window (the header bar).
  * It contains all the core logic and state management hooks.
  */
-export function MainBar() {
+export function MainController() {
   const { language } = useLanguage()
   const [activePopover, setActivePopover] = useState<string | null>(null)
 
@@ -64,7 +64,7 @@ export function MainBar() {
 
   return (
     <div className="flex flex-col h-screen rounded-lg glass-popover">
-      <HeaderBar
+      <MainControlBar
         isAlwaysOnTop={isAlwaysOnTop}
         toggleAlwaysOnTop={toggleAlwaysOnTop}
         minimizeWindow={minimizeWindow}
