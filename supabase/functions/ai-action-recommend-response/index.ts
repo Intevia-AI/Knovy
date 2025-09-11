@@ -1,16 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { authenticateUser } from "../_shared/auth.ts";
-
-// Set CORS headers based on environment
-const allowedOrigin =
-  Deno.env.get("ENVIRONMENT") === "dev"
-    ? "http://localhost:5173"
-    : (Deno.env.get("PRODUCTION_APP_ORIGIN") ?? "https://intevia.app");
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": allowedOrigin,
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { corsHeaders } from "../_shared/cors.ts";
 
 export async function handler(req: Request): Promise<Response> {
   // Handle preflight OPTIONS request
