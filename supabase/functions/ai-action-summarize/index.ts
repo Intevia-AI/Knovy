@@ -38,7 +38,9 @@ export async function handler(req: Request): Promise<Response> {
       throw new Error("GOOGLE_GENERATIVE_AI_API_KEY is not set");
     }
 
-    const prompt = `Summarize the following text:\n\n${text_input} \n\nPlease return a short response, no more than 50 words.`;
+    const prompt = `Summarize the following text into a concise summary. Format the output in Markdown without a "Summary" heading and use numbering for key takeaways. The text to summarize is:
+
+${text_input}`;
     const contents = [{ role: "user", parts: [{ text: prompt }] }];
     const postData = JSON.stringify({ contents });
 

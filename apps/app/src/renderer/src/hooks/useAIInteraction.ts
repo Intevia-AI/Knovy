@@ -202,15 +202,25 @@ export function useAIInteraction() {
           screenshot: (d: any) => d.analysis
         }
 
-        const content =
+        const content = 
           responseMapping[action as keyof typeof responseMapping]?.(data) || JSON.stringify(data)
 
-        const aiResponse: AIMessage = {
-          id: `ai-${Date.now()}`,
-          role: 'assistant',
-          content
+        if (action === 'summary') {
+          setAiMessages((prev) => {
+            const existingSummary = prev.find((m) => m.id === 'ai-summary')
+            if (existingSummary) {
+              return prev.map((m) => (m.id === 'ai-summary' ? { ...m, content } : m))
+            }
+            return [...prev, { id: 'ai-summary', role: 'assistant', content }]
+          })
+        } else {
+          const aiResponse: AIMessage = {
+            id: `ai-${Date.now()}`,
+            role: 'assistant',
+            content
+          }
+          setAiMessages((prev) => [...prev, aiResponse])
         }
-        setAiMessages((prev) => [...prev, aiResponse])
       } catch (e: unknown) {
         console.error('[AIInteraction] Error in sendContextToAI:', e)
         setAiMessages((prev) => [
@@ -232,7 +242,7 @@ export function useAIInteraction() {
 
   useEffect(() => {
     const interval = setInterval(() => {
-      if (isScreenSharing && aiMessages.some((m) => m.id.startsWith('ai-summary'))) {
+      if (isScreenSharing && aiMessages.some((m) => m.id === 'ai-summary')) {
         console.log('[AIInteraction] Periodically updating summary...')
         sendContextToAI('summary')
       }
