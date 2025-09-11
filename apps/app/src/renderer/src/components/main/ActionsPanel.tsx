@@ -71,6 +71,9 @@ export default function ActionsPanel() {
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (!input.trim() || isLoading || !isScreenSharing) return
+    if (!isConversational) {
+      setIsConversational(true)
+    }
     sendContextToAI('chat', input)
     setInput('')
   }

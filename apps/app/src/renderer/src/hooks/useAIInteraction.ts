@@ -234,8 +234,18 @@ export function useAIInteraction() {
             functionPayload.image_input = screenshot
             break
           }
-          case 'chat':
-            throw new Error("'chat' action is not yet implemented.")
+          case 'chat': {
+            functionName = 'ai-action-chat'
+            const sessionId = await window.electronAPI.invoke('session:get-id')
+            if (!sessionId) throw new Error('No active session found.')
+            const existingSummary = await window.electronAPI.invoke('db:get-summary', sessionId)
+            const context = await gatherContext()
+
+            functionPayload.text_input = query
+            functionPayload.previous_summary = existingSummary?.content
+            functionPayload.recent_transcriptions = context?.text
+            break
+          }
           default:
             throw new Error(`AI Action '${action}' is not supported.`)
         }
@@ -255,7 +265,8 @@ export function useAIInteraction() {
           summary: (d: any) => d.summary,
           answer: (d: any) => d.recommendation,
           keyword_search: (d: any) => `Keywords found: ${d.keywords.join(', ')}`,
-          screenshot: (d: any) => d.analysis
+          screenshot: (d: any) => d.analysis,
+          chat: (d: any) => d.response
         }
 
         const content =
