@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Sidebar } from "@/components/sidebar";
-import { getSessions, getTranscripts, deleteSession } from "@/lib/api";
+import { getSessions, getTranscripts, deleteSession, getSummary } from "@/lib/api";
 import { SessionItem } from "@/components/session-item";
 import {
   Card,
@@ -19,6 +19,8 @@ import {
   AccordionTrigger,
 } from "@workspace/ui/components/accordion";
 import { Button } from "@workspace/ui/components/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@workspace/ui/components/tabs";
+import { Markdown } from "@/components/markdown";
 
 interface Session {
   id: string;
@@ -31,6 +33,53 @@ interface Transcript {
   session_id: string;
   timestamp: string;
   content: string;
+}
+
+interface Summary {
+    id: number;
+    session_id: string;
+    content: string;
+    updated_at: string;
+}
+
+function SummaryView({ sessionId }: { sessionId: string }) {
+  const [summary, setSummary] = useState<Summary | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const loadSummary = async () => {
+      setIsLoading(true);
+      try {
+        const fetchedSummary = await getSummary(sessionId);
+        setSummary(fetchedSummary);
+      } catch (err) {
+        setError("Failed to load summary.");
+        console.error(err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadSummary();
+  }, [sessionId]);
+
+  if (isLoading) {
+    return <p>Loading summary...</p>;
+  }
+
+  if (error) {
+    return <p className="text-red-500">{error}</p>;
+  }
+
+  return (
+    <div className="p-2 rounded-md text-sm whitespace-pre-wrap bg-black/5 border border-black/10 text-black dark:bg-white/5 dark:border-white/10 dark:text-white">
+      {summary ? (
+        <Markdown>{summary.content}</Markdown>
+      ) : (
+        <p>No summary available for this session.</p>
+      )}
+    </div>
+  );
 }
 
 function TranscriptView({ sessionId }: { sessionId: string }) {
@@ -159,7 +208,18 @@ export default function HistoryPage() {
                   </div>
                 </AccordionTrigger>
                 <AccordionContent>
-                  <TranscriptView sessionId={session.id} />
+                  <Tabs defaultValue="transcripts" className="w-full">
+                    <TabsList>
+                      <TabsTrigger value="transcripts">Transcripts</TabsTrigger>
+                      <TabsTrigger value="summary">Summary</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="transcripts">
+                      <TranscriptView sessionId={session.id} />
+                    </TabsContent>
+                    <TabsContent value="summary">
+                      <SummaryView sessionId={session.id} />
+                    </TabsContent>
+                  </Tabs>
                 </AccordionContent>
               </AccordionItem>
             ))}

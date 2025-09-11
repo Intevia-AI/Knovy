@@ -25,3 +25,17 @@ export async function deleteSession(sessionId: string) {
   }
   return res.json();
 }
+
+export async function getSummary(sessionId: string) {
+  const res = await fetch(`${API_URL}/sessions/${sessionId}/summary`);
+  if (!res.ok) {
+    // A 404 is a valid case if no summary exists yet, so we handle it gracefully
+    if (res.status === 404) {
+      return null;
+    }
+    throw new Error(`Failed to fetch summary for session ${sessionId}`);
+  }
+  // Handle cases where the summary might be empty in the DB
+  const text = await res.text();
+  return text ? JSON.parse(text) : null;
+}
