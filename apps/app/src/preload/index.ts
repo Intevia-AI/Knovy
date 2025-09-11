@@ -29,7 +29,8 @@ const api = {
   createSession: (session) => ipcRenderer.invoke('db:create-session', session),
   addTranscript: (transcript) => ipcRenderer.invoke('db:add-transcript', transcript),
   getSessions: () => ipcRenderer.invoke('db:get-sessions'),
-  getTranscripts: (sessionId) => ipcRenderer.invoke('db:get-transcripts', sessionId),
+  getTranscripts: (sessionId, page, limit) =>
+    ipcRenderer.invoke('db:get-transcripts', { sessionId, page, limit }),
   endSession: (sessionId) => ipcRenderer.invoke('db:end-session', sessionId),
 
   startScreenshot: () => ipcRenderer.send('electronAPI:startScreenshot'),
@@ -121,6 +122,8 @@ const api = {
       'db:get-sessions',
       'db:get-transcripts',
       'db:end-session',
+      'db:get-summary',
+      'db:save-summary',
       'popover:create',
       'get-screenshare-state',
       'session:start',

@@ -25,7 +25,7 @@ export async function handler(req: Request): Promise<Response> {
       return userOrResponse;
     }
 
-    const { text_input } = await req.json();
+    const { text_input, previous_summary } = await req.json();
     if (!text_input) {
       return new Response(JSON.stringify({ error: "Text is required" }), {
         status: 400,
@@ -38,7 +38,15 @@ export async function handler(req: Request): Promise<Response> {
       throw new Error("GOOGLE_GENERATIVE_AI_API_KEY is not set");
     }
 
-    const prompt = `Summarize the following text into a concise summary. Format the output in Markdown without a "Summary" heading and use numbering for key takeaways. The text to summarize is:
+    const prompt = previous_summary
+      ? `You are given a previous summary and new conversation transcripts. Integrate the new transcripts into the summary, refining and extending it. The goal is to produce a single, coherent, updated summary. Format the output in Markdown without a "Summary" heading and use numbering for key takeaways.
+
+Previous Summary:
+${previous_summary}
+
+New Transcripts:
+${text_input}`
+      : `Summarize the following text into a concise summary. Format the output in Markdown without a "Summary" heading and use numbering for key takeaways. The text to summarize is:
 
 ${text_input}`;
     const contents = [{ role: "user", parts: [{ text: prompt }] }];

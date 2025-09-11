@@ -69,12 +69,24 @@ export function useAIInteraction() {
         try {
           const sessionId = await window.electronAPI.invoke('session:get-id')
           if (sessionId) {
-            const loadedTranscripts = await window.electronAPI.invoke(
-              'db:get-transcripts',
-              sessionId
-            )
-            if (loadedTranscripts && loadedTranscripts.length > 0) {
-              const formattedTranscripts = loadedTranscripts.map((t: any) => ({
+            let page = 1
+            const limit = 50 // Fetch 50 transcripts per batch
+            let allTranscripts: any[] = []
+            while (true) {
+              const loadedTranscripts = await window.electronAPI.invoke('db:get-transcripts', {
+                sessionId,
+                page,
+                limit
+              })
+              if (loadedTranscripts && loadedTranscripts.length > 0) {
+                allTranscripts = [...allTranscripts, ...loadedTranscripts]
+                page++
+              } else {
+                break // No more transcripts to load
+              }
+            }
+            if (allTranscripts.length > 0) {
+              const formattedTranscripts = allTranscripts.map((t: any) => ({
                 id: t.id,
                 content: t.content,
                 role: 'assistant',
@@ -150,12 +162,36 @@ export function useAIInteraction() {
 
         switch (action) {
           case 'summary': {
-            const context = await gatherContext(action)
-            if (!context?.text?.trim()) {
-              throw new Error('There is no transcription history to summarize.')
-            }
             functionName = 'ai-action-summarize'
-            functionPayload.text_input = context.text
+            const sessionId = await window.electronAPI.invoke('session:get-id')
+            if (!sessionId) throw new Error('No active session found.')
+
+            const existingSummary = await window.electronAPI.invoke('db:get-summary', sessionId)
+            const lastSummaryTime = existingSummary
+              ? new Date(existingSummary.updated_at).getTime()
+              : 0
+
+            const newTranscripts = transcriptions.filter((t) => t.timestamp > lastSummaryTime)
+
+            if (newTranscripts.length === 0 && existingSummary) {
+              // If no new transcripts and a summary exists, just display it without calling the function
+              setAiMessages((prev) => {
+                const summaryMessage = {
+                  id: 'ai-summary',
+                  role: 'assistant',
+                  content: existingSummary.content
+                }
+                if (prev.some((m) => m.id === 'ai-summary')) {
+                  return prev.map((m) => (m.id === 'ai-summary' ? summaryMessage : m))
+                }
+                return [...prev, summaryMessage]
+              })
+              setIsLoading(false)
+              return // Stop execution
+            }
+
+            functionPayload.text_input = newTranscripts.map((t) => t.content).join('\n')
+            functionPayload.previous_summary = existingSummary?.content
             break
           }
           case 'answer': {
@@ -202,10 +238,14 @@ export function useAIInteraction() {
           screenshot: (d: any) => d.analysis
         }
 
-        const content = 
+        const content =
           responseMapping[action as keyof typeof responseMapping]?.(data) || JSON.stringify(data)
 
         if (action === 'summary') {
+          const sessionId = await window.electronAPI.invoke('session:get-id')
+          if (sessionId) {
+            await window.electronAPI.invoke('db:save-summary', { sessionId, content })
+          }
           setAiMessages((prev) => {
             const existingSummary = prev.find((m) => m.id === 'ai-summary')
             if (existingSummary) {

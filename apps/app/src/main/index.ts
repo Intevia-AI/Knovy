@@ -580,6 +580,16 @@ app.on('ready', async () => {
       }
     })
 
+    apiRouter.get('/sessions/:id/summary', async (req, res) => {
+      try {
+        const summary = await dbService.getSummary(req.params.id)
+        res.json(summary)
+      } catch (error) {
+        console.error(`[History API] Error fetching summary for session ${req.params.id}`, error)
+        res.status(500).json({ error: `Failed to fetch summary for session ${req.params.id}` })
+      }
+    })
+
     apiRouter.delete('/sessions/:id', async (req, res) => {
       try {
         await dbService.deleteSession(req.params.id)
@@ -628,8 +638,10 @@ app.on('ready', async () => {
   })
   ipcMain.handle('db:add-transcript', (event, transcript) => dbService.addTranscript(transcript))
   ipcMain.handle('db:get-sessions', () => dbService.getSessions())
-  ipcMain.handle('db:get-transcripts', (event, sessionId) => dbService.getTranscripts(sessionId))
+  ipcMain.handle('db:get-transcripts', (event, { sessionId, page, limit }) => dbService.getTranscripts(sessionId, page, limit))
   ipcMain.handle('db:end-session', (event, sessionId) => dbService.endSession(sessionId))
+  ipcMain.handle('db:get-summary', (event, sessionId) => dbService.getSummary(sessionId))
+  ipcMain.handle('db:save-summary', (event, summary) => dbService.saveSummary(summary))
 
   ipcMain.on('app:resize-window', (event, { width, height }) => {
     if (mainWindow) {

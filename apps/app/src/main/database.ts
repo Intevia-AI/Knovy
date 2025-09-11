@@ -31,6 +31,16 @@ async function initializeDatabase() {
     );
   `)
 
+  await db.exec(`
+    CREATE TABLE IF NOT EXISTS summaries (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      session_id TEXT NOT NULL,
+      content TEXT,
+      updated_at TEXT NOT NULL,
+      FOREIGN KEY (session_id) REFERENCES sessions (id) ON DELETE CASCADE
+    );
+  `)
+
   return db
 }
 

@@ -6,17 +6,45 @@ export async function getSessions() {
   return stmt.all()
 }
 
-export async function getTranscripts(sessionId: string) {
+export async function getTranscripts(sessionId: string, page: number = 1, limit: number = 50) {
   const db = await dbPromise
+  const offset = (page - 1) * limit
   const stmt = await db.prepare(
-    'SELECT * FROM transcripts WHERE session_id = ? ORDER BY timestamp ASC'
+    'SELECT * FROM transcripts WHERE session_id = ? ORDER BY timestamp ASC LIMIT ? OFFSET ?'
   )
-  return stmt.all(sessionId)
+  return stmt.all(sessionId, limit, offset)
+}
+
+export async function getSummary(sessionId: string) {
+  const db = await dbPromise
+  const stmt = await db.prepare('SELECT * FROM summaries WHERE session_id = ? ORDER BY updated_at DESC LIMIT 1')
+  return stmt.get(sessionId)
+}
+
+export async function saveSummary(summary: { sessionId: string; content: string }) {
+  const db = await dbPromise
+  const { sessionId, content } = summary
+  const updatedAt = new Date().toISOString()
+
+  const existingSummary = await getSummary(sessionId)
+
+  if (existingSummary) {
+    const stmt = await db.prepare('UPDATE summaries SET content = ?, updated_at = ? WHERE session_id = ?')
+    await stmt.run(content, updatedAt, sessionId)
+  } else {
+    const stmt = await db.prepare('INSERT INTO summaries (session_id, content, updated_at) VALUES (?, ?, ?)')
+    await stmt.run(sessionId, content, updatedAt)
+  }
+  return getSummary(sessionId)
 }
 
 export async function deleteSession(sessionId: string) {
   const db = await dbPromise
   try {
+    // Added deletion for summary
+    const deleteSummaryStmt = await db.prepare('DELETE FROM summaries WHERE session_id = ?')
+    await deleteSummaryStmt.run(sessionId)
+
     const deleteTranscriptsStmt = await db.prepare('DELETE FROM transcripts WHERE session_id = ?')
     await deleteTranscriptsStmt.run(sessionId)
     const deleteSessionStmt = await db.prepare('DELETE FROM sessions WHERE id = ?')

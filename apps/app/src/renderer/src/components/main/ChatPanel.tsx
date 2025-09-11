@@ -27,7 +27,7 @@ export default function ChatPanel({}: ChatPanelProps) {
 
   const handleTabChange = (tab: string) => {
     setActiveTab(tab)
-    if (tab === 'summary' && aiMessages.filter((m) => m.role === 'assistant').length === 0) {
+    if (tab === 'summary') {
       sendContextToAI('summary')
     }
   }
@@ -114,18 +114,16 @@ export default function ChatPanel({}: ChatPanelProps) {
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                 >
-                  {isLoading && !summary ? (
+                  {isLoading ? (
                     <div className="flex justify-center py-2">
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-black/50"></div>
                     </div>
-                  ) : (
+                  ) : summary ? (
                     <div className="p-2 rounded-md text-sm whitespace-pre-wrap bg-black/5 border border-black/10 text-black">
-                      {summary ? (
-                        <AnimatedText text={summary} />
-                      ) : (
-                        'No summary available.'
-                      )}
+                      <AnimatedText text={summary} />
                     </div>
+                  ) : (
+                    <div className="text-center text-sm text-gray-500">No summary available.</div>
                   )}
                 </motion.div>
               )}
