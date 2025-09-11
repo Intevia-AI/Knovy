@@ -4,6 +4,8 @@ import { Markdown } from '@/components/markdown'
 import { cn } from '@/lib/utils'
 import { useAIInteraction } from '@/hooks/useAIInteraction'
 import { Button } from '@/components/ui/button'
+import { motion, AnimatePresence } from 'framer-motion'
+import { AnimatedText } from '@/components/ui/AnimatedText'
 
 interface ChatPanelProps {}
 
@@ -20,6 +22,19 @@ export default function ChatPanel({}: ChatPanelProps) {
   }
 
   const summary = aiMessages.find((m) => m.id === 'ai-summary')?.content || ''
+
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: { staggerChildren: 0.1 }
+    }
+  }
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { opacity: 1, y: 0 }
+  }
 
   return (
     <div className="flex flex-col h-screen w-full glass-popover p-1">
@@ -44,28 +59,52 @@ export default function ChatPanel({}: ChatPanelProps) {
         </div>
       </div>
       <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-2 space-y-2">
-        {activeTab === 'transcription' &&
-          transcriptions.map((m) => (
-            <div
-              key={m.id}
-              className={cn(
-                'p-2 rounded-md text-sm w-fit max-w-[95%] whitespace-pre-wrap',
-                'bg-black/5 border border-black/10 mr-auto text-black'
-              )}
+        <AnimatePresence mode="wait">
+          {activeTab === 'transcription' && (
+            <motion.div
+              key="transcription"
+              variants={containerVariants}
+              initial="hidden"
+              animate="visible"
+              className="space-y-2"
             >
-              <Markdown>{m.content}</Markdown>
-            </div>
-          ))}
-        {activeTab === 'summary' &&
-          (isLoading && !summary ? (
-            <div className="flex justify-center py-2">
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-black/50"></div>
-            </div>
-          ) : (
-            <div className="p-2 rounded-md text-sm whitespace-pre-wrap bg-black/5 border border-black/10 text-black">
-              <Markdown>{summary || 'No summary available.'}</Markdown>
-            </div>
-          ))}
+              {transcriptions.map((m) => (
+                <motion.div
+                  key={m.id}
+                  variants={itemVariants}
+                  className={cn(
+                    'p-2 rounded-md text-sm w-fit max-w-[95%] whitespace-pre-wrap',
+                    'bg-black/5 border border-black/10 mr-auto text-black'
+                  )}
+                >
+                  <Markdown>{m.content}</Markdown>
+                </motion.div>
+              ))}
+            </motion.div>
+          )}
+          {activeTab === 'summary' && (
+            <motion.div
+              key="summary"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              {isLoading && !summary ? (
+                <div className="flex justify-center py-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-black/50"></div>
+                </div>
+              ) : (
+                <div className="p-2 rounded-md text-sm whitespace-pre-wrap bg-black/5 border border-black/10 text-black">
+                  {summary ? (
+                    <AnimatedText text={summary} />
+                  ) : (
+                    'No summary available.'
+                  )}
+                </div>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   )

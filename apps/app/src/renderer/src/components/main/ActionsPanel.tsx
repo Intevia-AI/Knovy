@@ -10,7 +10,9 @@ import {
 } from 'lucide-react'
 import { useI18n } from '@/hooks/useI18n'
 import { useAIInteraction } from '@/hooks/useAIInteraction'
-import { motion, AnimatePresence } from 'motion'
+import { motion, AnimatePresence } from 'framer-motion'
+import { AnimatedText } from '@/components/ui/AnimatedText'
+import { cn } from '@/lib/utils'
 
 export default function ActionsPanel() {
   const { t } = useI18n()
@@ -62,6 +64,19 @@ export default function ActionsPanel() {
     setInput('')
   }
 
+  const messageContainerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: { staggerChildren: 0.1 }
+    }
+  }
+
+  const messageItemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { opacity: 1, y: 0 }
+  }
+
   return (
     <div className="flex flex-col h-screen w-full glass-popover p-2 space-y-2 overflow-y-auto">
       <AnimatePresence initial={false}>
@@ -74,14 +89,36 @@ export default function ActionsPanel() {
             className="flex flex-col h-full space-y-2"
           >
             {/* Conversational View */}
-            <div className="flex-grow overflow-y-auto p-2 space-y-2">
+            <motion.div
+              variants={messageContainerVariants}
+              initial="hidden"
+              animate="visible"
+              className="flex-grow overflow-y-auto p-2 space-y-4"
+            >
               {aiMessages.map((m) => (
-                <div key={m.id} className="text-sm text-black">
-                  {m.content}
-                </div>
+                <motion.div
+                  key={m.id}
+                  variants={messageItemVariants}
+                  className={cn(
+                    'p-2 rounded-md text-sm w-fit max-w-[95%] whitespace-pre-wrap',
+                    m.role === 'user'
+                      ? 'bg-blue-500/10 border-blue-500/20 ml-auto text-right'
+                      : 'bg-black/5 border-black/10 mr-auto text-left'
+                  )}
+                >
+                  {m.role === 'assistant' ? (
+                    <AnimatedText text={m.content} />
+                  ) : (
+                    m.content
+                  )}
+                </motion.div>
               ))}
-              {isLoading && <div className="text-sm text-black">Loading...</div>}
-            </div>
+              {isLoading && (
+                <motion.div variants={messageItemVariants} className="text-sm text-black">
+                  Loading...
+                </motion.div>
+              )}
+            </motion.div>
           </motion.div>
         ) : (
           <motion.div

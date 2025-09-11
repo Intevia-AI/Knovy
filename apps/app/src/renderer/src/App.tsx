@@ -4,6 +4,7 @@ import { Main } from './components/main.js'
 import { useAuth } from './context/AuthContext.js'
 import { Loader2 } from 'lucide-react'
 import { LoginPage } from './components/LoginPage.js'
+import { motion, AnimatePresence } from 'framer-motion'
 
 /**
  * Main page component that serves as the entry point for the application.
@@ -32,16 +33,28 @@ export default function App() {
     }
   }, [user, isLoading])
 
-  // Show a loading spinner while the auth state is being determined
-  if (isLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center h-screen">
-        <Loader2 className="h-12 w-12 animate-spin text-muted-foreground" />
-        <p className="mt-4 text-muted-foreground">Loading application...</p>
-      </div>
-    )
-  }
-
-  // If the user is authenticated, show the main app; otherwise, show the login page.
-  return user ? <Main /> : <LoginPage />
+  return (
+    <AnimatePresence mode="wait">
+      {isLoading ? (
+        <motion.div
+          key="loader"
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+          className="flex flex-col items-center justify-center h-screen"
+        >
+          <Loader2 className="h-12 w-12 animate-spin text-muted-foreground" />
+          {/* <p className="mt-4 text-muted-foreground">Loading application...</p> */}
+        </motion.div>
+      ) : (
+        <motion.div
+          key="content"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.2 }}
+        >
+          {user ? <Main /> : <LoginPage />}
+        </motion.div>
+      )}
+    </AnimatePresence>
+  )
 }
