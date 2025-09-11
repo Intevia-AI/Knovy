@@ -94,13 +94,14 @@ const api = {
       'source-picker:select',
       'source-picker:cancel',
       'popover:close',
-      'popover:close-all', // Added this channel
+      'popover:resize',
+      'popover:close-all',
       'popover:sendMessage',
       'popover:ready-to-close',
       'electronAPI:requestSources',
       'set-screenshare-state',
       'ai:loading-state-change',
-      'transcription:data' // Added this channel
+      'transcription:data'
     ]
     if (!validChannels.includes(channel)) {
       console.warn(`[Preload] Attempted to send on invalid channel: ${channel}`)

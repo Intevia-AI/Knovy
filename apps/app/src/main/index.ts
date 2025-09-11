@@ -17,7 +17,7 @@ import { is } from '@electron-toolkit/utils'
 import express from 'express'
 import cors from 'cors'
 import * as dbService from './database-service'
-import { createPopover, closePopover, closeAllPopovers, forceClosePopover } from './popoverManager'
+import { createPopover, closePopover, closeAllPopovers, forceClosePopover, resizePopover } from './popoverManager'
 
 console.log('[Debug] Imported dbService module:', dbService)
 
@@ -73,6 +73,10 @@ ipcMain.on('popover:close-all', () => {
 
 ipcMain.on('popover:ready-to-close', (event, id) => {
   forceClosePopover(id)
+})
+
+ipcMain.on('popover:resize', (event, { id, width, height }) => {
+  resizePopover(id, { width, height })
 })
 
 ipcMain.handle('get-screenshare-state', () => {

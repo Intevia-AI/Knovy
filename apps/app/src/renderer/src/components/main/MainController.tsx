@@ -30,6 +30,14 @@ export function MainController() {
     const newWidth = isScreenSharing ? 440 : 360
     window.electronAPI.send('app:resize-window', { width: newWidth, height: 50 })
 
+    if (activePopover === 'settings') {
+      window.electronAPI.send('popover:resize', {
+        id: 'settings',
+        width: newWidth,
+        height: 340
+      })
+    }
+
     if (!isScreenSharing) {
       const popoversToClose = ['transcriptions', 'actions', 'screen-preview']
       if (activePopover && popoversToClose.includes(activePopover)) {
@@ -82,7 +90,12 @@ export function MainController() {
         }
         isFeaturesWindowVisible={activePopover === 'actions'}
         onToggleSettingsWindow={() =>
-          handleTogglePopover({ id: 'settings', hash: 'settings', width: 440, height: 340 })
+          handleTogglePopover({
+            id: 'settings',
+            hash: 'settings',
+            width: isScreenSharing ? 440 : 360,
+            height: 340
+          })
         }
         isSettingsWindowVisible={activePopover === 'settings'}
         onToggleScreenPreviewWindow={() =>

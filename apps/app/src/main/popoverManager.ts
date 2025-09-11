@@ -70,6 +70,20 @@ export function createPopover(options: PopoverOptions): BrowserWindow {
   return popover
 }
 
+export function resizePopover(id: string, newOptions: { width: number; height: number }): void {
+  const popover = openPopovers.get(id)
+  if (popover && !popover.isDestroyed()) {
+    const parent = popover.getParentWindow()
+    if (parent) {
+      const parentBounds = parent.getBounds()
+      const { width, height } = newOptions
+      const x = parentBounds.x + Math.round((parentBounds.width - width) / 2)
+      const y = parentBounds.y - height - 8
+      popover.setBounds({ x, y, width, height }, true)
+    }
+  }
+}
+
 export function closePopover(id: string): void {
   const popover = openPopovers.get(id)
   if (popover && !popover.isDestroyed()) {
