@@ -36,7 +36,10 @@ npm-debug.log*
 # Misc
 .DS_Store
 *.pem
+.debug
 .prompts.md
+.prompts_app.md
+.prompts_web.md
 
 **/private_keys/
 
