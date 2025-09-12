@@ -3,14 +3,6 @@
 import { useEffect, useState } from "react";
 import { Sidebar } from "@/components/sidebar";
 import { getSessions, getTranscripts, deleteSession, getSummary } from "@/lib/api";
-import { SessionItem } from "@/components/session-item";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@workspace/ui/components/card";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import {
   Accordion,
@@ -186,27 +178,24 @@ export default function HistoryPage() {
           <Accordion type="single" collapsible className="w-full">
             {filteredSessions.map((session) => (
               <AccordionItem value={session.id} key={session.id}>
-                <AccordionTrigger>
-                  <div className="flex justify-between items-center w-full pr-4">
-                    <span>
-                      {new Date(session.started_at).toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                        second: "2-digit",
-                      })}
-                    </span>
+                <div className="flex items-center w-full">
+                  <AccordionTrigger className="flex-grow p-4 text-left">
+                    {new Date(session.started_at).toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      second: "2-digit",
+                    })}
+                  </AccordionTrigger>
+                  <div className="pr-4">
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation(); // prevent accordion from opening
-                        handleDeleteSession(session.id);
-                      }}
+                      onClick={() => handleDeleteSession(session.id)}
                     >
                       Delete
                     </Button>
                   </div>
-                </AccordionTrigger>
+                </div>
                 <AccordionContent>
                   <Tabs defaultValue="transcripts" className="w-full">
                     <TabsList>
