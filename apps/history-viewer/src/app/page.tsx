@@ -13,6 +13,7 @@ import {
 import { Button } from "@workspace/ui/components/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@workspace/ui/components/tabs";
 import { Markdown } from "@/components/markdown";
+import { Toaster } from "@workspace/ui/components/sonner";
 
 interface Session {
   id: string;
@@ -28,10 +29,10 @@ interface Transcript {
 }
 
 interface Summary {
-    id: number;
-    session_id: string;
-    content: string;
-    updated_at: string;
+  id: number;
+  session_id: string;
+  content: string;
+  updated_at: string;
 }
 
 function SummaryView({ sessionId }: { sessionId: string }) {
@@ -219,6 +220,7 @@ export default function HistoryPage() {
           <p>No sessions found for the selected date.</p>
         )}
       </main>
+      <Toaster />
     </div>
   );
 }

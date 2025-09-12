@@ -4,7 +4,6 @@ import ReactMarkdown from "react-markdown";
 import type { Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkBreaks from "remark-breaks";
-import { toast } from "sonner";
 import { cn } from "@workspace/ui/lib/utils";
 
 interface MarkdownProps {
@@ -34,7 +33,6 @@ const CodeBlock: React.FC<{
           onClick={() => {
             const content = children?.toString() || "";
             navigator.clipboard.writeText(content);
-            toast("複製成功");
           }}
         >
           複製
