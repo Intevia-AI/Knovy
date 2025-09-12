@@ -482,6 +482,12 @@ app.on('ready', async () => {
       mainWindow.setPosition(30, y, true) // Animate the move
     }
   })
+
+  ipcMain.on('app:set-always-on-top', (event, { alwaysOnTop }) => {
+    if (mainWindow) {
+      mainWindow.setAlwaysOnTop(alwaysOnTop)
+    }
+  })
   ipcMain.on('electronAPI:toggleAlwaysOnTop', (event, isAlwaysOnTop) => {
     mainWindow?.setAlwaysOnTop(isAlwaysOnTop)
     event.reply('electronAPI:alwaysOnTopChanged', mainWindow?.isAlwaysOnTop())

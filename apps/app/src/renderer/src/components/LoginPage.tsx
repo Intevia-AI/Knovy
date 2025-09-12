@@ -22,8 +22,8 @@ export function LoginPage() {
   }
 
   return (
-    <div className="flex flex-col items-center justify-center h-screen bg-transparent text-foreground">
-      <div className="text-center p-8 bg-background/50 backdrop-blur-sm rounded-2xl glass-popover">
+    <div className="flex flex-col items-center justify-center h-screen text-foreground select-none">
+      <div className="text-center p-8 glass-popover">
         <Logo className="h-12 w-12 mx-auto mb-4" />
         <h1 className="text-2xl font-bold mb-2">Welcome to Knovy</h1>
         <p className="text-muted-foreground mb-6">Sign in to continue</p>

@@ -93,6 +93,7 @@ const api = {
       'app:hide-screen-preview',
       'window:center',
       'window:move-to-bottom-left',
+      'app:set-always-on-top',
       'source-picker:select',
       'source-picker:cancel',
       'popover:close',
