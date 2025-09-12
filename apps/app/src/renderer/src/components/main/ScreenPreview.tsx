@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import { MonitorIcon } from 'lucide-react'
 import AudioVisualizer from '@/components/AudioVisualizer'
 import { useI18n } from '@/hooks/useI18n'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion, AnimatePresence } from 'motion'
 
 interface ScreenPreviewProps {
   systemAnalyserNode: AnalyserNode | null
@@ -40,7 +40,9 @@ export function ScreenPreview({ systemAnalyserNode }: ScreenPreviewProps) {
             })
             if (videoRef.current) {
               videoRef.current.srcObject = stream
-              videoRef.current.play().catch((e) => console.error('[ScreenPreview] Video play error:', e))
+              videoRef.current
+                .play()
+                .catch((e) => console.error('[ScreenPreview] Video play error:', e))
             }
           } else {
             console.warn('[ScreenPreview] No active screen source ID received.')
@@ -59,7 +61,10 @@ export function ScreenPreview({ systemAnalyserNode }: ScreenPreviewProps) {
       }
     }
 
-    const unsubscribe = window.electronAPI.on('screenshare:state-changed', handleScreenShareStateChange)
+    const unsubscribe = window.electronAPI.on(
+      'screenshare:state-changed',
+      handleScreenShareStateChange
+    )
 
     return () => {
       unsubscribe()
@@ -87,7 +92,12 @@ export function ScreenPreview({ systemAnalyserNode }: ScreenPreviewProps) {
           className="glass-popover p-2 flex flex-col h-screen"
         >
           <div className="relative flex-grow w-full h-full bg-muted/30 rounded-lg overflow-hidden">
-            <video ref={videoRef} autoPlay muted className="w-full h-full object-contain bg-muted" />
+            <video
+              ref={videoRef}
+              autoPlay
+              muted
+              className="w-full h-full object-contain bg-muted"
+            />
             {!videoRef.current?.srcObject && (
               <div className="absolute inset-0 flex items-center justify-center">
                 <MonitorIcon className="h-12 w-12 text-muted-foreground" />

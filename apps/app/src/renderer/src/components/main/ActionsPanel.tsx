@@ -10,7 +10,7 @@ import {
 } from 'lucide-react'
 import { useI18n } from '@/hooks/useI18n'
 import { useAIInteraction } from '@/hooks/useAIInteraction'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion, AnimatePresence } from 'motion'
 import { AnimatedText } from '@/components/ui/AnimatedText'
 import { cn } from '@/lib/utils'
 

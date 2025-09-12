@@ -4,7 +4,7 @@ import { Markdown } from '@/components/markdown'
 import { cn } from '@/lib/utils'
 import { useAIInteraction } from '@/hooks/useAIInteraction'
 import { Button } from '@/components/ui/button'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion, AnimatePresence } from 'motion'
 import { AnimatedText } from '@/components/ui/AnimatedText'
 
 interface ChatPanelProps {}

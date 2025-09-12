@@ -4,7 +4,7 @@ import { Main } from './components/main.js'
 import { useAuth } from './context/AuthContext.js'
 import { Loader2 } from 'lucide-react'
 import { LoginPage } from './components/LoginPage.js'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion, AnimatePresence } from 'motion'
 
 /**
  * Main page component that serves as the entry point for the application.

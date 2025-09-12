@@ -14,7 +14,7 @@ import { useI18n } from '@/hooks/useI18n'
 import { useLanguage } from '@/context/LanguageContext'
 import { SupportedLanguage } from '@/lib/translations'
 import { useAuth } from '@/context/AuthContext'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion, AnimatePresence } from 'motion'
 
 export function SettingsModal() {
   const { t } = useI18n()
