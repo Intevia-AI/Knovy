@@ -85,19 +85,8 @@ const createMarkdownComponents = (): Partial<Components> => ({
   ),
 
   a: ({ children, href, ...props }) => {
-    const handleExternalLink = (e: React.MouseEvent<HTMLAnchorElement>) => {
-      e.preventDefault();
-      if (href && window.electronAPI?.openExternal) {
-        window.electronAPI.openExternal(href);
-      }
-    };
     return (
-      <a
-        className="text-blue-500 hover:underline"
-        href={href || "#"}
-        onClick={handleExternalLink}
-        {...props}
-      >
+      <a className="text-blue-500 hover:underline" href={href || "#"} {...props}>
         {children}
       </a>
     );
