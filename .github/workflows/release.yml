@@ -50,9 +50,9 @@ jobs:
           # You will need to create them in your repository's secrets.
           # See: https://www.electron.build/code-signing
           #
-          # CSC_LINK: ${{ secrets.CSC_LINK }} # Base64 encoded .p12 certificate
-          # CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }} # Password for the certificate
-          # APPLE_ID: ${{ secrets.APPLE_ID }} # Your Apple Developer ID
-          # APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }} # An app-specific password for your Apple ID
-          # APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }} # Your Apple Developer Team ID
-        run: pnpm --filter Knovy build
+          APPLE_ID: ${{ secrets.APPLE_ID }} # Your Apple Developer ID
+          APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }} # An app-specific password for your Apple ID
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }} # Your Apple Developer Team ID
+          CSC_LINK: ${{ secrets.CSC_LINK }} # Base64 encoded .p12 certificate
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }} # Password for the certificate
+        run: pnpm --filter Knovy run build:ci
