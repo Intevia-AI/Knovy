@@ -28,6 +28,7 @@ mac:
   type: distribution
   target:
     - dmg
+    - zip
   category: public.app-category.productivity
   entitlementsInherit: entitlements.mac.plist
   extendInfo:
