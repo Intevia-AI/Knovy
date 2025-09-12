@@ -52,7 +52,7 @@ jobs:
           # See: https://www.electron.build/code-signing
           #
           APPLE_ID: ${{ secrets.APPLE_ID }} # Your Apple Developer ID
-          APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }} # An app-specific password for your Apple ID
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }} # An app-specific password for your Apple ID
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }} # Your Apple Developer Team ID
           CSC_LINK: ${{ secrets.CSC_LINK }} # Base64 encoded .p12 certificate
           CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }} # Password for the certificate
