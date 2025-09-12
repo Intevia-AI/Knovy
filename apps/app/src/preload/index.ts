@@ -104,7 +104,8 @@ const api = {
       'electronAPI:requestSources',
       'set-screenshare-state',
       'ai:loading-state-change',
-      'transcription:data'
+      'transcription:data',
+      'auth:request-sign-out'
     ]
     if (!validChannels.includes(channel)) {
       console.warn(`[Preload] Attempted to send on invalid channel: ${channel}`)

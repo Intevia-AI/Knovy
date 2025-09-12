@@ -432,6 +432,12 @@ app.on('ready', async () => {
     return { error: 'No URL provided' }
   })
 
+  ipcMain.on('auth:request-sign-out', () => {
+    if (mainWindow) {
+      mainWindow.webContents.send('auth:execute-sign-out')
+    }
+  })
+
   session.defaultSession.setDisplayMediaRequestHandler((request, callback) => {
     desktopCapturer
       .getSources({ types: ['screen'] })

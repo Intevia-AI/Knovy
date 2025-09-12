@@ -117,9 +117,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
     }
 
-    let unsubscribeElectronListener: (() => void) | undefined
+    let unsubscribeOAuthListener: (() => void) | undefined
+    let unsubscribeSignOutListener: (() => void) | undefined
+
     if (window.electronAPI) {
-      unsubscribeElectronListener = window.electronAPI.on(
+      // Listener for OAuth callback
+      unsubscribeOAuthListener = window.electronAPI.on(
         'electronAPI:oauth-callback',
         (url: string) => {
           console.log(
@@ -131,6 +134,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       )
       console.log('[AuthContext] Subscribed to oauth-callback from Electron.')
 
+      // Listener for sign-out command from main process
+      unsubscribeSignOutListener = window.electronAPI.on('auth:execute-sign-out', () => {
+        console.log('[AuthContext] Received auth:execute-sign-out from main process.')
+        signOut()
+      })
+      console.log('[AuthContext] Subscribed to auth:execute-sign-out from Electron.')
+
       // Signal to the main process that the renderer is ready to handle the auth callback
       window.electronAPI.send('renderer-auth-ready')
       console.log('[AuthContext] Sent renderer-auth-ready signal to main process.')
@@ -140,9 +150,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     return () => {
       authListenerData.subscription?.unsubscribe()
-      if (unsubscribeElectronListener) {
-        unsubscribeElectronListener()
+      if (unsubscribeOAuthListener) {
+        unsubscribeOAuthListener()
         console.log('[AuthContext] Unsubscribed from oauth-callback.')
+      }
+      if (unsubscribeSignOutListener) {
+        unsubscribeSignOutListener()
+        console.log('[AuthContext] Unsubscribed from auth:execute-sign-out.')
       }
     }
   }, [])
@@ -218,7 +232,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
    * @function signOut
    * @returns {Promise<void>}
    */
-  const signOut = async () => {
+  const signOut = async (): Promise<void> => {
     setIsLoading(true)
     await supabase.auth.signOut().then(async () => {
       await supabase.auth.refreshSession()

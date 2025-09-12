@@ -83,7 +83,8 @@ export const translations = {
     loginToUseAiActionsToast: 'Login Required',
     loginToUseAiActionsDescriptionToast: 'Please log in to use AI actions with screen content.',
     statusAuthLoading: 'Authenticating...',
-    statusAuthLoadingShort: 'Auth...'
+    statusAuthLoadingShort: 'Auth...',
+    signOut: 'Sign Out'
   },
   'zh-TW': {
     // Add Traditional Chinese translations here
@@ -157,7 +158,8 @@ export const translations = {
     loginToUseAiActionsToast: '請先登入',
     loginToUseAiActionsDescriptionToast: '請登入以使用螢幕內容相關的 AI 功能。',
     statusAuthLoading: '驗證中...',
-    statusAuthLoadingShort: '驗證...'
+    statusAuthLoadingShort: '驗證...',
+    signOut: '登出'
   },
   'ja-JP': {
     // Add Japanese translations here
@@ -232,7 +234,8 @@ export const translations = {
     loginToUseAiActionsDescriptionToast:
       '画面コンテンツを使用するAI機能を利用するにはログインしてください。',
     statusAuthLoading: '認証中...',
-    statusAuthLoadingShort: '認証...'
+    statusAuthLoadingShort: '認証...',
+    signOut: '登出'
   }
 }
 
@@ -314,6 +317,7 @@ export type TranslationKey =
   | 'loginToUseAiActionsDescriptionToast'
   | 'statusAuthLoading'
   | 'statusAuthLoadingShort'
+  | 'signOut'
 // ... add other keys here
 
 /**

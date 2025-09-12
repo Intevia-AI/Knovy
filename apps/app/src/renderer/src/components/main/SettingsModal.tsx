@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { Button } from '@/components/ui/button'
-import { LanguagesIcon, History, LogOut } from 'lucide-react'
+import { LanguagesIcon, History, LogOut, Loader2 } from 'lucide-react'
 import {
   Select,
   SelectContent,
@@ -23,7 +23,9 @@ export function SettingsModal() {
   const [isScreenSharing, setIsScreenSharing] = useState(false)
   const [draftPrompt, setDraftPrompt] = useState('')
   const [customPrompt, setCustomPrompt] = useState('')
+  const [isSigningOut, setIsSigningOut] = useState(false)
   const [isOpen, setIsOpen] = useState(true)
+  const isSigningOutRef = useRef(false)
 
   const popoverId = 'settings'
 
@@ -95,14 +97,18 @@ export function SettingsModal() {
     }
   }
 
-  const handleSignOut = async () => {
-    await signOut()
+  const handleSignOut = () => {
+    setIsSigningOut(true)
+    isSigningOutRef.current = true
     setIsOpen(false)
   }
 
   const handleAnimationComplete = () => {
-    if (!isOpen) {
-      window.electronAPI.send('popover:ready-to-close', popoverId)
+    // This function is called when the exit animation completes.
+    // We can now safely close the window and request the main process to sign out.
+    window.electronAPI.send('popover:ready-to-close', popoverId)
+    if (isSigningOutRef.current) {
+      window.electronAPI.send('auth:request-sign-out')
     }
   }
 
@@ -184,9 +190,20 @@ export function SettingsModal() {
           </div>
 
           {/* Sign Out Button */}
-          <Button variant="destructive" onClick={handleSignOut} className="w-full h-9 text-sm mt-2">
-            <LogOut className="mr-2 h-4 w-4" />
-            {t('signOut')}
+          <Button
+            variant="destructive"
+            onClick={handleSignOut}
+            disabled={isSigningOut}
+            className="w-full h-9 text-sm mt-2"
+          >
+            {isSigningOut ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <>
+                <LogOut className="mr-2 h-4 w-4" />
+                {t('signOut')}
+              </>
+            )}
           </Button>
         </motion.div>
       )}
