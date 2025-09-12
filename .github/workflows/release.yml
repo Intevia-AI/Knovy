@@ -8,6 +8,7 @@ on:
 jobs:
   release:
     runs-on: macos-latest # This workflow is configured for macOS releases.
+    environment: Production
 
     steps:
       - name: Check out Git repository
