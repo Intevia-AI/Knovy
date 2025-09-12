@@ -55,8 +55,8 @@ const CodeBlock: React.FC<{
 
 // Create our markdown components configuration
 const createMarkdownComponents = (): Partial<Components> => ({
-  // @ts-ignore
-  code: ({ node, inline = false, className, children, ...props }) => (
+  // @ts-expect-error - Type conflict with react-markdown's internal types.
+  code: ({ node: _node, inline = false, className, children, ...props }) => (
     <CodeBlock inline={inline} className={className} {...props}>
       {children}
     </CodeBlock>
