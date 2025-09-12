@@ -39,14 +39,15 @@ export default function App() {
 
     if (window.electronAPI) {
       if (user) {
-        // User is logged in, make it always on top and move to corner
+        // User is logged in, resize, make always on top, and move to corner
+        window.electronAPI.send('app:resize-window', { width: 360, height: 50 })
         window.electronAPI.send('app:set-always-on-top', { alwaysOnTop: true })
         window.electronAPI.send('window:move-to-bottom-left')
       } else {
-        // User is logged out, not always on top, resize and center
+        // User is logged out, not always on top, center, and then resize
         window.electronAPI.send('app:set-always-on-top', { alwaysOnTop: false })
-        window.electronAPI.send('app:resize-window', { width: 360, height: 300 })
         window.electronAPI.send('window:center')
+        window.electronAPI.send('app:resize-window', { width: 360, height: 300 })
       }
     }
   }, [user, isLoading, isInitialLoad])
@@ -75,17 +76,33 @@ export default function App() {
           className="flex flex-col items-center justify-center h-screen bg-background"
         >
           <Loader2 className="h-12 w-12 animate-spin text-muted-foreground" />
-          {/* <p className="mt-4 text-muted-foreground">Loading application...</p> */}
         </motion.div>
       ) : (
-        <motion.div
-          key="content"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.2 }}
-        >
-          {user ? <Main /> : <LoginPage />}
-        </motion.div>
+        <div key="content">
+          <AnimatePresence mode="wait">
+            {user ? (
+              <motion.div
+                key="main"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+              >
+                <Main />
+              </motion.div>
+            ) : (
+              <motion.div
+                key="login"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+              >
+                <LoginPage />
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       )}
     </AnimatePresence>
   )

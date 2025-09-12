@@ -484,7 +484,7 @@ app.on('ready', async () => {
     if (mainWindow) {
       const primaryDisplay = screen.getPrimaryDisplay()
       const { height: screenHeight } = primaryDisplay.workAreaSize
-      const y = screenHeight - mainWindow.getBounds().height + 10
+      const y = screenHeight - mainWindow.getBounds().height - 30
       mainWindow.setPosition(30, y, true) // Animate the move
     }
   })
