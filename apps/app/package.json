@@ -1,6 +1,6 @@
 {
   "name": "Knovy",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "productName": "Knovy",
   "description": "Your All-in-One AI working assistant.",
@@ -42,6 +42,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cors": "^2.8.5",
+    "electron-updater": "^6.6.2",
     "express": "^4.21.2",
     "lucide-react": "^0.475.0",
     "motion": "npm:framer-motion@^12.23.12",

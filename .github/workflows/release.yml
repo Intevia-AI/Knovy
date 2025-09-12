@@ -1,0 +1,58 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  release:
+    runs-on: macos-latest # This workflow is configured for macOS releases.
+
+    steps:
+      - name: Check out Git repository
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 20
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+          run_install: false
+
+      - name: Get pnpm store directory
+        id: pnpm-cache
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v3
+        with:
+          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build and Publish
+        env:
+          # This token is used to create a release in your public Knovy-Release repository.
+          GITHUB_TOKEN: ${{ secrets.RELEASE_PAT }}
+
+          # The following secrets are required for macOS code signing and notarization.
+          # You will need to create them in your repository's secrets.
+          # See: https://www.electron.build/code-signing
+          #
+          # CSC_LINK: ${{ secrets.CSC_LINK }} # Base64 encoded .p12 certificate
+          # CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }} # Password for the certificate
+          # APPLE_ID: ${{ secrets.APPLE_ID }} # Your Apple Developer ID
+          # APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }} # An app-specific password for your Apple ID
+          # APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }} # Your Apple Developer Team ID
+        run: pnpm --filter Knovy build

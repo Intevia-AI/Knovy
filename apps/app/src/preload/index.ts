@@ -66,7 +66,9 @@ const api = {
       'ai:custom-prompt',
       'transcription:data',
       'screenshare:state-changed',
-      'popover:prepare-to-close'
+      'popover:prepare-to-close',
+      'auth:execute-sign-out',
+      'updater:log'
     ]
     if (validChannels.includes(channel)) {
       const subscription = (event, ...args) => callback(...args)

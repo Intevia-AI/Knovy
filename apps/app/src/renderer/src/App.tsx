@@ -33,6 +33,20 @@ export default function App() {
     }
   }, [user, isLoading])
 
+  useEffect(() => {
+    if (window.electronAPI && window.electronAPI.on) {
+      const unsubscribe = window.electronAPI.on('updater:log', (message, ...args) => {
+        console.log(message, ...args)
+      })
+
+      return () => {
+        if (unsubscribe) {
+          unsubscribe()
+        }
+      }
+    }
+  }, [])
+
   return (
     <AnimatePresence mode="wait">
       {isLoading ? (

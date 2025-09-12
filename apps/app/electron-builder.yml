@@ -52,8 +52,9 @@ appImage:
   artifactName: ${name}-${version}.${ext}
 npmRebuild: false
 publish:
-  provider: generic
-  url: https://example.com/auto-updates
+  provider: github
+  owner: Intevia-AI
+  repo: Knovy-Release
 electronDownload:
   mirror: https://npmmirror.com/mirrors/electron/
 afterSign: './code-signing/notarize.js'

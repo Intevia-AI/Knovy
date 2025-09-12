@@ -96,6 +96,28 @@ This is a monorepo managed with pnpm workspaces and Turborepo.
 
 For detailed information on architecture, setup, and development, please see the main project documentation in the `/docs` directory.
 
+## Releasing a New Version
+
+This project uses GitHub Actions to automate the release process for the Electron application. New versions are published to the public [Knovy-Release](https://github.com/Intevia-AI/Knovy-Release) repository.
+
+### Release Workflow
+
+1.  **Update App Version**: Before creating a release, update the `version` number in `apps/app/package.json`. You can do this manually or by using a command like `npm version patch`.
+
+2.  **Tag and Push**: Create a new git tag that matches the pattern `v*.*.*` and push it to the repository. Any Git client, including GUIs like Sublime Merge, can be used.
+
+    ```bash
+    # Example using command line
+    git tag v0.2.0
+    git push origin v0.2.0
+    ```
+
+3.  **Automated Release**: Pushing the tag will trigger the `Release` GitHub Action. This workflow builds the macOS application, signs it, and publishes the assets to a new release in the public repository. The application will then be able to automatically update to this new version.
+
+### Code Signing
+
+For the release workflow to produce a signed and notarized macOS application, you must add your code signing credentials as secrets to this private repository. The required secrets are documented in the `.github/workflows/release.yml` file.
+
 ## Contributing
 
 Please see [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduct and the process for submitting pull requests.

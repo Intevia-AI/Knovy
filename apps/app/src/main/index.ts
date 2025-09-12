@@ -17,7 +17,14 @@ import { is } from '@electron-toolkit/utils'
 import express from 'express'
 import cors from 'cors'
 import * as dbService from './database-service'
-import { createPopover, closePopover, closeAllPopovers, forceClosePopover, resizePopover } from './popoverManager'
+import {
+  createPopover,
+  closePopover,
+  closeAllPopovers,
+  forceClosePopover,
+  resizePopover
+} from './popoverManager'
+import electronUpdater, { type AppUpdater } from 'electron-updater'
 
 console.log('[Debug] Imported dbService module:', dbService)
 
@@ -27,9 +34,57 @@ let activeScreenSourceId: string | null = null
 let mainWindow: BrowserWindow | null
 let selectionWindow: BrowserWindow | null
 
+export function getAutoUpdater(): AppUpdater {
+  // Using destructuring to access autoUpdater due to the CommonJS module of 'electron-updater'.
+  // It is a workaround for ESM compatibility issues, see https://github.com/electron-userland/electron-builder/issues/7976.
+  const { autoUpdater } = electronUpdater
+  return autoUpdater
+}
+
 // This is now the single source of truth for the main window.
 // Other modules can get it from here if needed.
 export const getMainWindow = (): BrowserWindow | null => mainWindow
+
+function setupAutoUpdaterListeners() {
+  const autoUpdater = getAutoUpdater()
+
+  const log = (message: string, ...args: any[]) => {
+    const logMessage = `[AutoUpdater] ${message}`
+    console.log(logMessage, ...args)
+    if (mainWindow) {
+      mainWindow.webContents.send('updater:log', logMessage, ...args)
+    }
+  }
+
+  autoUpdater.on('checking-for-update', () => {
+    log('Checking for update...')
+  })
+
+  autoUpdater.on('update-available', (info) => {
+    log('Update available.', info)
+  })
+
+  autoUpdater.on('update-not-available', (info) => {
+    log('Update not available.', info)
+  })
+
+  autoUpdater.on('error', (err) => {
+    log('Error in auto-updater:', err)
+  })
+
+  autoUpdater.on('download-progress', (progressObj) => {
+    const progress = `Downloaded ${Math.round(progressObj.percent)}% (${Math.round(
+      progressObj.transferred / 1024
+    )}/${Math.round(progressObj.total / 1024)} KB) at ${Math.round(
+      progressObj.bytesPerSecond / 1024
+    )} KB/s`
+    log(progress)
+  })
+
+  autoUpdater.on('update-downloaded', (info) => {
+    log('Update downloaded. It will be installed on the next application restart.', info)
+  })
+}
 
 ipcMain.handle('electronAPI:getMainWindowBounds', () => {
   return mainWindow?.getBounds()
@@ -362,6 +417,11 @@ app.on('ready', async () => {
 
   await createWindow()
 
+  if (!is.dev) {
+    setupAutoUpdaterListeners()
+    getAutoUpdater().checkForUpdatesAndNotify()
+  }
+
   globalShortcut.register("alt+'", toggleWindow)
 
   ipcMain.handle('supabase:signInWithOAuth', async (event, provider) => {
@@ -642,7 +702,9 @@ app.on('ready', async () => {
   })
   ipcMain.handle('db:add-transcript', (event, transcript) => dbService.addTranscript(transcript))
   ipcMain.handle('db:get-sessions', () => dbService.getSessions())
-  ipcMain.handle('db:get-transcripts', (event, { sessionId, page, limit }) => dbService.getTranscripts(sessionId, page, limit))
+  ipcMain.handle('db:get-transcripts', (event, { sessionId, page, limit }) =>
+    dbService.getTranscripts(sessionId, page, limit)
+  )
   ipcMain.handle('db:end-session', (event, sessionId) => dbService.endSession(sessionId))
   ipcMain.handle('db:get-summary', (event, sessionId) => dbService.getSummary(sessionId))
   ipcMain.handle('db:save-summary', (event, summary) => dbService.saveSummary(summary))
