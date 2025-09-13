@@ -40,6 +40,7 @@ npm-debug.log*
 .prompts.md
 .prompts_app.md
 .prompts_web.md
+.prompts_admin.md
 
 **/private_keys/
 
