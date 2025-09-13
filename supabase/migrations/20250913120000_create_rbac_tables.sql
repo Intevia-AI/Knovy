@@ -134,7 +134,7 @@ WITH CHECK (auth.uid() = user_id);
 
 -- 9. RPC to check user permissions
 CREATE OR REPLACE FUNCTION public.check_permission(p_user_id UUID, p_permission_name TEXT)
-RETURNS BOOLEAN AS $BODY$
+RETURNS BOOLEAN AS $FUNCTION_BODY$
 DECLARE
   has_perm BOOLEAN;
 BEGIN
@@ -147,4 +147,20 @@ BEGIN
   
   RETURN has_perm;
 END;
-$BODY$ LANGUAGE plpgsql SECURITY DEFINER;
+$FUNCTION_BODY$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 10. RPC to get all users with their roles
+CREATE OR REPLACE FUNCTION public.get_users_with_roles()
+RETURNS TABLE(id UUID, role TEXT, email TEXT) AS $FUNCTION_BODY$
+BEGIN
+  RETURN QUERY
+  SELECT
+    u.id,
+    p.role,
+    u.email::TEXT
+  FROM
+    auth.users u
+  JOIN
+    public.profiles p ON u.id = p.id;
+END;
+$FUNCTION_BODY$ LANGUAGE plpgsql SECURITY DEFINER;
