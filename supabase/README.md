@@ -91,15 +91,75 @@ By default, all new users have the `free` role, which has all AI action permissi
 3.  **Expected Result:** A **`403 Forbidden`** error with the body `{"error":"Forbidden"}`.
 4.  **Verify in Database:** Check the `action_logs` table again. **No new row** should have been created.
 
-### Step 3: Test the Admin API
+### Step 4: Test Client-Side Permissions Endpoint
+
+The `admin-api` also includes an endpoint for the client to fetch its own permissions. This is not an admin-only endpoint and can be called by any authenticated user.
+
+#### `GET /me/permissions`
+
+This endpoint is crucial for the frontend application to dynamically show or hide features based on the user's role.
+
+```bash
+curl 'http://127.0.0.1:54321/functions/v1/admin-api/me/permissions' \
+-H "Authorization: Bearer $SUPABASE_TOKEN"
+```
+
+- **Expected Result:** A `200 OK` response with a JSON object containing a list of the user's permissions, like `{"permissions":["ai_action:chat", "ai_action:summarize", ...]}`.
+
+### Step 5: Test the Admin API
+
+These endpoints are protected and can only be accessed by users with the `admin` role.
 
 1.  **Make your user an admin:**
-    - In the `profiles` table in Supabase Studio, change your test user's `role` to `admin`.
-2.  **Execute the admin request:**
-    ```bash
-    curl 'http://127.0.0.1:54321/functions/v1/admin-api/users' \
-    -H "Authorization: Bearer $SUPABASE_TOKEN"
-    ```
-3.  **Expected Result:** A `200 OK` response with a JSON array of all users in your database.
+    - In the `profiles` table in Supabase Studio, change your test user's `role` to `admin`. Ensure you are using the JWT for this admin user.
 
-If you repeat this last step with a non-admin user's token, you will correctly receive a `403 Forbidden` error.
+#### `GET /users`
+
+This endpoint lists all users and their assigned roles.
+
+```bash
+curl 'http://127.0.0.1:54321/functions/v1/admin-api/users' \
+-H "Authorization: Bearer $SUPABASE_TOKEN"
+```
+
+- **Expected Result:** A `200 OK` response with a JSON array of all users. Note the `id` of a non-admin user from this list to use in the next steps. Let's call it `TARGET_USER_ID`.
+- **For non-admin users:** A `403 Forbidden` error.
+
+#### `POST /users/{id}/role`
+
+This endpoint updates the role of a specific user.
+
+1.  Get a `TARGET_USER_ID` from the `GET /users` output.
+2.  Execute the request to change the user's role (e.g., to `pro`).
+
+```bash
+# Replace TARGET_USER_ID with a real user ID
+export TARGET_USER_ID="paste_the_user_id_here"
+
+curl -X POST "http://127.0.0.1:54321/functions/v1/admin-api/users/${TARGET_USER_ID}/role" \
+-H "Authorization: Bearer $SUPABASE_TOKEN" \
+-H "Content-Type: application/json" \
+-d '{"role": "pro"}'
+```
+
+- **Expected Result:** A `200 OK` response with `{"success":true}` and the updated user profile object. You can verify the change in the `profiles` table in Supabase Studio.
+- **For non-admin users:** A `403 Forbidden` error.
+
+#### `GET /users/{id}/usage`
+
+This endpoint retrieves the action logs for a specific user.
+
+1.  Get a `TARGET_USER_ID` from the `GET /users` output.
+2.  Execute the request:
+
+```bash
+# Replace TARGET_USER_ID with a real user ID
+export TARGET_USER_ID="paste_the_user_id_here"
+
+curl "http://127.0.0.1:54321/functions/v1/admin-api/users/${TARGET_USER_ID}/usage" \
+-H "Authorization: Bearer $SUPABASE_TOKEN"
+```
+
+- **Expected Result:** A `200 OK` response with a JSON array of the user's action logs.
+- **For non-admin users:** A `403 Forbidden` error.
+

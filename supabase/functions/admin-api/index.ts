@@ -7,27 +7,35 @@ import { corsHeaders } from '../_shared/cors.ts';
 
 async function handleGetMyPermissions(req: Request) {
   console.log('Handling GET /me/permissions');
-  // Create a client with the user's auth context
-  const supabase = createClient(
+  // 1. Create a client with the user's auth context to securely get the user ID
+  const userClient = createClient(
     Deno.env.get('SUPABASE_URL')!,
     Deno.env.get('SUPABASE_ANON_KEY')!,
     { global: { headers: { Authorization: req.headers.get('Authorization')! } } }
   );
 
-  const { data: { user } } = await supabase.auth.getUser();
+  const { data: { user } } = await userClient.auth.getUser();
   if (!user) {
     return new Response(JSON.stringify({ error: 'Not authenticated' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   }
 
-  // Fetch the user's role
-  const { data: profile, error: profileError } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+  // 2. Create a service role client to bypass RLS for internal data fetching
+  const serviceClient = createClient(
+    Deno.env.get('SUPABASE_URL')!,
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+  );
+
+  // 3. Fetch the user's role using the service client
+  const { data: profile, error: profileError } = await serviceClient.from('profiles').select('role').eq('id', user.id).single();
   if (profileError || !profile) {
+    console.error('Error fetching profile for user:', user.id, profileError);
     throw new Error('Could not fetch user profile.');
   }
 
-  // Fetch all permissions for that role
-  const { data: permissions, error: permissionsError } = await supabase.from('role_permissions').select('permission_name').eq('role_name', profile.role);
+  // 4. Fetch all permissions for that role
+  const { data: permissions, error: permissionsError } = await serviceClient.from('role_permissions').select('permission_name').eq('role_name', profile.role);
   if (permissionsError) {
+    console.error('Error fetching permissions for role:', profile.role, permissionsError);
     throw new Error('Could not fetch permissions for role.');
   }
 
