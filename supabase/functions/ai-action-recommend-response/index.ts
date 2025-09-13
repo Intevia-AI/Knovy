@@ -1,19 +1,11 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { authenticateUser } from "../_shared/auth.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { withRBAC } from "../_shared/rbac.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 
-export async function handler(req: Request): Promise<Response> {
-  // Handle preflight OPTIONS request
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
-  }
-
+const handleRequest = async (req: Request) => {
   try {
     console.log(`[ai-action-recommend-response] function invoked at: ${new Date().toISOString()}`);
-    const userOrResponse = await authenticateUser(req);
-    if (userOrResponse instanceof Response) {
-      return userOrResponse;
-    }
 
     const { text_input } = await req.json();
     if (!text_input) {
@@ -52,6 +44,28 @@ export async function handler(req: Request): Promise<Response> {
     const geminiResponse = await res.json();
     const recommendation = geminiResponse.candidates[0]?.content?.parts[0]?.text || "";
 
+    // Action logging
+    try {
+      const supabaseClient = createClient(
+        Deno.env.get("SUPABASE_URL") ?? "",
+        Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+        { global: { headers: { Authorization: req.headers.get("Authorization")! } } },
+      );
+      const {
+        data: { user },
+      } = await supabaseClient.auth.getUser();
+
+      if (user) {
+        await supabaseClient.from("action_logs").insert({
+          user_id: user.id,
+          action: "ai_action:recommend-response",
+          metadata: { text_length: text_input.length },
+        });
+      }
+    } catch (e) {
+      console.error("An error occurred during action logging:", e);
+    }
+
     return new Response(JSON.stringify({ recommendation }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -63,8 +77,10 @@ export async function handler(req: Request): Promise<Response> {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
-}
+};
+
+const recommendResponseHandler = withRBAC("ai_action:recommend-response", handleRequest);
 
 if (import.meta.main) {
-  serve(handler);
+  serve(recommendResponseHandler);
 }

@@ -1,19 +1,11 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { authenticateUser } from "../_shared/auth.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { withRBAC } from "../_shared/rbac.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 
-export async function handler(req: Request): Promise<Response> {
-  // Handle preflight OPTIONS request
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
-  }
-
+const handleRequest = async (req: Request) => {
   try {
     console.log(`[ai-action-summarize] function invoked at: ${new Date().toISOString()}`);
-    const userOrResponse = await authenticateUser(req);
-    if (userOrResponse instanceof Response) {
-      return userOrResponse;
-    }
 
     const { text_input, previous_summary } = await req.json();
     if (!text_input) {
@@ -29,16 +21,9 @@ export async function handler(req: Request): Promise<Response> {
     }
 
     const prompt = previous_summary
-      ? `You are given a previous summary and new conversation transcripts. Integrate the new transcripts into the summary, refining and extending it. The goal is to produce a single, coherent, updated summary. Format the output in Markdown without a "Summary" heading and use numbering for key takeaways.
+      ? `You are given a previous summary and new conversation transcripts. Integrate the new transcripts into the summary, refining and extending it. The goal is to produce a single, coherent, updated summary. Format the output in Markdown without a "Summary" heading and use numbering for key takeaways.\n\nPrevious Summary:\n${previous_summary}\n\nNew Transcripts:\n${text_input}`
+      : `Summarize the following text into a concise summary. Format the output in Markdown without a "Summary" heading and use numbering for key takeaways. The text to summarize is:\n\n${text_input}`;
 
-Previous Summary:
-${previous_summary}
-
-New Transcripts:
-${text_input}`
-      : `Summarize the following text into a concise summary. Format the output in Markdown without a "Summary" heading and use numbering for key takeaways. The text to summarize is:
-
-${text_input}`;
     const contents = [{ role: "user", parts: [{ text: prompt }] }];
     const postData = JSON.stringify({ contents });
 
@@ -62,6 +47,28 @@ ${text_input}`;
     const geminiResponse = await res.json();
     const summary = geminiResponse.candidates[0]?.content?.parts[0]?.text || "";
 
+    // Action logging
+    try {
+      const supabaseClient = createClient(
+        Deno.env.get("SUPABASE_URL") ?? "",
+        Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+        { global: { headers: { Authorization: req.headers.get("Authorization")! } } },
+      );
+      const {
+        data: { user },
+      } = await supabaseClient.auth.getUser();
+
+      if (user) {
+        await supabaseClient.from("action_logs").insert({
+          user_id: user.id,
+          action: "ai_action:summarize",
+          metadata: { text_length: text_input.length },
+        });
+      }
+    } catch (e) {
+      console.error("An error occurred during action logging:", e);
+    }
+
     return new Response(JSON.stringify({ summary }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -73,6 +80,8 @@ ${text_input}`;
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
-}
+};
 
-serve(handler);
+const summarizeHandler = withRBAC("ai_action:summarize", handleRequest);
+
+serve(summarizeHandler);

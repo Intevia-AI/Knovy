@@ -1,19 +1,12 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { authenticateUser } from "../_shared/auth.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { withRBAC } from "../_shared/rbac.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 
-export async function handler(req: Request): Promise<Response> {
-  // Handle preflight OPTIONS request
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
-  }
-
+// The main logic of the Edge Function, now wrapped with RBAC
+const handleRequest = async (req: Request) => {
   try {
     console.log(`[ai-action-keyword-search] function invoked at: ${new Date().toISOString()}`);
-    const userOrResponse = await authenticateUser(req);
-    if (userOrResponse instanceof Response) {
-      return userOrResponse;
-    }
 
     const { text_input } = await req.json();
     if (!text_input) {
@@ -55,6 +48,31 @@ export async function handler(req: Request): Promise<Response> {
     const cleanedText = keywordsText.replace(/```json|```/g, "").trim();
     const keywords = JSON.parse(cleanedText);
 
+    // Action logging - must happen before returning the successful response
+    try {
+      const supabaseClient = createClient(
+        Deno.env.get("SUPABASE_URL") ?? "",
+        Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+        { global: { headers: { Authorization: req.headers.get("Authorization")! } } },
+      );
+      const {
+        data: { user },
+      } = await supabaseClient.auth.getUser();
+
+      if (user) {
+        const { error: logError } = await supabaseClient.from("action_logs").insert({
+          user_id: user.id,
+          action: "ai_action:keyword-search",
+          metadata: { text_length: text_input.length },
+        });
+        if (logError) {
+          console.error("Failed to log action:", logError);
+        }
+      }
+    } catch (e) {
+      console.error("An error occurred during action logging:", e);
+    }
+
     return new Response(JSON.stringify({ keywords }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -66,8 +84,11 @@ export async function handler(req: Request): Promise<Response> {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
-}
+};
+
+// Wrap the handler with the RBAC middleware, requiring the specific permission
+const keywordSearchHandler = withRBAC("ai_action:keyword-search", handleRequest);
 
 if (import.meta.main) {
-  serve(handler);
+  serve(keywordSearchHandler);
 }
