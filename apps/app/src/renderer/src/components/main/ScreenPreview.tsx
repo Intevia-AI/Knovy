@@ -24,6 +24,18 @@ export function ScreenPreview({ systemAnalyserNode }: ScreenPreviewProps) {
   }, [])
 
   useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsOpen(false)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [])
+
+  useEffect(() => {
     const getSourceAndSetupStream = async () => {
       if (window.electronAPI) {
         try {
@@ -42,7 +54,11 @@ export function ScreenPreview({ systemAnalyserNode }: ScreenPreviewProps) {
               videoRef.current.srcObject = stream
               videoRef.current
                 .play()
-                .catch((e) => console.error('[ScreenPreview] Video play error:', e))
+                .catch((e) => {
+                  if (e.name !== 'AbortError') {
+                    console.error('[ScreenPreview] Video play error:', e)
+                  }
+                })
             }
           } else {
             console.warn('[ScreenPreview] No active screen source ID received.')

@@ -29,7 +29,10 @@ function getPopoverComponent(hash: string): JSX.Element | null {
 export default function App() {
   const { user, isLoading } = useAuth()
   const [isInitialLoad, setIsInitialLoad] = useState(true)
+  const [hasBeenPositioned, setHasBeenPositioned] = useState(false)
   const [hash] = useState(() => window.location.hash) // Get hash once
+
+  const isPopover = hash.length > 1
 
   // Handle popover routes
   const popoverComponent = getPopoverComponent(hash)
@@ -41,6 +44,8 @@ export default function App() {
     if (isInitialLoad && !isLoading) {
       setIsInitialLoad(false)
     }
+
+    if (isPopover) return // Do not run this effect in popover windows
 
     // While loading, ensure the window is not always on top so the user can interact
     // with the Google OAuth window.
@@ -57,18 +62,25 @@ export default function App() {
 
     if (window.electronAPI) {
       if (user) {
-        // User is logged in, resize, make always on top, and move to corner
-        window.electronAPI.send('app:resize-window', { width: 360, height: 50 })
+        // User is logged in, make always on top
         window.electronAPI.send('app:set-always-on-top', { alwaysOnTop: true })
-        window.electronAPI.send('window:move-to-bottom-left')
+        // Only position the window once per session
+        if (!hasBeenPositioned) {
+          window.electronAPI.send('window:move-to-bottom-left')
+          setHasBeenPositioned(true)
+        }
       } else {
         // User is logged out, not always on top, center, and then resize
         window.electronAPI.send('app:set-always-on-top', { alwaysOnTop: false })
         window.electronAPI.send('window:center')
         window.electronAPI.send('app:resize-window', { width: 360, height: 300 })
+        // Reset the positioned flag when user logs out
+        if (hasBeenPositioned) {
+          setHasBeenPositioned(false)
+        }
       }
     }
-  }, [user, isLoading, isInitialLoad])
+  }, [user, isLoading, isInitialLoad, isPopover, hasBeenPositioned])
 
   useEffect(() => {
     if (window.electronAPI && window.electronAPI.on) {
@@ -106,7 +118,7 @@ export default function App() {
           key="loader"
           exit={{ opacity: 0 }}
           transition={{ duration: 0.2 }}
-          className="flex flex-col items-center justify-center h-screen bg-background"
+          className="flex flex-col items-center justify-center h-screen"
         >
           <Loader2 className="h-12 w-12 animate-spin text-muted-foreground" />
         </motion.div>

@@ -1,5 +1,6 @@
 import { BrowserWindow } from 'electron'
 import path from 'path'
+import { getMainWindow } from './index'
 
 const openPopovers = new Map<string, BrowserWindow>()
 
@@ -65,6 +66,10 @@ export function createPopover(options: PopoverOptions): BrowserWindow {
   popover.on('closed', () => {
     console.log(`[PopoverManager] Popover closed: ${id}`)
     openPopovers.delete(id)
+    const mainWindow = getMainWindow()
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('popover:was-closed', id)
+    }
   })
 
   return popover

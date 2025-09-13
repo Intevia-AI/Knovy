@@ -67,6 +67,7 @@ const api = {
       'transcription:data',
       'screenshare:state-changed',
       'popover:prepare-to-close',
+      'popover:was-closed',
       'auth:execute-sign-out',
       'updater:log',
       'updater:update-downloaded'

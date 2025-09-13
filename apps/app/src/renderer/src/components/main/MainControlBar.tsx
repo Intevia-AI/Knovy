@@ -50,10 +50,10 @@ export function MainControlBar({
         style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
       >
         <Button
-          variant={'default'}
+          variant={'ghost'}
           size="sm"
           onClick={onToggleScreenShare}
-          className={`h-8 rounded-full text-sm w-24 ${isScreenSharing ? 'bg-destructive/80 text-white breathing-light' : 'bg-muted text-black hover:bg-destructive/80 hover:text-white'} `}
+          className={`h-8 rounded-full shadow text-sm w-24 ${isScreenSharing ? 'bg-destructive/80 text-white breathing-light' : 'bg-muted text-black hover:bg-destructive/80 hover:text-white'} `}
         >
           <MicIcon className="h-8 w-8" />
           {isScreenSharing ? formatTime(recordingDuration) : 'Listen'}
@@ -61,28 +61,28 @@ export function MainControlBar({
         {isScreenSharing && (
           <>
             <Button
-              variant={isScreenPreviewWindowVisible ? 'secondary' : 'ghost'} // Highlight if open
+              variant="ghost"
               size="icon"
-              className="h-8 w-8 rounded-full text-black hover:bg-white hover:text-black"
-              onClick={onToggleScreenPreviewWindow} // Use new toggle function
+              onClick={onToggleScreenPreviewWindow}
+              className={`h-8 w-8 rounded-full shadow hover:bg-white ${isScreenPreviewWindowVisible ? 'bg-white' : ''}`}
               title="Screen Preview"
             >
               <MonitorIcon className="h-4 w-4" />
             </Button>
             <Button
-              variant={isTranscriptionWindowVisible ? 'secondary' : 'ghost'} // Highlight if open
+              variant="ghost"
               size="icon"
-              onClick={onToggleTranscriptionWindow} // Use new toggle function
-              className="h-8 w-8 rounded-full text-black hover:bg-white hover:text-black"
+              onClick={onToggleTranscriptionWindow}
+              className={`h-8 w-8 rounded-full shadow hover:bg-white ${isTranscriptionWindowVisible ? 'bg-white' : ''}`}
               title="Show Transcriptions"
             >
               <MessageSquare className="h-4 w-4" />
             </Button>
             <Button
-              variant={isFeaturesWindowVisible ? 'secondary' : 'ghost'} // Highlight if open
+              variant="ghost"
               size="icon"
-              className="h-8 w-8 rounded-full text-black hover:bg-white hover:text-black"
-              onClick={onToggleFeaturesWindow} // Use new toggle function
+              onClick={onToggleFeaturesWindow}
+              className={`h-8 w-8 rounded-full shadow hover:bg-white ${isFeaturesWindowVisible ? 'bg-white' : ''}`}
               title="actions"
             >
               <LayoutGrid className="h-4 w-4" />
@@ -97,10 +97,10 @@ export function MainControlBar({
         style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
       >
         <Button
-          variant={isSettingsWindowVisible ? 'secondary' : 'ghost'} // Highlight if open
+          variant="ghost"
           size="icon"
-          className="h-8 w-8 rounded-full text-black hover:bg-white hover:text-black"
-          onClick={onToggleSettingsWindow} // Use new toggle function
+          onClick={onToggleSettingsWindow}
+          className={`h-8 w-8 rounded-full shadow hover:bg-white ${isSettingsWindowVisible ? 'bg-white' : ''}`}
           title="Settings"
         >
           <SettingsIcon className="h-4 w-4" />

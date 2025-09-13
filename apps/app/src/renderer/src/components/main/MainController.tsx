@@ -30,22 +30,36 @@ export function MainController() {
     const newWidth = isScreenSharing ? 440 : 360
     window.electronAPI.send('app:resize-window', { width: newWidth, height: 50 })
 
+    if (!isScreenSharing) {
+      // Close all popovers when screen sharing stops
+      window.electronAPI.send('popover:close-all')
+      setActivePopover(null)
+    }
+  }, [isScreenSharing])
+
+  // This effect handles resizing the settings popover.
+  useEffect(() => {
     if (activePopover === 'settings') {
+      const newWidth = isScreenSharing ? 440 : 360
       window.electronAPI.send('popover:resize', {
         id: 'settings',
         width: newWidth,
         height: 340
       })
     }
+  }, [isScreenSharing, activePopover])
 
-    if (!isScreenSharing) {
-      const popoversToClose = ['transcriptions', 'actions', 'screen-preview']
-      if (activePopover && popoversToClose.includes(activePopover)) {
-        window.electronAPI.send('popover:close', activePopover)
+  useEffect(() => {
+    const handlePopoverClosed = (id: string) => {
+      if (activePopover === id) {
         setActivePopover(null)
       }
     }
-  }, [isScreenSharing, activePopover])
+    const unsubscribe = window.electronAPI.on('popover:was-closed', handlePopoverClosed)
+    return () => {
+      unsubscribe()
+    }
+  }, [activePopover])
 
   const handleTogglePopover = (popover: {
     id: string

@@ -26,6 +26,18 @@ export default function ChatPanel({}: ChatPanelProps) {
     return () => unsubscribe()
   }, [])
 
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsOpen(false)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [])
+
   const handleTabChange = (tab: string) => {
     setActiveTab(tab)
     if (tab === 'summary') {
