@@ -50,7 +50,7 @@ export function MainControlBar({
         style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
       >
         <Button
-          variant={'ghost'}
+          variant={'default'}
           size="sm"
           onClick={onToggleScreenShare}
           className={`h-8 rounded-full text-sm w-24 ${isScreenSharing ? 'bg-destructive/80 text-white breathing-light' : 'bg-muted text-black hover:bg-destructive/80 hover:text-white'} `}

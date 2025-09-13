@@ -5,6 +5,17 @@ import { useAuth } from './context/AuthContext.js'
 import { Loader2 } from 'lucide-react'
 import { LoginPage } from './components/LoginPage.js'
 import { motion, AnimatePresence } from 'motion'
+import { UpdateNotification } from './components/UpdateNotification.js'
+
+function getPopoverComponent(hash: string): JSX.Element | null {
+  switch (hash) {
+    case '#update-notification':
+      return <UpdateNotification />
+    // Other popovers would be handled here
+    default:
+      return null
+  }
+}
 
 /**
  * Main page component that serves as the entry point for the application.
@@ -18,6 +29,13 @@ import { motion, AnimatePresence } from 'motion'
 export default function App() {
   const { user, isLoading } = useAuth()
   const [isInitialLoad, setIsInitialLoad] = useState(true)
+  const [hash] = useState(() => window.location.hash) // Get hash once
+
+  // Handle popover routes
+  const popoverComponent = getPopoverComponent(hash)
+  if (popoverComponent) {
+    return popoverComponent
+  }
 
   useEffect(() => {
     if (isInitialLoad && !isLoading) {
@@ -54,13 +72,28 @@ export default function App() {
 
   useEffect(() => {
     if (window.electronAPI && window.electronAPI.on) {
-      const unsubscribe = window.electronAPI.on('updater:log', (message, ...args) => {
+      const unsubscribeLog = window.electronAPI.on('updater:log', (message, ...args) => {
         console.log(message, ...args)
       })
 
+      const unsubscribeUpdate = window.electronAPI.on('updater:update-downloaded', async () => {
+        console.log('Update downloaded, creating popover.')
+        const isScreenSharing = await window.electronAPI.invoke('get-screenshare-state')
+        const width = isScreenSharing ? 440 : 360
+        window.electronAPI.invoke('popover:create', {
+          id: 'update-notification',
+          hash: 'update-notification',
+          width: width,
+          height: 50
+        })
+      })
+
       return () => {
-        if (unsubscribe) {
-          unsubscribe()
+        if (unsubscribeLog) {
+          unsubscribeLog()
+        }
+        if (unsubscribeUpdate) {
+          unsubscribeUpdate()
         }
       }
     }

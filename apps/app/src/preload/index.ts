@@ -68,7 +68,8 @@ const api = {
       'screenshare:state-changed',
       'popover:prepare-to-close',
       'auth:execute-sign-out',
-      'updater:log'
+      'updater:log',
+      'updater:update-downloaded'
     ]
     if (validChannels.includes(channel)) {
       const subscription = (event, ...args) => callback(...args)
@@ -105,7 +106,8 @@ const api = {
       'set-screenshare-state',
       'ai:loading-state-change',
       'transcription:data',
-      'auth:request-sign-out'
+      'auth:request-sign-out',
+      'updater:quit-and-install'
     ]
     if (!validChannels.includes(channel)) {
       console.warn(`[Preload] Attempted to send on invalid channel: ${channel}`)

@@ -82,12 +82,19 @@ function setupAutoUpdaterListeners() {
   })
 
   autoUpdater.on('update-downloaded', (info) => {
-    log('Update downloaded. It will be installed on the next application restart.', info)
+    log('Update downloaded.', info)
+    if (mainWindow) {
+      mainWindow.webContents.send('updater:update-downloaded', info)
+    }
   })
 }
 
 ipcMain.handle('electronAPI:getMainWindowBounds', () => {
   return mainWindow?.getBounds()
+})
+
+ipcMain.on('updater:quit-and-install', () => {
+  getAutoUpdater().quitAndInstall()
 })
 
 // The popover:create IPC handler now emits an internal event
