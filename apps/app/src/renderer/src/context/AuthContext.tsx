@@ -15,43 +15,32 @@ import type { Session, User } from '@supabase/supabase-js'
  * @interface AuthContextType
  * @property {Session | null} session - Current Supabase session
  * @property {User | null} user - Current authenticated user
+ * @property {string[]} permissions - List of permissions for the current user
  * @property {boolean} isLoading - Loading state during auth operations
+ * @property {(permission: string) => boolean} hasPermission - Function to check for a permission
  * @property {Function} signInWithProvider - OAuth sign-in function
  * @property {Function} signOut - Sign-out function
  */
 interface AuthContextType {
   session: Session | null
   user: User | null
+  permissions: string[]
   isLoading: boolean
-  signInWithProvider: (provider: 'google' | 'github') => Promise<void> // Add more providers as needed
+  hasPermission: (permission: string) => boolean
+  signInWithProvider: (provider: 'google' | 'github') => Promise<void>
   signOut: () => Promise<void>
 }
 
-/** @type {React.Context} Authentication context instance */
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-/**
- * Props for the AuthProvider component.
- *
- * @interface AuthProviderProps
- * @property {ReactNode} children - Child components to wrap with auth context
- */
 interface AuthProviderProps {
   children: ReactNode
 }
 
-/**
- * Authentication provider component that manages OAuth authentication state.
- * Handles Supabase session management, OAuth callbacks via Electron's custom protocol,
- * and provides authentication methods to child components.
- *
- * @component
- * @param {AuthProviderProps} props - Component props
- * @returns {JSX.Element} Provider component wrapping children with auth context
- */
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [session, setSession] = useState<Session | null>(null)
   const [user, setUser] = useState<User | null>(null)
+  const [permissions, setPermissions] = useState<string[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
@@ -60,7 +49,30 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session)
       setUser(session?.user ?? null)
-      setIsLoading(false)
+      if (session?.user) {
+        const { access_token } = session
+        fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-api/me/permissions`,
+          {
+            headers: {
+              Authorization: `Bearer ${access_token}`,
+              apikey: import.meta.env.VITE_SUPABASE_ANON_KEY!,
+            },
+          }
+        )
+        .then(res => res.json())
+        .then(data => {
+          setPermissions(data?.permissions || [])
+          console.log('[AuthContext] Permissions fetched on initial session:', data?.permissions)
+        })
+        .catch(error => {
+            console.error('[AuthContext] Error fetching permissions on initial session:', error)
+            setPermissions([])
+        })
+        .finally(() => setIsLoading(false));
+      } else {
+        setIsLoading(false);
+      }
     })
 
     // Listen for auth state changes
@@ -68,6 +80,30 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setSession(session)
       setUser(session?.user ?? null)
       setIsLoading(false)
+
+      if (session?.user && (_event === 'SIGNED_IN' || _event === 'TOKEN_REFRESHED')) {
+        const { access_token } = session
+        fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-api/me/permissions`,
+          {
+            headers: {
+              Authorization: `Bearer ${access_token}`,
+              apikey: import.meta.env.VITE_SUPABASE_ANON_KEY!,
+            },
+          }
+        )
+        .then(res => res.json())
+        .then(data => {
+          setPermissions(data?.permissions || [])
+          console.log('[AuthContext] Permissions fetched on auth state change:', data?.permissions)
+        })
+        .catch(error => {
+            console.error('[AuthContext] Error fetching permissions on auth state change:', error)
+            setPermissions([])
+        });
+      } else if (_event === 'SIGNED_OUT') {
+        setPermissions([])
+      }
     })
 
     // Listen for the OAuth callback from the main Electron process
@@ -161,17 +197,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }, [])
 
-  /**
-   * Initiates OAuth sign-in flow with the specified provider.
-   * Opens external browser for authentication and handles the callback
-   * through Electron's custom protocol system.
-   *
-   * @async
-   * @function signInWithProvider
-   * @param {'google' | 'github'} provider - OAuth provider to use for authentication
-   * @returns {Promise<void>}
-   * @throws {Error} When OAuth URL is not available or Electron API is missing
-   */
   const signInWithProvider = async (provider: 'google' | 'github') => {
     setIsLoading(true)
     try {
@@ -182,7 +207,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           redirectTo: import.meta.env.DEV
             ? 'http://localhost:3000/auth/callback'
             : 'https://intevia.app/auth/callback',
-          // For PKCE flow, skipBrowserRedirect might be an option if not automatically handled
           queryParams: { access_type: 'offline', prompt: 'consent' } // Example for Google
         }
       })
@@ -191,12 +215,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       if (data.url) {
         console.log(`[AuthContext] Initiating ${provider} OAuth. Opening URL: ${data.url}`)
-        // @ts-ignore
         if (
           window.electronAPI &&
           typeof window.electronAPI.supabaseSignInWithOAuth === 'function'
         ) {
-          // @ts-ignore
           const mainProcessResponse = await window.electronAPI.supabaseSignInWithOAuth({
             urlToOpen: data.url
           })
@@ -218,32 +240,26 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
     } catch (error) {
       console.error(`[AuthContext] Error during ${provider} sign-in:`, error)
-      // Potentially set an error state here to show to the user
       setIsLoading(false)
     }
-    // setIsLoading(false) will be handled by onAuthStateChange or if an error occurs
   }
 
-  /**
-   * Signs out the current user and clears the session.
-   * Updates the authentication state through the onAuthStateChange listener.
-   *
-   * @async
-   * @function signOut
-   * @returns {Promise<void>}
-   */
   const signOut = async (): Promise<void> => {
     setIsLoading(true)
-    await supabase.auth.signOut().then(async () => {
-      await supabase.auth.refreshSession()
-    })
-    // onAuthStateChange will set user and session to null, and isLoading to false
+    await supabase.auth.signOut()
+    setPermissions([]) // Clear permissions
   }
+
+  const hasPermission = (permission: string): boolean => {
+    return permissions.includes(permission);
+  };
 
   const value = {
     session,
     user,
+    permissions,
     isLoading,
+    hasPermission,
     signInWithProvider,
     signOut
   }
@@ -251,14 +267,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 
-/**
- * Custom hook to access the authentication context.
- * Must be used within an AuthProvider component tree.
- *
- * @hook useAuth
- * @returns {AuthContextType} Authentication context value
- * @throws {Error} When used outside of AuthProvider
- */
 export const useAuth = () => {
   const context = useContext(AuthContext)
   if (context === undefined) {

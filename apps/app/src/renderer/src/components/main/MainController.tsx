@@ -98,11 +98,11 @@ export function MainController() {
             height: 340
           })
         }
-        isTranscriptionWindowVisible={activePopover === 'transcriptions'}
+        isChatPanelVisible={activePopover === 'transcriptions'}
         onToggleFeaturesWindow={() =>
           handleTogglePopover({ id: 'actions', hash: 'actions', width: 440, height: 340 })
         }
-        isFeaturesWindowVisible={activePopover === 'actions'}
+        isActionPanelVisible={activePopover === 'actions'}
         onToggleSettingsWindow={() =>
           handleTogglePopover({
             id: 'settings',
@@ -120,7 +120,7 @@ export function MainController() {
             height: 340
           })
         }
-        isScreenPreviewWindowVisible={activePopover === 'screen-preview'}
+        isScreenPreviewVisible={activePopover === 'screen-preview'}
       />
       <RealTimeAnalysis
         isScreenSharing={isScreenSharing}

@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button'
 import { MicIcon, SettingsIcon, LayoutGrid, MonitorIcon, MessageSquare } from 'lucide-react'
 import { useI18n } from '@/hooks/useI18n'
 import { formatTime } from '@/lib/utils'
+import { useAuth } from '@/context/AuthContext'
 
 interface MainControlBarProps {
   isAlwaysOnTop: boolean
@@ -14,13 +15,13 @@ interface MainControlBarProps {
   recordingDuration: number
   // New props for popover management
   onToggleTranscriptionWindow: () => void
-  isTranscriptionWindowVisible: boolean
+  isChatPanelVisible: boolean
   onToggleFeaturesWindow: () => void
-  isFeaturesWindowVisible: boolean
+  isActionPanelVisible: boolean
   onToggleSettingsWindow: () => void
   isSettingsWindowVisible: boolean
   onToggleScreenPreviewWindow: () => void
-  isScreenPreviewWindowVisible: boolean
+  isScreenPreviewVisible: boolean
 }
 
 export function MainControlBar({
@@ -29,15 +30,18 @@ export function MainControlBar({
   recordingDuration,
   // Destructure new props
   onToggleTranscriptionWindow,
-  isTranscriptionWindowVisible,
+  isChatPanelVisible,
   onToggleFeaturesWindow,
-  isFeaturesWindowVisible,
+  isActionPanelVisible,
   onToggleSettingsWindow,
   isSettingsWindowVisible,
   onToggleScreenPreviewWindow,
-  isScreenPreviewWindowVisible
+  isScreenPreviewVisible
 }: MainControlBarProps) {
   const { t } = useI18n()
+  const { permissions } = useAuth()
+
+  const canShowActions = permissions.some((p) => p.startsWith('ai_action:'))
 
   return (
     <header
@@ -64,7 +68,7 @@ export function MainControlBar({
               variant="ghost"
               size="icon"
               onClick={onToggleScreenPreviewWindow}
-              className={`h-8 w-8 rounded-full shadow hover:bg-white ${isScreenPreviewWindowVisible ? 'bg-white' : ''}`}
+              className={`h-8 w-8 rounded-full shadow hover:bg-white ${isScreenPreviewVisible ? 'bg-white' : ''}`}
               title="Screen Preview"
             >
               <MonitorIcon className="h-4 w-4" />
@@ -73,20 +77,22 @@ export function MainControlBar({
               variant="ghost"
               size="icon"
               onClick={onToggleTranscriptionWindow}
-              className={`h-8 w-8 rounded-full shadow hover:bg-white ${isTranscriptionWindowVisible ? 'bg-white' : ''}`}
+              className={`h-8 w-8 rounded-full shadow hover:bg-white ${isChatPanelVisible ? 'bg-white' : ''}`}
               title="Show Transcriptions"
             >
               <MessageSquare className="h-4 w-4" />
             </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onToggleFeaturesWindow}
-              className={`h-8 w-8 rounded-full shadow hover:bg-white ${isFeaturesWindowVisible ? 'bg-white' : ''}`}
-              title="actions"
-            >
-              <LayoutGrid className="h-4 w-4" />
-            </Button>
+            {canShowActions && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onToggleFeaturesWindow}
+                className={`h-8 w-8 rounded-full shadow hover:bg-white ${isActionPanelVisible ? 'bg-white' : ''}`}
+                title="actions"
+              >
+                <LayoutGrid className="h-4 w-4" />
+              </Button>
+            )}
           </>
         )}
       </div>

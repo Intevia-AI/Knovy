@@ -13,9 +13,11 @@ import { useAIInteraction } from '@/hooks/useAIInteraction'
 import { motion, AnimatePresence } from 'motion'
 import { AnimatedText } from '@/components/ui/AnimatedText'
 import { cn } from '@/lib/utils'
+import { useAuth } from '@/context/AuthContext'
 
 export default function ActionsPanel() {
   const { t } = useI18n()
+  const { hasPermission } = useAuth()
   const { sendContextToAI, aiMessages, isLoading } = useAIInteraction()
   const [isScreenSharing, setIsScreenSharing] = useState(false)
   const [input, setInput] = useState('')
@@ -66,12 +68,22 @@ export default function ActionsPanel() {
     return () => unsubscribe()
   }, [])
 
-  const actions = [
-    // { action: 'summary', labelKey: 'aiActionSummary', icon: ListCollapseIcon },
+  type Action = {
+    readonly action: 'summary' | 'answer' | 'screenshot' | 'file'
+    readonly labelKey: string
+    readonly icon: React.ElementType
+  }
+
+  const baseActions: Action[] = [
     { action: 'answer', labelKey: 'aiActionAnswer', icon: MessageSquareQuote },
     { action: 'screenshot', labelKey: 'aiActionScreenshot', icon: CameraIcon }
-    // { action: 'file', labelKey: 'aiActionUpload', icon: FileIcon }
-  ] as const
+  ]
+
+  if (hasPermission('ai_action:summarize')) {
+    baseActions.unshift({ action: 'summary', labelKey: 'aiActionSummary', icon: ListCollapseIcon })
+  }
+
+  const actions = baseActions
 
   const handleActionClick = (action: 'summary' | 'answer' | 'screenshot' | 'file') => {
     if (!isConversational) {
