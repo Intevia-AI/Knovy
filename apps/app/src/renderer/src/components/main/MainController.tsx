@@ -23,8 +23,13 @@ export function MainController() {
     useScreenShare()
 
   // AI Interaction Logic
-  const { customPrompt, handleTranscriptionResponse, handleTranscriptionKeywords } =
-    useAIInteraction()
+  const {
+    customPrompt,
+    handleTranscriptionResponse,
+    handleTranscriptionKeywords,
+    sendContextToAI,
+    isSummarizing
+  } = useAIInteraction()
 
   useEffect(() => {
     const newWidth = isScreenSharing ? 440 : 360
@@ -80,6 +85,19 @@ export function MainController() {
     }
   }
 
+  const handleToggleScreenShare = async () => {
+    if (isSummarizing) return // Prevent action while summarizing
+
+    if (isScreenSharing) {
+      // Stopping screen share: first summarize, then stop.
+      await sendContextToAI('summary')
+      toggleScreenShare()
+    } else {
+      // Starting screen share
+      toggleScreenShare()
+    }
+  }
+
   return (
     <div className="flex flex-col h-screen rounded-lg glass-popover">
       <MainControlBar
@@ -88,7 +106,8 @@ export function MainController() {
         minimizeWindow={minimizeWindow}
         closeWindow={closeWindow}
         isScreenSharing={isScreenSharing}
-        onToggleScreenShare={toggleScreenShare}
+        onToggleScreenShare={handleToggleScreenShare}
+        isSummarizing={isSummarizing}
         recordingDuration={recordingDuration}
         onToggleTranscriptionWindow={() =>
           handleTogglePopover({

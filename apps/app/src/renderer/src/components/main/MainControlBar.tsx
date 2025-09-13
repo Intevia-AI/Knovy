@@ -1,6 +1,13 @@
 import React from 'react'
 import { Button } from '@/components/ui/button'
-import { MicIcon, SettingsIcon, LayoutGrid, MonitorIcon, MessageSquare } from 'lucide-react'
+import {
+  MicIcon,
+  SettingsIcon,
+  LayoutGrid,
+  MonitorIcon,
+  MessageSquare,
+  Loader2
+} from 'lucide-react'
 import { useI18n } from '@/hooks/useI18n'
 import { formatTime } from '@/lib/utils'
 import { useAuth } from '@/context/AuthContext'
@@ -12,6 +19,7 @@ interface MainControlBarProps {
   closeWindow: () => void
   isScreenSharing: boolean
   onToggleScreenShare: () => void
+  isSummarizing: boolean
   recordingDuration: number
   // New props for popover management
   onToggleTranscriptionWindow: () => void
@@ -27,6 +35,7 @@ interface MainControlBarProps {
 export function MainControlBar({
   isScreenSharing,
   onToggleScreenShare,
+  isSummarizing,
   recordingDuration,
   // Destructure new props
   onToggleTranscriptionWindow,
@@ -50,17 +59,31 @@ export function MainControlBar({
     >
       {/* Left side controls */}
       <div
-        className="flex items-center gap-1"
+        className="flex items-center gap-2"
         style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
       >
         <Button
           variant={'ghost'}
           size="sm"
           onClick={onToggleScreenShare}
-          className={`h-8 rounded-full shadow text-sm w-24 ${isScreenSharing ? 'bg-destructive/80 text-white breathing-light' : 'bg-muted text-black hover:bg-destructive/80 hover:text-white'} `}
+          disabled={isSummarizing}
+          className={`h-8 rounded-full shadow text-sm w-28 ${
+            isScreenSharing
+              ? 'bg-destructive/80 text-white breathing-light'
+              : 'bg-muted text-black hover:bg-destructive/80 hover:text-white'
+          } `}
         >
-          <MicIcon className="h-8 w-8" />
-          {isScreenSharing ? formatTime(recordingDuration) : 'Listen'}
+          {isSummarizing ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              {'Stopping'}
+            </>
+          ) : (
+            <>
+              <MicIcon className="h-8 w-8" />
+              {isScreenSharing ? formatTime(recordingDuration) : 'Listen'}
+            </>
+          )}
         </Button>
         {isScreenSharing && (
           <>
