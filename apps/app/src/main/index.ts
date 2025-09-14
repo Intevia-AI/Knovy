@@ -199,16 +199,6 @@ ipcMain.handle('electronAPI:getActiveScreenSourceId', () => {
   return activeScreenSourceId
 })
 
-// Example of sending a message to a popover, remains the same.
-ipcMain.on('popover:sendMessage', (event, { action, prompt }) => {
-  // Forward the message to the main window's renderer process
-  // so the useAIInteraction hook can handle it.
-  if (mainWindow && !mainWindow.isDestroyed()) {
-    console.log(`Forwarding message to main window: ${prompt}`)
-    mainWindow.webContents.send('ai:custom-prompt', { action, prompt })
-  }
-})
-
 const settingsPath = path.join(app.getPath('userData'), 'settings.json')
 
 async function loadSettings() {
@@ -480,21 +470,6 @@ app.on('ready', async () => {
 
   ipcMain.on('electronAPI:minimizeWindow', () => mainWindow?.minimize())
   ipcMain.on('electronAPI:closeWindow', () => mainWindow?.close())
-
-  ipcMain.on('window:center', () => {
-    if (mainWindow) {
-      mainWindow.center()
-    }
-  })
-
-  ipcMain.on('window:move-to-bottom-left', () => {
-    if (mainWindow) {
-      const primaryDisplay = screen.getPrimaryDisplay()
-      const { height: screenHeight } = primaryDisplay.workAreaSize
-      const y = screenHeight - mainWindow.getBounds().height + 10
-      mainWindow.setPosition(30, y, true) // Animate the move
-    }
-  })
 
   ipcMain.on('app:set-always-on-top', (event, { alwaysOnTop }) => {
     if (mainWindow) {
