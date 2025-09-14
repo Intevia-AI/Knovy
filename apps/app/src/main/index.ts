@@ -137,8 +137,8 @@ ipcMain.on('popover:ready-to-close', (event, id) => {
   forceClosePopover(id)
 })
 
-ipcMain.on('popover:resize', (event, { id, width, height }) => {
-  resizePopover(id, { width, height })
+ipcMain.handle('popover:resize', (event, { id, width, height, x, y }) => {
+  resizePopover(id, { width, height, x, y })
 })
 
 ipcMain.handle('get-screenshare-state', () => {

@@ -21,15 +21,8 @@ interface MainControlBarProps {
   onToggleScreenShare: () => void
   isSummarizing: boolean
   recordingDuration: number
-  // New props for popover management
-  onToggleTranscriptionWindow: () => void
-  isChatPanelVisible: boolean
-  onToggleFeaturesWindow: () => void
-  isActionPanelVisible: boolean
-  onToggleSettingsWindow: () => void
-  isSettingsWindowVisible: boolean
-  onToggleScreenPreviewWindow: () => void
-  isScreenPreviewVisible: boolean
+  onTogglePanel: (panelId: string) => void
+  openPanels: Set<string>
 }
 
 export function MainControlBar({
@@ -37,15 +30,8 @@ export function MainControlBar({
   onToggleScreenShare,
   isSummarizing,
   recordingDuration,
-  // Destructure new props
-  onToggleTranscriptionWindow,
-  isChatPanelVisible,
-  onToggleFeaturesWindow,
-  isActionPanelVisible,
-  onToggleSettingsWindow,
-  isSettingsWindowVisible,
-  onToggleScreenPreviewWindow,
-  isScreenPreviewVisible
+  onTogglePanel,
+  openPanels
 }: MainControlBarProps) {
   const { t } = useI18n()
   const { permissions } = useAuth()
@@ -90,8 +76,8 @@ export function MainControlBar({
             <Button
               variant="ghost"
               size="icon"
-              onClick={onToggleScreenPreviewWindow}
-              className={`h-8 w-8 rounded-full shadow hover:bg-white ${isScreenPreviewVisible ? 'bg-white' : ''}`}
+              onClick={() => onTogglePanel('screen-preview')}
+              className={`h-8 w-8 rounded-full shadow hover:bg-white ${openPanels.has('screen-preview') ? 'bg-white' : ''}`}
               title="Screen Preview"
             >
               <MonitorIcon className="h-4 w-4" />
@@ -99,8 +85,8 @@ export function MainControlBar({
             <Button
               variant="ghost"
               size="icon"
-              onClick={onToggleTranscriptionWindow}
-              className={`h-8 w-8 rounded-full shadow hover:bg-white ${isChatPanelVisible ? 'bg-white' : ''}`}
+              onClick={() => onTogglePanel('transcriptions')}
+              className={`h-8 w-8 rounded-full shadow hover:bg-white ${openPanels.has('transcriptions') ? 'bg-white' : ''}`}
               title="Show Transcriptions"
             >
               <MessageSquare className="h-4 w-4" />
@@ -109,8 +95,8 @@ export function MainControlBar({
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={onToggleFeaturesWindow}
-                className={`h-8 w-8 rounded-full shadow hover:bg-white ${isActionPanelVisible ? 'bg-white' : ''}`}
+                onClick={() => onTogglePanel('actions')}
+                className={`h-8 w-8 rounded-full shadow hover:bg-white ${openPanels.has('actions') ? 'bg-white' : ''}`}
                 title="actions"
               >
                 <LayoutGrid className="h-4 w-4" />
@@ -128,8 +114,8 @@ export function MainControlBar({
         <Button
           variant="ghost"
           size="icon"
-          onClick={onToggleSettingsWindow}
-          className={`h-8 w-8 rounded-full shadow hover:bg-white ${isSettingsWindowVisible ? 'bg-white' : ''}`}
+          onClick={() => onTogglePanel('settings')}
+          className={`h-8 w-8 rounded-full shadow hover:bg-white ${openPanels.has('settings') ? 'bg-white' : ''}`}
           title="Settings"
         >
           <SettingsIcon className="h-4 w-4" />

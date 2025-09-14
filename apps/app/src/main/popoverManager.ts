@@ -75,15 +75,19 @@ export function createPopover(options: PopoverOptions): BrowserWindow {
   return popover
 }
 
-export function resizePopover(id: string, newOptions: { width: number; height: number }): void {
+export function resizePopover(
+  id: string,
+  newOptions: { width: number; height: number; x?: number; y?: number }
+): void {
   const popover = openPopovers.get(id)
   if (popover && !popover.isDestroyed()) {
     const parent = popover.getParentWindow()
     if (parent) {
       const parentBounds = parent.getBounds()
       const { width, height } = newOptions
-      const x = parentBounds.x + Math.round((parentBounds.width - width) / 2)
-      const y = parentBounds.y - height - 8
+      // If x or y are provided, use them. Otherwise, calculate centered position.
+      const x = newOptions.x ?? parentBounds.x + Math.round((parentBounds.width - width) / 2)
+      const y = newOptions.y ?? parentBounds.y - height - 8
       popover.setBounds({ x, y, width, height }, true)
     }
   }
