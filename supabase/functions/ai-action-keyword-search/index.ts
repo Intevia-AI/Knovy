@@ -21,7 +21,7 @@ const handleRequest = async (req: Request) => {
       throw new Error("GOOGLE_GENERATIVE_AI_API_KEY is not set");
     }
 
-    const prompt = `Extract the key terms from the following text. Return the answer as a JSON array of strings. For example: ["keyword1", "keyword2"].\n\nText: "${text_input}"`;
+    const prompt = `Please provide a brief and concise summary of the term: "${text_input}". The summary should be informative and directly related to the term.`;
     const contents = [{ role: "user", parts: [{ text: prompt }] }];
     const postData = JSON.stringify({ contents });
 
@@ -43,10 +43,7 @@ const handleRequest = async (req: Request) => {
     }
 
     const geminiResponse = await res.json();
-    const keywordsText = geminiResponse.candidates[0]?.content?.parts[0]?.text || "[]";
-
-    const cleanedText = keywordsText.replace(/```json|```/g, "").trim();
-    const keywords = JSON.parse(cleanedText);
+    const summary = geminiResponse.candidates[0]?.content?.parts[0]?.text || "Sorry, I could not find information on that topic.";
 
     // Action logging - must happen before returning the successful response
     try {
@@ -73,7 +70,7 @@ const handleRequest = async (req: Request) => {
       console.error("An error occurred during action logging:", e);
     }
 
-    return new Response(JSON.stringify({ keywords }), {
+    return new Response(JSON.stringify({ response: summary }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

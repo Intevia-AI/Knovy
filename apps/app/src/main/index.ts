@@ -34,6 +34,8 @@ let activeScreenSourceId: string | null = null
 let mainWindow: BrowserWindow | null
 let selectionWindow: BrowserWindow | null
 
+let pendingKeyword: { keyword: string; timestamp: number } | null = null
+
 export function getAutoUpdater(): AppUpdater {
   // Using destructuring to access autoUpdater due to the CommonJS module of 'electron-updater'.
   // It is a workaround for ESM compatibility issues, see https://github.com/electron-userland/electron-builder/issues/7976.
@@ -710,6 +712,26 @@ app.on('ready', async () => {
       const newHeight = height || currentHeight
       mainWindow.setSize(newWidth, newHeight, true) // Animate the resize
     }
+  })
+
+  ipcMain.on('keyword:click', (event, keyword: string) => {
+    console.log(`[main/index.ts] Keyword clicked: ${keyword}. Broadcasting to all windows.`)
+    pendingKeyword = { keyword, timestamp: Date.now() }
+    for (const win of BrowserWindow.getAllWindows()) {
+      if (!win.isDestroyed()) {
+        win.webContents.send('keyword:search', keyword)
+      }
+    }
+  })
+
+  ipcMain.handle('popover:consume-pending-keyword', () => {
+    // Consume the keyword only if it's very recent, to avoid stale state.
+    if (pendingKeyword && Date.now() - pendingKeyword.timestamp < 2000) {
+      const keywordToReturn = pendingKeyword.keyword
+      pendingKeyword = null // Consume it
+      return keywordToReturn
+    }
+    return null
   })
 })
 

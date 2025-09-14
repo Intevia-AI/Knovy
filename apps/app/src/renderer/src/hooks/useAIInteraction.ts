@@ -29,8 +29,6 @@ export function useAIInteraction() {
   const [isLoading, setIsLoading] = useState(false)
   const [isSummarizing, setIsSummarizing] = useState(false)
   const [customPrompt, setCustomPrompt] = useState('')
-  const [keywords, setKeywords] = useState<string[]>([])
-  const [selectedKeyword, setSelectedKeyword] = useState<string | null>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
   const [isSubtitleVisible, setIsSubtitleVisible] = useState(true)
   const { t, language = 'en-US' } = useI18n()
@@ -100,16 +98,6 @@ export function useAIInteraction() {
     }
 
     loadInitialTranscripts()
-  }, [])
-
-  const handleTranscriptionKeywords = useCallback((newKeywords: string[]) => {
-    setKeywords((prev) => {
-      const uniqueNewKeywords = newKeywords.filter((k) => k && !prev.includes(k))
-      if (uniqueNewKeywords.length > 0) {
-        return [...prev, ...uniqueNewKeywords]
-      }
-      return prev
-    })
   }, [])
 
   const gatherContext = useCallback(
@@ -261,10 +249,11 @@ export function useAIInteraction() {
 
         if (error) throw error
 
+        console.log('[AIInteraction] Raw data for response mapping:', data);
         const responseMapping = {
           summary: (d: any) => d.summary,
           answer: (d: any) => d.recommendation,
-          keyword_search: (d: any) => `Keywords found: ${d.keywords.join(', ')}`,
+          keyword_search: (d: any) => d.response,
           screenshot: (d: any) => d.analysis,
           chat: (d: any) => d.response
         }
@@ -313,68 +302,6 @@ export function useAIInteraction() {
     [gatherContext, t, language, transcriptions] // Added transcriptions dependency
   )
 
-  const handleKeywordClick = useCallback(
-    async (keyword: string) => {
-      if (isLoading) return
-      setSelectedKeyword(keyword)
-      await sendContextToAI('keyword_search', keyword)
-      setSelectedKeyword(null)
-    },
-    [isLoading, sendContextToAI]
-  )
-
-  const resetChat = useCallback(() => {
-    setAiMessages([])
-    setKeywords([])
-    setCustomPrompt('')
-    setIsLoading(false)
-    setSelectedKeyword(null)
-  }, [])
-
-  const setSubtitleVisibility = (visible: boolean) => {
-    setIsSubtitleVisible(visible)
-  }
-
-  const handleScreenshot = useCallback(
-    async (screenshotPath: string) => {
-      let relativePath = screenshotPath.startsWith('/screenshots/')
-        ? screenshotPath
-        : `/screenshots/${screenshotPath.split('/screenshots/').pop()}`
-      try {
-        const response = await fetch(relativePath)
-        if (!response.ok) throw new Error(`Failed to fetch screenshot: ${response.statusText}`)
-        const blob = await response.blob()
-        const reader = new FileReader()
-        reader.readAsDataURL(blob)
-        reader.onloadend = () => {
-          const base64Image = reader.result as string
-          let question =
-            'Please analyze the content of this screenshot and provide a detailed description.'
-          if (currentLanguage === 'zh-TW') {
-            question = '請分析這張截圖的內容，並提供詳細的描述。'
-          } else if (currentLanguage === 'ja-JP') {
-            question = 'このスクリーンショットの内容を分析し、詳細な説明を提供してください。'
-          }
-          sendContextToAI('screenshot', question, base64Image)
-        }
-        reader.onerror = () => {
-          throw new Error('Failed to read screenshot file')
-        }
-      } catch (error) {
-        console.error('[AIInteraction] Error processing screenshot:', error)
-        setAiMessages((prev) => [
-          ...prev,
-          {
-            id: `err-screenshot-${Date.now()}`,
-            role: 'assistant',
-            content: `[錯誤] 無法處理截圖: ${error instanceof Error ? error.message : String(error)}`
-          }
-        ])
-      }
-    },
-    [sendContextToAI, currentLanguage]
-  )
-
   const handleSendMessage = (action: 'chat', prompt: string) => {
     sendContextToAI(action, prompt)
   }
@@ -386,18 +313,11 @@ export function useAIInteraction() {
     isLoading,
     customPrompt,
     setCustomPrompt,
-    keywords,
-    selectedKeyword,
     sendContextToAI,
     handleTranscriptionResponse,
-    handleTranscriptionKeywords,
-    handleKeywordClick,
     messagesContainerRef,
-    resetChat,
     isSubtitleVisible,
-    setSubtitleVisibility,
     handleSendMessage,
-    handleScreenshot,
     isScreenSharing,
     toggleScreenShare,
     screenStreamRef,

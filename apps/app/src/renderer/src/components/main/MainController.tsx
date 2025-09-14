@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 
 // Hooks
 import { useElectron } from '@/hooks/useElectron'
@@ -26,7 +26,6 @@ export function MainController() {
   const {
     customPrompt,
     handleTranscriptionResponse,
-    handleTranscriptionKeywords,
     sendContextToAI,
     isSummarizing
   } = useAIInteraction()
@@ -59,110 +58,126 @@ export function MainController() {
     }
   }, [])
 
-  const handleTogglePanel = async (panelId: string) => {
-    const currentPanels = new Set(openPanels)
-    const isOpening = !currentPanels.has(panelId)
-    const newPanels = new Set(currentPanels)
+  const handleTogglePanel = useCallback(
+    async (panelId: string, options?: { ensureOpen?: boolean }) => {
+      const currentPanels = new Set(openPanels)
+      const isOpening = options?.ensureOpen ? true : !currentPanels.has(panelId)
+      const newPanels = new Set(currentPanels)
 
-    const coexistingPanels = ['transcriptions', 'actions']
-    const isCoexistingPanel = coexistingPanels.includes(panelId)
+      const coexistingPanels = ['transcriptions', 'actions']
+      const isCoexistingPanel = coexistingPanels.includes(panelId)
 
-    // Apply exclusivity rules to determine the final set of panels
-    if (isOpening) {
-      if (isCoexistingPanel) {
-        // If opening a coexisting panel, close any exclusive panels
-        for (const id of currentPanels) {
-          if (!coexistingPanels.includes(id)) {
+      // Apply exclusivity rules to determine the final set of panels
+      if (isOpening) {
+        if (isCoexistingPanel) {
+          // If opening a coexisting panel, close any exclusive panels
+          for (const id of currentPanels) {
+            if (!coexistingPanels.includes(id)) {
+              newPanels.delete(id)
+              window.electronAPI.send('popover:close', id)
+            }
+          }
+        } else {
+          // Opening an exclusive panel, so close ALL other panels
+          for (const id of currentPanels) {
             newPanels.delete(id)
             window.electronAPI.send('popover:close', id)
           }
         }
+        newPanels.add(panelId) // Add the new panel
       } else {
-        // Opening an exclusive panel, so close ALL other panels
-        for (const id of currentPanels) {
-          newPanels.delete(id)
-          window.electronAPI.send('popover:close', id)
+        // isClosing
+        newPanels.delete(panelId)
+        window.electronAPI.send('popover:close', panelId)
+      }
+
+      // Get necessary info for layout calculation
+      const parentBounds = await window.electronAPI.invoke('electronAPI:getMainWindowBounds')
+      if (!parentBounds) return
+
+      const panelConfigs = {
+        transcriptions: { id: 'transcriptions', hash: 'transcriptions', width: 440, height: 340 },
+        actions: { id: 'actions', hash: 'actions', width: 440, height: 340 },
+        settings: {
+          id: 'settings',
+          hash: 'settings',
+          width: isScreenSharing ? 440 : 360,
+          height: 340
+        },
+        'screen-preview': {
+          id: 'screen-preview',
+          hash: 'screen-preview',
+          width: 440,
+          height: 340
         }
       }
-      newPanels.add(panelId) // Add the new panel
-    } else {
-      // isClosing
-      newPanels.delete(panelId)
-      window.electronAPI.send('popover:close', panelId)
-    }
+      const gap = 8
 
-    // Get necessary info for layout calculation
-    const parentBounds = await window.electronAPI.invoke('electronAPI:getMainWindowBounds')
-    if (!parentBounds) return
+      // Calculate target positions for all panels that WILL be open
+      const targetPositions: { [key: string]: { x: number; y: number } } = {}
+      const panelsToLayout = Array.from(newPanels)
+      const openCoexisting = panelsToLayout.filter((p) => coexistingPanels.includes(p))
 
-    const panelConfigs = {
-      transcriptions: { id: 'transcriptions', hash: 'transcriptions', width: 440, height: 340 },
-      actions: { id: 'actions', hash: 'actions', width: 440, height: 340 },
-      settings: {
-        id: 'settings',
-        hash: 'settings',
-        width: isScreenSharing ? 440 : 360,
-        height: 340
-      },
-      'screen-preview': {
-        id: 'screen-preview',
-        hash: 'screen-preview',
-        width: 440,
-        height: 340
+      if (openCoexisting.length === 2) {
+        // Two panels: symmetrical layout
+        const chatConfig = panelConfigs.transcriptions
+        const actConfig = panelConfigs.actions
+        const startX = parentBounds.x
+
+        targetPositions['transcriptions'] = { x: startX, y: parentBounds.y - chatConfig.height - 8 }
+        targetPositions['actions'] = {
+          x: startX + chatConfig.width + gap,
+          y: parentBounds.y - actConfig.height - 8
+        }
+      } else {
+        // One or more panels, but all are centered
+        for (const id of panelsToLayout) {
+          const config = panelConfigs[id]
+          targetPositions[id] = {
+            x: parentBounds.x + Math.round((parentBounds.width - config.width) / 2),
+            y: parentBounds.y - config.height - 8
+          }
+        }
       }
-    }
-    const gap = 8
 
-    // Calculate target positions for all panels that WILL be open
-    const targetPositions: { [key: string]: { x: number; y: number } } = {}
-    const panelsToLayout = Array.from(newPanels)
-    const openCoexisting = panelsToLayout.filter((p) => coexistingPanels.includes(p))
-
-    if (openCoexisting.length === 2) {
-      // Two panels: symmetrical layout
-      const chatConfig = panelConfigs.transcriptions
-      const actConfig = panelConfigs.actions
-      const startX = parentBounds.x
-
-      targetPositions['transcriptions'] = { x: startX, y: parentBounds.y - chatConfig.height - 8 }
-      targetPositions['actions'] = {
-        x: startX + chatConfig.width + gap,
-        y: parentBounds.y - actConfig.height - 8
-      }
-    } else {
-      // One or more panels, but all are centered
-      for (const id of panelsToLayout) {
+      // Execute IPC calls to create or reposition windows
+      const panelsToReposition = panelsToLayout.filter((id) => currentPanels.has(id))
+      for (const id of panelsToReposition) {
         const config = panelConfigs[id]
-        targetPositions[id] = {
-          x: parentBounds.x + Math.round((parentBounds.width - config.width) / 2),
-          y: parentBounds.y - config.height - 8
-        }
+        const pos = targetPositions[id]
+        await window.electronAPI.invoke('popover:resize', {
+          id,
+          ...pos,
+          width: config.width,
+          height: config.height
+        })
       }
-    }
 
-    // Execute IPC calls to create or reposition windows
-    const panelsToReposition = panelsToLayout.filter((id) => currentPanels.has(id))
-    for (const id of panelsToReposition) {
-      const config = panelConfigs[id]
-      const pos = targetPositions[id]
-      await window.electronAPI.invoke('popover:resize', {
-        id,
-        ...pos,
-        width: config.width,
-        height: config.height
-      })
-    }
+      const panelsToOpen = panelsToLayout.filter((id) => !currentPanels.has(id))
+      for (const id of panelsToOpen) {
+        const config = panelConfigs[id]
+        const pos = targetPositions[id]
+        await window.electronAPI.invoke('popover:create', { ...config, ...pos })
+      }
 
-    const panelsToOpen = panelsToLayout.filter((id) => !currentPanels.has(id))
-    for (const id of panelsToOpen) {
-      const config = panelConfigs[id]
-      const pos = targetPositions[id]
-      await window.electronAPI.invoke('popover:create', { ...config, ...pos })
-    }
+      // Update React state
+      setOpenPanels(newPanels)
+    },
+    [isScreenSharing, openPanels]
+  )
 
-    // Update React state
-    setOpenPanels(newPanels)
-  }
+  useEffect(() => {
+    const handleKeywordSearch = (keyword: string) => {
+      console.log(
+        `[MainController] Received 'keyword:search' event for "${keyword}". Ensuring actions panel is open.`
+      )
+      handleTogglePanel('actions', { ensureOpen: true })
+    }
+    const unsubscribe = window.electronAPI.on('keyword:search', handleKeywordSearch)
+    return () => {
+      unsubscribe()
+    }
+  }, [handleTogglePanel])
 
   const handleToggleScreenShare = async () => {
     if (isSummarizing) return // Prevent action while summarizing
@@ -195,7 +210,6 @@ export function MainController() {
         isScreenSharing={isScreenSharing}
         systemAudioStream={currentSystemAudioStream}
         onTextResponse={handleTranscriptionResponse}
-        onKeywords={handleTranscriptionKeywords}
         customPrompt={customPrompt}
         language={language}
       />

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -24,6 +24,7 @@ export default function ActionsPanel() {
   const [isConversational, setIsConversational] = useState(false)
   const [isOpen, setIsOpen] = useState(true)
   const popoverId = 'actions'
+  const lastProcessedKeyword = useRef<string | null>(null)
 
   useEffect(() => {
     const unsubscribe = window.electronAPI.on('popover:prepare-to-close', (id) => {
@@ -67,6 +68,39 @@ export default function ActionsPanel() {
     })
     return () => unsubscribe()
   }, [])
+
+  const handleKeywordSearch = useCallback(
+    (keyword: string) => {
+      if (!keyword || keyword === lastProcessedKeyword.current) return
+      lastProcessedKeyword.current = keyword
+
+      console.log(
+        `[ActionsPanel] Received 'keyword:search' event for "${keyword}". Triggering AI search.`
+      )
+      if (!isConversational) {
+        setIsConversational(true)
+      }
+      sendContextToAI('keyword_search', keyword)
+    },
+    [isConversational, sendContextToAI]
+  )
+
+  useEffect(() => {
+    const unsubscribe = window.electronAPI.on('keyword:search', handleKeywordSearch)
+    return () => {
+      unsubscribe()
+    }
+  }, [handleKeywordSearch])
+
+  useEffect(() => {
+    const consumeInitialKeyword = async () => {
+      const keyword = await window.electronAPI.invoke('popover:consume-pending-keyword')
+      if (keyword) {
+        handleKeywordSearch(keyword)
+      }
+    }
+    consumeInitialKeyword()
+  }, [handleKeywordSearch])
 
   type Action = {
     readonly action: 'summary' | 'answer' | 'screenshot' | 'file'
@@ -138,7 +172,7 @@ export default function ActionsPanel() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
-                className="flex flex-col h-full space-y-2"
+                className="flex flex-col flex-grow space-y-2 overflow-hidden"
               >
                 {/* Conversational View */}
                 <motion.div

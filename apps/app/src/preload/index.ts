@@ -70,7 +70,8 @@ const api = {
       'popover:was-closed',
       'auth:execute-sign-out',
       'updater:log',
-      'updater:update-downloaded'
+      'updater:update-downloaded',
+      'keyword:search'
     ]
     if (validChannels.includes(channel)) {
       const subscription = (event, ...args) => callback(...args)
@@ -94,7 +95,8 @@ const api = {
       'set-screenshare-state',
       'transcription:data',
       'auth:request-sign-out',
-      'updater:quit-and-install'
+      'updater:quit-and-install',
+      'keyword:click'
     ]
     if (!validChannels.includes(channel)) {
       console.warn(`[Preload] Attempted to send on invalid channel: ${channel}`)
@@ -124,6 +126,7 @@ const api = {
       'session:start',
       'session:end',
       'session:get-id',
+      'popover:consume-pending-keyword',
       'electronAPI:getActiveScreenSourceId'
     ]
     if (!validChannels.includes(channel)) {

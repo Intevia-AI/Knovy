@@ -5,7 +5,6 @@ import { GeminiClient } from '@/lib/geminiClient.js'
 
 interface RealTimeAnalysisProps {
   onTextResponse?: (text: string, turnComplete: boolean) => void // 當收到文字回應時的回呼
-  onKeywords?: (keywords: string[]) => void // 當收到關鍵字時的回呼
   systemAudioStream?: MediaStream
   isScreenSharing: boolean
   customPrompt?: string
@@ -14,7 +13,6 @@ interface RealTimeAnalysisProps {
 
 export default function RealTimeAnalysis({
   onTextResponse,
-  onKeywords,
   systemAudioStream,
   isScreenSharing,
   customPrompt,
@@ -66,28 +64,34 @@ export default function RealTimeAnalysis({
           )
           const keywordsMatch = textBufferRef.current.match(/KEYWORDS: (.*?)(?:\n|$)/s)
 
+          let transcription = ''
           if (transcriptionMatch && transcriptionMatch[1]) {
-            const transcription = transcriptionMatch[1]
+            transcription = transcriptionMatch[1]
               .replace(/TRANSCRIPTION:\s*/gi, '')
               .replace(/search web/g, '')
               .replace(/\s+/g, ' ')
               .trim()
-            if (transcription && onTextResponse) {
-              onTextResponse(transcription, false) // Assume not turn complete for transcription
-            }
           }
 
+          let keywords: string[] = []
           if (keywordsMatch && keywordsMatch[1]) {
             const keywordsStr = keywordsMatch[1].trim()
             if (keywordsStr) {
-              const keywords = keywordsStr
+              keywords = keywordsStr
                 .split(',')
                 .map((k) => k.trim())
                 .filter((k) => k)
-              if (keywords.length > 0 && onKeywords) {
-                onKeywords(keywords)
-              }
             }
+          }
+
+          if (transcription && onTextResponse) {
+            let highlightedTranscription = transcription
+            if (keywords.length > 0) {
+              // Create a regex that matches any of the keywords, case-insensitively
+              const regex = new RegExp(`(${keywords.join('|')})`, 'gi')
+              highlightedTranscription = transcription.replace(regex, '`$1`')
+            }
+            onTextResponse(highlightedTranscription, false) // Assume not turn complete
           }
 
           textBufferRef.current = ''
@@ -148,7 +152,8 @@ export default function RealTimeAnalysis({
     } catch (error) {
       console.error('[RealTimeAnalysis] Error starting audio processing:', error)
     }
-  }, [systemAudioStream, customPrompt, language, onTextResponse, onKeywords])
+  }, [systemAudioStream, customPrompt, language, onTextResponse])
+
 
   const stopAudioProcessing = useCallback(() => {
     console.log('[RealTimeAnalysis] Stopping audio processing...')

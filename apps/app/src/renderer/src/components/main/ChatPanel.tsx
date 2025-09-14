@@ -1,5 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react'
-import { Message as AIMessage } from 'ai'
+import { useEffect, useRef, useState } from 'react'
 import { Markdown } from '@/components/markdown'
 import { cn } from '@/lib/utils'
 import { useAIInteraction } from '@/hooks/useAIInteraction'
@@ -16,6 +15,12 @@ export default function ChatPanel({}: ChatPanelProps) {
   const messagesContainerRef = useRef<HTMLDivElement>(null)
   const [isOpen, setIsOpen] = useState(true)
   const popoverId = 'transcriptions'
+
+  const handleKeywordClick = (keyword: string) => {
+    if (window.electronAPI) {
+      window.electronAPI.send('keyword:click', keyword)
+    }
+  }
 
   useEffect(() => {
     const unsubscribe = window.electronAPI.on('popover:prepare-to-close', (id) => {
@@ -126,7 +131,7 @@ export default function ChatPanel({}: ChatPanelProps) {
                         'bg-black/5 border border-black/10 mr-auto text-black'
                       )}
                     >
-                      <Markdown>{m.content}</Markdown>
+                      <Markdown onKeywordClick={handleKeywordClick}>{m.content}</Markdown>
                     </motion.div>
                   ))}
                 </motion.div>
