@@ -28,6 +28,8 @@ export function SettingsModal() {
   const isSigningOutRef = useRef(false)
   const [displays, setDisplays] = useState<any[]>([])
   const [selectedDisplayId, setSelectedDisplayId] = useState<number | undefined>()
+  const [showRestartConfirm, setShowRestartConfirm] = useState(false)
+  const [pendingDisplayId, setPendingDisplayId] = useState<number | null>(null)
 
   const popoverId = 'settings'
 
@@ -43,14 +45,18 @@ export function SettingsModal() {
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
-        setIsOpen(false)
+        if (showRestartConfirm) {
+          setShowRestartConfirm(false)
+        } else {
+          setIsOpen(false)
+        }
       }
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => {
       window.removeEventListener('keydown', handleKeyDown)
     }
-  }, [])
+  }, [showRestartConfirm])
 
   useEffect(() => {
     const getInitialData = async () => {
@@ -104,11 +110,33 @@ export function SettingsModal() {
     }
   }
 
-  const handleDisplayChange = async (displayIdStr: string) => {
-    const displayId = parseInt(displayIdStr, 10)
+  const applyDisplayChange = async (displayId: number) => {
     setSelectedDisplayId(displayId)
     await window.electronAPI.invoke('electronAPI:setSettings', { displayId })
     window.electronAPI.send('window:set-position', { position: 'bottom-left', displayId })
+  }
+
+  const handleDisplayChange = (displayIdStr: string) => {
+    const displayId = parseInt(displayIdStr, 10)
+    if (isScreenSharing && displayId !== selectedDisplayId) {
+      setPendingDisplayId(displayId)
+      setShowRestartConfirm(true)
+    } else {
+      applyDisplayChange(displayId)
+    }
+  }
+
+  const handleConfirmRestart = () => {
+    if (pendingDisplayId === null) return
+    applyDisplayChange(pendingDisplayId)
+    window.electronAPI.send('settings:request-screenshare-restart')
+    setShowRestartConfirm(false)
+    setPendingDisplayId(null)
+  }
+
+  const handleCancelRestart = () => {
+    setShowRestartConfirm(false)
+    setPendingDisplayId(null)
   }
 
   const handleCustomPromptConfirm = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -151,8 +179,39 @@ export function SettingsModal() {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 20 }}
           transition={{ duration: 0.2 }}
-          className="glass-popover p-3 space-y-3 h-screen w-full overflow-y-auto"
+          className="glass-popover p-3 space-y-3 h-screen w-full overflow-y-auto relative"
         >
+          <AnimatePresence>
+            {showRestartConfirm && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="absolute inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-10 p-4"
+              >
+                <motion.div
+                  initial={{ scale: 0.95, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0.95, opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="bg-background/50 p-4 rounded-lg border border-border/50 max-w-xs text-center space-y-3 shadow-lg"
+                >
+                  <h3 className="font-semibold text-foreground">Restart Session?</h3>
+                  <p className="text-sm text-muted-foreground">
+                    To capture the new display, the current screen sharing session must be
+                    restarted.
+                  </p>
+                  <div className="flex justify-end gap-2 pt-2">
+                    <Button variant="ghost" onClick={handleCancelRestart}>
+                      Cancel
+                    </Button>
+                    <Button onClick={handleConfirmRestart}>Restart</Button>
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           {/* History Button */}
           <Button
             variant="ghost"
@@ -195,10 +254,7 @@ export function SettingsModal() {
             </div>
             <div className="flex items-center justify-between">
               <Label className="text-sm text-muted-foreground">Show on</Label>
-              <Select
-                value={selectedDisplayId?.toString()}
-                onValueChange={handleDisplayChange}
-              >
+              <Select value={selectedDisplayId?.toString()} onValueChange={handleDisplayChange}>
                 <SelectTrigger className="w-[120px] h-7 text-sm px-2 bg-muted/95 border-border/50">
                   <SelectValue placeholder="Default" />
                 </SelectTrigger>

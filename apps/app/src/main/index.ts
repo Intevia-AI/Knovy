@@ -441,18 +441,55 @@ app.on('ready', async () => {
     desktopCapturer
       .getSources({ types: ['screen'] })
       .then(async (sources) => {
-        const primaryDisplay = screen.getPrimaryDisplay()
-        const primarySource = sources.find((s) => s.display_id === String(primaryDisplay.id))
+        const settings = await loadSettings()
+        let targetSource = null
 
-        if (primarySource) {
-          activeScreenSourceId = primarySource.id // Store the source ID
-          callback({ video: primarySource, audio: 'loopback' })
-        } else if (sources.length > 0) {
-          console.warn(
-            'Primary display source not found, falling back to the first available screen.'
+        // 1. Try to find source based on saved displayId
+        if (settings.displayId) {
+          const selectedDisplaySource = sources.find(
+            (s) => s.display_id === String(settings.displayId)
           )
-          activeScreenSourceId = sources[0].id // Store the source ID
-          callback({ video: sources[0], audio: 'loopback' })
+          if (selectedDisplaySource) {
+            targetSource = selectedDisplaySource
+            console.log(`[ScreenShare] Using saved display ID: ${settings.displayId}`)
+          } else {
+            console.warn(
+              `[ScreenShare] Saved display ID ${settings.displayId} not found. Falling back.`
+            )
+          }
+        }
+
+        // 2. If no target yet, find source for the display where the main window is
+        if (!targetSource && mainWindow) {
+          const windowDisplay = screen.getDisplayMatching(mainWindow.getBounds())
+          const windowSource = sources.find((s) => s.display_id === String(windowDisplay.id))
+          if (windowSource) {
+            targetSource = windowSource
+            console.log(
+              `[ScreenShare] Using display where main window is located: ${windowDisplay.id}`
+            )
+          }
+        }
+
+        // 3. If no target yet, fallback to primary display
+        if (!targetSource) {
+          const primaryDisplay = screen.getPrimaryDisplay()
+          const primarySource = sources.find((s) => s.display_id === String(primaryDisplay.id))
+          if (primarySource) {
+            targetSource = primarySource
+            console.log(`[ScreenShare] Falling back to primary display.`)
+          }
+        }
+
+        // 4. If still no target, fallback to first available source
+        if (!targetSource && sources.length > 0) {
+          targetSource = sources[0]
+          console.warn('[ScreenShare] Falling back to first available screen source.')
+        }
+
+        if (targetSource) {
+          activeScreenSourceId = targetSource.id // Store the source ID
+          callback({ video: targetSource, audio: 'loopback' })
         } else {
           console.error('No screen sources found!')
           activeScreenSourceId = null // Clear the source ID
@@ -499,6 +536,13 @@ app.on('ready', async () => {
     const newSettings = { ...currentSettings, ...settingsToUpdate }
     await saveSettings(newSettings)
     return newSettings
+  })
+
+  ipcMain.on('settings:request-screenshare-restart', () => {
+    console.log('[main/index.ts] Received request to restart screen share. Broadcasting to main window.')
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('screenshare:restart')
+    }
   })
 
   // IPC handler for setting and broadcasting screen share state
@@ -558,17 +602,38 @@ app.on('ready', async () => {
 
   ipcMain.on('electronAPI:captureArea', async (event, bounds) => {
     try {
-      const primaryDisplay = screen.getPrimaryDisplay()
-      const { width, height } = primaryDisplay.bounds
-      const scaleFactor = primaryDisplay.scaleFactor
+      const settings = await loadSettings()
+      const displays = screen.getAllDisplays()
+      let targetDisplay = null
+
+      // 1. Find target display from settings
+      if (settings.displayId) {
+        targetDisplay = displays.find((d) => d.id === settings.displayId)
+      }
+
+      // 2. If not found, find display where window is
+      if (!targetDisplay && mainWindow) {
+        targetDisplay = screen.getDisplayMatching(mainWindow.getBounds())
+      }
+
+      // 3. Fallback to primary
+      if (!targetDisplay) {
+        targetDisplay = screen.getPrimaryDisplay()
+      }
+
+      const { width, height } = targetDisplay.bounds
+      const scaleFactor = targetDisplay.scaleFactor
 
       const sources = await desktopCapturer.getSources({
         types: ['screen'],
-        thumbnailSize: { width: width * scaleFactor, height: height * scaleFactor }
+        thumbnailSize: {
+          width: Math.round(width * scaleFactor),
+          height: Math.round(height * scaleFactor)
+        }
       })
 
-      const source = sources[0]
-      if (!source) throw new Error('Screen not found')
+      const source = sources.find((s) => s.display_id === String(targetDisplay.id))
+      if (!source) throw new Error('Target screen source not found for screenshot')
 
       const screenshotsDir = path.join(__dirname, '../../renderer/public/screenshots')
       await fs.mkdir(screenshotsDir, { recursive: true })

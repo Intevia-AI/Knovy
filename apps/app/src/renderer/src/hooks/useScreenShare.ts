@@ -59,6 +59,7 @@ const SYSTEM_AUDIO_CHUNK_MS = 1000 // Internal chunk collection interval
  */
 export function useScreenShare() {
   const [isScreenSharing, setIsScreenSharing] = useState(false)
+  const [restartRequested, setRestartRequested] = useState(false)
   const [recordingDuration, setRecordingDuration] = useState(0)
   const [currentSystemAudioStream, setCurrentSystemAudioStream] = useState<MediaStream | null>(null)
   const [systemAudioSegments, setSystemAudioSegments] = useState<Segment[]>([])
@@ -352,6 +353,31 @@ export function useScreenShare() {
     }
   }, [isScreenSharing, startScreenShare, stopScreenShare])
 
+  const restartScreenShare = useCallback(() => {
+    if (isScreenSharing) {
+      setRestartRequested(true)
+      stopScreenShare()
+    }
+  }, [isScreenSharing, stopScreenShare])
+
+  useEffect(() => {
+    if (restartRequested && !isScreenSharing) {
+      setRestartRequested(false)
+      startScreenShare()
+    }
+  }, [restartRequested, isScreenSharing, startScreenShare])
+
+  useEffect(() => {
+    const handleRestart = () => {
+      if (isScreenSharing) {
+        console.log('[ScreenShare] Received restart request. Restarting session...')
+        restartScreenShare()
+      }
+    }
+    const unsubscribe = window.electronAPI.on('screenshare:restart', handleRestart)
+    return () => unsubscribe()
+  }, [isScreenSharing, restartScreenShare])
+
   return {
     isScreenSharing,
     recordingDuration,
@@ -362,6 +388,7 @@ export function useScreenShare() {
     screenStreamRef, // Ref for the video element
     screenPreviewRef,
     toggleScreenShare,
+    restartScreenShare,
     cancelScreenShare // Expose the cancel function
   }
 }

@@ -19,8 +19,13 @@ export function MainController() {
   const { isAlwaysOnTop, toggleAlwaysOnTop, minimizeWindow, closeWindow } = useElectron()
 
   // Screen Sharing and Recording
-  const { isScreenSharing, toggleScreenShare, currentSystemAudioStream, recordingDuration } =
-    useScreenShare()
+  const {
+    isScreenSharing,
+    toggleScreenShare,
+    restartScreenShare,
+    currentSystemAudioStream,
+    recordingDuration
+  } = useScreenShare()
 
   // AI Interaction Logic
   const {
@@ -173,11 +178,19 @@ export function MainController() {
       )
       handleTogglePanel('actions', { ensureOpen: true })
     }
-    const unsubscribe = window.electronAPI.on('keyword:search', handleKeywordSearch)
+    const unsubscribeKeyword = window.electronAPI.on('keyword:search', handleKeywordSearch)
+
+    const handleSourceChanged = () => restartScreenShare()
+    const unsubscribeSourceChanged = window.electronAPI.on(
+      'screenshare:source-changed',
+      handleSourceChanged
+    )
+
     return () => {
-      unsubscribe()
+      unsubscribeKeyword()
+      unsubscribeSourceChanged()
     }
-  }, [handleTogglePanel])
+  }, [handleTogglePanel, restartScreenShare])
 
   const handleToggleScreenShare = async () => {
     if (isSummarizing) return // Prevent action while summarizing

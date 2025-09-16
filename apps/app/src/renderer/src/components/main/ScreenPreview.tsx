@@ -69,6 +69,7 @@ export function ScreenPreview({ systemAnalyserNode }: ScreenPreviewProps) {
       }
     }
 
+    // Initial stream setup
     getSourceAndSetupStream()
 
     const handleScreenShareStateChange = (isScreenSharing: boolean) => {
@@ -76,14 +77,28 @@ export function ScreenPreview({ systemAnalyserNode }: ScreenPreviewProps) {
         setIsOpen(false)
       }
     }
-
-    const unsubscribe = window.electronAPI.on(
+    const unsubscribeStateChanged = window.electronAPI.on(
       'screenshare:state-changed',
       handleScreenShareStateChange
     )
 
+    const handleSourceChanged = () => {
+      console.log('[ScreenPreview] Source changed, re-fetching stream...')
+      // Clean up old stream before getting new one
+      if (videoRef.current && videoRef.current.srcObject) {
+        const stream = videoRef.current.srcObject as MediaStream
+        stream.getTracks().forEach((track) => track.stop())
+      }
+      getSourceAndSetupStream()
+    }
+    const unsubscribeSourceChanged = window.electronAPI.on(
+      'screenshare:source-changed',
+      handleSourceChanged
+    )
+
     return () => {
-      unsubscribe()
+      unsubscribeStateChanged()
+      unsubscribeSourceChanged()
       if (videoRef.current && videoRef.current.srcObject) {
         const stream = videoRef.current.srcObject as MediaStream
         stream.getTracks().forEach((track) => track.stop())
