@@ -66,7 +66,10 @@ export default function App() {
         window.electronAPI.send('app:set-always-on-top', { alwaysOnTop: true })
         // Only position the window once per session
         if (!hasBeenPositioned) {
-          window.electronAPI.send('window:move-to-bottom-left')
+          window.electronAPI.send('window:set-position', {
+            position: 'bottom-left',
+            displayId: undefined
+          })
           setHasBeenPositioned(true)
         }
       } else {

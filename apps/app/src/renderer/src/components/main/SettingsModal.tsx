@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { Button } from '@/components/ui/button'
-import { LanguagesIcon, History, LogOut, Loader2 } from 'lucide-react'
+import { LanguagesIcon, History, LogOut, Loader2, MonitorIcon } from 'lucide-react'
 import {
   Select,
   SelectContent,
@@ -26,6 +26,8 @@ export function SettingsModal() {
   const [isSigningOut, setIsSigningOut] = useState(false)
   const [isOpen, setIsOpen] = useState(true)
   const isSigningOutRef = useRef(false)
+  const [displays, setDisplays] = useState<any[]>([])
+  const [selectedDisplayId, setSelectedDisplayId] = useState<number | undefined>()
 
   const popoverId = 'settings'
 
@@ -54,17 +56,27 @@ export function SettingsModal() {
     const getInitialData = async () => {
       if (window.electronAPI) {
         try {
+          // Fetch screen share state
           const sharingState = await window.electronAPI.invoke('get-screenshare-state')
           setIsScreenSharing(sharingState)
-          const unsubscribe = window.electronAPI.on(
+          const unsubscribeShare = window.electronAPI.on(
             'screenshare:state-changed',
             (isSharing: boolean) => {
               setIsScreenSharing(isSharing)
             }
           )
-          return () => unsubscribe()
+
+          // Fetch displays and settings
+          const fetchedDisplays = await window.electronAPI.invoke('electronAPI:getDisplays')
+          setDisplays(fetchedDisplays)
+          const settings = await window.electronAPI.invoke('electronAPI:getSettings')
+          if (settings.displayId) {
+            setSelectedDisplayId(settings.displayId)
+          }
+
+          return () => unsubscribeShare()
         } catch (error) {
-          console.error('[SettingsModal] Error fetching screen share state:', error)
+          console.error('[SettingsModal] Error fetching initial data:', error)
         }
       }
     }
@@ -90,6 +102,13 @@ export function SettingsModal() {
       }
       setLanguage(value as SupportedLanguage)
     }
+  }
+
+  const handleDisplayChange = async (displayIdStr: string) => {
+    const displayId = parseInt(displayIdStr, 10)
+    setSelectedDisplayId(displayId)
+    await window.electronAPI.invoke('electronAPI:setSettings', { displayId })
+    window.electronAPI.send('window:set-position', { position: 'bottom-left', displayId })
   }
 
   const handleCustomPromptConfirm = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -161,6 +180,32 @@ export function SettingsModal() {
                   {languages.map((lang) => (
                     <SelectItem key={lang.code} value={lang.code} className="text-sm">
                       {lang.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Display Selection */}
+          <div className="space-y-1.5 p-2 rounded-lg border border-border/50 bg-background/30">
+            <div className="flex items-center space-x-2">
+              <MonitorIcon className="h-3 w-3 text-muted-foreground" />
+              <h3 className="text-sm font-medium text-foreground">Display</h3>
+            </div>
+            <div className="flex items-center justify-between">
+              <Label className="text-sm text-muted-foreground">Show on</Label>
+              <Select
+                value={selectedDisplayId?.toString()}
+                onValueChange={handleDisplayChange}
+              >
+                <SelectTrigger className="w-[120px] h-7 text-sm px-2 bg-muted/95 border-border/50">
+                  <SelectValue placeholder="Default" />
+                </SelectTrigger>
+                <SelectContent className="bg-muted/95 border-border/50">
+                  {displays.map((display, index) => (
+                    <SelectItem key={display.id} value={display.id.toString()}>
+                      {`Display ${index + 1}${display.primary ? ' (Primary)' : ''}`}
                     </SelectItem>
                   ))}
                 </SelectContent>

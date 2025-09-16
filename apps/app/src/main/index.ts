@@ -24,6 +24,7 @@ import {
   forceClosePopover,
   resizePopover
 } from './popoverManager'
+import { positionWindow, type PositionOptions } from './windowManager'
 import electronUpdater, { type AppUpdater } from 'electron-updater'
 
 console.log('[Debug] Imported dbService module:', dbService)
@@ -313,8 +314,7 @@ function createSelectionWindow() {
 }
 
 const createWindow = async () => {
-  const primaryDisplay = screen.getPrimaryDisplay()
-  const { height: screenHeight } = primaryDisplay.workAreaSize
+  const settings = await loadSettings()
 
   mainWindow = new BrowserWindow({
     width: 360,
@@ -325,8 +325,6 @@ const createWindow = async () => {
     alwaysOnTop: true, // Set always on top
     visualEffectState: 'active',
     backgroundMaterial: 'acrylic',
-    x: 30, // Position at bottom-left
-    y: screenHeight - 50 - 30, // Position at bottom-left with margin
     webPreferences: {
       preload: path.join(__dirname, '../preload/index.cjs'),
       contextIsolation: true,
@@ -334,6 +332,8 @@ const createWindow = async () => {
       sandbox: false
     }
   })
+
+  positionWindow(mainWindow, { position: 'bottom-left', displayId: settings.displayId })
 
   // mainWindow.setContentProtection(true)
 
@@ -472,6 +472,16 @@ app.on('ready', async () => {
 
   ipcMain.on('electronAPI:minimizeWindow', () => mainWindow?.minimize())
   ipcMain.on('electronAPI:closeWindow', () => mainWindow?.close())
+
+  ipcMain.on('window:set-position', (event, options: PositionOptions) => {
+    if (mainWindow) {
+      positionWindow(mainWindow, options)
+    }
+  })
+
+  ipcMain.handle('electronAPI:getDisplays', () => {
+    return screen.getAllDisplays()
+  })
 
   ipcMain.on('app:set-always-on-top', (event, { alwaysOnTop }) => {
     if (mainWindow) {

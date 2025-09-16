@@ -96,7 +96,8 @@ const api = {
       'transcription:data',
       'auth:request-sign-out',
       'updater:quit-and-install',
-      'keyword:click'
+      'keyword:click',
+      'window:set-position'
     ]
     if (!validChannels.includes(channel)) {
       console.warn(`[Preload] Attempted to send on invalid channel: ${channel}`)
@@ -127,7 +128,8 @@ const api = {
       'session:end',
       'session:get-id',
       'popover:consume-pending-keyword',
-      'electronAPI:getActiveScreenSourceId'
+      'electronAPI:getActiveScreenSourceId',
+      'electronAPI:getDisplays'
     ]
     if (!validChannels.includes(channel)) {
       return Promise.reject(new Error(`Invalid invoke channel: ${channel}`))
