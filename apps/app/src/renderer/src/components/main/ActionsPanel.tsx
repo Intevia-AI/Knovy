@@ -17,7 +17,7 @@ import { useAuth } from '@/context/AuthContext'
 
 export default function ActionsPanel() {
   const { t } = useI18n()
-  const { hasPermission } = useAuth()
+  const { hasEntitlement } = useAuth()
   const { sendContextToAI, aiMessages, isLoading } = useAIInteraction()
   const [isScreenSharing, setIsScreenSharing] = useState(false)
   const [input, setInput] = useState('')
@@ -113,7 +113,7 @@ export default function ActionsPanel() {
     { action: 'screenshot', labelKey: 'aiActionScreenshot', icon: CameraIcon }
   ]
 
-  if (hasPermission('ai_action:summarize')) {
+  if (hasEntitlement('allow_ai_action:summarize')) {
     baseActions.unshift({ action: 'summary', labelKey: 'aiActionSummary', icon: ListCollapseIcon })
   }
 

@@ -34,9 +34,12 @@ export function MainControlBar({
   openPanels
 }: MainControlBarProps) {
   const { t } = useI18n()
-  const { permissions } = useAuth()
+  const { sessionProfile } = useAuth()
 
-  const canShowActions = permissions.some((p) => p.startsWith('ai_action:'))
+  // Check if any AI action entitlements are enabled in the session profile
+  const canShowActions = sessionProfile?.entitlements && Object.keys(sessionProfile.entitlements).some(
+    (key) => key.startsWith('allow_ai_action:') && sessionProfile.entitlements[key] === true
+  );
 
   return (
     <header
