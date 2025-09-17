@@ -126,7 +126,6 @@ export function useScreenShare() {
 
     // Log duration before cleaning up
     if (sessionId && recordingDuration > 0) {
-      console.log(`[ScreenShare] Logging session ${sessionId} with duration ${recordingDuration}s`)
       const { error: logError } = await supabase.functions.invoke('session-manager', {
         body: {
           log_type: 'duration',
@@ -151,12 +150,7 @@ export function useScreenShare() {
     setSystemAudioMimeType('')
 
     console.log('[ScreenShare] Screen share stopped.')
-  }, [
-    stopMicRecording,
-    makeSystemAudioBlobAndDispatch,
-    sessionId,
-    recordingDuration
-  ])
+  }, [stopMicRecording, makeSystemAudioBlobAndDispatch, sessionId, recordingDuration])
 
   // --- Start System Audio Recorder (Internal) ---
   const startSystemAudioRecorderInternal = useCallback(
@@ -242,7 +236,7 @@ export function useScreenShare() {
   )
 
   useEffect(() => {
-    console.log('[useScreenShare Timer Effect] Running effect...', { isScreenSharing, sessionId });
+    console.log('[useScreenShare Timer Effect] Running effect...', { isScreenSharing, sessionId })
 
     // Only the main window (no hash) should broadcast its state.
     if (window.location.hash === '' && window.electronAPI) {
@@ -255,37 +249,42 @@ export function useScreenShare() {
     let timer: NodeJS.Timeout | null = null
 
     if (isScreenSharing && sessionId) {
-      console.log('[useScreenShare Timer Effect] Condition MET. Starting timer.');
+      console.log('[useScreenShare Timer Effect] Condition MET. Starting timer.')
       setRecordingDuration(0)
 
       timer = setInterval(() => {
         setRecordingDuration((prevDuration) => {
           const newDuration = prevDuration + 1
-          console.log(`[useScreenShare Timer Effect] New duration: ${newDuration}`);
 
           // Send IPC event for real-time UI updates
           window.electronAPI.send('session:duration-update', newDuration)
 
           // Log every 60 seconds
           if (newDuration > 0 && newDuration % 60 === 0) {
-            console.log(`[ScreenShare] Periodically logging session ${sessionId} with duration ${newDuration}s`)
-            supabase.functions.invoke('session-manager', {
-              body: {
-                log_type: 'duration',
-                session_id: sessionId,
-                duration_seconds: newDuration
-              }
-            }).then(({ error }) => {
-              if (error) {
-                console.error('[ScreenShare] Failed to periodically log session duration:', error)
-              }
-            })
+            console.log(
+              `[ScreenShare] Periodically logging session ${sessionId} with duration ${newDuration}s`
+            )
+            supabase.functions
+              .invoke('session-manager', {
+                body: {
+                  log_type: 'duration',
+                  session_id: sessionId,
+                  duration_seconds: newDuration
+                }
+              })
+              .then(({ error }) => {
+                if (error) {
+                  console.error('[ScreenShare] Failed to periodically log session duration:', error)
+                }
+              })
           }
           return newDuration
         })
       }, 1000)
     } else {
-      console.log('[useScreenShare Timer Effect] Condition FAILED. Clearing timer and resetting duration.');
+      console.log(
+        '[useScreenShare Timer Effect] Condition FAILED. Clearing timer and resetting duration.'
+      )
       setRecordingDuration(0)
       // If stopping, send a final zero-duration update, but only from the main controller
       if (window.location.hash === '') {
@@ -294,7 +293,7 @@ export function useScreenShare() {
     }
 
     return () => {
-      console.log('[useScreenShare Timer Effect] Cleanup function running.');
+      console.log('[useScreenShare Timer Effect] Cleanup function running.')
       if (timer) clearInterval(timer)
     }
   }, [isScreenSharing, sessionId])
