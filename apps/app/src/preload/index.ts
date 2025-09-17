@@ -136,6 +136,9 @@ const api = {
       'session:start',
       'session:end',
       'session:get-id',
+      'session:get-profile',
+      'session:set-profile',
+      'session:clear-profile',
       'popover:consume-pending-keyword',
       'electronAPI:getActiveScreenSourceId',
       'electronAPI:getDisplays'

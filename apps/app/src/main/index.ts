@@ -30,6 +30,7 @@ import electronUpdater, { type AppUpdater } from 'electron-updater'
 console.log('[Debug] Imported dbService module:', dbService)
 
 let isScreenSharing = false
+let cachedSessionProfile: any | null = null
 let currentSessionId: string | null = null
 let activeScreenSourceId: string | null = null
 let mainWindow: BrowserWindow | null
@@ -196,6 +197,20 @@ ipcMain.handle('session:end', endCurrentSession)
 
 ipcMain.handle('session:get-id', () => {
   return currentSessionId
+})
+
+ipcMain.handle('session:get-profile', () => {
+  return cachedSessionProfile
+})
+
+ipcMain.handle('session:set-profile', (event, profile) => {
+  cachedSessionProfile = profile
+  console.log('[main/index.ts] Session profile cached.')
+})
+
+ipcMain.handle('session:clear-profile', () => {
+  cachedSessionProfile = null
+  console.log('[main/index.ts] Session profile cache cleared.')
 })
 
 ipcMain.handle('electronAPI:getActiveScreenSourceId', () => {

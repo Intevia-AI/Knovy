@@ -9,11 +9,11 @@ import { supabase } from '../lib/supabaseClient.js'
 import type { Session, User } from '@supabase/supabase-js'
 
 interface SessionProfile {
-  user_id: string;
-  role: string;
-  app_settings: Record<string, any>;
-  entitlements: Record<string, any>;
-  quotas: Record<string, { limit: number; used: number }>;
+  user_id: string
+  role: string
+  app_settings: Record<string, any>
+  entitlements: Record<string, any>
+  quotas: Record<string, { limit: number; used: number }>
 }
 
 interface AuthContextType {
@@ -22,7 +22,7 @@ interface AuthContextType {
   sessionProfile: SessionProfile | null
   isLoading: boolean
   hasEntitlement: (entitlement: string) => boolean
-  signInWithProvider: (provider: 'google' | 'github') => Promise<void>
+  signInWithProvider: (provider: 'google') => Promise<void>
   signOut: () => Promise<void>
 }
 
@@ -40,60 +40,88 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const fetchSessionProfile = async (authToken: string) => {
     try {
+      // Try to get from Electron main process first for any window
+      if (window.electronAPI) {
+        const cachedProfile = await window.electronAPI.invoke('session:get-profile')
+        if (cachedProfile) {
+          setSessionProfile(cachedProfile)
+          console.log('[AuthContext] Session profile loaded from main process cache.')
+          return
+        }
+      }
+
+      // If not cached, fetch from Supabase
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-session-profile`,
         {
           headers: {
             Authorization: `Bearer ${authToken}`,
-            apikey: import.meta.env.VITE_SUPABASE_ANON_KEY!,
-          },
+            apikey: import.meta.env.VITE_SUPABASE_ANON_KEY!
+          }
         }
-      );
+      )
 
       if (response.ok) {
-        const profile = await response.json();
-        setSessionProfile(profile);
-        console.log('[AuthContext] Session profile fetched:', profile);
+        const profile = await response.json()
+        setSessionProfile(profile)
+        // Cache the fetched profile in the main process
+        if (window.electronAPI) {
+          await window.electronAPI.invoke('session:set-profile', profile)
+        }
+        console.log('[AuthContext] Session profile fetched and cached in main process:', profile)
       } else {
         if (response.status === 401) {
-          console.log('[AuthContext] No active session or token expired. Needs login.');
+          console.log('[AuthContext] No active session or token expired. Needs login.')
         } else {
-          throw new Error(`Failed to fetch session profile: ${response.statusText}`);
+          throw new Error(`Failed to fetch session profile: ${response.statusText}`)
         }
-        setSessionProfile(null);
+        setSessionProfile(null)
+        // Also clear cache if fetch fails with auth error
+        if (window.electronAPI) {
+          await window.electronAPI.invoke('session:clear-profile')
+        }
       }
     } catch (error) {
-      console.error('[AuthContext] Error fetching session profile:', error);
-      setSessionProfile(null); // Clear profile on error
+      console.error('[AuthContext] Error fetching session profile:', error)
+      setSessionProfile(null) // Clear profile on error
+      // Also clear cache on any other error
+      if (window.electronAPI) {
+        await window.electronAPI.invoke('session:clear-profile')
+      }
     }
-  };
+  }
 
   useEffect(() => {
     const getInitialSession = async () => {
-      setIsLoading(true);
-      const { data: { session } } = await supabase.auth.getSession();
-      setSession(session);
-      setUser(session?.user ?? null);
+      setIsLoading(true)
+      const {
+        data: { session }
+      } = await supabase.auth.getSession()
+      setSession(session)
+      setUser(session?.user ?? null)
       if (session?.user) {
-        await fetchSessionProfile(session.access_token);
+        await fetchSessionProfile(session.access_token)
       }
-      setIsLoading(false);
-    };
+      setIsLoading(false)
+    }
 
-    getInitialSession();
+    getInitialSession()
 
     const { data: authListenerData } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      setSession(session);
-      setUser(session?.user ?? null);
+      setSession(session)
+      setUser(session?.user ?? null)
 
       if (session?.user && (_event === 'SIGNED_IN' || _event === 'TOKEN_REFRESHED')) {
-        setIsLoading(true);
-        await fetchSessionProfile(session.access_token);
-        setIsLoading(false);
+        setIsLoading(true)
+        await fetchSessionProfile(session.access_token)
+        setIsLoading(false)
       } else if (_event === 'SIGNED_OUT') {
-        setSessionProfile(null);
+        setSessionProfile(null)
+        if (window.electronAPI) {
+          window.electronAPI.invoke('session:clear-profile')
+        }
       }
-    });
+    })
 
     const handleOAuthCallback = async (url: string) => {
       console.log('[AuthContext] Received OAuth callback URL from main process:', url)
@@ -197,8 +225,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }
 
   const hasEntitlement = (entitlement: string): boolean => {
-    return sessionProfile?.entitlements[entitlement] === true;
-  };
+    return sessionProfile?.entitlements[entitlement] === true
+  }
 
   const value = {
     session,
