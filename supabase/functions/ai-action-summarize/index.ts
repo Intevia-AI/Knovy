@@ -1,9 +1,9 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { withRBAC } from "../_shared/rbac.ts";
+import { withEntitlements } from "../_shared/rbac.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 
-const handleRequest = async (req: Request) => {
+const handleRequest = async (req: Request, profile: Record<string, any>) => {
   try {
     console.log(`[ai-action-summarize] function invoked at: ${new Date().toISOString()}`);
 
@@ -82,6 +82,6 @@ const handleRequest = async (req: Request) => {
   }
 };
 
-const summarizeHandler = withRBAC("ai_action:summarize", handleRequest);
+const summarizeHandler = withEntitlements("allow_ai_action:summarize", "daily_ai_action:summarize_calls", handleRequest);
 
 serve(summarizeHandler);

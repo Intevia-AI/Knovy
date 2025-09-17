@@ -1,9 +1,9 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { withRBAC } from "../_shared/rbac.ts";
+import { withEntitlements } from "../_shared/rbac.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 
-const handleRequest = async (req: Request) => {
+const handleRequest = async (req: Request, profile: Record<string, any>) => {
   try {
     console.log(`[ai-action-screenshot-analysis] function invoked at: ${new Date().toISOString()}`);
 
@@ -91,6 +91,6 @@ const handleRequest = async (req: Request) => {
   }
 };
 
-const screenshotAnalysisHandler = withRBAC("ai_action:screenshot-analysis", handleRequest);
+const screenshotAnalysisHandler = withEntitlements("allow_ai_action:screenshot-analysis", "daily_ai_action:screenshot-analysis_calls", handleRequest);
 
 serve(screenshotAnalysisHandler);

@@ -1,10 +1,10 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { withRBAC } from "../_shared/rbac.ts";
+import { withEntitlements } from "../_shared/rbac.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 
 // The main logic of the Edge Function, now wrapped with RBAC
-const handleRequest = async (req: Request) => {
+const handleRequest = async (req: Request, profile: Record<string, any>) => {
   try {
     console.log(`[ai-action-keyword-search] function invoked at: ${new Date().toISOString()}`);
 
@@ -84,7 +84,7 @@ const handleRequest = async (req: Request) => {
 };
 
 // Wrap the handler with the RBAC middleware, requiring the specific permission
-const keywordSearchHandler = withRBAC("ai_action:keyword-search", handleRequest);
+const keywordSearchHandler = withEntitlements("allow_ai_action:keyword-search", "daily_ai_action:keyword-search_calls", handleRequest);
 
 if (import.meta.main) {
   serve(keywordSearchHandler);

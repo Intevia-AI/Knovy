@@ -1,9 +1,9 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { withRBAC } from "../_shared/rbac.ts";
+import { withEntitlements } from "../_shared/rbac.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 
-const handleRequest = async (req: Request) => {
+const handleRequest = async (req: Request, profile: Record<string, any>) => {
   try {
     console.log(`[ai-action-recommend-response] function invoked at: ${new Date().toISOString()}`);
 
@@ -79,7 +79,7 @@ const handleRequest = async (req: Request) => {
   }
 };
 
-const recommendResponseHandler = withRBAC("ai_action:recommend-response", handleRequest);
+const recommendResponseHandler = withEntitlements("allow_ai_action:recommend-response", "daily_ai_action:recommend-response_calls", handleRequest);
 
 if (import.meta.main) {
   serve(recommendResponseHandler);
