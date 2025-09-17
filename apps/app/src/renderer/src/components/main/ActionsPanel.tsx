@@ -109,13 +109,9 @@ export default function ActionsPanel() {
   }
 
   const baseActions: Action[] = [
-    { action: 'answer', labelKey: 'aiActionAnswer', icon: MessageSquareQuote },
-    { action: 'screenshot', labelKey: 'aiActionScreenshot', icon: CameraIcon }
+    { action: 'answer', labelKey: 'aiActionAnswer', icon: MessageSquareQuote }
+    // { action: 'screenshot', labelKey: 'aiActionScreenshot', icon: CameraIcon }
   ]
-
-  if (hasEntitlement('allow_ai_action:summarize')) {
-    baseActions.unshift({ action: 'summary', labelKey: 'aiActionSummary', icon: ListCollapseIcon })
-  }
 
   const actions = baseActions
 

@@ -329,7 +329,7 @@ export function SettingsModal() {
           </div>
 
           {/* Custom Prompt Section */}
-          <div className="space-y-1.5 p-2 rounded-lg border border-border/50 bg-background/30">
+          {/* <div className="space-y-1.5 p-2 rounded-lg border border-border/50 bg-background/30">
             <div className="flex items-center space-x-2">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -359,7 +359,7 @@ export function SettingsModal() {
               />
               <p className="text-[10px] text-muted-foreground">{t('customPromptHint')}</p>
             </div>
-          </div>
+          </div> */}
 
           {/* Sign Out Button */}
           <Button
