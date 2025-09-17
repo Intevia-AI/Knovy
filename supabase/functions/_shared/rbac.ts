@@ -3,72 +3,74 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { corsHeaders } from './cors.ts';
 
 // Define a type for the Edge Function handler to ensure consistency
-type EdgeFunction = (req: Request) => Promise<Response>;
+// It now receives the session profile as an argument.
+type EdgeFunction = (req: Request, profile: Record<string, any>) => Promise<Response>;
 
 /**
- * A higher-order function that wraps an Edge Function with RBAC checks.
+ * A higher-order function that wraps an Edge Function with entitlement and quota checks.
  *
- * @param requiredPermission - The permission string required to access the function (e.g., 'ai_action:summarize').
+ * @param requiredEntitlement - The entitlement key required to access the function (e.g., 'allow_ai_action:summarize').
+ * @param quotaMetric - The metric key for quota checking (e.g., 'daily_ai_action:summarize_calls').
  * @param handler - The original Edge Function handler to be executed if authorization succeeds.
- * @returns A new Edge Function handler that includes the RBAC logic.
+ * @returns A new Edge Function handler that includes the RBAC and quota logic.
  */
-export function withRBAC(requiredPermission: string, handler: EdgeFunction): EdgeFunction {
+export function withEntitlements(requiredEntitlement: string, quotaMetric: string, handler: EdgeFunction): (req: Request) => Promise<Response> {
   return async (req: Request) => {
-    // Handle CORS preflight requests
     if (req.method === 'OPTIONS') {
       return new Response('ok', { headers: corsHeaders });
     }
 
     try {
-      // 1. Create a Supabase client with the user's auth token
       const supabaseClient = createClient(
         Deno.env.get('SUPABASE_URL') ?? '',
         Deno.env.get('SUPABASE_ANON_KEY') ?? '',
         { global: { headers: { Authorization: req.headers.get('Authorization')! } } }
       );
 
-      // 2. Get the user from the JWT
       const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
 
       if (userError || !user) {
-        console.error('RBAC Error: User not found or auth error.', userError);
         return new Response(JSON.stringify({ error: 'Authentication failed' }), {
           status: 401,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
 
-      // 3. Check if the user's role has the required permission
-      const { data, error: rpcError } = await supabaseClient.rpc('check_permission', {
-        p_user_id: user.id,
-        p_permission_name: requiredPermission
-      });
+      // Instead of multiple DB calls, we could invoke the 'get-session-profile' function.
+      // For now, we re-implement the logic for performance and to avoid function-call overhead.
+      const { data: profileData, error: profileError } = await supabaseClient.rpc('get_session_profile_data', { p_user_id: user.id });
 
-      if (rpcError) {
-        console.error(`RBAC Error: RPC failed for user ${user.id} and permission ${requiredPermission}`, rpcError);
-        return new Response(JSON.stringify({ error: 'Permission check failed.' }), {
+      if (profileError || !profileData) {
+        console.error('RBAC Error: Could not fetch session profile.', profileError);
+        return new Response(JSON.stringify({ error: 'Failed to retrieve session profile.' }), {
           status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
+      
+      const sessionProfile = profileData;
 
-      const hasPermission = data;
-
-      if (!hasPermission) {
-        console.warn(`RBAC Warning: User ${user.id} denied access to permission '${requiredPermission}'.`);
-        return new Response(JSON.stringify({ error: 'Forbidden' }), {
+      // 1. Check Entitlement
+      if (!sessionProfile.entitlements[requiredEntitlement]) {
+        console.warn(`RBAC Warning: User ${user.id} denied access to entitlement '${requiredEntitlement}'.`);
+        return new Response(JSON.stringify({ error: 'Forbidden: You do not have access to this feature.' }), {
           status: 403,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
 
-      // TODO: Implement usage quota checks.
-      // - Query the `action_logs` table to count recent actions.
-      // - Compare against limits defined for the user's role.
-      // - Return 429 Too Many Requests if quota is exceeded.
+      // 2. Check Quota
+      const quota = sessionProfile.quotas[quotaMetric];
+      if (quota && quota.limit !== -1 && quota.used >= quota.limit) {
+        console.warn(`RBAC Warning: User ${user.id} exceeded quota for '${quotaMetric}'.`);
+        return new Response(JSON.stringify({ error: 'Too Many Requests: You have exceeded your daily limit for this action.' }), {
+          status: 429,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
 
-      // 4. If all checks pass, execute the original handler
-      return handler(req);
+      // 3. If all checks pass, execute the original handler with the profile
+      return handler(req, sessionProfile);
 
     } catch (err) {
       console.error('RBAC Error: An unexpected error occurred in the middleware.', err);
@@ -79,4 +81,15 @@ export function withRBAC(requiredPermission: string, handler: EdgeFunction): Edg
     }
   };
 }
+
+// We need a new RPC function in the DB to get the session profile data efficiently.
+// This is a placeholder for the SQL that should be in a new migration.
+/*
+CREATE OR REPLACE FUNCTION get_session_profile_data(p_user_id UUID)
+RETURNS jsonb AS $
+DECLARE
+    -- function body here...
+END;
+$ LANGUAGE plpgsql;
+*/
 

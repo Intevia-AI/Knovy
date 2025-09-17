@@ -1,9 +1,9 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { withRBAC } from "../_shared/rbac.ts";
+import { withEntitlements } from "../_shared/rbac.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 
-const handleRequest = async (req: Request) => {
+const handleRequest = async (req: Request, profile: Record<string, any>) => {
   try {
     console.log(`[ai-action-chat] function invoked at: ${new Date().toISOString()}`);
 
@@ -64,9 +64,7 @@ const handleRequest = async (req: Request) => {
         Deno.env.get("SUPABASE_ANON_KEY") ?? "",
         { global: { headers: { Authorization: req.headers.get("Authorization")! } } },
       );
-      const {
-        data: { user },
-      } = await supabaseClient.auth.getUser();
+      const { data: { user } } = await supabaseClient.auth.getUser();
 
       if (user) {
         await supabaseClient.from("action_logs").insert({
@@ -92,6 +90,6 @@ const handleRequest = async (req: Request) => {
   }
 };
 
-const chatHandler = withRBAC("ai_action:chat", handleRequest);
+const chatHandler = withEntitlements("allow_ai_action:chat", "daily_ai_action:chat_calls", handleRequest);
 
 serve(chatHandler);

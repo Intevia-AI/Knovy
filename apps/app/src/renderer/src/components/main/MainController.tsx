@@ -7,12 +7,15 @@ import { useScreenShare } from '@/hooks/useScreenShare'
 import { useAIInteraction } from '@/hooks/useAIInteraction'
 import { useLanguage } from '@/context/LanguageContext'
 
+import { useAuth } from '@/context/AuthContext'
+
 // Components
 import { MainControlBar } from './MainControlBar'
 import RealTimeAnalysis from '../RealTimeAnalysis'
 
 export function MainController() {
   const { language } = useLanguage()
+  const { sessionProfile } = useAuth()
   const [openPanels, setOpenPanels] = useState<Set<string>>(new Set())
 
   // Electron Interactions
@@ -222,6 +225,11 @@ export function MainController() {
         customPrompt={customPrompt}
         language={language}
       />
+      {sessionProfile?.quotas['daily_session_count'] && sessionProfile.quotas['daily_session_count'].limit !== -1 && (
+        <div className="text-xs text-center text-muted-foreground pb-1">
+          Sessions Today: {sessionProfile.quotas['daily_session_count'].used} / {sessionProfile.quotas['daily_session_count'].limit}
+        </div>
+      )}
     </div>
   )
 }

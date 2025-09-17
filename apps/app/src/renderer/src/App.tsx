@@ -27,7 +27,7 @@ function getPopoverComponent(hash: string): JSX.Element | null {
  * @returns {JSX.Element} The rendered page.
  */
 export default function App() {
-  const { user, isLoading } = useAuth()
+  const { user, isLoading, sessionProfile } = useAuth()
   const [isInitialLoad, setIsInitialLoad] = useState(true)
   const [hasBeenPositioned, setHasBeenPositioned] = useState(false)
   const [hash] = useState(() => window.location.hash) // Get hash once
@@ -47,24 +47,19 @@ export default function App() {
 
     if (isPopover) return // Do not run this effect in popover windows
 
-    // While loading, ensure the window is not always on top so the user can interact
-    // with the Google OAuth window.
     if (isLoading) {
       if (window.electronAPI) {
         window.electronAPI.send('app:set-always-on-top', { alwaysOnTop: false })
       }
-      // On initial load, we want to show the loader and wait.
-      // On subsequent loads (like during sign-in), we want to let the LoginPage render and show its own spinner.
       if (isInitialLoad) {
         return
       }
     }
 
     if (window.electronAPI) {
-      if (user) {
+      if (user && sessionProfile) {
         // User is logged in, make always on top
         window.electronAPI.send('app:set-always-on-top', { alwaysOnTop: true })
-        // Only position the window once per session
         if (!hasBeenPositioned) {
           window.electronAPI.send('app:resize-window', { width: 360, height: 50 })
           window.electronAPI.send('window:set-position', {
@@ -81,13 +76,12 @@ export default function App() {
           position: 'center',
           displayId: undefined
         })
-        // Reset the positioned flag when user logs out
         if (hasBeenPositioned) {
           setHasBeenPositioned(false)
         }
       }
     }
-  }, [user, isLoading, isInitialLoad, isPopover, hasBeenPositioned])
+  }, [user, isLoading, isInitialLoad, isPopover, hasBeenPositioned, sessionProfile])
 
   useEffect(() => {
     if (window.electronAPI && window.electronAPI.on) {
@@ -118,9 +112,16 @@ export default function App() {
     }
   }, [])
 
+  const Waitlist = () => (
+  <div className="flex flex-col items-center justify-center h-screen text-center">
+    <h1 className="text-2xl font-bold">You're on the Waitlist!</h1>
+    <p className="text-muted-foreground">We'll notify you when you have access.</p>
+  </div>
+);
+
   return (
     <AnimatePresence mode="wait">
-      {isInitialLoad ? (
+      {isInitialLoad || (isLoading && !sessionProfile) ? (
         <motion.div
           key="loader"
           exit={{ opacity: 0 }}
@@ -132,16 +133,28 @@ export default function App() {
       ) : (
         <div key="content">
           <AnimatePresence mode="wait">
-            {user ? (
-              <motion.div
-                key="main"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.2 }}
-              >
-                <Main />
-              </motion.div>
+            {user && sessionProfile ? (
+              sessionProfile.app_settings.free_tier_experience?.mode === 'non-access' && sessionProfile.role === 'free' ? (
+                <motion.div
+                  key="waitlist"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <Waitlist />
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="main"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <Main />
+                </motion.div>
+              )
             ) : (
               <motion.div
                 key="login"
