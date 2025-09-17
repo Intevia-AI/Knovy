@@ -66,6 +66,7 @@ export default function App() {
         window.electronAPI.send('app:set-always-on-top', { alwaysOnTop: true })
         // Only position the window once per session
         if (!hasBeenPositioned) {
+          window.electronAPI.send('app:resize-window', { width: 360, height: 50 })
           window.electronAPI.send('window:set-position', {
             position: 'bottom-left',
             displayId: undefined
@@ -75,8 +76,11 @@ export default function App() {
       } else {
         // User is logged out, not always on top, center, and then resize
         window.electronAPI.send('app:set-always-on-top', { alwaysOnTop: false })
-        window.electronAPI.send('window:center')
         window.electronAPI.send('app:resize-window', { width: 360, height: 300 })
+        window.electronAPI.send('window:set-position', {
+          position: 'center',
+          displayId: undefined
+        })
         // Reset the positioned flag when user logs out
         if (hasBeenPositioned) {
           setHasBeenPositioned(false)

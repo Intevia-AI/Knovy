@@ -28,16 +28,12 @@ export function MainController() {
   } = useScreenShare()
 
   // AI Interaction Logic
-  const {
-    customPrompt,
-    handleTranscriptionResponse,
-    sendContextToAI,
-    isSummarizing
-  } = useAIInteraction()
+  const { customPrompt, handleTranscriptionResponse, sendContextToAI, isSummarizing } =
+    useAIInteraction()
 
   useEffect(() => {
     const newWidth = isScreenSharing ? 440 : 360
-    window.electronAPI.send('app:resize-window', { width: newWidth, height: 50 })
+    window.electronAPI.send('app:resize-window', { width: newWidth })
 
     if (!isScreenSharing) {
       // Close all popovers when screen sharing stops
