@@ -509,6 +509,7 @@ app.on('ready', async () => {
 
   ipcMain.on('electronAPI:minimizeWindow', () => mainWindow?.minimize())
   ipcMain.on('electronAPI:closeWindow', () => mainWindow?.close())
+  ipcMain.on('app:quit', () => app.quit())
 
   ipcMain.on('window:set-position', (event, options: PositionOptions) => {
     if (mainWindow) {

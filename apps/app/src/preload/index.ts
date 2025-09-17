@@ -15,6 +15,8 @@ const api = {
 
   closeWindow: () => ipcRenderer.send('electronAPI:closeWindow'),
 
+  quitApp: () => ipcRenderer.send('app:quit'),
+
   toggleAlwaysOnTop: (isAlwaysOnTop) =>
     ipcRenderer.send('electronAPI:toggleAlwaysOnTop', isAlwaysOnTop),
 
@@ -101,7 +103,8 @@ const api = {
       'keyword:click',
       'window:set-position',
       'screenshare:source-changed',
-      'settings:request-screenshare-restart'
+      'settings:request-screenshare-restart',
+      'app:quit'
     ]
     if (!validChannels.includes(channel)) {
       console.warn(`[Preload] Attempted to send on invalid channel: ${channel}`)

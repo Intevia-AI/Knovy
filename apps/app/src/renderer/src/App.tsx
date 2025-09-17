@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { Main } from './components/main.js'
 import { useAuth } from './context/AuthContext.js'
 import { Loader2 } from 'lucide-react'
-import { LoginPage } from './components/LoginPage.js'
+import { LoginPage, Waitlist } from './components/LoginPage.js'
 import { motion, AnimatePresence } from 'motion'
 import { UpdateNotification } from './components/UpdateNotification.js'
 
@@ -47,38 +47,27 @@ export default function App() {
 
     if (isPopover) return // Do not run this effect in popover windows
 
-    if (isLoading) {
-      if (window.electronAPI) {
-        window.electronAPI.send('app:set-always-on-top', { alwaysOnTop: false })
-      }
-      if (isInitialLoad) {
-        return
-      }
-    }
+    const isUserLoggedIn = user && sessionProfile
+    const isWaitlisted =
+      isUserLoggedIn &&
+      sessionProfile.role === 'free' &&
+      sessionProfile.app_settings.free_tier_experience?.mode === 'non-access'
 
-    if (window.electronAPI) {
-      if (user && sessionProfile) {
-        // User is logged in, make always on top
-        window.electronAPI.send('app:set-always-on-top', { alwaysOnTop: true })
-        if (!hasBeenPositioned) {
-          window.electronAPI.send('app:resize-window', { width: 360, height: 50 })
-          window.electronAPI.send('window:set-position', {
-            position: 'bottom-left',
-            displayId: undefined
-          })
-          setHasBeenPositioned(true)
-        }
-      } else {
-        // User is logged out, not always on top, center, and then resize
-        window.electronAPI.send('app:set-always-on-top', { alwaysOnTop: false })
-        window.electronAPI.send('app:resize-window', { width: 360, height: 300 })
-        window.electronAPI.send('window:set-position', {
-          position: 'center',
-          displayId: undefined
-        })
-        if (hasBeenPositioned) {
-          setHasBeenPositioned(false)
-        }
+    if (isUserLoggedIn && !isWaitlisted) {
+      // Main App View
+      window.electronAPI.send('app:set-always-on-top', { alwaysOnTop: true })
+      if (!hasBeenPositioned) {
+        window.electronAPI.send('app:resize-window', { width: 360, height: 50 })
+        window.electronAPI.send('window:set-position', { position: 'bottom-left' })
+        setHasBeenPositioned(true)
+      }
+    } else {
+      // Login or Waitlist View
+      window.electronAPI.send('app:set-always-on-top', { alwaysOnTop: false })
+      window.electronAPI.send('app:resize-window', { width: 320, height: 300 })
+      window.electronAPI.send('window:set-position', { position: 'center' })
+      if (hasBeenPositioned) {
+        setHasBeenPositioned(false)
       }
     }
   }, [user, isLoading, isInitialLoad, isPopover, hasBeenPositioned, sessionProfile])
@@ -112,13 +101,6 @@ export default function App() {
     }
   }, [])
 
-  const Waitlist = () => (
-  <div className="flex flex-col items-center justify-center h-screen text-center">
-    <h1 className="text-2xl font-bold">You're on the Waitlist!</h1>
-    <p className="text-muted-foreground">We'll notify you when you have access.</p>
-  </div>
-);
-
   return (
     <AnimatePresence mode="wait">
       {isInitialLoad || (isLoading && !sessionProfile) ? (
@@ -134,7 +116,8 @@ export default function App() {
         <div key="content">
           <AnimatePresence mode="wait">
             {user && sessionProfile ? (
-              sessionProfile.app_settings.free_tier_experience?.mode === 'non-access' && sessionProfile.role === 'free' ? (
+              sessionProfile.app_settings.free_tier_experience?.mode === 'non-access' &&
+              sessionProfile.role === 'free' ? (
                 <motion.div
                   key="waitlist"
                   initial={{ opacity: 0 }}
