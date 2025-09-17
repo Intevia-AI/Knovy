@@ -126,8 +126,7 @@ export function SettingsModal() {
 
   const languages = [
     { code: 'zh-TW', name: '繁體中文' },
-    { code: 'en-US', name: 'English' },
-    { code: 'ja-JP', name: '日本語' }
+    { code: 'en-US', name: 'English' }
   ]
 
   const handleToggleScreenShare = () => {
@@ -231,16 +230,13 @@ export function SettingsModal() {
                   transition={{ duration: 0.2 }}
                   className="bg-background/50 p-4 rounded-lg border border-border/50 max-w-xs text-center space-y-3 shadow-lg"
                 >
-                  <h3 className="font-semibold text-foreground">Restart Session?</h3>
-                  <p className="text-sm text-muted-foreground">
-                    To capture the new display, the current screen sharing session must be
-                    restarted.
-                  </p>
+                  <h3 className="font-semibold text-foreground">{t('restartSessionTitle')}</h3>
+                  <p className="text-sm text-muted-foreground">{t('restartSessionMessage')}</p>
                   <div className="flex justify-end gap-2 pt-2">
                     <Button variant="ghost" onClick={handleCancelRestart}>
-                      Cancel
+                      {t('cancelButton')}
                     </Button>
-                    <Button onClick={handleConfirmRestart}>Restart</Button>
+                    <Button onClick={handleConfirmRestart}>{t('restartButton')}</Button>
                   </div>
                 </motion.div>
               </motion.div>
@@ -285,18 +281,18 @@ export function SettingsModal() {
           <div className="space-y-1.5 p-2 rounded-lg border border-border/50 bg-background/30">
             <div className="flex items-center space-x-2">
               <MonitorIcon className="h-3 w-3 text-muted-foreground" />
-              <h3 className="text-sm font-medium text-foreground">Display</h3>
+              <h3 className="text-sm font-medium text-foreground">{t('displaySettingsTitle')}</h3>
             </div>
             <div className="flex items-center justify-between">
-              <Label className="text-sm text-muted-foreground">Show on</Label>
+              <Label className="text-sm text-muted-foreground">{t('showOnLabel')}</Label>
               <Select value={selectedDisplayId?.toString()} onValueChange={handleDisplayChange}>
                 <SelectTrigger className="w-[120px] h-7 text-sm px-2 bg-muted/95 border-border/50">
-                  <SelectValue placeholder="Default" />
+                  <SelectValue placeholder={t('defaultDisplayLabel')} />
                 </SelectTrigger>
                 <SelectContent className="bg-muted/95 border-border/50">
                   {displays.map((display, index) => (
                     <SelectItem key={display.id} value={display.id.toString()}>
-                      {`Display ${index + 1}${display.primary ? ' (Primary)' : ''}`}
+                      {`${t('displayLabelPrefix')} ${index + 1}${display.primary ? ` ${t('primaryDisplaySuffix')}` : ''}`}
                     </SelectItem>
                   ))}
                 </SelectContent>

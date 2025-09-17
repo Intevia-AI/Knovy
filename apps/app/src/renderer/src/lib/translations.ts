@@ -84,7 +84,24 @@ export const translations = {
     loginToUseAiActionsDescriptionToast: 'Please log in to use AI actions with screen content.',
     statusAuthLoading: 'Authenticating...',
     statusAuthLoadingShort: 'Auth...',
-    signOut: 'Sign Out'
+    signOut: 'Sign Out',
+    // Settings Modal
+    viewHistory: 'View History',
+    languageSettings: 'Language Settings',
+    selectOutputLanguage: 'Select Output Language',
+    restartSessionTitle: 'Restart Session?',
+    restartSessionMessage:
+      'To capture the new display, the current screen sharing session must be restarted.',
+    restartButton: 'Restart',
+    displaySettingsTitle: 'Display',
+    showOnLabel: 'Show on',
+    defaultDisplayLabel: 'Default',
+    displayLabelPrefix: 'Display',
+    primaryDisplaySuffix: '(Primary)',
+    dailyQuotasTitle: 'Daily Quotas',
+    usageDataNotAvailable: 'Usage data not available.',
+    customPromptTitle: 'Custom Prompt',
+    customPromptHint: 'Press Enter to confirm. Shift+Enter for a new line.'
   },
   'zh-TW': {
     // Add Traditional Chinese translations here
@@ -129,9 +146,9 @@ export const translations = {
     sourcePickerShareSourceTooltipPrefix: '分享',
     cancelButton: '取消',
     // ChatPanel
-    chatPlaceholderSharing: '輸入自訂提示或問題…',
+    chatPlaceholderSharing: '輸入自訂提示詞或問題…',
     chatPlaceholderNotSharing: '請先開始分享螢幕',
-    sendChatButtonLabel: '發送自訂提示',
+    sendChatButtonLabel: '發送自訂提示詞',
     askAIButton: '詢問 AI',
     // RealTimeSubtitle
     showSubtitlesLabel: '顯示字幕',
@@ -159,83 +176,23 @@ export const translations = {
     loginToUseAiActionsDescriptionToast: '請登入以使用螢幕內容相關的 AI 功能。',
     statusAuthLoading: '驗證中...',
     statusAuthLoadingShort: '驗證...',
-    signOut: '登出'
-  },
-  'ja-JP': {
-    // Add Japanese translations here
-    greeting: 'こんにちは',
-    // ControlPanel Status
-    screenPreviewTitle: '画面プレビュー',
-    systemAudioLabel: 'システム音声',
-    statusLoading: 'AI処理中',
-    statusSharing: '共有/録画中',
-    statusStopped: '停止中',
-    statusLoadingShort: '処理中...',
-    statusSharingShort: '共有中',
-    statusStoppedShort: '停止',
-    stopSharingButton: '停止',
-    startSharingButton: '共有',
-    // ControlPanel Keywords
-    keywordsTitle: 'キーワード',
-    explainKeywordTooltipPrefix: '説明',
-    // ControlPanel AI Actions
-    aiActionsTitle: 'AIアクション',
-    aiActionAnswer: '深度回答',
-    aiActionSummary: '產生摘要',
-    shortcutKeyTooltip: 'ショートカット:',
-    aiActionScreenshot: 'スクリーンショット',
-    aiActionUpload: 'ファイルをアップロード',
-    // ControlPanel Advanced Settings
-    advancedSettingsTitle: '詳細設定',
-    customPromptLabel: 'カスタムモデル指示',
-    customPromptPlaceholder: 'カスタムプロンプトを入力してEnterを押してください...',
-    currentPromptLabel: '現在のモデル指示',
-    clearButton: 'クリア',
-    languageSelectLabel: '言語選択',
-    languageSelectPlaceholder: '言語を選択',
-    // HeaderBar
-    pinWindowTooltip: 'ウィンドウを固定',
-    unpinWindowTooltip: '固定を解除',
-    minimizeWindowTooltip: '最小化',
-    closeWindowTooltip: '閉じる',
-    // SourcePickerModal
-    sourcePickerTitle: '共有するソースを選択',
-    sourcePickerSearching: '利用可能なソースを検索中...',
-    sourcePickerShareSourceTooltipPrefix: '共有',
-    cancelButton: 'キャンセル',
-    // ChatPanel
-    chatPlaceholderSharing: 'カスタムプロンプトまたは質問を入力...',
-    chatPlaceholderNotSharing: 'まず画面共有を開始してください',
-    sendChatButtonLabel: 'カスタムプロンプトを送信',
-    askAIButton: 'AIに質問',
-    // RealTimeSubtitle
-    showSubtitlesLabel: '字幕を表示',
-    hideSubtitlesLabel: '字幕を非表示',
-    showSubtitlesAriaLabel: '字幕を表示',
-    hideSubtitlesAriaLabel: '字幕を非表示',
-    // Markdown
-    copyCodeButton: 'コピー',
-    copyCodeSuccessToast: 'コピーしました',
-    // Textarea Hints
-    textareaHint: 'Enter で確定、Shift + Enter で改行',
-    noQueryProvided: '[ヒント] クエリ内容が提供されていません。',
-    currentScreen: 'このスクリーンショット',
-    screenshotAnalysis: 'スクリーンショット分析',
-    noSearchQueryProvided: '[ヒント] 検索キーワードが提供されていません。',
-    search: '検索',
-    insufficientTranscription: '[ヒント] 分析に十分な文字起こし内容がありません。',
-    screenshotButton: 'スクリーンショット',
-    // Add ja-JP translations for new keys here
-    loginToShareScreenToast: 'ログインが必要です',
-    loginToShareScreenDescriptionToast: '画面共有を開始するにはログインしてください。',
-    loginToTakeScreenshotToast: 'ログインが必要です',
-    loginToTakeScreenshotDescriptionToast: 'スクリーンショットを撮るにはログインしてください。',
-    loginToUseAiActionsToast: 'ログインが必要です',
-    loginToUseAiActionsDescriptionToast:
-      '画面コンテンツを使用するAI機能を利用するにはログインしてください。',
-    statusAuthLoading: '認証中...',
-    statusAuthLoadingShort: '認証...',
-    signOut: '登出'
+    signOut: '登出',
+    // Settings Modal
+    viewHistory: '查看歷史紀錄',
+    languageSettings: '語言設定',
+    selectOutputLanguage: '選擇輸出語言',
+    restartSessionTitle: '重新開始會話？',
+    restartSessionMessage: '為了擷取新的顯示器，必須重新開始目前的螢幕分享會話。',
+    restartButton: '重新開始',
+    displaySettingsTitle: '顯示器',
+    showOnLabel: '顯示於',
+    defaultDisplayLabel: '預設',
+    displayLabelPrefix: '顯示器',
+    primaryDisplaySuffix: '(主要)',
+    dailyQuotasTitle: '每日配額',
+    usageDataNotAvailable: '無可用使用數據。',
+    customPromptTitle: '自訂提示',
+    customPromptHint: '按 Enter 確認，Shift+Enter 換行。'
   }
 }
 
@@ -318,11 +275,27 @@ export type TranslationKey =
   | 'statusAuthLoading'
   | 'statusAuthLoadingShort'
   | 'signOut'
+  // Settings Modal
+  | 'viewHistory'
+  | 'languageSettings'
+  | 'selectOutputLanguage'
+  | 'restartSessionTitle'
+  | 'restartSessionMessage'
+  | 'restartButton'
+  | 'displaySettingsTitle'
+  | 'showOnLabel'
+  | 'defaultDisplayLabel'
+  | 'displayLabelPrefix'
+  | 'primaryDisplaySuffix'
+  | 'dailyQuotasTitle'
+  | 'usageDataNotAvailable'
+  | 'customPromptTitle'
+  | 'customPromptHint'
 // ... add other keys here
 
 /**
  * Type definition for supported language codes in the application
- * Currently supports: en-US, zh-TW, ja-JP
+ * Currently supports: en-US, zh-TW
  *
  * @typedef {string} SupportedLanguage
  */

@@ -19,7 +19,7 @@ const handleRequest = async (req: Request, profile: Record<string, any>) => {
       throw new Error("GOOGLE_GENERATIVE_AI_API_KEY is not set");
     }
 
-    let prompt = `You are a helpful AI assistant. Your goal is to answer the user's question based on the context provided. The context includes a summary of the entire conversation and the most recent transcriptions.\n\nPlease provide a concise and helpful response in ${language === "zh-TW" ? "Traditional Chinese" : language === "ja-JP" ? "Japanese" : "English"}.\n\n`;
+    let prompt = `You are a helpful AI assistant. Your goal is to answer the user's question based on the context provided. The context includes a summary of the entire conversation and the most recent transcriptions.\n\nPlease provide a concise and helpful response in ${language === "zh-TW" ? "Traditional Chinese" : "English"}.\n\n`;
 
     if (previous_summary) {
       prompt += `Here is the summary of the conversation so far:\n---\n${previous_summary}\n---\n`;

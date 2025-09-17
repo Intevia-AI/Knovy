@@ -32,7 +32,7 @@ export function useAIInteraction() {
   const messagesContainerRef = useRef<HTMLDivElement>(null)
   const [isSubtitleVisible, setIsSubtitleVisible] = useState(true)
   const { t, language = 'en-US' } = useI18n()
-  const currentLanguage = language as 'en-US' | 'zh-TW' | 'ja-JP'
+  const currentLanguage = language as 'en-US' | 'zh-TW'
 
   const { isScreenSharing, toggleScreenShare, screenStreamRef, cancelScreenShare } =
     useScreenShare()
@@ -275,7 +275,7 @@ export function useAIInteraction() {
           }
         }
 
-        console.log('[AIInteraction] Raw data for response mapping:', data);
+        console.log('[AIInteraction] Raw data for response mapping:', data)
         const responseMapping = {
           summary: (d: any) => d.summary,
           answer: (d: any) => d.recommendation,
