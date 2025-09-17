@@ -249,6 +249,32 @@ export function useAIInteraction() {
 
         if (error) throw error
 
+        // Log the action with token usage
+        const actionToLogName = {
+          chat: 'ai_action:chat',
+          keyword_search: 'ai_action:keyword-search',
+          answer: 'ai_action:recommend-response',
+          screenshot: 'ai_action:screenshot-analysis',
+          summary: 'ai_action:summarize'
+        }
+        const loggedActionName = actionToLogName[action]
+
+        if (loggedActionName && data.usage) {
+          const { error: logError } = await supabase.functions.invoke('session-manager', {
+            body: {
+              log_type: 'action',
+              action_name: loggedActionName,
+              metadata: {
+                input_tokens: data.usage.input_tokens,
+                output_tokens: data.usage.output_tokens
+              }
+            }
+          })
+          if (logError) {
+            console.error(`[AIInteraction] Failed to log action '${loggedActionName}':`, logError)
+          }
+        }
+
         console.log('[AIInteraction] Raw data for response mapping:', data);
         const responseMapping = {
           summary: (d: any) => d.summary,

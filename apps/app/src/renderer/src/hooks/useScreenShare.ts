@@ -8,6 +8,7 @@ import { useState, useRef, useCallback, useEffect } from 'react'
 import { cleanupStream, cleanupRecorder } from '@/lib/utils'
 import { useSegmentRecorder, SEGMENT_MS } from '@/hooks/useSegmentRecorder' // Import SEGMENT_MS
 import type { Segment } from '@/types'
+import { supabase } from '@/lib/supabaseClient'
 
 /**
  * @constant {number} SYSTEM_AUDIO_SEGMENT_MS - Duration of each system audio segment in milliseconds
@@ -58,6 +59,7 @@ const SYSTEM_AUDIO_CHUNK_MS = 1000 // Internal chunk collection interval
  * ```
  */
 export function useScreenShare() {
+  const [sessionId, setSessionId] = useState<string | null>(null)
   const [isScreenSharing, setIsScreenSharing] = useState(false)
   const [restartRequested, setRestartRequested] = useState(false)
   const [recordingDuration, setRecordingDuration] = useState(0)
@@ -100,7 +102,7 @@ export function useScreenShare() {
     }
   }, [systemAudioMimeType])
 
-  const stopScreenShare = useCallback(() => {
+  const stopScreenShare = useCallback(async () => {
     console.log('[ScreenShare] Stopping screen share and recordings...')
     stopMicRecording()
 
@@ -122,6 +124,21 @@ export function useScreenShare() {
       makeSystemAudioBlobAndDispatch() // Dispatch remaining if inactive
     }
 
+    // Log duration before cleaning up
+    if (sessionId && recordingDuration > 0) {
+      console.log(`[ScreenShare] Logging session ${sessionId} with duration ${recordingDuration}s`)
+      const { error: logError } = await supabase.functions.invoke('session-manager', {
+        body: {
+          log_type: 'duration',
+          session_id: sessionId,
+          duration_seconds: Math.round(recordingDuration)
+        }
+      })
+      if (logError) {
+        console.error('[ScreenShare] Failed to log session duration:', logError)
+      }
+    }
+
     // Cleanup screen stream
     cleanupStream(screenStreamRef)
     if (screenPreviewRef.current) screenPreviewRef.current.srcObject = null
@@ -129,11 +146,17 @@ export function useScreenShare() {
     setCurrentSystemAudioStream(null)
     setIsScreenSharing(false)
     setRecordingDuration(0)
+    setSessionId(null) // Reset session ID
     // Reset states
     setSystemAudioMimeType('')
 
     console.log('[ScreenShare] Screen share stopped.')
-  }, [stopMicRecording, makeSystemAudioBlobAndDispatch])
+  }, [
+    stopMicRecording,
+    makeSystemAudioBlobAndDispatch,
+    sessionId,
+    recordingDuration
+  ])
 
   // --- Start System Audio Recorder (Internal) ---
   const startSystemAudioRecorderInternal = useCallback(
@@ -219,6 +242,8 @@ export function useScreenShare() {
   )
 
   useEffect(() => {
+    console.log('[useScreenShare Timer Effect] Running effect...', { isScreenSharing, sessionId });
+
     // Only the main window (no hash) should broadcast its state.
     if (window.location.hash === '' && window.electronAPI) {
       console.log(
@@ -228,17 +253,51 @@ export function useScreenShare() {
     }
 
     let timer: NodeJS.Timeout | null = null
-    if (isScreenSharing) {
+
+    if (isScreenSharing && sessionId) {
+      console.log('[useScreenShare Timer Effect] Condition MET. Starting timer.');
       setRecordingDuration(0)
-      timer = setInterval(() => setRecordingDuration((d) => d + 1), 1000)
+
+      timer = setInterval(() => {
+        setRecordingDuration((prevDuration) => {
+          const newDuration = prevDuration + 1
+          console.log(`[useScreenShare Timer Effect] New duration: ${newDuration}`);
+
+          // Send IPC event for real-time UI updates
+          window.electronAPI.send('session:duration-update', newDuration)
+
+          // Log every 60 seconds
+          if (newDuration > 0 && newDuration % 60 === 0) {
+            console.log(`[ScreenShare] Periodically logging session ${sessionId} with duration ${newDuration}s`)
+            supabase.functions.invoke('session-manager', {
+              body: {
+                log_type: 'duration',
+                session_id: sessionId,
+                duration_seconds: newDuration
+              }
+            }).then(({ error }) => {
+              if (error) {
+                console.error('[ScreenShare] Failed to periodically log session duration:', error)
+              }
+            })
+          }
+          return newDuration
+        })
+      }, 1000)
     } else {
+      console.log('[useScreenShare Timer Effect] Condition FAILED. Clearing timer and resetting duration.');
       setRecordingDuration(0)
-      if (timer) clearInterval(timer)
+      // If stopping, send a final zero-duration update, but only from the main controller
+      if (window.location.hash === '') {
+        window.electronAPI.send('session:duration-update', 0)
+      }
     }
+
     return () => {
+      console.log('[useScreenShare Timer Effect] Cleanup function running.');
       if (timer) clearInterval(timer)
     }
-  }, [isScreenSharing])
+  }, [isScreenSharing, sessionId])
 
   // Screen preview effect
   useEffect(() => {
@@ -293,6 +352,10 @@ export function useScreenShare() {
   const startScreenShare = useCallback(async () => {
     console.log('[ScreenShare] Attempting to start screen share...')
     // Reset previous state
+    const newSessionId = crypto.randomUUID()
+    setSessionId(newSessionId)
+    console.log(`[ScreenShare] New session started: ${newSessionId}`)
+
     setSystemAudioMimeType('')
     setRecordingDuration(0)
     setCurrentSystemAudioStream(null)

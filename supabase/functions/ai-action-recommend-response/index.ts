@@ -1,5 +1,4 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { withEntitlements } from "../_shared/rbac.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 
@@ -44,29 +43,12 @@ const handleRequest = async (req: Request, profile: Record<string, any>) => {
     const geminiResponse = await res.json();
     const recommendation = geminiResponse.candidates[0]?.content?.parts[0]?.text || "";
 
-    // Action logging
-    try {
-      const supabaseClient = createClient(
-        Deno.env.get("SUPABASE_URL") ?? "",
-        Deno.env.get("SUPABASE_ANON_KEY") ?? "",
-        { global: { headers: { Authorization: req.headers.get("Authorization")! } } },
-      );
-      const {
-        data: { user },
-      } = await supabaseClient.auth.getUser();
+    const usage = {
+      input_tokens: geminiResponse.usageMetadata?.promptTokenCount || 0,
+      output_tokens: geminiResponse.usageMetadata?.candidatesTokenCount || 0,
+    };
 
-      if (user) {
-        await supabaseClient.from("action_logs").insert({
-          user_id: user.id,
-          action: "ai_action:recommend-response",
-          metadata: { text_length: text_input.length },
-        });
-      }
-    } catch (e) {
-      console.error("An error occurred during action logging:", e);
-    }
-
-    return new Response(JSON.stringify({ recommendation }), {
+    return new Response(JSON.stringify({ recommendation, usage }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
@@ -79,7 +61,11 @@ const handleRequest = async (req: Request, profile: Record<string, any>) => {
   }
 };
 
-const recommendResponseHandler = withEntitlements("allow_ai_action:recommend-response", "daily_ai_action:recommend-response_calls", handleRequest);
+const recommendResponseHandler = withEntitlements(
+  "allow_ai_action:recommend-response",
+  "daily_ai_action:recommend-response_calls",
+  handleRequest,
+);
 
 if (import.meta.main) {
   serve(recommendResponseHandler);

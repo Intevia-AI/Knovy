@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { Button } from '@/components/ui/button'
-import { LanguagesIcon, History, LogOut, Loader2, MonitorIcon } from 'lucide-react'
+import { LanguagesIcon, History, LogOut, Loader2, MonitorIcon, Gauge } from 'lucide-react'
 import {
   Select,
   SelectContent,
@@ -19,7 +19,8 @@ import { motion, AnimatePresence } from 'motion'
 export function SettingsModal() {
   const { t } = useI18n()
   const { language, setLanguage } = useLanguage()
-  const { signOut } = useAuth()
+  const { signOut, sessionProfile } = useAuth()
+
   const [isScreenSharing, setIsScreenSharing] = useState(false)
   const [draftPrompt, setDraftPrompt] = useState('')
   const [customPrompt, setCustomPrompt] = useState('')
@@ -30,8 +31,30 @@ export function SettingsModal() {
   const [selectedDisplayId, setSelectedDisplayId] = useState<number | undefined>()
   const [showRestartConfirm, setShowRestartConfirm] = useState(false)
   const [pendingDisplayId, setPendingDisplayId] = useState<number | null>(null)
-
+  const [liveDuration, setLiveDuration] = useState(0)
   const popoverId = 'settings'
+
+  const formatQuotaName = (metric: string) => {
+    const name = metric
+      .replace('daily_', '')
+      .replace('ai_action:', '')
+      .replace('_calls', '')
+      .replace('session_count', 'sessions')
+      .replace('_', ' ')
+    return name.charAt(0).toUpperCase() + name.slice(1)
+  }
+
+  const quotas = sessionProfile?.quotas
+    ? Object.entries(sessionProfile.quotas).map(([metric, data]) => {
+        if (metric === 'daily_transcription_minutes') {
+          // While sharing, the "used" value from the profile is the baseline. We add the live duration on top.
+          const baselineMinutes = data.used
+          const liveMinutes = isScreenSharing ? liveDuration / 60 : 0
+          return [metric, { ...data, used: baselineMinutes + liveMinutes }]
+        }
+        return [metric, data]
+      })
+    : []
 
   useEffect(() => {
     const unsubscribe = window.electronAPI.on('popover:prepare-to-close', (id) => {
@@ -39,6 +62,18 @@ export function SettingsModal() {
         setIsOpen(false)
       }
     })
+    return () => unsubscribe()
+  }, [])
+
+  useEffect(() => {
+    const handleDurationUpdate = (duration: number) => {
+      setLiveDuration(duration)
+    }
+    const unsubscribe = window.electronAPI.on('session:duration-update', handleDurationUpdate)
+
+    // Request initial state when modal opens
+    window.electronAPI.invoke('get-screenshare-state').then(setIsScreenSharing)
+
     return () => unsubscribe()
   }, [])
 
@@ -266,6 +301,30 @@ export function SettingsModal() {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+          </div>
+
+          {/* Usage Quotas Section */}
+          <div className="space-y-1.5 p-2 rounded-lg border border-border/50 bg-background/30">
+            <div className="flex items-center space-x-2">
+              <Gauge className="h-3 w-3 text-muted-foreground" />
+              <h3 className="text-sm font-medium text-foreground">Daily Quotas</h3>
+            </div>
+            <div className="space-y-2 text-sm pt-1">
+              {quotas.length > 0 ? (
+                quotas.map(([metric, data]) => (
+                  <div key={metric} className="flex justify-between items-center">
+                    <span className="text-muted-foreground">{formatQuotaName(metric)}</span>
+                    <span className="font-mono text-foreground">
+                      {data.limit === -1 ? '∞' : `${Math.round(data.used)} / ${data.limit}`}
+                    </span>
+                  </div>
+                ))
+              ) : (
+                <p className="text-muted-foreground text-xs text-center">
+                  Usage data not available.
+                </p>
+              )}
             </div>
           </div>
 

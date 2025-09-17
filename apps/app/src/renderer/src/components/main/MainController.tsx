@@ -225,11 +225,7 @@ export function MainController() {
         customPrompt={customPrompt}
         language={language}
       />
-      {sessionProfile?.quotas['daily_session_count'] && sessionProfile.quotas['daily_session_count'].limit !== -1 && (
-        <div className="text-xs text-center text-muted-foreground pb-1">
-          Sessions Today: {sessionProfile.quotas['daily_session_count'].used} / {sessionProfile.quotas['daily_session_count'].limit}
-        </div>
-      )}
+      
     </div>
   )
 }
