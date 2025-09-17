@@ -1,5 +1,6 @@
--- supabase/migrations/20250913120000_create_initial_schema.sql
+-- supabase/migrations/20250918150000_consolidated_initial_schema.sql
 
+-- FROM: 20250913120000_create_initial_schema.sql
 -- 1. Roles Table
 CREATE TABLE public.roles (
     name TEXT PRIMARY KEY,
@@ -134,7 +135,6 @@ CREATE POLICY "Allow public read access to app_settings" ON public.app_settings 
 CREATE POLICY "Allow public read access to entitlements" ON public.entitlements FOR SELECT USING (true);
 CREATE POLICY "Allow public read access to quotas" ON public.quotas FOR SELECT USING (true);
 CREATE POLICY "Users can view their own transcription logs" ON public.transcription_ledger FOR SELECT USING (auth.uid() = user_id);
-CREATE POLICY "Allow service_role to insert transcription logs" ON public.transcription_ledger FOR INSERT WITH CHECK (true);
 
 -- 10. RPC to get all users with their roles
 CREATE OR REPLACE FUNCTION public.get_users_with_roles()
@@ -151,3 +151,127 @@ BEGIN
     public.profiles p ON u.id = p.id;
 END;
 $FUNCTION_BODY$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- FROM: 20250918120000_add_unique_constraint_to_session.sql
+ALTER TABLE public.transcription_ledger
+ADD CONSTRAINT transcription_ledger_session_id_key UNIQUE (session_id);
+
+-- FROM: 20250918140000_add_update_policy_for_ledger.sql
+-- Remove the old service_role only insert policy
+DROP POLICY IF EXISTS "Allow service_role to insert transcription logs" ON public.transcription_ledger;
+
+-- Allow users to insert their own transcription logs
+CREATE POLICY "Users can insert their own transcription logs"
+ON public.transcription_ledger
+FOR INSERT
+WITH CHECK (auth.uid() = user_id);
+
+-- Allow users to update their own transcription logs
+CREATE POLICY "Users can update their own transcription logs"
+ON public.transcription_ledger
+FOR UPDATE
+USING (auth.uid() = user_id)
+WITH CHECK (auth.uid() = user_id);
+
+-- FROM: 20250917130000_create_session_profile_rpc.sql
+CREATE OR REPLACE FUNCTION get_session_profile_data(p_user_id UUID)
+RETURNS jsonb AS $$
+DECLARE
+    v_role TEXT;
+    v_app_settings JSONB;
+    v_entitlements JSONB;
+    v_quotas JSONB;
+    v_usage JSONB;
+    v_session_profile JSONB;
+BEGIN
+    -- Get user role
+    SELECT role INTO v_role FROM public.profiles WHERE id = p_user_id;
+    IF NOT FOUND THEN
+        -- Profile not found, likely a race condition with a new user.
+        -- Default to 'free' role instead of raising an exception.
+        v_role := 'free';
+    END IF;
+
+    -- Aggregate app_settings
+    SELECT jsonb_object_agg(key, value) INTO v_app_settings FROM public.app_settings;
+
+    -- Get entitlements for the role
+    SELECT config INTO v_entitlements FROM public.entitlements WHERE role = v_role;
+
+    -- Get all quotas for the role
+    SELECT jsonb_agg(jsonb_build_object('metric', metric, 'limit', "limit")) INTO v_quotas FROM public.quotas WHERE role = v_role;
+
+    -- Calculate usage (this is a simplified version of the logic in the edge function)
+    -- In a real-world scenario, this might become more complex.
+    WITH usage_calcs AS (
+        SELECT 
+            q.metric,
+            q.limit,
+            COALESCE(
+                CASE
+                    WHEN q.metric LIKE 'daily_ai_action:%' THEN (
+                        SELECT count(*)::int
+                        FROM public.action_logs al
+                        WHERE al.user_id = p_user_id
+                        AND al.action = REPLACE(REPLACE(q.metric, 'daily_', ''), '_calls', '')
+                        AND al.timestamp >= date_trunc('day', now() at time zone 'utc')
+                    )
+                    WHEN q.metric = 'daily_transcription_minutes' THEN (
+                        SELECT sum(tl.duration_seconds)::int / 60
+                        FROM public.transcription_ledger tl
+                        WHERE tl.user_id = p_user_id
+                        AND tl.created_at >= date_trunc('day', now() at time zone 'utc')
+                    )
+                    ELSE 0
+                END, 0
+            ) as used
+        FROM public.quotas q
+        WHERE q.role = v_role
+    )
+    SELECT jsonb_object_agg(metric, jsonb_build_object('limit', "limit", 'used', used)) INTO v_usage FROM usage_calcs;
+
+    -- Construct the final profile
+    v_session_profile := jsonb_build_object(
+        'user_id', p_user_id,
+        'role', v_role,
+        'app_settings', v_app_settings,
+        'entitlements', v_entitlements,
+        'quotas', v_usage
+    );
+
+    RETURN v_session_profile;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- FROM: 20250917150000_fix_rls_recursion.sql
+-- 1. Create a helper function to check for admin role
+-- This function runs with the permissions of the definer, bypassing the RLS check on `profiles`.
+CREATE OR REPLACE FUNCTION is_admin()
+RETURNS BOOLEAN AS $$
+DECLARE
+  is_admin_role BOOLEAN;
+BEGIN
+  SELECT EXISTS (
+    SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin'
+  ) INTO is_admin_role;
+  RETURN is_admin_role;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 2. Drop and recreate the policy on the `profiles` table
+DROP POLICY IF EXISTS "Admins can view all profiles" ON public.profiles;
+CREATE POLICY "Admins can view all profiles"
+ON public.profiles FOR SELECT
+USING (is_admin());
+
+-- 3. Drop and recreate the policy on the `action_logs` table
+DROP POLICY IF EXISTS "Admins can view all action logs" ON public.action_logs;
+CREATE POLICY "Admins can view all action logs"
+ON public.action_logs FOR SELECT
+USING (is_admin());
+
+-- 4. Drop and recreate the policy on the `transcription_ledger` table
+DROP POLICY IF EXISTS "Admins can view all transcription logs" ON public.transcription_ledger;
+CREATE POLICY "Admins can view all transcription logs"
+ON public.transcription_ledger FOR SELECT
+USING (is_admin());
