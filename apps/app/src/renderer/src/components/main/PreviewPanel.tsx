@@ -4,11 +4,11 @@ import AudioVisualizer from '@/components/AudioVisualizer'
 import { useI18n } from '@/hooks/useI18n'
 import { motion, AnimatePresence } from 'motion'
 
-interface ScreenPreviewProps {
+interface PreviewPanelProps {
   systemAnalyserNode: AnalyserNode | null
 }
 
-export function ScreenPreview({ systemAnalyserNode }: ScreenPreviewProps) {
+export function PreviewPanel({ systemAnalyserNode }: PreviewPanelProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const { t } = useI18n()
   const [isOpen, setIsOpen] = useState(true)
@@ -52,19 +52,17 @@ export function ScreenPreview({ systemAnalyserNode }: ScreenPreviewProps) {
             })
             if (videoRef.current) {
               videoRef.current.srcObject = stream
-              videoRef.current
-                .play()
-                .catch((e) => {
-                  if (e.name !== 'AbortError') {
-                    console.error('[ScreenPreview] Video play error:', e)
-                  }
-                })
+              videoRef.current.play().catch((e) => {
+                if (e.name !== 'AbortError') {
+                  console.error('[PreviewPanel] Video play error:', e)
+                }
+              })
             }
           } else {
-            console.warn('[ScreenPreview] No active screen source ID received.')
+            console.warn('[PreviewPanel] No active screen source ID received.')
           }
         } catch (error) {
-          console.error('[ScreenPreview] Error setting up screen preview:', error)
+          console.error('[PreviewPanel] Error setting up screen preview:', error)
         }
       }
     }
@@ -83,7 +81,7 @@ export function ScreenPreview({ systemAnalyserNode }: ScreenPreviewProps) {
     )
 
     const handleSourceChanged = () => {
-      console.log('[ScreenPreview] Source changed, re-fetching stream...')
+      console.log('[PreviewPanel] Source changed, re-fetching stream...')
       // Clean up old stream before getting new one
       if (videoRef.current && videoRef.current.srcObject) {
         const stream = videoRef.current.srcObject as MediaStream

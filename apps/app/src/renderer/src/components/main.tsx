@@ -7,7 +7,7 @@ import { MainController } from './main/MainController'
 import ChatPanel from './main/ChatPanel'
 import ActionsPanel from './main/ActionsPanel'
 import { SettingsModal } from './main/SettingsModal'
-import { ScreenPreview } from './main/ScreenPreview'
+import { PreviewPanel } from './main/PreviewPanel'
 
 const getInitialView = () => {
   if (typeof window === 'undefined') return 'main'
@@ -41,7 +41,7 @@ function AppContainer() {
     case 'main':
       return <MainController />
     case 'screen-preview':
-      return <ScreenPreview systemAnalyserNode={null} />
+      return <PreviewPanel systemAnalyserNode={null} />
     case 'transcriptions':
       return <ChatPanel />
     case 'actions':

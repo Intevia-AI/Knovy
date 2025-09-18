@@ -15,7 +15,7 @@ export const translations = {
     // Add English translations here
     greeting: 'Hello',
     // ControlPanel Status
-    screenPreviewTitle: 'Screen Preview',
+    PreviewPanelTitle: 'Screen Preview',
     systemAudioLabel: 'System Audio',
     statusLoading: 'AI Processing',
     statusSharing: 'Sharing/Recording',
@@ -107,7 +107,7 @@ export const translations = {
     // Add Traditional Chinese translations here
     greeting: '您好',
     // ControlPanel Status
-    screenPreviewTitle: '螢幕預覽',
+    PreviewPanelTitle: '螢幕預覽',
     systemAudioLabel: '系統音訊',
     statusLoading: 'AI 處理中',
     statusSharing: '分享/錄製中',
@@ -205,7 +205,7 @@ export const translations = {
 export type TranslationKey =
   | 'greeting'
   // ControlPanel Status
-  | 'screenPreviewTitle'
+  | 'PreviewPanelTitle'
   | 'systemAudioLabel'
   | 'statusLoading'
   | 'statusSharing'

@@ -24,7 +24,7 @@ import { translations, TranslationKey } from '@/lib/translations' // Adjust path
  * // Use in JSX
  * return (
  *   <div>
- *     <h1>{t('screenPreviewTitle')}</h1>
+ *     <h1>{t('PreviewPanelTitle')}</h1>
  *     <p>Current language: {language}</p>
  *   </div>
  * );
