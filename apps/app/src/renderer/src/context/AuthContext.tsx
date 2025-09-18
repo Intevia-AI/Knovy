@@ -37,6 +37,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null)
   const [sessionProfile, setSessionProfile] = useState<SessionProfile | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const isHandlingCallback = React.useRef(false)
 
   const fetchSessionProfile = async (authToken: string) => {
     // Popovers are identified by having a URL hash. The main window does not.
@@ -130,6 +131,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     })
 
     const handleOAuthCallback = async (url: string) => {
+      if (isHandlingCallback.current) {
+        console.log('[AuthContext] OAuth callback is already being handled. Ignoring duplicate call.')
+        return
+      }
+      isHandlingCallback.current = true
+
       console.log('[AuthContext] Received OAuth callback URL from main process:', url)
       try {
         const hash = new URL(url.replace('intevia://', 'http://localhost/')).hash
@@ -198,6 +205,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, [])
 
   const signInWithProvider = async (provider: 'google' | 'github') => {
+    isHandlingCallback.current = false
     setIsLoading(true)
     try {
       const { data, error } = await supabase.auth.signInWithOAuth({
