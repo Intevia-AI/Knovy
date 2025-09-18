@@ -103,7 +103,7 @@ export default function App() {
 
   return (
     <AnimatePresence mode="wait">
-      {isInitialLoad || (isLoading && !sessionProfile) ? (
+      {isInitialLoad || (isLoading && user && !sessionProfile) ? (
         <motion.div
           key="loader"
           exit={{ opacity: 0 }}
