@@ -17,6 +17,8 @@ const api = {
 
   quitApp: () => ipcRenderer.send('app:quit'),
 
+  toggleContentProtection: () => ipcRenderer.send('app:toggle-content-protection'),
+
   toggleAlwaysOnTop: (isAlwaysOnTop) =>
     ipcRenderer.send('electronAPI:toggleAlwaysOnTop', isAlwaysOnTop),
 
@@ -106,6 +108,7 @@ const api = {
       'screenshare:source-changed',
       'settings:request-screenshare-restart',
       'app:quit',
+      'app:toggle-content-protection',
       'session:duration-update'
     ]
     if (!validChannels.includes(channel)) {

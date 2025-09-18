@@ -1,6 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { Button } from '@/components/ui/button'
-import { LanguagesIcon, History, LogOut, Loader2, MonitorIcon, Gauge } from 'lucide-react'
+import {
+  LanguagesIcon,
+  History,
+  Power,
+  LogOut,
+  Loader2,
+  MonitorIcon,
+  Gauge,
+  ShieldCheck
+} from 'lucide-react'
 import {
   Select,
   SelectContent,
@@ -9,6 +18,7 @@ import {
   SelectValue
 } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { useI18n } from '@/hooks/useI18n'
 import { useLanguage } from '@/context/LanguageContext'
@@ -32,6 +42,7 @@ export function SettingsPanel() {
   const [showRestartConfirm, setShowRestartConfirm] = useState(false)
   const [pendingDisplayId, setPendingDisplayId] = useState<number | null>(null)
   const [liveDuration, setLiveDuration] = useState(0)
+  const [isContentProtectionEnabled, setIsContentProtectionEnabled] = useState(false)
   const popoverId = 'settings'
 
   const formatQuotaName = (metric: string) => {
@@ -113,6 +124,9 @@ export function SettingsPanel() {
           const settings = await window.electronAPI.invoke('electronAPI:getSettings')
           if (settings.displayId) {
             setSelectedDisplayId(settings.displayId)
+          }
+          if (settings.contentProtection) {
+            setIsContentProtectionEnabled(settings.contentProtection)
           }
 
           return () => unsubscribeShare()
@@ -245,10 +259,10 @@ export function SettingsPanel() {
 
           {/* History Button */}
           <Button
-            variant="ghost"
+            variant="default"
             size="sm"
             onClick={onShowHistory}
-            className="w-full justify-start text-sm h-10 text-black hover:bg-black/10 hover:text-black"
+            className="w-full h-9 text-sm mt-2"
           >
             <History className="mr-2 h-4 w-4" />
             {t('viewHistory')}
@@ -297,6 +311,27 @@ export function SettingsPanel() {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+          </div>
+
+          {/* App Visibility Toggle */}
+          <div className="space-y-1.5 p-2 rounded-lg border border-border/50 bg-background/30">
+            <div className="flex items-center space-x-2">
+              <ShieldCheck className="h-3 w-3 text-muted-foreground" />
+              <h3 className="text-sm font-medium text-foreground">{t('toggleAppVisibility')}</h3>
+            </div>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="content-protection-switch" className="text-sm text-muted-foreground">
+                {t('toggleAppVisibilitySubtitle')}
+              </Label>
+              <Switch
+                id="content-protection-switch"
+                checked={isContentProtectionEnabled}
+                onCheckedChange={() => {
+                  setIsContentProtectionEnabled(!isContentProtectionEnabled)
+                  window.electronAPI.toggleContentProtection()
+                }}
+              />
             </div>
           </div>
 
@@ -356,6 +391,16 @@ export function SettingsPanel() {
               <p className="text-[10px] text-muted-foreground">{t('customPromptHint')}</p>
             </div>
           </div> */}
+
+          {/* Quit Button */}
+          <Button
+            variant="default"
+            onClick={() => window.electronAPI.quitApp()}
+            className="w-full h-9 text-sm mt-2"
+          >
+            <Power className="mr-2 h-4 w-4" />
+            {t('quitKnovy')}
+          </Button>
 
           {/* Sign Out Button */}
           <Button

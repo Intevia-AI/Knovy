@@ -75,7 +75,11 @@ export const translations = {
     dailyQuotasTitle: 'Daily Quotas',
     usageDataNotAvailable: 'Usage data not available.',
     customPromptTitle: 'Custom Prompt',
-    customPromptHint: 'Press Enter to confirm. Shift+Enter for a new line.'
+    customPromptHint: 'Press Enter to confirm. Shift+Enter for a new line.',
+    toggleAppVisibility: 'Toggle App Visibility',
+    toggleAppVisibilitySubtitle: 'Protect Knovy from being shared to meeting apps',
+    quitKnovy: 'Quit Knovy',
+    cancelButton: 'Cancel'
   },
   'zh-TW': {
     // Add Traditional Chinese translations here
@@ -140,7 +144,11 @@ export const translations = {
     dailyQuotasTitle: '每日配額',
     usageDataNotAvailable: '無可用使用數據。',
     customPromptTitle: '自訂提示',
-    customPromptHint: '按 Enter 確認，Shift+Enter 換行。'
+    customPromptHint: '按 Enter 確認，Shift+Enter 換行。',
+    toggleAppVisibility: '顯示/隱藏 Knovy',
+    toggleAppVisibilitySubtitle: '保護 Knovy 不被截圖或錄製',
+    quitKnovy: '退出 Knovy',
+    cancelButton: '取消'
   }
 }
 
@@ -213,6 +221,10 @@ export type TranslationKey =
   | 'usageDataNotAvailable'
   | 'customPromptTitle'
   | 'customPromptHint'
+  | 'toggleAppVisibility'
+  | 'toggleAppVisibilitySubtitle'
+  | 'quitKnovy'
+  | 'cancelButton'
 // ... add other keys here
 
 /**

@@ -36,6 +36,8 @@ let activeScreenSourceId: string | null = null
 let mainWindow: BrowserWindow | null
 let selectionWindow: BrowserWindow | null
 
+let isContentProtectionEnabled = false
+
 let pendingKeyword: { keyword: string; timestamp: number } | null = null
 
 export function getAutoUpdater(): AppUpdater {
@@ -223,10 +225,16 @@ async function loadSettings() {
   try {
     await fs.access(settingsPath)
     const data = await fs.readFile(settingsPath, 'utf-8')
-    return JSON.parse(data)
+    const parsed = JSON.parse(data)
+    return {
+      language: 'zh-TW',
+      customPrompt: '',
+      contentProtection: false,
+      ...parsed
+    }
   } catch (error) {
     console.log('Settings file not found or error reading, returning defaults.')
-    return { language: 'zh-TW', customPrompt: '' }
+    return { language: 'zh-TW', customPrompt: '', contentProtection: false }
   }
 }
 
@@ -349,8 +357,6 @@ const createWindow = async () => {
   })
 
   positionWindow(mainWindow, { position: 'bottom-left', displayId: settings.displayId })
-
-  // mainWindow.setContentProtection(true)
 
   mainWindow.webContents.on('did-finish-load', () => {
     if (oauthCallbackUrlOnStartup) {
@@ -552,6 +558,36 @@ app.on('ready', async () => {
     const newSettings = { ...currentSettings, ...settingsToUpdate }
     await saveSettings(newSettings)
     return newSettings
+  })
+
+  isContentProtectionEnabled = (await loadSettings()).contentProtection
+
+  ipcMain.on('app:toggle-content-protection', async () => {
+    isContentProtectionEnabled = !isContentProtectionEnabled
+    await saveSettings({ contentProtection: isContentProtectionEnabled })
+
+    for (const win of BrowserWindow.getAllWindows()) {
+      if (!win.isDestroyed()) {
+        const url = win.webContents.getURL()
+        if (url.includes('#screen-preview')) {
+          win.setContentProtection(false)
+        } else {
+          win.setContentProtection(isContentProtectionEnabled)
+        }
+      }
+    }
+  })
+
+  app.on('browser-window-created', (_, window) => {
+    window.webContents.on('did-finish-load', () => {
+      const url = window.webContents.getURL()
+      // Always keep preview panel unprotected
+      if (url.includes('#screen-preview')) {
+        window.setContentProtection(false)
+      } else {
+        window.setContentProtection(isContentProtectionEnabled)
+      }
+    })
   })
 
   ipcMain.on('settings:request-screenshare-restart', () => {
