@@ -35,37 +35,11 @@ export const translations = {
     shortcutKeyTooltip: 'Shortcut:',
     aiActionScreenshot: 'Screenshot & Ask',
     aiActionUpload: 'Upload File',
-    // ControlPanel Advanced Settings
-    advancedSettingsTitle: 'Advanced Settings',
-    customPromptLabel: 'Custom Model Instruction',
-    customPromptPlaceholder: 'Enter custom prompt and press Enter...',
-    currentPromptLabel: 'Current Model Instruction',
-    clearButton: 'Clear',
-    languageSelectLabel: 'Language Selection',
-    languageSelectPlaceholder: 'Select language',
-    // HeaderBar
-    pinWindowTooltip: 'Pin window',
-    unpinWindowTooltip: 'Unpin window',
-    minimizeWindowTooltip: 'Minimize',
-    closeWindowTooltip: 'Close',
-    // SourcePickerModal
-    sourcePickerTitle: 'Select Source to Share',
-    sourcePickerSearching: 'Searching for available sources...',
-    sourcePickerShareSourceTooltipPrefix: 'Share',
-    cancelButton: 'Cancel',
     // ChatPanel
     chatPlaceholderSharing: 'Enter custom prompt or question...',
     chatPlaceholderNotSharing: 'Please start screen sharing first',
     sendChatButtonLabel: 'Send custom prompt',
     askAIButton: 'Ask AI',
-    // RealTimeSubtitle
-    showSubtitlesLabel: 'Show Subtitles',
-    hideSubtitlesLabel: 'Hide Subtitles',
-    showSubtitlesAriaLabel: 'Show subtitles',
-    hideSubtitlesAriaLabel: 'Hide subtitles',
-    // Markdown
-    copyCodeButton: 'Copy',
-    copyCodeSuccessToast: 'Copied successfully',
     // Textarea Hints
     textareaHint: 'Press Enter to confirm, Shift + Enter for new line',
     noQueryProvided: '[Hint] No query content provided.',
@@ -85,7 +59,7 @@ export const translations = {
     statusAuthLoading: 'Authenticating...',
     statusAuthLoadingShort: 'Auth...',
     signOut: 'Sign Out',
-    // Settings Modal
+    // Settings Panel
     viewHistory: 'View History',
     languageSettings: 'Language Settings',
     selectOutputLanguage: 'Select Output Language',
@@ -127,37 +101,11 @@ export const translations = {
     shortcutKeyTooltip: '快捷鍵:',
     aiActionScreenshot: '截圖提問',
     aiActionUpload: '上傳檔案',
-    // ControlPanel Advanced Settings
-    advancedSettingsTitle: '進階設定',
-    customPromptLabel: '客製化模型要求',
-    customPromptPlaceholder: '輸入自定義提示詞後按 Enter...',
-    currentPromptLabel: '當前模型要求',
-    clearButton: '清除',
-    languageSelectLabel: '語言選擇',
-    languageSelectPlaceholder: '選擇語言',
-    // HeaderBar
-    pinWindowTooltip: '視窗置頂',
-    unpinWindowTooltip: '取消置頂',
-    minimizeWindowTooltip: '最小化',
-    closeWindowTooltip: '關閉',
-    // SourcePickerModal
-    sourcePickerTitle: '選擇分享來源',
-    sourcePickerSearching: '正在搜尋可用的分享來源...',
-    sourcePickerShareSourceTooltipPrefix: '分享',
-    cancelButton: '取消',
     // ChatPanel
     chatPlaceholderSharing: '輸入自訂提示詞或問題…',
     chatPlaceholderNotSharing: '請先開始分享螢幕',
     sendChatButtonLabel: '發送自訂提示詞',
     askAIButton: '詢問 AI',
-    // RealTimeSubtitle
-    showSubtitlesLabel: '顯示字幕',
-    hideSubtitlesLabel: '隱藏字幕',
-    showSubtitlesAriaLabel: '顯示字幕',
-    hideSubtitlesAriaLabel: '隱藏字幕',
-    // Markdown
-    copyCodeButton: '複製',
-    copyCodeSuccessToast: '複製成功',
     // Textarea Hints
     textareaHint: '按 Enter 確認，Shift + Enter 換行',
     noQueryProvided: '[提示] 沒有提供查詢內容。',
@@ -177,7 +125,7 @@ export const translations = {
     statusAuthLoading: '驗證中...',
     statusAuthLoadingShort: '驗證...',
     signOut: '登出',
-    // Settings Modal
+    // Settings Panel
     viewHistory: '查看歷史紀錄',
     languageSettings: '語言設定',
     selectOutputLanguage: '選擇輸出語言',
@@ -225,37 +173,11 @@ export type TranslationKey =
   | 'shortcutKeyTooltip'
   | 'aiActionScreenshot'
   | 'aiActionUpload'
-  // ControlPanel Advanced Settings
-  | 'advancedSettingsTitle'
-  | 'customPromptLabel'
-  | 'customPromptPlaceholder'
-  | 'currentPromptLabel'
-  | 'clearButton'
-  | 'languageSelectLabel'
-  | 'languageSelectPlaceholder'
-  // HeaderBar
-  | 'pinWindowTooltip'
-  | 'unpinWindowTooltip'
-  | 'minimizeWindowTooltip'
-  | 'closeWindowTooltip'
-  // SourcePickerModal
-  | 'sourcePickerTitle'
-  | 'sourcePickerSearching'
-  | 'sourcePickerShareSourceTooltipPrefix'
-  | 'cancelButton'
   // ChatPanel
   | 'chatPlaceholderSharing'
   | 'chatPlaceholderNotSharing'
   | 'sendChatButtonLabel'
   | 'askAIButton'
-  // RealTimeSubtitle
-  | 'showSubtitlesLabel'
-  | 'hideSubtitlesLabel'
-  | 'showSubtitlesAriaLabel'
-  | 'hideSubtitlesAriaLabel'
-  // Markdown
-  | 'copyCodeButton'
-  | 'copyCodeSuccessToast'
   // Textarea Hints
   | 'textareaHint'
   | 'noQueryProvided'
@@ -275,7 +197,7 @@ export type TranslationKey =
   | 'statusAuthLoading'
   | 'statusAuthLoadingShort'
   | 'signOut'
-  // Settings Modal
+  // Settings Panel
   | 'viewHistory'
   | 'languageSettings'
   | 'selectOutputLanguage'

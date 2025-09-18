@@ -6,7 +6,7 @@ import { useTheme } from 'next-themes'
 import { MainController } from './main/MainController'
 import ChatPanel from './main/ChatPanel'
 import ActionsPanel from './main/ActionsPanel'
-import { SettingsModal } from './main/SettingsModal'
+import { SettingsPanel } from './main/SettingsPanel'
 import { PreviewPanel } from './main/PreviewPanel'
 
 const getInitialView = () => {
@@ -47,7 +47,7 @@ function AppContainer() {
     case 'actions':
       return <ActionsPanel />
     case 'settings':
-      return <SettingsModal />
+      return <SettingsPanel />
     default:
       return null
   }

@@ -16,7 +16,7 @@ import { SupportedLanguage } from '@/lib/translations'
 import { useAuth } from '@/context/AuthContext'
 import { motion, AnimatePresence } from 'motion'
 
-export function SettingsModal() {
+export function SettingsPanel() {
   const { t } = useI18n()
   const { language, setLanguage } = useLanguage()
   const { signOut, sessionProfile } = useAuth()
@@ -71,7 +71,7 @@ export function SettingsModal() {
     }
     const unsubscribe = window.electronAPI.on('session:duration-update', handleDurationUpdate)
 
-    // Request initial state when modal opens
+    // Request initial state when panel opens
     window.electronAPI.invoke('get-screenshare-state').then(setIsScreenSharing)
 
     return () => unsubscribe()
@@ -117,7 +117,7 @@ export function SettingsModal() {
 
           return () => unsubscribeShare()
         } catch (error) {
-          console.error('[SettingsModal] Error fetching initial data:', error)
+          console.error('[SettingsPanel] Error fetching initial data:', error)
         }
       }
     }
