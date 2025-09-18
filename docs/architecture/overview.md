@@ -2,32 +2,34 @@
 
 ## 1. Introduction
 
-Knovy is an AI assistant platform composed of a desktop application, a web-based demo, an admin dashboard, and a robust backend. This document provides a high-level overview of the system architecture, which is designed for security, efficiency, and scalability.
+Knovy is an AI assistant platform composed of a desktop application, a web-based demo, an admin dashboard, and a robust backend. This document provides a high-level overview of the system architecture, which is designed for security, efficiency, and scalability using a modern, serverless approach.
 
-## 2. Architecture & RBAC
+## 2. System Architecture
 
-The project leverages Supabase for authentication, database services, and secure serverless functions. A Role-Based Access Control (RBAC) system is implemented to manage user permissions and protect administrative functions.
-
-All stateless AI actions and administrative tasks are handled by secure **Supabase Edge Functions**, which are protected by a custom RBAC middleware.
+The project leverages Supabase for its core backend infrastructure, including authentication, database services, and secure serverless functions. A sophisticated Role-Based Access Control (RBAC) and entitlements system is implemented to manage user permissions, features, and usage quotas.
 
 ### System Diagram
 
 ```mermaid
 graph TD
-    subgraph User Devices
-        WebApp[Web Application]
+    subgraph User-Facing Applications
         DesktopApp[Desktop Application]
+        WebApp[Web Application]
         AdminDashboard[Admin Dashboard]
     end
 
-    subgraph "Backend Infrastructure"
+    subgraph "Supabase Backend"
         Auth[Supabase Auth]
-        DB[(Supabase DB <br/> Roles, Permissions, Logs)]
-        EdgeFunctions[Supabase Edge Functions <br/> AI Actions & Admin API]
-        Proxy[Legacy Proxy <br/> Real-time Transcription]
+        DB[(Supabase DB <br/> Roles, Entitlements, Quotas, Logs)]
+        subgraph EdgeFunctions [Supabase Edge Functions]
+            CoreServices[Core Services <br/> get-session-profile, session-manager]
+            AIActions[AI Actions <br/> summarize, chat, etc.]
+            AdminAPI[Admin API <br/> /users, /users/id/role]
+        end
     end
 
-    subgraph "Third-Party Services"
+    subgraph "Other Services"
+        Proxy[WebSocket Proxy <br/> Real-time Transcription]
         GoogleAI[Google Generative AI]
     end
 
@@ -42,11 +44,11 @@ graph TD
     WebApp -- "Real-time Transcription" --> Proxy
     DesktopApp -- "Real-time Transcription" --> Proxy
 
-    DesktopApp -- "AI Actions" --> EdgeFunctions
-    WebApp -- "AI Actions" --> EdgeFunctions
-    AdminDashboard -- "Admin API Calls" --> EdgeFunctions
+    DesktopApp -- "Authenticated API Calls" --> CoreServices
+    DesktopApp -- "Authenticated API Calls" --> AIActions
+    AdminDashboard -- "Authenticated API Calls" --> AdminAPI
 
-    EdgeFunctions -- "Secure API Calls" --> GoogleAI
+    AIActions -- "Secure API Calls" --> GoogleAI
     EdgeFunctions -- "DB Operations" --> DB
 
     Proxy -- "Proxies Requests" --> GoogleAI
@@ -60,8 +62,9 @@ graph TD
 - **Core Functionality**: Provides the full Knovy experience, including real-time audio capture, transcription, and AI actions.
 - **Backend Interaction**:
   - **Authentication**: Uses Supabase for user login (OAuth).
-  - **AI Actions**: Connects to secure Supabase Edge Functions, which are protected by RBAC.
-  - **Real-time Transcription**: Connects to the legacy WebSocket proxy (`apps/proxy`).
+  - **Session Management**: On startup, it calls the `get-session-profile` Edge Function to fetch the user's role, entitlements, and quotas, which dynamically configures the UI.
+  - **AI Actions**: Connects to secure Supabase Edge Functions (e.g., `ai-action-summarize`), which are protected by the entitlements middleware.
+  - **Real-time Transcription**: Connects to the WebSocket proxy (`apps/proxy`).
 
 ### 3.2. Web Application (`apps/web`)
 
@@ -69,29 +72,31 @@ graph TD
 - **Core Functionality**: Serves as the project's public-facing website and provides a demo of the real-time transcription feature.
 - **Backend Interaction**:
   - **Authentication**: Uses Supabase for user login.
-  - **Real-time Transcription**: Connects to the legacy WebSocket proxy (`apps/proxy`).
+  - **Real-time Transcription**: Connects to the WebSocket proxy (`apps/proxy`).
 
 ### 3.3. Admin Dashboard (`apps/admin-dashboard`)
 
 - **Framework**: Next.js.
-- **Purpose**: An internal tool for administrators to manage the Knovy platform. It is deployed as a separate application to a restricted subdomain (e.g., `admin.knovy.app`) for security.
+- **Purpose**: An internal tool for administrators to manage the Knovy platform. It is deployed to a restricted subdomain for security.
 - **Features**:
-    - **User Management**: List all registered users and view their assigned roles.
-    - **Role Assignment**: Change a user's role (e.g., from `free` to `pro` or `admin`).
-    - **Usage Auditing**: View the action logs for any specific user to monitor their activity.
+  - **User Management**: List all registered users and view their assigned roles.
+  - **Role Assignment**: Change a user's role (e.g., from `free` to `pro`).
+  - **Usage Auditing**: View the action logs for any specific user.
 - **Authentication and Security**:
-    - Access is strictly limited to users with the `admin` role.
-    - Admins log in using the standard Supabase authentication flow.
-    - On load, the application calls the `/me/permissions` endpoint. If the user does not have admin permissions, they are immediately redirected away from the dashboard.
-    - All API calls from the dashboard are sent with the admin's JWT and are validated on the server by the RBAC middleware in the Edge Functions.
+  - Access is strictly limited to users with the `admin` role.
+  - On load, the application fetches the user's session profile. If the user does not have the `admin` role, they are redirected.
+  - All API calls are sent to the `admin-api` Edge Function and are validated on the server.
 
-### 3.4. Backend Services
+## 4. Backend Services
 
 Our backend is composed of several key pieces:
 
-- **Supabase**: The core of our backend.
-  - **Auth**: Manages all user authentication and provides JWTs for secure API access.
-  - **Database**: A PostgreSQL database storing user data, application state, and all RBAC-related tables (`roles`, `permissions`, `role_permissions`, `action_logs`).
-  - **Edge Functions**: Secure, serverless functions that host all application logic, including AI actions and the Admin API. All functions are protected by a shared RBAC middleware to enforce permissions.
+- **Supabase**: The serverless core of our backend.
+  - **Auth**: Manages all user authentication (including OAuth) and provides JWTs for secure API access.
+  - **Database**: A PostgreSQL database storing all application data, including the RBAC tables (`roles`, `entitlements`, `quotas`) and usage logs (`action_logs`, `transcription_ledger`).
+  - **Edge Functions**: Secure, serverless Deno functions that host all application logic.
+    - **Core Services**: Functions like `get-session-profile` that provide essential data to clients.
+    - **AI Actions**: A suite of functions that perform specific AI tasks, each protected by the `withEntitlements` middleware to enforce RBAC and quotas.
+    - **Admin API**: A dedicated API for platform management, restricted to admin users.
 
-- **Proxy Server (`apps/proxy`)**: A legacy WebSocket proxy that currently handles real-time transcription. In the future, this functionality will also be migrated to a more robust, scalable solution.
+- **WebSocket Proxy (`apps/proxy`)**: A Node.js server that handles real-time, stateful WebSocket connections for features like live transcription. It proxies requests to the Google Generative AI API.

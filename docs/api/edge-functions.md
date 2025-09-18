@@ -1,120 +1,356 @@
-# Supabase Edge Function API Contracts
+# Supabase Edge Function API
 
-This document defines the API contracts for the stateless AI action Edge Functions. All functions require a valid Supabase JWT in the `Authorization` header.
+This document provides a comprehensive specification for the Supabase Edge Functions that power the Knovy backend. All functions are stateless, secured via JWT, and use a role-based access control (RBAC) system to manage entitlements and quotas.
 
----
+## 1. Authentication
 
-## 1. Summarize Text
+All requests to protected Edge Functions MUST include a valid Supabase JWT in the `Authorization` header.
 
-- **Function Name**: `ai-action-summarize`
+```
+Authorization: Bearer <SUPABASE_JWT>
+```
+
+Requests without a valid token will be rejected with a `401 Unauthorized` error.
+
+## 2. Core Services
+
+### 2.1. Get Session Profile
+
+This function is the cornerstone of the client-side experience, providing the user's role, settings, entitlements, and current quota usage in a single call.
+
+- **Function Name**: `get-session-profile`
+- **Method**: `GET`
+- **Description**: Fetches a comprehensive session profile for the authenticated user, including their role, application settings, feature entitlements, and real-time quota usage.
+- **Entitlement**: None. Accessible by any authenticated user.
+
+**Success Response (200 OK)**
+
+```json
+{
+  "user_id": "uuid",
+  "role": "string", // e.g., \'free\', \'pro\', \'admin\'
+  "app_settings": {
+    "key": "value"
+  },
+  "entitlements": {
+    "allow_transcription": true,
+    "allow_ai_action:summarize": true,
+    // ... other entitlements
+  },
+  "quotas": {
+    "daily_transcription_minutes": {
+      "limit": 120,
+      "used": 45
+    },
+    "daily_ai_action:summarize_calls": {
+      "limit": 100,
+      "used": 12
+    }
+    // ... other quotas
+  }
+}
+```
+
+**`curl` Example**
+
+```bash
+curl \'http://127.0.0.1:54321/functions/v1/get-session-profile\' \
+-H "Authorization: Bearer $SUPABASE_TOKEN"
+```
+
+### 2.2. Session Manager
+
+This function handles logging of user actions and transcription duration for auditing and quota enforcement.
+
+- **Function Name**: `session-manager`
 - **Method**: `POST`
-- **Description**: Receives a block of text and returns a concise summary.
+- **Description**: Logs different types of events, such as AI actions or transcription duration. The behavior is determined by the `log_type` field.
+- **Entitlement**: None. Accessible by any authenticated user.
 
-### Request Body
-
-```json
-{
-  "text": "<string>"
-}
-```
-
-### Success Response (200 OK)
+**Request Body (log_type: \'action\')**
 
 ```json
 {
-  "summary": "<string>"
+  "log_type": "action",
+  "action_name": "<string>", // e.g., \'ai_action:summarize\'
+  "metadata": {
+    "key": "value"
+  }
 }
 ```
 
-### Error Response (400/500)
+**Request Body (log_type: \'duration\')**
 
 ```json
 {
-  "error": "<string>"
+  "log_type": "duration",
+  "session_id": "uuid",
+  "duration_seconds": "integer"
 }
 ```
 
----
+**Success Response (201/200 OK)**
 
-## 2. Keyword Search
+```json
+{
+  "success": true,
+  "message": "Action logged" // or "Duration upserted"
+}
+```
+
+## 3. AI Actions
+
+All AI action functions are protected by the `withEntitlements` middleware, which checks for a specific entitlement and enforces usage quotas.
+
+### 3.1. Chat
+
+- **Function Name**: `ai-action-chat`
+- **Method**: `POST`
+- **Description**: Answers a user's question based on conversation history.
+- **Entitlement**: `allow_ai_action:chat`
+
+**Request Body**
+
+```json
+{
+  "text_input": "<string>", // User's question
+  "previous_summary": "<string>", // Optional: Summary of the conversation so far
+  "recent_transcriptions": "<string>", // Optional: Recent raw transcriptions
+  "language": "<string>" // e.g., \'en-US\', \'zh-TW\'
+}
+```
+
+**Success Response (200 OK)**
+
+```json
+{
+  "response": "<string>", // AI-generated answer
+  "usage": {
+    "input_tokens": "integer",
+    "output_tokens": "integer"
+  }
+}
+```
+
+### 3.2. Keyword Search
 
 - **Function Name**: `ai-action-keyword-search`
 - **Method**: `POST`
-- **Description**: Receives a block of text and extracts key terms and concepts.
+- **Description**: Provides a brief, concise summary of a given term.
+- **Entitlement**: `allow_ai_action:keyword-search`
 
-### Request Body
-
-```json
-{
-  "text": "<string>"
-}
-```
-
-### Success Response (200 OK)
+**Request Body**
 
 ```json
 {
-  "keywords": [
-    "<string>",
-    "<string>"
-  ]
+  "text_input": "<string>" // The term to be defined
 }
 ```
 
----
+**Success Response (200 OK)**
 
-## 3. Recommend Response
+```json
+{
+  "response": "<string>", // AI-generated summary of the term
+  "usage": {
+    "input_tokens": "integer",
+    "output_tokens": "integer"
+  }
+}
+```
+
+### 3.3. Recommend Response
 
 - **Function Name**: `ai-action-recommend-response`
 - **Method**: `POST`
-- **Description**: Receives a conversation history and provides a suggested next response.
+- **Description**: Recommends a short response to a given piece of text.
+- **Entitlement**: `allow_ai_action:recommend-response`
 
-### Request Body
+**Request Body**
 
 ```json
 {
-  "messages": [
+  "text_input": "<string>" // The text to respond to
+}
+```
+
+**Success Response (200 OK)**
+
+```json
+{
+  "recommendation": "<string>", // AI-generated response suggestion
+  "usage": {
+    "input_tokens": "integer",
+    "output_tokens": "integer"
+  }
+}
+```
+
+### 3.4. Screenshot Analysis
+
+- **Function Name**: `ai-action-screenshot-analysis`
+- **Method**: `POST`
+- **Description**: Analyzes a base64-encoded screenshot based on a text prompt.
+- **Entitlement**: `allow_ai_action:screenshot-analysis`
+
+**Request Body**
+
+```json
+{
+  "text_input": "<string>", // The prompt for the analysis
+  "image_input": "<string>" // Base64-encoded image string (e.g., \'data:image/jpeg;base64,...squo)
+}
+```
+
+**Success Response (200 OK)**
+
+```json
+{
+  "analysis": "<string>", // AI-generated analysis of the image
+  "usage": {
+    "input_tokens": "integer",
+    "output_tokens": "integer"
+  }
+}
+```
+
+### 3.5. Summarize
+
+- **Function Name**: `ai-action-summarize`
+- **Method**: `POST`
+- **Description**: Summarizes a block of text. Can also refine a previous summary with new transcripts.
+- **Entitlement**: `allow_ai_action:summarize`
+
+**Request Body**
+
+```json
+{
+  "text_input": "<string>", // The text to summarize or new transcripts
+  "previous_summary": "<string>" // Optional: The previous summary to refine
+}
+```
+
+**Success Response (200 OK)**
+
+```json
+{
+  "summary": "<string>", // The new or updated summary
+  "usage": {
+    "input_tokens": "integer",
+    "output_tokens": "integer"
+  }
+}
+```
+
+## 4. Admin API
+
+The Admin API provides endpoints for managing the platform. Access is restricted to users with the `admin` role.
+
+- **Function Name**: `admin-api`
+- **Base Path**: `/admin-api`
+
+### 4.1. Get All Users
+
+- **Endpoint**: `/users`
+- **Method**: `GET`
+- **Description**: Retrieves a list of all users and their assigned roles.
+- **Entitlement**: `admin:read_users`
+
+**Success Response (200 OK)**
+
+```json
+{
+  "users": [
     {
-      "role": "user",
-      "content": "<string>"
-    },
-    {
-      "role": "assistant",
-      "content": "<string>"
+      "id": "uuid",
+      "role": "string",
+      "email": "string"
     }
   ]
 }
 ```
 
-### Success Response (200 OK)
+### 4.2. Update User Role
 
-```json
-{
-  "recommendation": "<string>"
-}
-```
-
----
-
-## 4. Screenshot Analysis
-
-- **Function Name**: `ai-action-screenshot-analysis`
+- **Endpoint**: `/users/{id}/role`
 - **Method**: `POST`
-- **Description**: Receives a text prompt and a base64-encoded screenshot for analysis.
+- **Description**: Updates the role for a specific user.
+- **Entitlement**: `admin:update_user_role`
 
-### Request Body
+**Request Body**
 
 ```json
 {
-  "prompt": "<string>",
-  "screenshot": "<string (base64)>"
+  "role": "<string>" // The new role name (e.g., \'pro\')
 }
 ```
 
-### Success Response (200 OK)
+**Success Response (200 OK)**
 
 ```json
 {
-  "analysis": "<string>"
+  "success": true,
+  "user": {
+    "id": "uuid",
+    "role": "string",
+    // ... other profile fields
+  }
 }
+```
+
+### 4.3. Get User Usage
+
+- **Endpoint**: `/users/{id}/usage`
+- **Method**: `GET`
+- **Description**: Fetches the action audit log for a specific user.
+- **Entitlement**: `admin:read_users`
+
+**Success Response (200 OK)**
+
+```json
+{
+  "logs": [
+    {
+      "id": "bigint",
+      "user_id": "uuid",
+      "action": "string",
+      "timestamp": "timestamptz",
+      "metadata": {}
+    }
+  ]
+}
+```
+
+## 5. Public Functions
+
+### 5.1. Add to Waitlist
+
+This function is publicly accessible and does not require authentication.
+
+- **Function Name**: `add-to-waitlist`
+- **Method**: `POST`
+- **Description**: Adds a user's email to the waitlist and sends a confirmation email.
+
+**Request Body**
+
+```json
+{
+  "email": "<string>",
+  "locale": "<string>" // e.g., \'en\', \'zh-TW\'
+}
+```
+
+**Success Response (200 OK)**
+
+```json
+{
+  "message": "Successfully added to waitlist",
+  "data": [ /* ... */ ],
+  "emailStatus": { /* ... */ }
+}
+```
+
+**Error Responses**
+- `400 Bad Request`: Invalid email format.
+- `409 Conflict`: Email is already on the waitlist.
 ```
