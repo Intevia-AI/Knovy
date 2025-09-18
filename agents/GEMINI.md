@@ -101,39 +101,6 @@ You MUST use these specific agents for their designated tasks.
   - Remember to force stop the in-progress testing after 30 seconds test by adding `timeout 30` before the test command.
   - Do not update the code just to pass the tests.
 
-## Agent Logging Workflow
-
-To ensure transparency and effective collaboration, all agents MUST follow this logging workflow for every assigned task.
-
-### 1. Task Creation
-
-Before beginning work on a task, you must create a task log.
-
-1.  **Create a new file** in the `@agent_logs/tasks/` directory.
-2.  **Name the file** using a numeric prefix and a short description (e.g., `0001-TASK-secure-proxy-setup.md`).
-3.  **Use the template**: Copy the content from `@agent_logs/task-template.md` into your new file.
-4.  **Fill out the template**: Complete the `Goal`, `Context`, and `Plan` sections.
-
-### 2. Result Reporting
-
-After you have successfully completed a task, you must create a result log.
-
-1.  **Create a new file** in the `@agent_logs/results/` directory.
-2.  **Name the file** using the same numeric prefix and a `RESULT` keyword (e.g., `0001-RESULT-secure-proxy-setup.md`).
-3.  **Document the results**: In this file, provide a clear summary of:
-    - **What was accomplished**: A brief description of the completed work.
-    - **Files Modified**: A list of all files that were created, modified, or deleted.
-    - **Issues Encountered**: A description of any problems you faced during the task.
-
-### 3. Troubleshooting Log
-
-If you encounter a significant, non-obvious issue that requires a specific workaround or solution, you must document it to help other agents, and vice versa you can also use the troubleshooting log to help yourself.
-
-1.  **Open** the `@agent_logs/troubleshooting.md` file.
-2.  **Add a new entry**: Copy the template from the top of the file.
-3.  **Fill out the entry**: Detail the `Issue`, the `Context` in which it occurred, and the `Solution` or `Workaround` you discovered.
-4.  **NOTE**: Add the ticket/task number that you were working on in the `Issue` section, so other agents can find the relevant log.
-
 ## High-Level Architecture
 
 The project follows a hierarchical structure as defined in the **active plan file**. Refer to the architecture diagrams there for a visual overview.
@@ -141,7 +108,6 @@ The project follows a hierarchical structure as defined in the **active plan fil
 ## Important Files and Patterns
 
 - `plans/`: Directory containing all project and development plans.
-- `agent_logs/`: Directory for all agent task, result, and troubleshooting logs.
 - `agents/core/code-archaeologist.md`: Guide for creating code archaeology.
 - `agents/core/code-reviewer.md`: Guide for reviewing code.
 - `agents/core/documentation-specialist.md`: Guide for creating documentation.
