@@ -227,7 +227,9 @@ export function SettingsPanel() {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 20 }}
           transition={{ duration: 0.2 }}
-          className="glass-popover p-3 space-y-3 h-screen w-full overflow-y-auto relative select-none"
+          className={`glass-popover p-3 space-y-3 h-screen w-full relative select-none ${
+            showRestartConfirm ? 'overflow-hidden' : 'overflow-y-auto'
+          }`}
         >
           <AnimatePresence>
             {showRestartConfirm && (
