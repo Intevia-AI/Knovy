@@ -227,7 +227,7 @@ export function SettingsPanel() {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 20 }}
           transition={{ duration: 0.2 }}
-          className="glass-popover p-3 space-y-3 h-screen w-full overflow-y-auto relative"
+          className="glass-popover p-3 space-y-3 h-screen w-full overflow-y-auto relative select-none"
         >
           <AnimatePresence>
             {showRestartConfirm && (
@@ -242,7 +242,7 @@ export function SettingsPanel() {
                   animate={{ scale: 1, opacity: 1 }}
                   exit={{ scale: 0.95, opacity: 0 }}
                   transition={{ duration: 0.2 }}
-                  className="bg-background/50 p-4 rounded-lg border border-border/50 max-w-xs text-center space-y-3 shadow-lg"
+                  className="bg-background/50 p-4 rounded-lg border border-border/50 text-center space-y-3"
                 >
                   <h3 className="font-semibold text-foreground">{t('restartSessionTitle')}</h3>
                   <p className="text-sm text-muted-foreground">{t('restartSessionMessage')}</p>
@@ -257,167 +257,199 @@ export function SettingsPanel() {
             )}
           </AnimatePresence>
 
-          {/* History Button */}
-          <Button
-            variant="default"
-            size="sm"
-            onClick={onShowHistory}
-            className="w-full h-9 text-sm mt-2"
-          >
-            <History className="mr-2 h-4 w-4" />
-            {t('viewHistory')}
-          </Button>
-
-          {/* Language Selection */}
-          <div className="space-y-1.5 p-2 rounded-lg border border-border/50 bg-background/30">
-            <div className="flex items-center space-x-2">
-              <LanguagesIcon className="h-3 w-3 text-muted-foreground" />
-              <h3 className="text-sm font-medium text-foreground">{t('languageSettings')}</h3>
-            </div>
-            <div className="flex items-center justify-between">
-              <Label className="text-sm text-muted-foreground">{t('selectOutputLanguage')}</Label>
-              <Select value={language || 'zh-TW'} onValueChange={handleLanguageChange}>
-                <SelectTrigger className="w-[120px] h-7 text-sm px-2 bg-muted/95 border-border/50">
-                  <SelectValue placeholder={t('languageSelectPlaceholder')} />
-                </SelectTrigger>
-                <SelectContent className="bg-muted/95 border-border/50">
-                  {languages.map((lang) => (
-                    <SelectItem key={lang.code} value={lang.code} className="text-sm">
-                      {lang.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {/* Display Selection */}
-          <div className="space-y-1.5 p-2 rounded-lg border border-border/50 bg-background/30">
-            <div className="flex items-center space-x-2">
-              <MonitorIcon className="h-3 w-3 text-muted-foreground" />
-              <h3 className="text-sm font-medium text-foreground">{t('displaySettingsTitle')}</h3>
-            </div>
-            <div className="flex items-center justify-between">
-              <Label className="text-sm text-muted-foreground">{t('showOnLabel')}</Label>
-              <Select value={selectedDisplayId?.toString()} onValueChange={handleDisplayChange}>
-                <SelectTrigger className="w-[120px] h-7 text-sm px-2 bg-muted/95 border-border/50">
-                  <SelectValue placeholder={t('defaultDisplayLabel')} />
-                </SelectTrigger>
-                <SelectContent className="bg-muted/95 border-border/50">
-                  {displays.map((display, index) => (
-                    <SelectItem key={display.id} value={display.id.toString()}>
-                      {`${t('displayLabelPrefix')} ${index + 1}${display.primary ? ` ${t('primaryDisplaySuffix')}` : ''}`}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {/* App Visibility Toggle */}
-          <div className="space-y-1.5 p-2 rounded-lg border border-border/50 bg-background/30">
-            <div className="flex items-center space-x-2">
-              <ShieldCheck className="h-3 w-3 text-muted-foreground" />
-              <h3 className="text-sm font-medium text-foreground">{t('toggleAppVisibility')}</h3>
-            </div>
-            <div className="flex items-center justify-between">
-              <Label htmlFor="content-protection-switch" className="text-sm text-muted-foreground">
-                {t('toggleAppVisibilitySubtitle')}
-              </Label>
-              <Switch
-                id="content-protection-switch"
-                checked={isContentProtectionEnabled}
-                onCheckedChange={() => {
-                  setIsContentProtectionEnabled(!isContentProtectionEnabled)
-                  window.electronAPI.toggleContentProtection()
-                }}
-              />
-            </div>
-          </div>
-
-          {/* Usage Quotas Section */}
-          <div className="space-y-1.5 p-2 rounded-lg border border-border/50 bg-background/30">
-            <div className="flex items-center space-x-2">
-              <Gauge className="h-3 w-3 text-muted-foreground" />
-              <h3 className="text-sm font-medium text-foreground">Daily Quotas</h3>
-            </div>
-            <div className="space-y-2 text-sm pt-1">
-              {quotas.length > 0 ? (
-                quotas.map(([metric, data]) => (
-                  <div key={metric} className="flex justify-between items-center">
-                    <span className="text-muted-foreground">{formatQuotaName(metric)}</span>
-                    <span className="font-mono text-foreground">
-                      {data.limit === -1 ? '∞' : `${Math.round(data.used)} / ${data.limit}`}
-                    </span>
-                  </div>
-                ))
-              ) : (
-                <p className="text-muted-foreground text-xs text-center">
-                  Usage data not available.
-                </p>
-              )}
-            </div>
-          </div>
-
-          {/* Custom Prompt Section */}
-          {/* <div className="space-y-1.5 p-2 rounded-lg border border-border/50 bg-background/30">
-            <div className="flex items-center space-x-2">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="text-muted-foreground"
+          {/* General Section */}
+          <div>
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-2 pt-2">
+              {t('generalSection')}
+            </h3>
+            <hr className="m-2" />
+            <div className="space-y-2 m-2">
+              <Button
+                variant="default"
+                size="sm"
+                onClick={onShowHistory}
+                className="w-full h-9 text-sm m-2"
               >
-                <path d="M12 20h9" />
-                <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
-              </svg>
-              <h3 className="text-sm font-medium text-foreground">{t('customPromptTitle')}</h3>
+                <History className="mr-2 h-4 w-4" />
+                {t('viewHistory')}
+              </Button>
             </div>
-            <div className="space-y-1">
-              <Textarea
-                id="custom-prompt"
-                placeholder={t('customPromptPlaceholder')}
-                value={draftPrompt}
-                onChange={(e) => setDraftPrompt(e.target.value)}
-                onKeyDown={handleCustomPromptConfirm}
-                className="h-24 text-sm border-border/50 bg-muted/95 focus-visible:ring-0 focus-visible:border-primary focus-visible:outline-none"
-              />
-              <p className="text-[10px] text-muted-foreground">{t('customPromptHint')}</p>
+            {/* Language Selection */}
+            <hr className="m-2" />
+            <div className="space-y-2 p-2 m-2">
+              <div className="flex items-center space-x-2">
+                <LanguagesIcon className="h-3 w-3 text-muted-foreground" />
+                <h3 className="text-sm font-medium text-foreground">{t('languageSettings')}</h3>
+              </div>
+              <div className="flex items-center justify-between">
+                <Label className="text-sm text-muted-foreground">{t('selectOutputLanguage')}</Label>
+                <Select value={language || 'zh-TW'} onValueChange={handleLanguageChange}>
+                  <SelectTrigger className="w-[120px] h-7 text-sm px-2 bg-muted/95 border-border/50">
+                    <SelectValue placeholder={t('languageSelectPlaceholder')} />
+                  </SelectTrigger>
+                  <SelectContent className="bg-muted/95 border-border/50">
+                    {languages.map((lang) => (
+                      <SelectItem key={lang.code} value={lang.code} className="text-sm">
+                        {lang.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-          </div> */}
+            {/* Custom Prompt Section */}
+            {/* <hr className="m-2" />
+            <div className="space-y-2 p-2 m-2">
+              <div className="flex items-center space-x-2">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="text-muted-foreground"
+                >
+                  <path d="M12 20h9" />
+                  <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+                </svg>
+                <h3 className="text-sm font-medium text-foreground">{t('customPromptTitle')}</h3>
+              </div>
+              <div className="space-y-1">
+                <Textarea
+                  id="custom-prompt"
+                  placeholder={t('customPromptPlaceholder')}
+                  value={draftPrompt}
+                  onChange={(e) => setDraftPrompt(e.target.value)}
+                  onKeyDown={handleCustomPromptConfirm}
+                  className="h-24 text-sm border-border/50 bg-muted/95 focus-visible:ring-0 focus-visible:border-primary focus-visible:outline-none"
+                />
+                <p className="text-[10px] text-muted-foreground">{t('customPromptHint')}</p>
+              </div>
+            </div> */}
+          </div>
 
-          {/* Quit Button */}
-          <Button
-            variant="default"
-            onClick={() => window.electronAPI.quitApp()}
-            className="w-full h-9 text-sm mt-2"
-          >
-            <Power className="mr-2 h-4 w-4" />
-            {t('quitKnovy')}
-          </Button>
+          {/* Appearance Section */}
+          <div>
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-2 pt-2">
+              {t('appearanceSection')}
+            </h3>
+            {/* Display Selection */}
+            <hr className="m-2" />
+            <div className="space-y-2 p-2 m-2">
+              <div className="flex items-center space-x-2">
+                <MonitorIcon className="h-3 w-3 text-muted-foreground" />
+                <h3 className="text-sm font-medium text-foreground">{t('displaySettingsTitle')}</h3>
+              </div>
+              <div className="flex items-center justify-between">
+                <Label className="text-sm text-muted-foreground">{t('showOnLabel')}</Label>
+                <Select value={selectedDisplayId?.toString()} onValueChange={handleDisplayChange}>
+                  <SelectTrigger className="w-[120px] h-7 text-sm px-2 bg-muted/95 border-border/50">
+                    <SelectValue placeholder={t('defaultDisplayLabel')} />
+                  </SelectTrigger>
+                  <SelectContent className="bg-muted/95 border-border/50">
+                    {displays.map((display, index) => (
+                      <SelectItem key={display.id} value={display.id.toString()}>
+                        {`${t('displayLabelPrefix')} ${index + 1}${display.primary ? ` ${t('primaryDisplaySuffix')}` : ''}`}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            {/* App Visibility Toggle */}
+            <hr className="m-2" />
+            <div className="space-y-2 p-2 m-2">
+              <div className="flex items-center space-x-2">
+                <ShieldCheck className="h-3 w-3 text-muted-foreground" />
+                <h3 className="text-sm font-medium text-foreground">{t('toggleAppVisibility')}</h3>
+              </div>
+              <div className="flex items-center justify-between">
+                <Label
+                  htmlFor="content-protection-switch"
+                  className="text-sm text-muted-foreground"
+                >
+                  {t('toggleAppVisibilitySubtitle')}
+                </Label>
+                <Switch
+                  id="content-protection-switch"
+                  checked={isContentProtectionEnabled}
+                  onCheckedChange={() => {
+                    setIsContentProtectionEnabled(!isContentProtectionEnabled)
+                    window.electronAPI.toggleContentProtection()
+                  }}
+                />
+              </div>
+            </div>
+          </div>
 
-          {/* Sign Out Button */}
-          <Button
-            variant="destructive"
-            onClick={handleSignOut}
-            disabled={isSigningOut}
-            className="w-full h-9 text-sm mt-2"
-          >
-            {isSigningOut ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <>
-                <LogOut className="mr-2 h-4 w-4" />
-                {t('signOut')}
-              </>
-            )}
-          </Button>
+          {/* Account Section */}
+          <div>
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-2 pt-2">
+              {t('accountSection')}
+            </h3>
+            {/* Usage Quotas */}
+            <hr className="m-2" />
+            <div className="space-y-2 p-2 m-2">
+              <div className="flex items-center space-x-2">
+                <Gauge className="h-3 w-3 text-muted-foreground" />
+                <h3 className="text-sm font-medium text-foreground">Daily Quotas</h3>
+              </div>
+              <div className="space-y-2 text-sm pt-1">
+                {quotas.length > 0 ? (
+                  quotas.map(([metric, data]) => (
+                    <div key={metric} className="flex justify-between items-center">
+                      <span className="text-muted-foreground">{formatQuotaName(metric)}</span>
+                      <span className="font-mono text-foreground">
+                        {data.limit === -1 ? '∞' : `${Math.round(data.used)} / ${data.limit}`}
+                      </span>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-muted-foreground text-xs text-center">
+                    Usage data not available.
+                  </p>
+                )}
+              </div>
+            </div>
+            {/* Sign Out Button */}
+            <div className="space-y-2 m-2">
+              <Button
+                variant="destructive"
+                onClick={handleSignOut}
+                disabled={isSigningOut}
+                className="w-full h-9 text-sm m-2"
+              >
+                {isSigningOut ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    {t('signOut')}
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+
+          <div className="border-t border-border/50" />
+
+          {/* Quit Knovy Section */}
+          <div>
+            <div className="space-y-2 m-2">
+              <Button
+                variant="default"
+                onClick={() => window.electronAPI.quitApp()}
+                className="w-full h-9 text-sm m-2"
+              >
+                <Power className="mr-2 h-4 w-4" />
+                {t('quitKnovy')}
+              </Button>
+            </div>
+          </div>
         </motion.div>
       )}
     </AnimatePresence>

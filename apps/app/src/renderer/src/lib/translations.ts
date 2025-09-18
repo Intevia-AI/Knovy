@@ -79,7 +79,11 @@ export const translations = {
     toggleAppVisibility: 'Toggle App Visibility',
     toggleAppVisibilitySubtitle: 'Protect Knovy from being shared to meeting apps',
     quitKnovy: 'Quit Knovy',
-    cancelButton: 'Cancel'
+    cancelButton: 'Cancel',
+    // Section Titles
+    generalSection: 'General',
+    appearanceSection: 'Appearance',
+    accountSection: 'Account'
   },
   'zh-TW': {
     // Add Traditional Chinese translations here
@@ -148,7 +152,11 @@ export const translations = {
     toggleAppVisibility: '顯示/隱藏 Knovy',
     toggleAppVisibilitySubtitle: '保護 Knovy 不被截圖或錄製',
     quitKnovy: '退出 Knovy',
-    cancelButton: '取消'
+    cancelButton: '取消',
+    // Section Titles
+    generalSection: '一般',
+    appearanceSection: '外觀',
+    accountSection: '帳戶'
   }
 }
 
@@ -225,6 +233,10 @@ export type TranslationKey =
   | 'toggleAppVisibilitySubtitle'
   | 'quitKnovy'
   | 'cancelButton'
+  // Section Titles
+  | 'generalSection'
+  | 'appearanceSection'
+  | 'accountSection'
 // ... add other keys here
 
 /**
