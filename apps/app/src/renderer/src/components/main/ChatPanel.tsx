@@ -127,7 +127,7 @@ export default function ChatPanel({}: ChatPanelProps) {
                       key={m.id}
                       variants={itemVariants}
                       className={cn(
-                        'p-2 rounded-md text-sm w-fit max-w-[95%] whitespace-pre-wrap',
+                        'p-2 rounded-md text-sm w-fit max-w-[95%] whitespace-pre-wrap break-words text-pretty',
                         'bg-black/5 border border-black/10 mr-auto text-black'
                       )}
                     >
@@ -148,7 +148,7 @@ export default function ChatPanel({}: ChatPanelProps) {
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-black/50"></div>
                     </div>
                   ) : summary ? (
-                    <div className="p-2 rounded-md text-sm whitespace-pre-wrap bg-black/5 border border-black/10 text-black">
+                    <div className="p-2 rounded-md text-sm whitespace-pre-wrap break-words text-pretty bg-black/5 border border-black/10 text-black">
                       {isSummarizing && (
                         <div className="absolute top-2 right-2">
                           <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-black/50"></div>

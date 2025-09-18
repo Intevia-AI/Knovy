@@ -182,7 +182,7 @@ export default function ActionsPanel() {
                       key={m.id}
                       variants={messageItemVariants}
                       className={cn(
-                        'p-2 rounded-md text-sm w-fit max-w-[95%] whitespace-pre-wrap',
+                        'p-2 rounded-md text-sm w-fit max-w-[95%] whitespace-pre-wrap break-words text-pretty',
                         m.role === 'user'
                           ? 'bg-blue-500/10 border-blue-500/20 ml-auto text-right'
                           : 'bg-black/5 border-black/10 mr-auto text-left'
