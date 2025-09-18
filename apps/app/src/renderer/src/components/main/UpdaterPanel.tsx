@@ -2,18 +2,12 @@ import { Button } from '@/components/ui/button'
 import { useEffect, useState } from 'react'
 import { AnimatePresence, motion } from 'motion'
 
-export function UpdateNotification() {
-  const [popoverId, setPopoverId] = useState('')
+export function UpdaterPanel() {
   const [isOpen, setIsOpen] = useState(true)
+  const popoverId = 'updater'
 
   useEffect(() => {
-    // The component's ID is derived from the URL hash (e.g., #update-notification -> 'update-notification')
-    const popoverId = window.location.hash.substring(1)
-    setPopoverId(popoverId)
-
-    // Listen for the signal from the main process to prepare for closing
     const unsubscribe = window.electronAPI.on('popover:prepare-to-close', (id) => {
-      // Check if this is the popover that should be closed
       if (id === popoverId) {
         setIsOpen(false)
       }
@@ -27,19 +21,18 @@ export function UpdateNotification() {
   }, [])
 
   const handleRestart = () => {
-    if (window.electronAPI && popoverId) {
-      window.electronAPI.send('updater:quit-and-install')
-    }
+    console.log('Restarting application')
+    window.electronAPI.send('updater:quit-and-install')
   }
 
   const handleLater = () => {
-    if (window.electronAPI && popoverId) {
-      window.electronAPI.send('popover:close', popoverId)
-    }
+    console.log('Closing updater panel')
+    window.electronAPI.send('popover:close', popoverId)
   }
 
   const handleAnimationComplete = () => {
     if (!isOpen) {
+      console.log('Updater panel ready to close')
       window.electronAPI.send('popover:ready-to-close', popoverId)
     }
   }

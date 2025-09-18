@@ -5,17 +5,6 @@ import { useAuth } from './context/AuthContext.js'
 import { Loader2 } from 'lucide-react'
 import { LoginPage, Waitlist } from './components/LoginPage.js'
 import { motion, AnimatePresence } from 'motion'
-import { UpdateNotification } from './components/UpdateNotification.js'
-
-function getPopoverComponent(hash: string): JSX.Element | null {
-  switch (hash) {
-    case '#update-notification':
-      return <UpdateNotification />
-    // Other popovers would be handled here
-    default:
-      return null
-  }
-}
 
 /**
  * Main page component that serves as the entry point for the application.
@@ -33,12 +22,6 @@ export default function App() {
   const [hash] = useState(() => window.location.hash) // Get hash once
 
   const isPopover = hash.length > 1
-
-  // Handle popover routes
-  const popoverComponent = getPopoverComponent(hash)
-  if (popoverComponent) {
-    return popoverComponent
-  }
 
   useEffect(() => {
     if (isInitialLoad && !isLoading) {
@@ -78,24 +61,9 @@ export default function App() {
         console.log(message, ...args)
       })
 
-      const unsubscribeUpdate = window.electronAPI.on('updater:update-downloaded', async () => {
-        console.log('Update downloaded, creating popover.')
-        const isScreenSharing = await window.electronAPI.invoke('get-screenshare-state')
-        const width = isScreenSharing ? 440 : 360
-        window.electronAPI.invoke('popover:create', {
-          id: 'update-notification',
-          hash: 'update-notification',
-          width: width,
-          height: 50
-        })
-      })
-
       return () => {
         if (unsubscribeLog) {
           unsubscribeLog()
-        }
-        if (unsubscribeUpdate) {
-          unsubscribeUpdate()
         }
       }
     }

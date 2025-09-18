@@ -591,7 +591,9 @@ app.on('ready', async () => {
   })
 
   ipcMain.on('settings:request-screenshare-restart', () => {
-    console.log('[main/index.ts] Received request to restart screen share. Broadcasting to main window.')
+    console.log(
+      '[main/index.ts] Received request to restart screen share. Broadcasting to main window.'
+    )
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send('screenshare:restart')
     }

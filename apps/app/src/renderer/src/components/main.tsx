@@ -8,6 +8,7 @@ import ChatPanel from './main/ChatPanel'
 import ActionsPanel from './main/ActionsPanel'
 import { SettingsPanel } from './main/SettingsPanel'
 import { PreviewPanel } from './main/PreviewPanel'
+import { UpdaterPanel } from './main/UpdaterPanel'
 
 const getInitialView = () => {
   if (typeof window === 'undefined') return 'main'
@@ -17,6 +18,7 @@ const getInitialView = () => {
     case 'actions':
     case 'settings':
     case 'screen-preview':
+    case 'updater':
       return hash
     default:
       return 'main'
@@ -48,6 +50,8 @@ function AppContainer() {
       return <ActionsPanel />
     case 'settings':
       return <SettingsPanel />
+    case 'updater':
+      return <UpdaterPanel />
     default:
       return null
   }

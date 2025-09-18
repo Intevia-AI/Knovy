@@ -15,7 +15,6 @@ import RealTimeAnalysis from '../RealTimeAnalysis'
 
 export function MainController() {
   const { language } = useLanguage()
-  const { sessionProfile } = useAuth()
   const [openPanels, setOpenPanels] = useState<Set<string>>(new Set())
 
   // Electron Interactions
@@ -120,6 +119,12 @@ export function MainController() {
           hash: 'screen-preview',
           width: 440,
           height: 340
+        },
+        updater: {
+          id: 'updater',
+          hash: 'updater',
+          width: isScreenSharing ? 440 : 360,
+          height: 50
         }
       }
       const gap = 8
@@ -178,6 +183,16 @@ export function MainController() {
   )
 
   useEffect(() => {
+    const unsubscribe = window.electronAPI.on('updater:update-downloaded', () => {
+      console.log('Update downloaded, creating updater panel.')
+      handleTogglePanel('updater', { ensureOpen: true })
+    })
+    return () => {
+      if (unsubscribe) unsubscribe()
+    }
+  }, [handleTogglePanel])
+
+  useEffect(() => {
     const handleKeywordSearch = (keyword: string) => {
       console.log(
         `[MainController] Received 'keyword:search' event for "${keyword}". Ensuring actions panel is open.`
@@ -232,7 +247,6 @@ export function MainController() {
         customPrompt={customPrompt}
         language={language}
       />
-      
     </div>
   )
 }
