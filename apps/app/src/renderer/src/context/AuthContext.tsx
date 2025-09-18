@@ -39,18 +39,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true)
 
   const fetchSessionProfile = async (authToken: string) => {
+    // Popovers are identified by having a URL hash. The main window does not.
+    const isPopover = window.location.hash.length > 1
+
     try {
-      // Try to get from Electron main process first for any window
-      if (window.electronAPI) {
+      // For popovers, try to get the profile from the main process cache first.
+      // This is faster and avoids redundant API calls.
+      if (isPopover && window.electronAPI) {
         const cachedProfile = await window.electronAPI.invoke('session:get-profile')
         if (cachedProfile) {
           setSessionProfile(cachedProfile)
-          console.log('[AuthContext] Session profile loaded from main process cache.')
+          console.log('[AuthContext] Session profile for popover loaded from main process cache.')
           return
         }
       }
 
-      // If not cached, fetch from Supabase
+      // For the main window (on load/refresh) or if the cache is missed for a popover,
+      // fetch the profile directly from the Supabase function. This ensures the data is fresh.
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-session-profile`,
         {
@@ -64,7 +69,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (response.ok) {
         const profile = await response.json()
         setSessionProfile(profile)
-        // Cache the fetched profile in the main process
+        // Cache the newly fetched profile in the main process for other windows to use.
         if (window.electronAPI) {
           await window.electronAPI.invoke('session:set-profile', profile)
         }
@@ -76,7 +81,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           throw new Error(`Failed to fetch session profile: ${response.statusText}`)
         }
         setSessionProfile(null)
-        // Also clear cache if fetch fails with auth error
+        // If fetching fails (e.g., auth error), clear the cache to prevent stale data.
         if (window.electronAPI) {
           await window.electronAPI.invoke('session:clear-profile')
         }
@@ -84,7 +89,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } catch (error) {
       console.error('[AuthContext] Error fetching session profile:', error)
       setSessionProfile(null) // Clear profile on error
-      // Also clear cache on any other error
+      // Also clear the cache on any other error.
       if (window.electronAPI) {
         await window.electronAPI.invoke('session:clear-profile')
       }
