@@ -120,6 +120,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         if (window.electronAPI) {
           window.electronAPI.invoke('session:clear-profile')
         }
+        setIsLoading(false)
       }
     })
 
@@ -220,8 +221,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const signOut = async (): Promise<void> => {
     setIsLoading(true)
-    await supabase.auth.signOut()
-    // isLoading will be set to false by the onAuthStateChange listener
+    try {
+      await supabase.auth.signOut()
+      // On success, isLoading is set to false by the onAuthStateChange listener.
+    } catch (error) {
+      console.error('[AuthContext] Error during sign out:', error)
+      setIsLoading(false)
+    }
   }
 
   const hasEntitlement = (entitlement: string): boolean => {
