@@ -38,11 +38,16 @@ export function MainController() {
     const newWidth = isScreenSharing ? 440 : 360
     window.electronAPI.send('app:resize-window', { width: newWidth })
 
-    if (!isScreenSharing) {
+    if (isScreenSharing) {
+      if (openPanels.has('settings')) {
+        handleTogglePanel('settings', { ensureOpen: true })
+      }
+    } else {
       // Close all popovers when screen sharing stops
       window.electronAPI.send('popover:close-all')
       setOpenPanels(new Set())
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isScreenSharing])
 
   useEffect(() => {
@@ -84,8 +89,10 @@ export function MainController() {
         } else {
           // Opening an exclusive panel, so close ALL other panels
           for (const id of currentPanels) {
-            newPanels.delete(id)
-            window.electronAPI.send('popover:close', id)
+            if (id !== panelId) {
+              newPanels.delete(id)
+              window.electronAPI.send('popover:close', id)
+            }
           }
         }
         newPanels.add(panelId) // Add the new panel
