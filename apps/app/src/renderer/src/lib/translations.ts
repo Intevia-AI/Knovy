@@ -83,7 +83,12 @@ export const translations = {
     // Section Titles
     generalSection: 'General',
     appearanceSection: 'Appearance',
-    accountSection: 'Account'
+    accountSection: 'Account',
+    aboutSection: 'About',
+
+    // About Section
+    versionLabel: 'Version',
+    copyrightLabel: 'Copyright'
   },
   'zh-TW': {
     // Add Traditional Chinese translations here
@@ -156,7 +161,12 @@ export const translations = {
     // Section Titles
     generalSection: '一般',
     appearanceSection: '外觀',
-    accountSection: '帳戶'
+    accountSection: '帳戶',
+    aboutSection: '關於',
+
+    // About Section
+    versionLabel: '版本',
+    copyrightLabel: '版權'
   }
 }
 
@@ -237,6 +247,9 @@ export type TranslationKey =
   | 'generalSection'
   | 'appearanceSection'
   | 'accountSection'
+  | 'aboutSection'
+  | 'versionLabel'
+  | 'copyrightLabel'
 // ... add other keys here
 
 /**

@@ -542,6 +542,10 @@ app.on('ready', async () => {
     return screen.getAllDisplays()
   })
 
+  ipcMain.handle('electronAPI:getAppVersion', () => {
+    return app.getVersion()
+  })
+
   ipcMain.on('app:set-always-on-top', (event, { alwaysOnTop }) => {
     if (mainWindow) {
       mainWindow.setAlwaysOnTop(alwaysOnTop)

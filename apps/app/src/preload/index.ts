@@ -24,6 +24,8 @@ const api = {
 
   getInitialAlwaysOnTop: () => ipcRenderer.invoke('electronAPI:getInitialAlwaysOnTop'),
 
+  getAppVersion: () => ipcRenderer.invoke('electronAPI:getAppVersion'),
+
   getSettings: () => ipcRenderer.invoke('electronAPI:getSettings'),
 
   getMainWindowBounds: () => ipcRenderer.invoke('electronAPI:getMainWindowBounds'),
@@ -142,6 +144,7 @@ const api = {
       'session:get-profile',
       'session:set-profile',
       'session:clear-profile',
+      'electronAPI:getAppVersion',
       'popover:consume-pending-keyword',
       'electronAPI:getActiveScreenSourceId',
       'electronAPI:getDisplays'

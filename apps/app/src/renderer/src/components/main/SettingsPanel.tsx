@@ -43,6 +43,7 @@ export function SettingsPanel() {
   const [pendingDisplayId, setPendingDisplayId] = useState<number | null>(null)
   const [liveDuration, setLiveDuration] = useState(0)
   const [isContentProtectionEnabled, setIsContentProtectionEnabled] = useState(false)
+  const [appVersion, setAppVersion] = useState('')
   const popoverId = 'settings'
 
   const formatQuotaName = (metric: string) => {
@@ -128,6 +129,9 @@ export function SettingsPanel() {
           if (settings.contentProtection) {
             setIsContentProtectionEnabled(settings.contentProtection)
           }
+
+          const version = await window.electronAPI.getAppVersion()
+          setAppVersion(version)
 
           return () => unsubscribeShare()
         } catch (error) {
@@ -437,7 +441,7 @@ export function SettingsPanel() {
             </div>
           </div>
 
-          <div className="border-t border-border/50" />
+          <hr className="border-border/50" />
 
           {/* Quit Knovy Section */}
           <div>
@@ -450,6 +454,26 @@ export function SettingsPanel() {
                 <Power className="mr-2 h-4 w-4" />
                 {t('quitKnovy')}
               </Button>
+            </div>
+          </div>
+
+          <hr className="border-border/50" />
+
+          {/* About Section */}
+          <div>
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-2 pt-2">
+              {t('aboutSection')}
+            </h3>
+            <hr className="m-2" />
+            <div className="space-y-1 p-2 m-2 text-sm text-muted-foreground">
+              <div className="flex justify-between">
+                <span>{t('versionLabel')}</span>
+                <span>v{appVersion}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>{t('copyrightLabel')}</span>
+                <span>© {new Date().getFullYear()} Intevia AI</span>
+              </div>
             </div>
           </div>
         </motion.div>
