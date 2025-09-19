@@ -1,13 +1,14 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { withEntitlements } from "../_shared/rbac.ts";
 import { corsHeaders } from "../_shared/cors.ts";
+import { PROMPTS, getLanguage } from "../_shared/prompts.ts";
 
 // The main logic of the Edge Function, now wrapped with RBAC
 const handleRequest = async (req: Request, profile: Record<string, any>) => {
   try {
     console.log(`[ai-action-keyword-search] function invoked at: ${new Date().toISOString()}`);
 
-    const { text_input } = await req.json();
+    const { text_input, language } = await req.json();
     if (!text_input) {
       return new Response(JSON.stringify({ error: "Text is required" }), {
         status: 400,
@@ -20,7 +21,9 @@ const handleRequest = async (req: Request, profile: Record<string, any>) => {
       throw new Error("GOOGLE_GENERATIVE_AI_API_KEY is not set");
     }
 
-    const prompt = `Please provide a brief and concise summary of the term: "${text_input}". The summary should be informative and directly related to the term.`;
+    const lang = getLanguage(language);
+    const prompt = PROMPTS.keywordSearch[lang].base(text_input);
+
     const contents = [{ role: "user", parts: [{ text: prompt }] }];
     const postData = JSON.stringify({ contents });
 
