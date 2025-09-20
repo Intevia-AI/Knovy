@@ -90,7 +90,7 @@ export default function ChatPanel({}: ChatPanelProps) {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 20 }}
           transition={{ duration: 0.2 }}
-          className="flex flex-col h-screen w-full glass-popover p-1"
+          className="flex flex-col h-screen w-full glass-popover p-2"
         >
           <div className="flex-none p-1 flex justify-center">
             <div className="bg-black/10 rounded-lg p-1 gap-1 flex text-sm">
@@ -112,7 +112,10 @@ export default function ChatPanel({}: ChatPanelProps) {
               </Button>
             </div>
           </div>
-          <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-2 space-y-2">
+          <div
+            ref={messagesContainerRef}
+            className="flex-1 rounded-lg overflow-y-auto p-2 space-y-2 relative [mask-image:linear-gradient(to_bottom,black_95%,transparent_100%)]"
+          >
             <AnimatePresence mode="wait">
               {activeTab === 'transcription' && (
                 <motion.div

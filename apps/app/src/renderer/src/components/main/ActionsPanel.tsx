@@ -175,7 +175,7 @@ export default function ActionsPanel() {
                   variants={messageContainerVariants}
                   initial="hidden"
                   animate="visible"
-                  className="flex-grow overflow-y-auto p-2 space-y-4"
+                  className="flex-grow overflow-y-auto p-2 space-y-4 [mask-image:linear-gradient(to_bottom,black_95%,transparent_100%)]"
                 >
                   {aiMessages.map((m) => (
                     <motion.div
