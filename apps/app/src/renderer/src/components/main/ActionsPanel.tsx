@@ -14,6 +14,7 @@ import { motion, AnimatePresence } from 'motion'
 import { AnimatedText } from '@/components/ui/AnimatedText'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/context/AuthContext'
+import { Markdown } from '@/components/markdown'
 
 export default function ActionsPanel() {
   const { t } = useI18n()
@@ -188,7 +189,7 @@ export default function ActionsPanel() {
                           : 'bg-black/5 border-black/10 mr-auto text-left'
                       )}
                     >
-                      {m.role === 'assistant' ? <AnimatedText text={m.content} /> : m.content}
+                      {m.role === 'assistant' ? <Markdown>{m.content}</Markdown> : m.content}
                     </motion.div>
                   ))}
                   {isLoading && (

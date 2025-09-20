@@ -4,7 +4,6 @@ import { cn } from '@/lib/utils'
 import { useAIInteraction } from '@/hooks/useAIInteraction'
 import { Button } from '@/components/ui/button'
 import { motion, AnimatePresence } from 'motion'
-import { AnimatedText } from '@/components/ui/AnimatedText'
 
 interface ChatPanelProps {}
 
@@ -157,7 +156,7 @@ export default function ChatPanel({}: ChatPanelProps) {
                           <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-black/50"></div>
                         </div>
                       )}
-                      <AnimatedText text={summary} />
+                      <Markdown>{summary}</Markdown>
                     </div>
                   ) : (
                     <div className="text-center text-sm text-gray-500">No summary available.</div>
