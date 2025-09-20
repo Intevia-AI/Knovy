@@ -12,6 +12,7 @@ export default function ChatPanel({}: ChatPanelProps) {
   const { transcriptions, aiMessages, sendContextToAI, isLoading, isSummarizing } =
     useAIInteraction()
   const messagesContainerRef = useRef<HTMLDivElement>(null)
+  const messagesEndRef = useRef<HTMLDivElement>(null)
   const [isOpen, setIsOpen] = useState(true)
   const popoverId = 'transcriptions'
 
@@ -20,6 +21,12 @@ export default function ChatPanel({}: ChatPanelProps) {
       window.electronAPI.send('keyword:click', keyword)
     }
   }
+
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' })
+    }
+  }, [transcriptions, isLoading])
 
   useEffect(() => {
     const unsubscribe = window.electronAPI.on('popover:prepare-to-close', (id) => {
@@ -136,6 +143,7 @@ export default function ChatPanel({}: ChatPanelProps) {
                       <Markdown onKeywordClick={handleKeywordClick}>{m.content}</Markdown>
                     </motion.div>
                   ))}
+                  <div ref={messagesEndRef} />
                 </motion.div>
               )}
               {activeTab === 'summary' && (

@@ -11,7 +11,6 @@ import {
 import { useI18n } from '@/hooks/useI18n'
 import { useAIInteraction } from '@/hooks/useAIInteraction'
 import { motion, AnimatePresence } from 'motion'
-import { AnimatedText } from '@/components/ui/AnimatedText'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/context/AuthContext'
 import { Markdown } from '@/components/markdown'
@@ -26,6 +25,13 @@ export default function ActionsPanel() {
   const [isOpen, setIsOpen] = useState(true)
   const popoverId = 'actions'
   const lastProcessedKeyword = useRef<string | null>(null)
+  const messagesEndRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' })
+    }
+  }, [aiMessages, isLoading])
 
   useEffect(() => {
     const unsubscribe = window.electronAPI.on('popover:prepare-to-close', (id) => {
@@ -197,6 +203,7 @@ export default function ActionsPanel() {
                       Loading...
                     </motion.div>
                   )}
+                  <div ref={messagesEndRef} />
                 </motion.div>
               </motion.div>
             ) : (
