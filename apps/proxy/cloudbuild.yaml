@@ -1,0 +1,19 @@
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'gcr.io/$PROJECT_ID/intevia-proxy', '.']
+    dir: 'apps/proxy'
+  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
+    entrypoint: "bash"
+    args:
+      - "-c"
+      - |
+        gcloud run deploy intevia-proxy \
+          --image=gcr.io/$PROJECT_ID/intevia-proxy \
+          --region=asia-east1 \
+          --platform=managed \
+          --port=4567 \
+          --allow-unauthenticated \
+          --set-secrets="GOOGLE_GENERATIVE_AI_API_KEY=intevia-google-ai-key:latest" \
+          --timeout=3600
+options:
+  logging: CLOUD_LOGGING_ONLY
