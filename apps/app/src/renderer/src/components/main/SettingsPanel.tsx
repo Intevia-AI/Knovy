@@ -257,7 +257,7 @@ export function SettingsPanel() {
               {t('generalSection')}
             </h3>
             <hr className="m-2" />
-            <div className="space-y-2 m-2">
+            <div className="space-y-2 m-2 flex items-center justify-between">
               <Button
                 variant="default"
                 size="sm"
@@ -410,7 +410,7 @@ export function SettingsPanel() {
               </div>
             </div>
             {/* Sign Out Button */}
-            <div className="space-y-2 m-2">
+            <div className="space-y-2 m-2 flex items-center justify-between">
               <Button
                 variant="destructive"
                 onClick={handleSignOut}
@@ -433,7 +433,7 @@ export function SettingsPanel() {
 
           {/* Quit Knovy Section */}
           <div>
-            <div className="space-y-2 m-2">
+            <div className="space-y-2 m-2 flex items-center justify-between">
               <Button
                 variant="default"
                 onClick={() => {
