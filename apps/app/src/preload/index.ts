@@ -80,7 +80,8 @@ const api = {
       'keyword:search',
       'screenshare:source-changed',
       'app:execute-graceful-stop',
-      'session:duration-update'
+      'session:duration-update',
+      'settings:changed'
     ]
     if (validChannels.includes(channel)) {
       const subscription = (event, ...args) => callback(...args)

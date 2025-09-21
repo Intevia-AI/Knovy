@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { useEffect, useRef } from 'react'
 import { GeminiClient } from '@/lib/geminiClient.js'
 
 interface RealTimeAnalysisProps {
@@ -18,174 +18,147 @@ export default function RealTimeAnalysis({
   customPrompt,
   language
 }: RealTimeAnalysisProps) {
-  const geminiClientRef = useRef<GeminiClient | null>(null)
-  const audioContextRef = useRef<AudioContext | null>(null)
-  const audioWorkletNodeRef = useRef<AudioWorkletNode | null>(null)
-  const mediaStreamRef = useRef<MediaStream | null>(null)
-  const systemAudioSourceRef = useRef<MediaStreamAudioSourceNode | null>(null)
-  const shouldSendAudioRef = useRef(false)
   const textBufferRef = useRef('')
 
-  const setupSystemAudioSource = (stream: MediaStream) => {
-    if (!audioContextRef.current || !audioWorkletNodeRef.current) {
-      console.error('[RealTimeAnalysis] AudioContext or WorkletNode not initialized')
+  useEffect(() => {
+    if (!isScreenSharing) {
       return
     }
 
-    if (systemAudioSourceRef.current) {
-      systemAudioSourceRef.current.disconnect()
-      systemAudioSourceRef.current = null
-    }
+    let geminiClient: GeminiClient | null = null
+    let audioContext: AudioContext | null = null
+    let audioWorkletNode: AudioWorkletNode | null = null
+    let mediaStream: MediaStream | null = null
+    let systemAudioSource: MediaStreamAudioSourceNode | null = null
+    let shouldSendAudio = false
 
-    try {
-      const source = audioContextRef.current.createMediaStreamSource(stream)
-      source.connect(audioWorkletNodeRef.current)
-      systemAudioSourceRef.current = source
-      console.log('[RealTimeAnalysis] System audio source connected')
-    } catch (error) {
-      console.error('[RealTimeAnalysis] Error setting up system audio source:', error)
-    }
-  }
+    const startAudioProcessing = async () => {
+      console.log('[RealTimeAnalysis] Starting audio processing with language:', language)
 
-  const startAudioProcessing = useCallback(async () => {
-    console.log('[RealTimeAnalysis] Starting audio processing...')
+      geminiClient = new GeminiClient(
+        (text) => {
+          // onMessage
+          textBufferRef.current += text
 
-    geminiClientRef.current = new GeminiClient(
-      (text) => {
-        // onMessage
-        textBufferRef.current += text
+          if (
+            textBufferRef.current.includes('TRANSCRIPTION:') &&
+            textBufferRef.current.includes('KEYWORDS:')
+          ) {
+            const transcriptionMatch = textBufferRef.current.match(
+              /TRANSCRIPTION: (.*?)(?:\n|$|KEYWORDS:)/s
+            )
+            const keywordsMatch = textBufferRef.current.match(/KEYWORDS: (.*?)(?:\n|$)/s)
 
-        if (
-          textBufferRef.current.includes('TRANSCRIPTION:') &&
-          textBufferRef.current.includes('KEYWORDS:')
-        ) {
-          const transcriptionMatch = textBufferRef.current.match(
-            /TRANSCRIPTION: (.*?)(?:\n|$|KEYWORDS:)/s
-          )
-          const keywordsMatch = textBufferRef.current.match(/KEYWORDS: (.*?)(?:\n|$)/s)
+            let transcription = ''
+            if (transcriptionMatch && transcriptionMatch[1]) {
+              transcription = transcriptionMatch[1]
+                .replace(/TRANSCRIPTION:\s*/gi, '')
+                .replace(/search web/g, '')
+                .replace(/\s+/g, ' ')
+                .trim()
+            }
 
-          let transcription = ''
-          if (transcriptionMatch && transcriptionMatch[1]) {
-            transcription = transcriptionMatch[1]
-              .replace(/TRANSCRIPTION:\s*/gi, '')
-              .replace(/search web/g, '')
-              .replace(/\s+/g, ' ')
-              .trim()
+            let keywords: string[] = []
+            if (keywordsMatch && keywordsMatch[1]) {
+              const keywordsStr = keywordsMatch[1].trim()
+              if (keywordsStr) {
+                keywords = keywordsStr
+                  .split(',')
+                  .map((k) => k.trim())
+                  .filter((k) => k)
+              }
+            }
+
+            if (transcription && onTextResponse) {
+              let highlightedTranscription = transcription
+              if (keywords.length > 0) {
+                const regex = new RegExp(`(${keywords.join('|')})`, 'gi')
+                highlightedTranscription = transcription.replace(regex, '`$1`')
+              }
+              onTextResponse(highlightedTranscription, false)
+            }
+
+            textBufferRef.current = ''
           }
+        },
+        () => {
+          // onSetupComplete
+          console.log('[RealTimeAnalysis] WebSocket setup complete')
+          shouldSendAudio = true
+        },
+        () => {}, // onPlayingStateChange
+        () => {}, // onAudioLevelChange
+        () => {}, // onTranscription
+        'transcription', // mode
+        customPrompt,
+        language
+      )
 
-          let keywords: string[] = []
-          if (keywordsMatch && keywordsMatch[1]) {
-            const keywordsStr = keywordsMatch[1].trim()
-            if (keywordsStr) {
-              keywords = keywordsStr
-                .split(',')
-                .map((k) => k.trim())
-                .filter((k) => k)
+      await geminiClient.connect()
+
+      try {
+        audioContext = new AudioContext({ sampleRate: 16000 })
+        await audioContext.audioWorklet.addModule('worklets/audio-processor.js')
+
+        audioWorkletNode = new AudioWorkletNode(audioContext, 'audio-processor', {
+          processorOptions: {
+            bufferSize: 8192
+          }
+        })
+
+        audioWorkletNode.port.onmessage = (event) => {
+          const { pcmData } = event.data
+          if (geminiClient && shouldSendAudio) {
+            try {
+              const pcmArray = new Uint8Array(pcmData)
+              const b64Data = btoa(String.fromCharCode.apply(null, Array.from(pcmArray)))
+              geminiClient.sendMediaChunk(b64Data, 'audio/pcm')
+            } catch (error) {
+              console.error('[RealTimeAnalysis] Error sending audio chunk:', error)
             }
           }
+        }
 
-          if (transcription && onTextResponse) {
-            let highlightedTranscription = transcription
-            if (keywords.length > 0) {
-              // Create a regex that matches any of the keywords, case-insensitively
-              const regex = new RegExp(`(${keywords.join('|')})`, 'gi')
-              highlightedTranscription = transcription.replace(regex, '`$1`')
-            }
-            onTextResponse(highlightedTranscription, false) // Assume not turn complete
+        mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true })
+        const micSource = audioContext.createMediaStreamSource(mediaStream)
+        micSource.connect(audioWorkletNode)
+
+        if (systemAudioStream && audioContext) {
+          if (systemAudioSource) {
+            systemAudioSource.disconnect()
           }
-
-          textBufferRef.current = ''
+          const source = audioContext.createMediaStreamSource(systemAudioStream)
+          source.connect(audioWorkletNode)
+          systemAudioSource = source
+          console.log('[RealTimeAnalysis] System audio source connected')
         }
-      },
-      () => {
-        // onSetupComplete
-        console.log('[RealTimeAnalysis] WebSocket setup complete')
-        shouldSendAudioRef.current = true
-      },
-      () => {}, // onPlayingStateChange
-      () => {}, // onAudioLevelChange
-      () => {
-        // onTranscription (This is the one we care about for subtitles)
-        // Logic moved to onMessage
-      },
-      'transcription', // mode
-      customPrompt,
-      language
-    )
-
-    await geminiClientRef.current.connect()
-
-    try {
-      audioContextRef.current = new AudioContext({ sampleRate: 16000 })
-      await audioContextRef.current.audioWorklet.addModule('worklets/audio-processor.js')
-
-      const audioWorkletNode = new AudioWorkletNode(audioContextRef.current, 'audio-processor', {
-        processorOptions: {
-          bufferSize: 8192
-        }
-      })
-      audioWorkletNodeRef.current = audioWorkletNode
-
-      audioWorkletNode.port.onmessage = (event) => {
-        const { pcmData } = event.data
-        // console.log("[RealTimeAnalysis] Received data from AudioWorkletNode. PCM data size:", pcmData.byteLength); // New log
-        if (geminiClientRef.current && shouldSendAudioRef.current) {
-          try {
-            const pcmArray = new Uint8Array(pcmData)
-            // console.log("[RealTimeAnalysis] Sending PCM data chunk, size:", pcmArray.length);
-            const b64Data = btoa(String.fromCharCode.apply(null, Array.from(pcmArray)))
-            geminiClientRef.current.sendMediaChunk(b64Data, 'audio/pcm')
-          } catch (error) {
-            console.error('[RealTimeAnalysis] Error sending audio chunk:', error)
-          }
-        }
+      } catch (error) {
+        console.error('[RealTimeAnalysis] Error starting audio processing:', error)
       }
-
-      const micStream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      mediaStreamRef.current = micStream
-      const micSource = audioContextRef.current.createMediaStreamSource(micStream)
-      micSource.connect(audioWorkletNode)
-
-      if (systemAudioStream) {
-        setupSystemAudioSource(systemAudioStream)
-      }
-    } catch (error) {
-      console.error('[RealTimeAnalysis] Error starting audio processing:', error)
     }
-  }, [systemAudioStream, customPrompt, language, onTextResponse])
 
-
-  const stopAudioProcessing = useCallback(() => {
-    console.log('[RealTimeAnalysis] Stopping audio processing...')
-    shouldSendAudioRef.current = false
-
-    geminiClientRef.current?.disconnect()
-    geminiClientRef.current = null
-
-    mediaStreamRef.current?.getTracks().forEach((track) => track.stop())
-    mediaStreamRef.current = null
-
-    systemAudioSourceRef.current?.disconnect()
-    systemAudioSourceRef.current = null
-
-    audioWorkletNodeRef.current?.disconnect()
-    audioWorkletNodeRef.current = null
-
-    audioContextRef.current?.close().catch(console.error)
-    audioContextRef.current = null
-  }, [])
-
-  useEffect(() => {
-    if (isScreenSharing) {
-      startAudioProcessing()
-    } else {
-      stopAudioProcessing()
-    }
+    startAudioProcessing()
 
     return () => {
-      stopAudioProcessing()
-    }
-  }, [isScreenSharing, startAudioProcessing, stopAudioProcessing])
+      console.log('[RealTimeAnalysis] Stopping audio processing...')
+      shouldSendAudio = false
 
-  return null // This component does not render anything
+      geminiClient?.disconnect()
+      geminiClient = null
+
+      mediaStream?.getTracks().forEach((track) => track.stop())
+      mediaStream = null
+
+      systemAudioSource?.disconnect()
+      systemAudioSource = null
+
+      audioWorkletNode?.disconnect()
+      audioWorkletNode = null
+
+      audioContext?.close().catch(console.error)
+      audioContext = null
+    }
+  }, [isScreenSharing, language, customPrompt, systemAudioStream, onTextResponse])
+
+  return null
 }

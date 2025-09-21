@@ -561,6 +561,14 @@ app.on('ready', async () => {
     const currentSettings = await loadSettings()
     const newSettings = { ...currentSettings, ...settingsToUpdate }
     await saveSettings(newSettings)
+
+    // Broadcast the settings change to all windows
+    for (const win of BrowserWindow.getAllWindows()) {
+      if (!win.isDestroyed()) {
+        win.webContents.send('settings:changed', newSettings)
+      }
+    }
+
     return newSettings
   })
 

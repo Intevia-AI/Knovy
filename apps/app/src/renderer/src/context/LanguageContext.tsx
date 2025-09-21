@@ -41,7 +41,7 @@ export const LanguageProvider: React.FC<{ children: ReactNode }> = ({ children }
   /** @type {boolean} Loading state while fetching initial language settings */
   const [isLoading, setIsLoading] = useState(true)
 
-  // Load settings on component mount
+  // Load settings on component mount and listen for changes
   useEffect(() => {
     /**
      * Loads the initial language setting from Electron's persistent storage.
@@ -66,6 +66,18 @@ export const LanguageProvider: React.FC<{ children: ReactNode }> = ({ children }
       setIsLoading(false) // Mark loading as complete
     }
     loadInitialLanguage()
+
+    const handleSettingsChanged = (settings: { language?: SupportedLanguage }) => {
+      if (settings && settings.language) {
+        setLanguageState(settings.language)
+      }
+    }
+
+    const unsubscribe = window.electronAPI.on('settings:changed', handleSettingsChanged)
+
+    return () => {
+      unsubscribe()
+    }
   }, [])
 
   /**
