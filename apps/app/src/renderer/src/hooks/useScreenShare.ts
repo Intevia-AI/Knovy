@@ -407,11 +407,11 @@ export function useScreenShare() {
     // We just need to ensure any UI state is reset, which is handled by the component using the hook.
   }, [])
 
-  const toggleScreenShare = useCallback(() => {
+  const toggleScreenShare = useCallback(async () => {
     if (isScreenSharing) {
-      stopScreenShare()
+      await stopScreenShare()
     } else {
-      startScreenShare()
+      await startScreenShare()
     }
   }, [isScreenSharing, startScreenShare, stopScreenShare])
 
@@ -428,17 +428,6 @@ export function useScreenShare() {
       startScreenShare()
     }
   }, [restartRequested, isScreenSharing, startScreenShare])
-
-  useEffect(() => {
-    const handleRestart = () => {
-      if (isScreenSharing) {
-        console.log('[ScreenShare] Received restart request. Restarting session...')
-        restartScreenShare()
-      }
-    }
-    const unsubscribe = window.electronAPI.on('screenshare:restart', handleRestart)
-    return () => unsubscribe()
-  }, [isScreenSharing, restartScreenShare])
 
   return {
     isScreenSharing,

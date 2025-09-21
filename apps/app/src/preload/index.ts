@@ -79,7 +79,7 @@ const api = {
       'updater:update-downloaded',
       'keyword:search',
       'screenshare:source-changed',
-      'screenshare:restart',
+      'app:execute-graceful-stop',
       'session:duration-update'
     ]
     if (validChannels.includes(channel)) {
@@ -108,7 +108,7 @@ const api = {
       'keyword:click',
       'window:set-position',
       'screenshare:source-changed',
-      'settings:request-screenshare-restart',
+      'app:graceful-stop-and-execute',
       'app:quit',
       'app:toggle-content-protection',
       'session:duration-update'

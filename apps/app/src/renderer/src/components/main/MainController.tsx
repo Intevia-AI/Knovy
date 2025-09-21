@@ -213,16 +213,44 @@ export function MainController() {
     }
   }, [handleTogglePanel, restartScreenShare])
 
+  useEffect(() => {
+    const handleGracefulStop = async ({ postAction }: { postAction: string }) => {
+      if (isScreenSharing && !isSummarizing) {
+        await sendContextToAI('summary')
+        await toggleScreenShare() // Stop
+
+        switch (postAction) {
+          case 'restart':
+            toggleScreenShare() // Start again
+            break
+          case 'sign-out':
+            window.electronAPI.send('auth:request-sign-out')
+            break
+          case 'quit':
+            window.electronAPI.send('app:quit')
+            break
+          case 'stop':
+            // The session is now stopped. Do nothing further.
+            break
+        }
+      }
+    }
+
+    const unsubscribe = window.electronAPI.on('app:execute-graceful-stop', handleGracefulStop)
+    return () => {
+      unsubscribe()
+    }
+  }, [isScreenSharing, isSummarizing, sendContextToAI, toggleScreenShare])
+
   const handleToggleScreenShare = async () => {
     if (isSummarizing) return // Prevent action while summarizing
 
     if (isScreenSharing) {
-      // Stopping screen share: first summarize, then stop.
-      await sendContextToAI('summary')
-      toggleScreenShare()
+      // Delegate graceful stop to the centralized handler
+      window.electronAPI.send('app:graceful-stop-and-execute', { postAction: 'stop' })
     } else {
-      // Starting screen share
-      toggleScreenShare()
+      // Starting is simple
+      await toggleScreenShare()
     }
   }
 

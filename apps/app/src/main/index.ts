@@ -594,12 +594,10 @@ app.on('ready', async () => {
     })
   })
 
-  ipcMain.on('settings:request-screenshare-restart', () => {
-    console.log(
-      '[main/index.ts] Received request to restart screen share. Broadcasting to main window.'
-    )
+  ipcMain.on('app:graceful-stop-and-execute', (event, { postAction }) => {
+    console.log(`[main/index.ts] Received graceful stop request with postAction: ${postAction}`)
     if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('screenshare:restart')
+      mainWindow.webContents.send('app:execute-graceful-stop', { postAction })
     }
   })
 

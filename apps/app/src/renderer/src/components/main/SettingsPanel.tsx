@@ -147,16 +147,10 @@ export function SettingsPanel() {
     { code: 'en-US', name: 'English' }
   ]
 
-  const handleToggleScreenShare = () => {
-    if (window.electronAPI) {
-      window.electronAPI.send('screenshare:toggle')
-    }
-  }
-
   const handleLanguageChange = (value: string) => {
     if (setLanguage) {
       if (isScreenSharing) {
-        handleToggleScreenShare()
+        window.electronAPI.send('app:graceful-stop-and-execute', { postAction: 'stop' })
       }
       setLanguage(value as SupportedLanguage)
     }
@@ -178,10 +172,10 @@ export function SettingsPanel() {
     }
   }
 
-  const handleConfirmRestart = () => {
+  const handleConfirmRestart = async () => {
     if (pendingDisplayId === null) return
-    applyDisplayChange(pendingDisplayId)
-    window.electronAPI.send('settings:request-screenshare-restart')
+    await applyDisplayChange(pendingDisplayId)
+    window.electronAPI.send('app:graceful-stop-and-execute', { postAction: 'restart' })
     setShowRestartConfirm(false)
     setPendingDisplayId(null)
   }
@@ -191,17 +185,6 @@ export function SettingsPanel() {
     setPendingDisplayId(null)
   }
 
-  const handleCustomPromptConfirm = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      if (isScreenSharing) {
-        handleToggleScreenShare()
-      }
-      setCustomPrompt(draftPrompt)
-      e.currentTarget.blur()
-    }
-  }
-
   const onShowHistory = () => {
     if (window.electronAPI) {
       window.electronAPI.send('history:open')
@@ -209,9 +192,14 @@ export function SettingsPanel() {
   }
 
   const handleSignOut = () => {
-    setIsSigningOut(true)
-    isSigningOutRef.current = true
-    setIsOpen(false)
+    if (isScreenSharing) {
+      window.electronAPI.send('app:graceful-stop-and-execute', { postAction: 'sign-out' })
+      setIsOpen(false)
+    } else {
+      setIsSigningOut(true)
+      isSigningOutRef.current = true
+      setIsOpen(false)
+    }
   }
 
   const handleAnimationComplete = () => {
@@ -448,7 +436,13 @@ export function SettingsPanel() {
             <div className="space-y-2 m-2">
               <Button
                 variant="default"
-                onClick={() => window.electronAPI.quitApp()}
+                onClick={() => {
+                  if (isScreenSharing) {
+                    window.electronAPI.send('app:graceful-stop-and-execute', { postAction: 'quit' })
+                  } else {
+                    window.electronAPI.quitApp()
+                  }
+                }}
                 className="w-full h-9 text-sm m-2"
               >
                 <Power className="mr-2 h-4 w-4" />
