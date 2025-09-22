@@ -57,7 +57,7 @@ function setupAutoUpdaterListeners() {
   const log = (message: string, ...args: any[]) => {
     const logMessage = `[AutoUpdater] ${message}`
     console.log(logMessage, ...args)
-    if (mainWindow) {
+    if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send('updater:log', logMessage, ...args)
     }
   }
@@ -89,7 +89,7 @@ function setupAutoUpdaterListeners() {
 
   autoUpdater.on('update-downloaded', (info) => {
     log('Update downloaded.', info)
-    if (mainWindow) {
+    if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send('updater:update-downloaded', info)
     }
   })
@@ -258,7 +258,7 @@ if (!gotTheLock) {
   app.on('second-instance', (event, commandLine) => {
     const url = commandLine.find((arg) => arg.startsWith(`${PROTOCOL}://`))
     if (url) {
-      if (mainWindow && mainWindow.webContents && !mainWindow.webContents.isLoading()) {
+      if (mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents && !mainWindow.webContents.isLoading()) {
         if (mainWindow.isMinimized()) mainWindow.restore()
         mainWindow.focus()
         mainWindow.webContents.send('electronAPI:oauth-callback', url)
@@ -360,7 +360,9 @@ const createWindow = async () => {
 
   mainWindow.webContents.on('did-finish-load', () => {
     if (oauthCallbackUrlOnStartup) {
-      mainWindow?.webContents.send('electronAPI:oauth-callback', oauthCallbackUrlOnStartup)
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('electronAPI:oauth-callback', oauthCallbackUrlOnStartup)
+      }
       oauthCallbackUrlOnStartup = null
     }
   })
@@ -453,7 +455,7 @@ app.on('ready', async () => {
   })
 
   ipcMain.on('auth:request-sign-out', () => {
-    if (mainWindow) {
+    if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send('auth:execute-sign-out')
     }
   })
@@ -724,9 +726,13 @@ app.on('ready', async () => {
       }
 
       const relativePath = `/screenshots/screenshot-${timestamp}.png`
-      mainWindow?.webContents.send('electronAPI:screenshotTaken', relativePath)
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('electronAPI:screenshotTaken', relativePath)
+      }
     } catch (error: any) {
-      mainWindow?.webContents.send('electronAPI:screenshotError', error.message)
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('electronAPI:screenshotError', error.message)
+      }
     }
   })
 
@@ -886,6 +892,26 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit()
   }
+})
+
+let isQuitting = false
+
+// Gracefully handle quit-time errors
+app.on('before-quit', () => {
+  isQuitting = true
+})
+
+process.on('uncaughtException', (error) => {
+  // Suppress the "Object has been destroyed" error on quit.
+  // This is a known race condition in Electron apps where an async operation
+  // tries to access a window that has already been closed during shutdown.
+  if (isQuitting && error.message.includes('Object has been destroyed')) {
+    console.error('[main/index.ts] Suppressing known quit-time error:', error)
+    // Returning here prevents the default behavior of showing a dialog.
+    return
+  }
+  // For any other uncaught exception, we should probably still show it.
+  console.error('[main/index.ts] Uncaught Exception:', error)
 })
 
 app.on('will-quit', () => {
