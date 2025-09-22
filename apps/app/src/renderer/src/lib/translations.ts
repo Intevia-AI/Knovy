@@ -17,6 +17,7 @@ export const translations = {
     // ControlPanel Status
     PreviewPanelTitle: 'Screen Preview',
     systemAudioLabel: 'System Audio',
+    microphoneAudioLabel: 'Microphone Audio',
     statusLoading: 'AI Processing',
     statusSharing: 'Sharing/Recording',
     statusStopped: 'Stopped',
@@ -96,6 +97,7 @@ export const translations = {
     // ControlPanel Status
     PreviewPanelTitle: '螢幕預覽',
     systemAudioLabel: '系統音訊',
+    microphoneAudioLabel: '麥克風音訊',
     statusLoading: 'AI 處理中',
     statusSharing: '分享/錄製中',
     statusStopped: '已停止',
@@ -181,6 +183,7 @@ export type TranslationKey =
   // ControlPanel Status
   | 'PreviewPanelTitle'
   | 'systemAudioLabel'
+  | 'microphoneAudioLabel'
   | 'statusLoading'
   | 'statusSharing'
   | 'statusStopped'

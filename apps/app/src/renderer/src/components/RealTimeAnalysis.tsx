@@ -19,6 +19,7 @@ export default function RealTimeAnalysis({
   language
 }: RealTimeAnalysisProps) {
   const textBufferRef = useRef('')
+  const animationFrameId = useRef<number | null>(null)
 
   useEffect(() => {
     if (!isScreenSharing) {
@@ -119,19 +120,57 @@ export default function RealTimeAnalysis({
           }
         }
 
+        // --- Audio Analysis Setup ---
+        const micAnalyser = audioContext.createAnalyser()
+        micAnalyser.fftSize = 256
+
         mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true })
         const micSource = audioContext.createMediaStreamSource(mediaStream)
-        micSource.connect(audioWorkletNode)
+        micSource.connect(micAnalyser)
+        micAnalyser.connect(audioWorkletNode) // Connect analyser to worklet
 
+        let systemAnalyser: AnalyserNode | null = null
         if (systemAudioStream && audioContext) {
           if (systemAudioSource) {
             systemAudioSource.disconnect()
           }
+          systemAnalyser = audioContext.createAnalyser()
+          systemAnalyser.fftSize = 256
           const source = audioContext.createMediaStreamSource(systemAudioStream)
-          source.connect(audioWorkletNode)
+          source.connect(systemAnalyser)
+          systemAnalyser.connect(audioWorkletNode) // Connect analyser to worklet
           systemAudioSource = source
           console.log('[RealTimeAnalysis] System audio source connected')
         }
+
+        const draw = () => {
+          const micDataArray = new Uint8Array(micAnalyser.frequencyBinCount)
+          micAnalyser.getByteFrequencyData(micDataArray)
+          const micLevel =
+            micDataArray.reduce((sum, value) => sum + value, 0) / micDataArray.length
+
+          let systemLevel = 0
+          if (systemAnalyser) {
+            const systemDataArray = new Uint8Array(systemAnalyser.frequencyBinCount)
+            systemAnalyser.getByteFrequencyData(systemDataArray)
+            systemLevel =
+              systemDataArray.reduce((sum, value) => sum + value, 0) /
+              systemDataArray.length
+          }
+
+          // Normalize to 0-100 for simple bar width percentage
+          const normalizedMicLevel = (micLevel / 140) * 100 // Using 140 as a practical max
+          const normalizedSystemLevel = (systemLevel / 140) * 100
+
+          window.electronAPI.send('audio:level-update', {
+            micLevel: Math.min(normalizedMicLevel, 100),
+            systemLevel: Math.min(normalizedSystemLevel, 100)
+          })
+
+          animationFrameId.current = requestAnimationFrame(draw)
+        }
+        draw()
+        // --- End Audio Analysis Setup ---
       } catch (error) {
         console.error('[RealTimeAnalysis] Error starting audio processing:', error)
       }
@@ -141,6 +180,9 @@ export default function RealTimeAnalysis({
 
     return () => {
       console.log('[RealTimeAnalysis] Stopping audio processing...')
+      if (animationFrameId.current) {
+        cancelAnimationFrame(animationFrameId.current)
+      }
       shouldSendAudio = false
 
       geminiClient?.disconnect()

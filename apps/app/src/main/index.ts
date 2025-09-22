@@ -872,6 +872,14 @@ app.on('ready', async () => {
     }
     return null
   })
+
+  ipcMain.on('audio:level-update', (event, levels) => {
+    for (const win of BrowserWindow.getAllWindows()) {
+      if (!win.isDestroyed()) {
+        win.webContents.send('audio:levels-updated', levels)
+      }
+    }
+  })
 })
 
 app.on('window-all-closed', () => {

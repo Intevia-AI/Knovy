@@ -81,7 +81,8 @@ const api = {
       'screenshare:source-changed',
       'app:execute-graceful-stop',
       'session:duration-update',
-      'settings:changed'
+      'settings:changed',
+      'audio:levels-updated'
     ]
     if (validChannels.includes(channel)) {
       const subscription = (event, ...args) => callback(...args)
@@ -112,7 +113,8 @@ const api = {
       'app:graceful-stop-and-execute',
       'app:quit',
       'app:toggle-content-protection',
-      'session:duration-update'
+      'session:duration-update',
+      'audio:level-update'
     ]
     if (!validChannels.includes(channel)) {
       console.warn(`[Preload] Attempted to send on invalid channel: ${channel}`)
