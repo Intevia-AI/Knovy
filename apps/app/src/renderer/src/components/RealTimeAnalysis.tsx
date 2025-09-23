@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from 'react'
 import { GeminiClient } from '@/lib/geminiClient.js'
+import { useAuth } from '@/context/AuthContext'
 
 interface RealTimeAnalysisProps {
   onTextResponse?: (
@@ -22,6 +23,8 @@ export default function RealTimeAnalysis({
   customPrompt,
   language
 }: RealTimeAnalysisProps) {
+  const { hasEntitlement } = useAuth()
+  const canUseKeywordSearch = hasEntitlement('allow_ai_action:keyword-search')
   const micTextBufferRef = useRef('')
   const systemTextBufferRef = useRef('')
   const animationFrameId = useRef<number | null>(null)
@@ -44,7 +47,8 @@ export default function RealTimeAnalysis({
     const processTranscriptionResponse = (
       text: string,
       textBufferRef: React.MutableRefObject<string>,
-      sourceType: 'microphone' | 'system'
+      sourceType: 'microphone' | 'system',
+      canHighlightKeywords: boolean
     ) => {
       textBufferRef.current += text
 
@@ -79,7 +83,7 @@ export default function RealTimeAnalysis({
 
         if (transcription && onTextResponse) {
           let highlightedTranscription = transcription
-          if (keywords.length > 0) {
+          if (canHighlightKeywords && keywords.length > 0) {
             const regex = new RegExp(`(${keywords.join('|')})`, 'gi')
             highlightedTranscription = transcription.replace(regex, '`$1`')
           }
@@ -95,7 +99,7 @@ export default function RealTimeAnalysis({
 
       // Create separate Gemini clients for microphone and system audio
       micGeminiClient = new GeminiClient(
-        (text) => processTranscriptionResponse(text, micTextBufferRef, 'microphone'),
+        (text) => processTranscriptionResponse(text, micTextBufferRef, 'microphone', canUseKeywordSearch),
         () => {
           console.log('[RealTimeAnalysis] Microphone WebSocket setup complete')
           shouldSendAudio = true
@@ -109,7 +113,7 @@ export default function RealTimeAnalysis({
       )
 
       systemGeminiClient = new GeminiClient(
-        (text) => processTranscriptionResponse(text, systemTextBufferRef, 'system'),
+        (text) => processTranscriptionResponse(text, systemTextBufferRef, 'system', canUseKeywordSearch),
         () => {
           console.log('[RealTimeAnalysis] System audio WebSocket setup complete')
         },

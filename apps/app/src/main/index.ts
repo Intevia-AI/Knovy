@@ -649,8 +649,8 @@ app.on('ready', async () => {
         return
       }
 
-      // 1. Create the full transcript object
-      const newTranscript = {
+      // 1. Create the full transcript object for display (with keywords)
+      const displayTranscript = {
         id: `transcript-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
         session_id: currentSessionId,
         timestamp: new Date().toISOString(),
@@ -661,15 +661,22 @@ app.on('ready', async () => {
         type: 'transcription'
       }
 
-      // 2. Save to database
-      dbService.addTranscript(newTranscript).catch((error) => {
+      // 2. Create a clean version for database storage (remove backticks)
+      const cleanContent = transcriptionData.text.replace(/`([^`]*)`/g, '$1')
+      const dbTranscript = {
+        ...displayTranscript,
+        content: cleanContent
+      }
+
+      // 3. Save clean version to database
+      dbService.addTranscript(dbTranscript).catch((error) => {
         console.error('[main/index.ts] Failed to save transcript:', error)
       })
 
-      // 3. Broadcast the full transcript object to all windows for real-time display
+      // 4. Broadcast the original version (with keywords) to all windows for real-time display
       for (const win of BrowserWindow.getAllWindows()) {
         if (!win.isDestroyed()) {
-          win.webContents.send('transcription:data', newTranscript)
+          win.webContents.send('transcription:data', displayTranscript)
         }
       }
     }

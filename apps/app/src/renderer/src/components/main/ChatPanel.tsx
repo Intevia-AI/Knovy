@@ -104,7 +104,7 @@ export default function ChatPanel({}: ChatPanelProps) {
                 variant={activeTab === 'transcription' ? 'secondary' : 'ghost'}
                 size="sm"
                 onClick={() => handleTabChange('transcription')}
-                className="h-6 text-md"
+                className="h-6 text-md select-none"
               >
                 Transcription
               </Button>
@@ -112,7 +112,7 @@ export default function ChatPanel({}: ChatPanelProps) {
                 variant={activeTab === 'summary' ? 'secondary' : 'ghost'}
                 size="sm"
                 onClick={() => handleTabChange('summary')}
-                className="h-6 text-md"
+                className="h-6 text-md select-none"
               >
                 Summary
               </Button>
@@ -169,7 +169,7 @@ export default function ChatPanel({}: ChatPanelProps) {
                           <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-black/50"></div>
                         </div>
                       )}
-                      <Markdown>{summary}</Markdown>
+                      <Markdown onKeywordClick={handleKeywordClick}>{summary}</Markdown>
                     </div>
                   ) : (
                     <div className="text-center text-sm text-gray-500">No summary available.</div>

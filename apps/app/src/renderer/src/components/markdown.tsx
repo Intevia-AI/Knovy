@@ -6,6 +6,7 @@ import remarkGfm from 'remark-gfm'
 import remarkBreaks from 'remark-breaks'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import { useAuth } from '@/context/AuthContext'
 
 interface MarkdownProps {
   children: string
@@ -18,6 +19,8 @@ const NonMemoizedMarkdown: React.FC<MarkdownProps> = ({
   pure = false,
   onKeywordClick
 }) => {
+  const { hasEntitlement } = useAuth()
+  const canUseKeywordSearch = hasEntitlement('allow_ai_action:keyword-search')
   const parsedContent = children.replace(/<br\s*\/?\?>/g, '\n').replace(/~/g, '-')
   const plugins = [remarkGfm, remarkBreaks]
 
@@ -26,19 +29,24 @@ const NonMemoizedMarkdown: React.FC<MarkdownProps> = ({
       const keyword = String(children)
       const handleClick = (e: React.MouseEvent) => {
         e.stopPropagation()
-        if (onKeywordClick) {
+        if (onKeywordClick && canUseKeywordSearch) {
           console.log(`[Markdown] Keyword clicked: "${keyword}". Calling onKeywordClick prop.`)
           onKeywordClick(keyword)
         }
       }
 
+      // Only style as clickable keyword if user has entitlement and onKeywordClick is provided
+      const isClickableKeyword = canUseKeywordSearch && onKeywordClick
+
       return (
         <span
           {...props}
-          onClick={onKeywordClick ? handleClick : undefined}
+          onClick={isClickableKeyword ? handleClick : undefined}
           className={cn(
             className,
-            'bg-muted rounded-lg px-1 py-0.5 text-sm hover:bg-muted/80 cursor-pointer'
+            isClickableKeyword
+              ? 'bg-muted rounded-lg px-1 py-0.5 text-sm hover:bg-muted/80 cursor-pointer'
+              : 'bg-muted rounded-lg px-1 py-0.5 text-sm' // Non-clickable styling for free users
           )}
         >
           {children}
