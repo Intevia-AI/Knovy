@@ -140,7 +140,7 @@ export class GeminiClient {
         }
         // Send language setting if available
         if (this.language) {
-          console.log("[Gemini] 發送語言設置:", this.language);
+          console.log("[Gemini] 發送語言設定:", this.language);
           this.ws?.send(JSON.stringify({ type: "language", language: this.language }));
         }
         // Send mode information

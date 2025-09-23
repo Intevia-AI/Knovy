@@ -52,75 +52,90 @@ export default function RealTimeAnalysis({
     ) => {
       textBufferRef.current += text
 
-      if (
-        textBufferRef.current.includes('TRANSCRIPTION:') &&
-        textBufferRef.current.includes('KEYWORDS:')
-      ) {
-        const transcriptionMatch = textBufferRef.current.match(
-          /TRANSCRIPTION: (.*?)(?:\n|$|KEYWORDS:)/s
-        )
-        const keywordsMatch = textBufferRef.current.match(/KEYWORDS: (.*?)(?:\n|$)/s)
+      while (true) {
+        const buffer = textBufferRef.current
+        const transIndex = buffer.indexOf('TRANSCRIPTION:')
+        const keyIndex = buffer.indexOf('KEYWORDS:')
 
-        let transcription = ''
-        if (transcriptionMatch && transcriptionMatch[1]) {
-          transcription = transcriptionMatch[1]
-            .replace(/TRANSCRIPTION:\s*/gi, '')
-            .replace(/search web/g, '')
-            .replace(/\s+/g, ' ')
-            .trim()
+        // If a full block is not available, break and wait for more data.
+        if (transIndex === -1 || keyIndex === -1 || keyIndex < transIndex) {
+          break
         }
 
-        let keywords: string[] = []
-        if (keywordsMatch && keywordsMatch[1]) {
-          const keywordsStr = keywordsMatch[1].trim()
-          if (keywordsStr) {
-            keywords = keywordsStr
-              .split(',')
-              .map((k) => k.trim())
-              .filter((k) => k)
+        // Find the start of the next block to isolate the current one.
+        const nextTransIndex = buffer.indexOf('TRANSCRIPTION:', transIndex + 1)
+        let currentBlock
+        let remainingBuffer
+
+        if (nextTransIndex !== -1) {
+          currentBlock = buffer.substring(transIndex, nextTransIndex)
+          remainingBuffer = buffer.substring(nextTransIndex)
+        } else {
+          currentBlock = buffer.substring(transIndex)
+          remainingBuffer = ''
+        }
+
+        const transcriptionMatch = currentBlock.match(/TRANSCRIPTION:\s*([\s\S]*?)KEYWORDS:/s)
+        const keywordsMatch = currentBlock.match(/KEYWORDS:\s*([\s\S]*)/s)
+
+        // Only process if the block is well-formed with both parts.
+        if (transcriptionMatch && keywordsMatch) {
+          const transcription = transcriptionMatch[1].replace(/search web/g, '').trim()
+
+          if (transcription && onTextResponse) {
+            const keywordsStr = keywordsMatch[1].trim()
+            let keywords: string[] = []
+            if (keywordsStr) {
+              keywords = keywordsStr
+                .split(',')
+                .map((k) => k.trim())
+                .filter((k) => k)
+            }
+
+            let highlightedTranscription = transcription
+            if (canHighlightKeywords && keywords.length > 0) {
+              const regex = new RegExp(`(${keywords.join('|')})`, 'gi')
+              highlightedTranscription = transcription.replace(regex, '`$1`')
+            }
+            onTextResponse(highlightedTranscription, false, sourceType)
           }
-        }
 
-        if (transcription && onTextResponse) {
-          let highlightedTranscription = transcription
-          if (canHighlightKeywords && keywords.length > 0) {
-            const regex = new RegExp(`(${keywords.join('|')})`, 'gi')
-            highlightedTranscription = transcription.replace(regex, '`$1`')
-          }
-          onTextResponse(highlightedTranscription, false, sourceType)
+          textBufferRef.current = remainingBuffer
+        } else {
+          // The block is incomplete, so we put it back and wait for more data.
+          break
         }
-
-        textBufferRef.current = ''
       }
     }
 
     const startAudioProcessing = async () => {
       console.log('[RealTimeAnalysis] Starting dual audio processing with language:', language)
 
-      // Create separate Gemini clients for microphone and system audio
       micGeminiClient = new GeminiClient(
-        (text) => processTranscriptionResponse(text, micTextBufferRef, 'microphone', canUseKeywordSearch),
+        (text) =>
+          processTranscriptionResponse(text, micTextBufferRef, 'microphone', canUseKeywordSearch),
         () => {
           console.log('[RealTimeAnalysis] Microphone WebSocket setup complete')
           shouldSendAudio = true
         },
-        () => {}, // onPlayingStateChange
-        () => {}, // onAudioLevelChange
-        () => {}, // onTranscription
-        'transcription', // mode
+        () => {},
+        () => {},
+        () => {},
+        'transcription',
         customPrompt,
         language
       )
 
       systemGeminiClient = new GeminiClient(
-        (text) => processTranscriptionResponse(text, systemTextBufferRef, 'system', canUseKeywordSearch),
+        (text) =>
+          processTranscriptionResponse(text, systemTextBufferRef, 'system', canUseKeywordSearch),
         () => {
           console.log('[RealTimeAnalysis] System audio WebSocket setup complete')
         },
-        () => {}, // onPlayingStateChange
-        () => {}, // onAudioLevelChange
-        () => {}, // onTranscription
-        'transcription', // mode
+        () => {},
+        () => {},
+        () => {},
+        'transcription',
         customPrompt,
         language
       )
@@ -134,7 +149,6 @@ export default function RealTimeAnalysis({
           audioContext.audioWorklet.addModule('worklets/system-audio-processor.js')
         ])
 
-        // Create separate worklet nodes for mic and system audio
         micAudioWorkletNode = new AudioWorkletNode(audioContext, 'mic-audio-processor', {
           processorOptions: {
             bufferSize: 8192
@@ -147,7 +161,6 @@ export default function RealTimeAnalysis({
           }
         })
 
-        // Handle microphone audio
         micAudioWorkletNode.port.onmessage = (event) => {
           const { pcmData, sourceType } = event.data
           if (micGeminiClient && shouldSendAudio && sourceType === 'microphone') {
@@ -161,7 +174,6 @@ export default function RealTimeAnalysis({
           }
         }
 
-        // Handle system audio
         systemAudioWorkletNode.port.onmessage = (event) => {
           const { pcmData, sourceType } = event.data
           if (systemGeminiClient && shouldSendAudio && sourceType === 'system') {
@@ -175,18 +187,15 @@ export default function RealTimeAnalysis({
           }
         }
 
-        // --- Audio Analysis Setup ---
         const micAnalyser = audioContext.createAnalyser()
         micAnalyser.fftSize = 256
 
-        // Setup microphone audio source
         mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true })
         micAudioSource = audioContext.createMediaStreamSource(mediaStream)
         micAudioSource.connect(micAnalyser)
         micAnalyser.connect(micAudioWorkletNode)
 
         let systemAnalyser: AnalyserNode | null = null
-        // Setup system audio source (if available)
         if (systemAudioStream && audioContext) {
           if (systemAudioSource) {
             systemAudioSource.disconnect()
@@ -212,8 +221,7 @@ export default function RealTimeAnalysis({
               systemDataArray.reduce((sum, value) => sum + value, 0) / systemDataArray.length
           }
 
-          // Normalize to 0-100 for simple bar width percentage
-          const normalizedMicLevel = (micLevel / 140) * 100 // Using 140 as a practical max
+          const normalizedMicLevel = (micLevel / 140) * 100
           const normalizedSystemLevel = (systemLevel / 140) * 100
 
           ;(window as any).electronAPI.send('audio:level-update', {
@@ -224,7 +232,6 @@ export default function RealTimeAnalysis({
           animationFrameId.current = requestAnimationFrame(draw)
         }
         draw()
-        // --- End Audio Analysis Setup ---
       } catch (error) {
         console.error('[RealTimeAnalysis] Error starting audio processing:', error)
       }

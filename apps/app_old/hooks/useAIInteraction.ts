@@ -566,7 +566,7 @@ export function useAIInteraction() {
           allowTaint: true,
           scale: 1,
           logging: false,
-          backgroundColor: "#ffffff", // 設置背景色
+          backgroundColor: "#ffffff", // 設定背景色
           ignoreElements: (element) => {
             // 忽略可能導致問題的元素
             return (
@@ -753,7 +753,7 @@ export function useAIInteraction() {
           // 保持完整的 data URL 格式
           const base64Image = base64data;
 
-          // 根據當前語言設置問題
+          // 根據當前語言設定問題
           let question = "";
           switch (currentLanguage) {
             case "zh-TW":

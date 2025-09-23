@@ -31,7 +31,7 @@ export class GeminiClient {
   private isSetupComplete: boolean = false
 
   /** @type {Function|null} Callback for AI response messages */
-  private onMessageCallback: ((text: string, turnComplete: boolean) => void) | null = null
+  private onMessageCallback: ((data: any) => void) | null = null
 
   /** @type {Function|null} Callback for setup completion */
   private onSetupCompleteCallback: (() => void) | null = null
@@ -67,7 +67,7 @@ export class GeminiClient {
   private language?: string
 
   constructor(
-    onMessage: (text: string, turnComplete: boolean) => void,
+    onMessage: (data: any) => void,
     onSetupComplete: () => void,
     onPlayingStateChange: (isPlaying: boolean) => void,
     onAudioLevelChange: (level: number) => void,
@@ -113,7 +113,7 @@ export class GeminiClient {
           )
         }
         if (this.language) {
-          console.log('[Gemini] 發送語言設置:', this.language)
+          console.log('[Gemini] 發送語言設定:', this.language)
           this.ws?.send(JSON.stringify({ type: 'language', language: this.language }))
         }
         console.log('[Gemini] 發送模式訊息:', this.mode)

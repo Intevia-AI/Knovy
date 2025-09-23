@@ -214,6 +214,7 @@ class GeminiProxyServer {
         id: clientId,
         ip: clientIp,
         geminiWs: null,
+        geminiHeartbeat: null,
         isSetupComplete: false,
         lastActivity: Date.now(),
         language: "zh-TW",
@@ -480,7 +481,7 @@ class GeminiProxyServer {
         console.log(`[Proxy] Turn complete received for client ${client.id}`);
         client.ws.send(
           JSON.stringify({
-            text: "search web",
+            text: "",
             turnComplete: true,
           }),
         );
