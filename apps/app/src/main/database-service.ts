@@ -15,6 +15,14 @@ export async function getTranscripts(sessionId: string, page: number = 1, limit:
   return stmt.all(sessionId, limit, offset)
 }
 
+export async function getAllTranscripts(sessionId: string) {
+  const db = await dbPromise
+  const stmt = await db.prepare(
+    'SELECT * FROM transcripts WHERE session_id = ? ORDER BY timestamp ASC'
+  )
+  return stmt.all(sessionId)
+}
+
 export async function getSummary(sessionId: string) {
   const db = await dbPromise
   const stmt = await db.prepare(

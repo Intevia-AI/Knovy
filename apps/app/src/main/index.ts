@@ -11,6 +11,7 @@ import {
   nativeTheme
 } from 'electron'
 import path from 'path'
+import { randomUUID } from 'crypto'
 import fs from 'fs/promises'
 import { installExtension, REACT_DEVELOPER_TOOLS } from 'electron-devtools-installer'
 import { is } from '@electron-toolkit/utils'
@@ -651,7 +652,7 @@ app.on('ready', async () => {
 
       // 1. Create the full transcript object for display (with keywords)
       const displayTranscript = {
-        id: `transcript-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+        id: randomUUID(),
         session_id: currentSessionId,
         timestamp: new Date().toISOString(),
         content: transcriptionData.text,
@@ -881,6 +882,9 @@ app.on('ready', async () => {
   ipcMain.handle('db:get-sessions', () => dbService.getSessions())
   ipcMain.handle('db:get-transcripts', (event, { sessionId, page, limit }) =>
     dbService.getTranscripts(sessionId, page, limit)
+  )
+  ipcMain.handle('db:get-all-transcripts', (event, sessionId) =>
+    dbService.getAllTranscripts(sessionId)
   )
   ipcMain.handle('db:end-session', (event, sessionId) => dbService.endSession(sessionId))
   ipcMain.handle('db:get-summary', (event, sessionId) => dbService.getSummary(sessionId))

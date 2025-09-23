@@ -145,6 +145,12 @@ export default function ChatPanel({}: ChatPanelProps) {
                         )}
                       >
                         <Markdown onKeywordClick={handleKeywordClick}>{m.content}</Markdown>
+                        <div className="text-xs text-gray-400 mt-1.5">
+                          {new Date(m.timestamp).toLocaleTimeString([], {
+                            hour: 'numeric',
+                            minute: '2-digit'
+                          })}
+                        </div>
                       </motion.div>
                     )
                   })}

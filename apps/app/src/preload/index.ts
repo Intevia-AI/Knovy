@@ -135,6 +135,7 @@ const api = {
       'db:add-transcript',
       'db:get-sessions',
       'db:get-transcripts',
+      'db:get-all-transcripts',
       'db:end-session',
       'db:get-summary',
       'db:save-summary',

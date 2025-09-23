@@ -83,14 +83,9 @@ export function useAIInteraction() {
         try {
           const sessionId = await (window as any).electronAPI.invoke('session:get-id')
           if (sessionId) {
-            // Performance: Only load the first page of transcripts initially.
             const loadedTranscripts = await (window as any).electronAPI.invoke(
-              'db:get-transcripts',
-              {
-                sessionId,
-                page: 1,
-                limit: 50
-              }
+              'db:get-all-transcripts',
+              sessionId
             )
 
             if (loadedTranscripts && loadedTranscripts.length > 0) {
