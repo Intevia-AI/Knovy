@@ -7,7 +7,7 @@ const handleRequest = async (req: Request, profile: Record<string, any>) => {
   try {
     console.log(`[ai-action-summarize] function invoked at: ${new Date().toISOString()}`);
 
-    const { text_input, previous_summary, language } = await req.json();
+    const { text_input, existing_summary, language } = await req.json();
     if (!text_input) {
       return new Response(JSON.stringify({ error: "Text is required" }), {
         status: 400,
@@ -21,8 +21,8 @@ const handleRequest = async (req: Request, profile: Record<string, any>) => {
     }
 
     const lang = getLanguage(language);
-    const prompt = previous_summary
-      ? PROMPTS.summarize[lang].with_previous(text_input, previous_summary)
+    const prompt = existing_summary
+      ? PROMPTS.summarize[lang].with_previous(text_input, existing_summary)
       : PROMPTS.summarize[lang].without_previous(text_input);
 
     const contents = [{ role: "user", parts: [{ text: prompt }] }];

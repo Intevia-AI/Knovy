@@ -216,7 +216,7 @@ export function useAIInteraction() {
             }
 
             functionPayload.text_input = newTranscripts.map((t) => t.content).join('\n')
-            functionPayload.previous_summary = existingSummary?.content
+            functionPayload.existing_summary = existingSummary?.content
             break
           }
           case 'answer': {
@@ -238,7 +238,7 @@ export function useAIInteraction() {
             const context = await gatherContext()
 
             functionPayload.text_input = query
-            functionPayload.previous_summary = existingSummary?.content
+            functionPayload.existing_summary = existingSummary?.content
             functionPayload.recent_transcriptions = context?.text
             break
           }
@@ -259,7 +259,7 @@ export function useAIInteraction() {
             const context = await gatherContext()
 
             functionPayload.text_input = query
-            functionPayload.previous_summary = existingSummary?.content
+            functionPayload.existing_summary = existingSummary?.content
             functionPayload.recent_transcriptions = context?.text
             break
           }

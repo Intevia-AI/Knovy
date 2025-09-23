@@ -16,11 +16,11 @@ export const PROMPTS = {
   chat: {
     en: {
       base: ({
-        previous_summary,
+        existing_summary,
         recent_transcriptions,
         text_input,
       }: {
-        previous_summary?: string;
+        existing_summary?: string;
         recent_transcriptions?: string;
         text_input: string;
       }) => {
@@ -28,12 +28,12 @@ export const PROMPTS = {
 
 Please provide a concise, accurate, and helpful response in English.`;
 
-        if (previous_summary) {
+        if (existing_summary) {
           prompt += `
 
 Here is the summary of the conversation so far:
 ---
-${previous_summary}
+${existing_summary}
 ---`;
         }
 
@@ -55,11 +55,11 @@ User Question: "${text_input}"`;
     },
     "zh-TW": {
       base: ({
-        previous_summary,
+        existing_summary,
         recent_transcriptions,
         text_input,
       }: {
-        previous_summary?: string;
+        existing_summary?: string;
         recent_transcriptions?: string;
         text_input: string;
       }) => {
@@ -67,12 +67,12 @@ User Question: "${text_input}"`;
 
 請以繁體中文提供簡潔有力的回應。`;
 
-        if (previous_summary) {
+        if (existing_summary) {
           prompt += `
 
 這是目前為止的對話摘要：
 ---
-${previous_summary}
+${existing_summary}
 ---`;
         }
 
@@ -97,23 +97,23 @@ ${recent_transcriptions}
     en: {
       base: ({
         text_input,
-        previous_summary,
+        existing_summary,
         recent_transcriptions,
       }: {
         text_input: string;
-        previous_summary?: string;
+        existing_summary?: string;
         recent_transcriptions?: string;
       }) => {
         let prompt = `Your goal is to provide a precise and relevant summary for the term: "${text_input}". Use the provided conversation context to understand the user's intent.
 
 If the context is relevant, tailor the summary to it. If not, provide a general, informative summary. Use your knowledge and web search capabilities to ensure the information is accurate and up-to-date. Please provide the response in English.`;
 
-        if (previous_summary) {
+        if (existing_summary) {
           prompt += `
 
 Here is the summary of the conversation so far, which might give you context:
 ---
-${previous_summary}
+${existing_summary}
 ---`;
         }
 
@@ -135,23 +135,23 @@ Based on the available context and your knowledge, please provide a summary for 
     "zh-TW": {
       base: ({
         text_input,
-        previous_summary,
+        existing_summary,
         recent_transcriptions,
       }: {
         text_input: string;
-        previous_summary?: string;
+        existing_summary?: string;
         recent_transcriptions?: string;
       }) => {
         let prompt = `你的目標是為「${text_input}」這個詞提供一個精確、精簡、相關的摘要，避免重複解釋來龍去脈，讓使用者能快速閱讀並理解。請利用提供的對話前後文來理解使用者的意圖。
 
 如果前後文有關，請客製化摘要。如果無關，請提供一個通用且資訊豐富的摘要。請利用你的知識和網路搜尋能力以確保資訊的準確性和即時性，避免提供過時或編造的資訊。請以繁體中文提供回應。`;
 
-        if (previous_summary) {
+        if (existing_summary) {
           prompt += `
 
 這是目前為止的對話摘要，可能能提供相關背景資訊：
 ---
-${previous_summary}
+${existing_summary}
 ---`;
         }
 
@@ -200,11 +200,11 @@ ${text_input}
   },
   summarize: {
     en: {
-      with_previous: (text_input: string, previous_summary: string) =>
+      with_previous: (text_input: string, existing_summary: string) =>
         `You are given a previous summary and new conversation transcripts. Integrate the new transcripts into the summary, refining and extending it. The goal is to produce a single, coherent, updated summary. Format the output in Markdown without a "Summary" heading and use numbering for key takeaways.
 
 Previous Summary:
-${previous_summary}
+${existing_summary}
 
 New Transcripts:
 ${text_input}`,
@@ -214,11 +214,11 @@ ${text_input}`,
 ${text_input}`,
     },
     "zh-TW": {
-      with_previous: (text_input: string, previous_summary: string) =>
+      with_previous: (text_input: string, existing_summary: string) =>
         `你正在處理一份先前的摘要和新的對話記錄。請將新的對話記錄整合到摘要中，加以完善和擴充。目標是產生一份連貫、更新的摘要。請以 Markdown 格式輸出，不要加上「摘要」標題，並為重點加上編號。
 
 先前的摘要：
-${previous_summary}
+${existing_summary}
 
 新的對話記錄：
 ${text_input}`,

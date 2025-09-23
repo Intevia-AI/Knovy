@@ -8,7 +8,7 @@ const handleRequest = async (req: Request, profile: Record<string, any>) => {
   try {
     console.log(`[ai-action-keyword-search] function invoked at: ${new Date().toISOString()}`);
 
-    const { text_input, previous_summary, recent_transcriptions, language } = await req.json();
+    const { text_input, existing_summary, recent_transcriptions, language } = await req.json();
     if (!text_input) {
       return new Response(JSON.stringify({ error: "Text input is required" }), {
         status: 400,
@@ -24,7 +24,7 @@ const handleRequest = async (req: Request, profile: Record<string, any>) => {
     const lang = getLanguage(language);
     const prompt = PROMPTS.keywordSearch[lang].base({
       text_input,
-      previous_summary,
+      existing_summary,
       recent_transcriptions,
     });
 
