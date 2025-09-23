@@ -17,7 +17,9 @@ export async function getTranscripts(sessionId: string, page: number = 1, limit:
 
 export async function getSummary(sessionId: string) {
   const db = await dbPromise
-  const stmt = await db.prepare('SELECT * FROM summaries WHERE session_id = ? ORDER BY updated_at DESC LIMIT 1')
+  const stmt = await db.prepare(
+    'SELECT * FROM summaries WHERE session_id = ? ORDER BY updated_at DESC LIMIT 1'
+  )
   return stmt.get(sessionId)
 }
 
@@ -29,10 +31,14 @@ export async function saveSummary(summary: { sessionId: string; content: string 
   const existingSummary = await getSummary(sessionId)
 
   if (existingSummary) {
-    const stmt = await db.prepare('UPDATE summaries SET content = ?, updated_at = ? WHERE session_id = ?')
+    const stmt = await db.prepare(
+      'UPDATE summaries SET content = ?, updated_at = ? WHERE session_id = ?'
+    )
     await stmt.run(content, updatedAt, sessionId)
   } else {
-    const stmt = await db.prepare('INSERT INTO summaries (session_id, content, updated_at) VALUES (?, ?, ?)')
+    const stmt = await db.prepare(
+      'INSERT INTO summaries (session_id, content, updated_at) VALUES (?, ?, ?)'
+    )
     await stmt.run(sessionId, content, updatedAt)
   }
   return getSummary(sessionId)
@@ -71,14 +77,15 @@ export async function addTranscript(transcript: {
   session_id: string
   timestamp: string
   content: string
+  sourceType?: 'microphone' | 'system'
 }) {
   console.log('[DB] Attempting to add transcript for session:', transcript.session_id)
   const db = await dbPromise
-  const { id, session_id, timestamp, content } = transcript
+  const { id, session_id, timestamp, content, sourceType = 'system' } = transcript
   const stmt = await db.prepare(
-    'INSERT INTO transcripts (id, session_id, timestamp, content) VALUES (?, ?, ?, ?)'
+    'INSERT INTO transcripts (id, session_id, timestamp, content, source_type) VALUES (?, ?, ?, ?, ?)'
   )
-  const result = await stmt.run(id, session_id, timestamp, content)
+  const result = await stmt.run(id, session_id, timestamp, content, sourceType)
   console.log('[DB] Transcript add result:', { changes: result.changes, lastID: result.lastID })
   return { id }
 }

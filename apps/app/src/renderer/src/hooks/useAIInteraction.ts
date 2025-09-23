@@ -16,6 +16,7 @@ export type AIAction = 'chat' | 'answer' | 'summary' | 'keyword_search' | 'scree
 interface TranscriptionMessage extends AIMessage {
   timestamp: number
   type: 'transcription'
+  sourceType?: 'microphone' | 'system'
 }
 
 interface AIContextData {
@@ -43,42 +44,54 @@ export function useAIInteraction() {
     }
   }, [aiMessages])
 
-  const handleTranscriptionResponse = useCallback((text: string) => {
-    if (window.electronAPI && text) {
-      window.electronAPI.send('transcription:data', text)
-    }
-  }, [])
+  const handleTranscriptionResponse = useCallback(
+    (
+      text: string,
+      turnComplete: boolean = false,
+      sourceType: 'microphone' | 'system' = 'system'
+    ): void => {
+      if ((window as any).electronAPI && text) {
+        ;(window as any).electronAPI.send('transcription:data', { text, sourceType })
+      }
+    },
+    []
+  )
 
   useEffect(() => {
-    if (window.electronAPI) {
-      const unsubscribe = window.electronAPI.on(
+    if ((window as any).electronAPI) {
+      const unsubscribe = (window as any).electronAPI.on(
         'transcription:data',
         (newTranscription: TranscriptionMessage) => {
           if (!newTranscription || !newTranscription.content) return
           // The object from IPC has a string timestamp, which needs to be converted to a number.
           const formattedTranscription = {
             ...newTranscription,
-            timestamp: new Date(newTranscription.timestamp as any).getTime()
+            timestamp: new Date(newTranscription.timestamp as any).getTime(),
+            sourceType: newTranscription.sourceType || 'system'
           }
           setTranscriptions((prev) => [...prev, formattedTranscription])
         }
       )
       return () => unsubscribe()
     }
+    return () => {} // Return empty cleanup function when electronAPI is not available
   }, [])
 
   useEffect(() => {
     const loadInitialTranscripts = async () => {
-      if (window.electronAPI) {
+      if ((window as any).electronAPI) {
         try {
-          const sessionId = await window.electronAPI.invoke('session:get-id')
+          const sessionId = await (window as any).electronAPI.invoke('session:get-id')
           if (sessionId) {
             // Performance: Only load the first page of transcripts initially.
-            const loadedTranscripts = await window.electronAPI.invoke('db:get-transcripts', {
-              sessionId,
-              page: 1,
-              limit: 50
-            })
+            const loadedTranscripts = await (window as any).electronAPI.invoke(
+              'db:get-transcripts',
+              {
+                sessionId,
+                page: 1,
+                limit: 50
+              }
+            )
 
             if (loadedTranscripts && loadedTranscripts.length > 0) {
               const formattedTranscripts = loadedTranscripts.map((t: any) => ({
@@ -86,7 +99,8 @@ export function useAIInteraction() {
                 content: t.content,
                 role: 'assistant',
                 type: 'transcription',
-                timestamp: new Date(t.timestamp).getTime()
+                timestamp: new Date(t.timestamp).getTime(),
+                sourceType: t.source_type || 'system'
               }))
               setTranscriptions(formattedTranscripts)
             }
@@ -162,10 +176,13 @@ export function useAIInteraction() {
         switch (action) {
           case 'summary': {
             functionName = 'ai-action-summarize'
-            const sessionId = await window.electronAPI.invoke('session:get-id')
+            const sessionId = await (window as any).electronAPI.invoke('session:get-id')
             if (!sessionId) throw new Error('No active session found.')
 
-            const existingSummary = await window.electronAPI.invoke('db:get-summary', sessionId)
+            const existingSummary = await (window as any).electronAPI.invoke(
+              'db:get-summary',
+              sessionId
+            )
             const lastSummaryTime = existingSummary
               ? new Date(existingSummary.updated_at).getTime()
               : 0
@@ -178,7 +195,7 @@ export function useAIInteraction() {
               setAiMessages((prev) => {
                 const summaryMessage = {
                   id: 'ai-summary',
-                  role: 'assistant',
+                  role: 'assistant' as const,
                   content: existingSummary.content
                 }
                 if (prev.some((m) => m.id === 'ai-summary')) {
@@ -224,9 +241,12 @@ export function useAIInteraction() {
           }
           case 'chat': {
             functionName = 'ai-action-chat'
-            const sessionId = await window.electronAPI.invoke('session:get-id')
+            const sessionId = await (window as any).electronAPI.invoke('session:get-id')
             if (!sessionId) throw new Error('No active session found.')
-            const existingSummary = await window.electronAPI.invoke('db:get-summary', sessionId)
+            const existingSummary = await (window as any).electronAPI.invoke(
+              'db:get-summary',
+              sessionId
+            )
             const context = await gatherContext()
 
             functionPayload.text_input = query
@@ -288,9 +308,9 @@ export function useAIInteraction() {
           responseMapping[action as keyof typeof responseMapping]?.(data) || JSON.stringify(data)
 
         if (action === 'summary') {
-          const sessionId = await window.electronAPI.invoke('session:get-id')
+          const sessionId = await (window as any).electronAPI.invoke('session:get-id')
           if (sessionId && content) {
-            await window.electronAPI.invoke('db:save-summary', { sessionId, content })
+            await (window as any).electronAPI.invoke('db:save-summary', { sessionId, content })
           }
           setAiMessages((prev) => {
             const existingSummary = prev.find((m) => m.id === 'ai-summary')

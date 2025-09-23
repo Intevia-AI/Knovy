@@ -17,8 +17,8 @@ export default function ChatPanel({}: ChatPanelProps) {
   const popoverId = 'transcriptions'
 
   const handleKeywordClick = (keyword: string) => {
-    if (window.electronAPI) {
-      window.electronAPI.send('keyword:click', keyword)
+    if ((window as any).electronAPI) {
+      ;(window as any).electronAPI.send('keyword:click', keyword)
     }
   }
 
@@ -29,7 +29,7 @@ export default function ChatPanel({}: ChatPanelProps) {
   }, [transcriptions, isLoading])
 
   useEffect(() => {
-    const unsubscribe = window.electronAPI.on('popover:prepare-to-close', (id) => {
+    const unsubscribe = (window as any).electronAPI.on('popover:prepare-to-close', (id) => {
       if (id === popoverId) {
         setIsOpen(false)
       }
@@ -84,7 +84,7 @@ export default function ChatPanel({}: ChatPanelProps) {
 
   const handleAnimationComplete = () => {
     if (!isOpen) {
-      window.electronAPI.send('popover:ready-to-close', popoverId)
+      ;(window as any).electronAPI.send('popover:ready-to-close', popoverId)
     }
   }
 
@@ -131,18 +131,23 @@ export default function ChatPanel({}: ChatPanelProps) {
                   animate="visible"
                   className="space-y-2"
                 >
-                  {transcriptions.map((m) => (
-                    <motion.div
-                      key={m.id}
-                      variants={itemVariants}
-                      className={cn(
-                        'p-2 rounded-md text-sm w-fit max-w-[95%] whitespace-pre-wrap break-words text-pretty',
-                        'bg-black/5 border border-black/10 mr-auto text-black'
-                      )}
-                    >
-                      <Markdown onKeywordClick={handleKeywordClick}>{m.content}</Markdown>
-                    </motion.div>
-                  ))}
+                  {transcriptions.map((m) => {
+                    const isUserMessage = m.sourceType === 'microphone'
+                    return (
+                      <motion.div
+                        key={m.id}
+                        variants={itemVariants}
+                        className={cn(
+                          'p-2 rounded-md text-sm w-fit max-w-[95%] whitespace-pre-wrap break-words text-pretty',
+                          isUserMessage
+                            ? 'bg-blue-500/10 border border-blue-500/20 ml-auto text-black'
+                            : 'bg-black/5 border border-black/10 mr-auto text-black'
+                        )}
+                      >
+                        <Markdown onKeywordClick={handleKeywordClick}>{m.content}</Markdown>
+                      </motion.div>
+                    )
+                  })}
                   <div ref={messagesEndRef} />
                 </motion.div>
               )}

@@ -25,6 +25,8 @@ export interface IElectronAPI {
 
   // Event listener method
   on: (channel: string, callback: (...args: any[]) => void) => () => void; // Returns a function to unsubscribe
+  send: (channel: string, ...args: any[]) => void;
+  invoke: (channel: string, ...args: any[]) => Promise<any>;
 }
 
 // Augment the global Window interface

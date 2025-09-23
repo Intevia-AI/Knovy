@@ -258,7 +258,12 @@ if (!gotTheLock) {
   app.on('second-instance', (event, commandLine) => {
     const url = commandLine.find((arg) => arg.startsWith(`${PROTOCOL}://`))
     if (url) {
-      if (mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents && !mainWindow.webContents.isLoading()) {
+      if (
+        mainWindow &&
+        !mainWindow.isDestroyed() &&
+        mainWindow.webContents &&
+        !mainWindow.webContents.isLoading()
+      ) {
         if (mainWindow.isMinimized()) mainWindow.restore()
         mainWindow.focus()
         mainWindow.webContents.send('electronAPI:oauth-callback', url)
@@ -634,35 +639,41 @@ app.on('ready', async () => {
   })
 
   // IPC relay for transcription data
-  ipcMain.on('transcription:data', (event, transcriptionContent: string) => {
-    if (!currentSessionId) {
-      console.warn('[main/index.ts] Received transcription data, but no active session. Ignoring.')
-      return
-    }
+  ipcMain.on(
+    'transcription:data',
+    (event, transcriptionData: { text: string; sourceType: 'microphone' | 'system' }) => {
+      if (!currentSessionId) {
+        console.warn(
+          '[main/index.ts] Received transcription data, but no active session. Ignoring.'
+        )
+        return
+      }
 
-    // 1. Create the full transcript object
-    const newTranscript = {
-      id: `transcript-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-      session_id: currentSessionId,
-      timestamp: new Date().toISOString(),
-      content: transcriptionContent,
-      // Add role and type for consistency with the frontend's TranscriptionMessage type
-      role: 'assistant',
-      type: 'transcription'
-    }
+      // 1. Create the full transcript object
+      const newTranscript = {
+        id: `transcript-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+        session_id: currentSessionId,
+        timestamp: new Date().toISOString(),
+        content: transcriptionData.text,
+        sourceType: transcriptionData.sourceType,
+        // Add role and type for consistency with the frontend's TranscriptionMessage type
+        role: 'assistant',
+        type: 'transcription'
+      }
 
-    // 2. Save to database
-    dbService.addTranscript(newTranscript).catch((error) => {
-      console.error('[main/index.ts] Failed to save transcript:', error)
-    })
+      // 2. Save to database
+      dbService.addTranscript(newTranscript).catch((error) => {
+        console.error('[main/index.ts] Failed to save transcript:', error)
+      })
 
-    // 3. Broadcast the full transcript object to all windows for real-time display
-    for (const win of BrowserWindow.getAllWindows()) {
-      if (!win.isDestroyed()) {
-        win.webContents.send('transcription:data', newTranscript)
+      // 3. Broadcast the full transcript object to all windows for real-time display
+      for (const win of BrowserWindow.getAllWindows()) {
+        if (!win.isDestroyed()) {
+          win.webContents.send('transcription:data', newTranscript)
+        }
       }
     }
-  })
+  )
 
   ipcMain.on('electronAPI:startScreenshot', () => createSelectionWindow())
 

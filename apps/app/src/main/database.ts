@@ -27,9 +27,20 @@ async function initializeDatabase() {
       session_id TEXT,
       timestamp TEXT,
       content TEXT,
+      source_type TEXT DEFAULT 'system',
       FOREIGN KEY (session_id) REFERENCES sessions (id)
     );
   `)
+
+  // Add source_type column to existing transcripts table if it doesn't exist
+  try {
+    await db.exec(`
+      ALTER TABLE transcripts ADD COLUMN source_type TEXT DEFAULT 'system';
+    `)
+  } catch (error) {
+    // Column already exists, ignore error
+    console.log('[DB] source_type column already exists or another error occurred')
+  }
 
   await db.exec(`
     CREATE TABLE IF NOT EXISTS summaries (
