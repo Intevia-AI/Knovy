@@ -8,9 +8,9 @@ const handleRequest = async (req: Request, profile: Record<string, any>) => {
   try {
     console.log(`[ai-action-keyword-search] function invoked at: ${new Date().toISOString()}`);
 
-    const { text_input, language } = await req.json();
+    const { text_input, previous_summary, recent_transcriptions, language } = await req.json();
     if (!text_input) {
-      return new Response(JSON.stringify({ error: "Text is required" }), {
+      return new Response(JSON.stringify({ error: "Text input is required" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -22,10 +22,15 @@ const handleRequest = async (req: Request, profile: Record<string, any>) => {
     }
 
     const lang = getLanguage(language);
-    const prompt = PROMPTS.keywordSearch[lang].base(text_input);
+    const prompt = PROMPTS.keywordSearch[lang].base({
+      text_input,
+      previous_summary,
+      recent_transcriptions,
+    });
 
     const contents = [{ role: "user", parts: [{ text: prompt }] }];
-    const postData = JSON.stringify({ contents });
+    const tools = [{ google_search: {} }];
+    const postData = JSON.stringify({ contents, tools });
 
     const res = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${API_KEY}`,

@@ -26,7 +26,7 @@ export const PROMPTS = {
       }) => {
         let prompt = `You are a helpful AI assistant. Your goal is to answer the user's question based on the context provided. The context includes a summary of the entire conversation and the most recent transcriptions.
 
-Please provide a concise and helpful response in English.`;
+Please provide a concise, accurate, and helpful response in English.`;
 
         if (previous_summary) {
           prompt += `
@@ -63,9 +63,9 @@ User Question: "${text_input}"`;
         recent_transcriptions?: string;
         text_input: string;
       }) => {
-        let prompt = `你是一個樂於助人的人工智慧助理。你的目標是根據提供的上下文來回答使用者的問題。上下文包括整個對話的摘要和最近的轉錄。
+        let prompt = `你是一個協助使用者解決問題的助理，目標是根據前後文回答使用者的問題。前後文包括整個對話的摘要和最近的逐字稿。
 
-請以繁體中文提供簡潔而有幫助的回應。`;
+請以繁體中文提供簡潔有力的回應。`;
 
         if (previous_summary) {
           prompt += `
@@ -79,7 +79,7 @@ ${previous_summary}
         if (recent_transcriptions) {
           prompt += `
 
-這是對話中最近的轉錄：
+這是對話中最近的逐字稿：
 ---
 ${recent_transcriptions}
 ---`;
@@ -87,7 +87,7 @@ ${recent_transcriptions}
 
         prompt += `
 
-根據現有上下文，請回答以下使用者問題：
+根據現有前後文，請回答以下使用者問題：
 使用者問題：「${text_input}」`;
         return prompt;
       },
@@ -95,12 +95,80 @@ ${recent_transcriptions}
   },
   keywordSearch: {
     en: {
-      base: (text_input: string) =>
-        `Please provide a brief and concise summary of the term: "${text_input}". The summary should be informative and directly related to the term.`,
+      base: ({
+        text_input,
+        previous_summary,
+        recent_transcriptions,
+      }: {
+        text_input: string;
+        previous_summary?: string;
+        recent_transcriptions?: string;
+      }) => {
+        let prompt = `Your goal is to provide a precise and relevant summary for the term: "${text_input}". Use the provided conversation context to understand the user's intent.
+
+If the context is relevant, tailor the summary to it. If not, provide a general, informative summary. Use your knowledge and web search capabilities to ensure the information is accurate and up-to-date. Please provide the response in English.`;
+
+        if (previous_summary) {
+          prompt += `
+
+Here is the summary of the conversation so far, which might give you context:
+---
+${previous_summary}
+---`;
+        }
+
+        if (recent_transcriptions) {
+          prompt += `
+
+Here are the most recent transcriptions, which might also be relevant:
+---
+${recent_transcriptions}
+---`;
+        }
+
+        prompt += `
+
+Based on the available context and your knowledge, please provide a summary for the term: "${text_input}"`;
+        return prompt;
+      },
     },
     "zh-TW": {
-      base: (text_input: string) =>
-        `請提供關於「${text_input}」這個詞的簡潔摘要。摘要應該內容豐富且與該詞直接相關。`,
+      base: ({
+        text_input,
+        previous_summary,
+        recent_transcriptions,
+      }: {
+        text_input: string;
+        previous_summary?: string;
+        recent_transcriptions?: string;
+      }) => {
+        let prompt = `你的目標是為「${text_input}」這個詞提供一個精確、精簡、相關的摘要，避免重複解釋來龍去脈，讓使用者能快速閱讀並理解。請利用提供的對話前後文來理解使用者的意圖。
+
+如果前後文有關，請客製化摘要。如果無關，請提供一個通用且資訊豐富的摘要。請利用你的知識和網路搜尋能力以確保資訊的準確性和即時性，避免提供過時或編造的資訊。請以繁體中文提供回應。`;
+
+        if (previous_summary) {
+          prompt += `
+
+這是目前為止的對話摘要，可能能提供相關背景資訊：
+---
+${previous_summary}
+---`;
+        }
+
+        if (recent_transcriptions) {
+          prompt += `
+
+這是最近的對話逐字稿，可能也與主題相關：
+---
+${recent_transcriptions}
+---`;
+        }
+
+        prompt += `
+
+根據現有的前後文和你的知識，請為「${text_input}」提供一個摘要。`;
+        return prompt;
+      },
     },
   },
   recommendResponse: {

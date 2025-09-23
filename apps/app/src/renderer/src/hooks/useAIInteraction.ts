@@ -230,7 +230,16 @@ export function useAIInteraction() {
           }
           case 'keyword_search': {
             functionName = 'ai-action-keyword-search'
+            const sessionId = await (window as any).electronAPI.invoke('session:get-id')
+            const existingSummary = await (window as any).electronAPI.invoke(
+              'db:get-summary',
+              sessionId
+            )
+            const context = await gatherContext()
+
             functionPayload.text_input = query
+            functionPayload.previous_summary = existingSummary?.content
+            functionPayload.recent_transcriptions = context?.text
             break
           }
           case 'screenshot': {
