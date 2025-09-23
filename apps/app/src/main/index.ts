@@ -793,23 +793,41 @@ app.on('ready', async () => {
     apiRouter.get('/sessions/:id/transcripts', async (req, res) => {
       try {
         const transcripts = await dbService.getTranscripts(req.params.id)
+        if (!transcripts || transcripts.length === 0) {
+          return res.status(404).json({
+            error: 'No transcripts found for this session',
+            code: 'TRANSCRIPTS_NOT_FOUND'
+          })
+        }
         res.json(transcripts)
       } catch (error) {
         console.error(
           `[History API] Error fetching transcripts for session ${req.params.id}`,
           error
         )
-        res.status(500).json({ error: `Failed to fetch transcripts for session ${req.params.id}` })
+        res.status(500).json({
+          error: `Failed to fetch transcripts for session ${req.params.id}`,
+          code: 'INTERNAL_ERROR'
+        })
       }
     })
 
     apiRouter.get('/sessions/:id/summary', async (req, res) => {
       try {
         const summary = await dbService.getSummary(req.params.id)
+        if (!summary) {
+          return res.status(404).json({
+            error: 'No summary found for this session',
+            code: 'SUMMARY_NOT_FOUND'
+          })
+        }
         res.json(summary)
       } catch (error) {
         console.error(`[History API] Error fetching summary for session ${req.params.id}`, error)
-        res.status(500).json({ error: `Failed to fetch summary for session ${req.params.id}` })
+        res.status(500).json({
+          error: `Failed to fetch summary for session ${req.params.id}`,
+          code: 'INTERNAL_ERROR'
+        })
       }
     })
 

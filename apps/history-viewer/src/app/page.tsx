@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Sidebar } from "@/components/sidebar";
-import { getSessions, getTranscripts, deleteSession, getSummary } from "@/lib/api";
+import { getSessions, getTranscripts, deleteSession, getSummary, ApiError } from "@/lib/api";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import {
   Accordion,
@@ -43,12 +43,25 @@ function SummaryView({ sessionId }: { sessionId: string }) {
   useEffect(() => {
     const loadSummary = async () => {
       setIsLoading(true);
+      setError(null);
       try {
         const fetchedSummary = await getSummary(sessionId);
         setSummary(fetchedSummary);
       } catch (err) {
-        setError("Failed to load summary.");
-        console.error(err);
+        if (err instanceof ApiError) {
+          if (err.status === 404) {
+            // Don't treat missing summary as an error
+            setSummary(null);
+            return;
+          } else if (err.status >= 500) {
+            setError("Server error occurred while loading summary.");
+          } else {
+            setError("Network error occurred while loading summary.");
+          }
+        } else {
+          setError("Network error occurred while loading summary.");
+        }
+        console.error('Summary loading error:', err);
       } finally {
         setIsLoading(false);
       }
@@ -69,7 +82,7 @@ function SummaryView({ sessionId }: { sessionId: string }) {
       {summary ? (
         <Markdown>{summary.content}</Markdown>
       ) : (
-        <p>No summary available for this session.</p>
+        <p className="text-gray-500 italic">No summary available for this session.</p>
       )}
     </div>
   );
@@ -83,12 +96,25 @@ function TranscriptView({ sessionId }: { sessionId: string }) {
   useEffect(() => {
     const loadTranscripts = async () => {
       setIsLoading(true);
+      setError(null);
       try {
         const fetchedTranscripts = await getTranscripts(sessionId);
         setTranscripts(fetchedTranscripts);
       } catch (err) {
-        setError("Failed to load transcripts.");
-        console.error(err);
+        if (err instanceof ApiError) {
+          if (err.status === 404) {
+            // Don't treat missing transcripts as an error
+            setTranscripts([]);
+            return;
+          } else if (err.status >= 500) {
+            setError("Server error occurred while loading transcripts.");
+          } else {
+            setError("Network error occurred while loading transcripts.");
+          }
+        } else {
+          setError("Network error occurred while loading transcripts.");
+        }
+        console.error('Transcript loading error:', err);
       } finally {
         setIsLoading(false);
       }
@@ -114,7 +140,7 @@ function TranscriptView({ sessionId }: { sessionId: string }) {
           </p>
         ))
       ) : (
-        <p>No transcripts found for this session.</p>
+        <p className="text-gray-500 italic">No transcripts found for this session.</p>
       )}
     </div>
   );
