@@ -436,14 +436,49 @@ app.on('ready', async () => {
     app.dock.hide()
   }
 
-  if (process.platform === 'darwin') {
-    const screenStatus = systemPreferences.getMediaAccessStatus('screen')
-    if (screenStatus === 'not-determined') {
-      await systemPreferences.askForMediaAccess('screen').catch(console.error)
-    }
-  }
-
   await createWindow()
+
+  // Request permissions AFTER window creation to avoid blocking UI
+  if (process.platform === 'darwin') {
+    // Use setTimeout to ensure window is fully rendered before showing permission dialogs
+    setTimeout(async () => {
+      try {
+        // Request screen permission
+        const screenStatus = systemPreferences.getMediaAccessStatus('screen')
+        if (screenStatus === 'not-determined') {
+          console.log('[main/index.ts] Requesting screen permission...')
+          await systemPreferences.askForMediaAccess('screen').catch(console.error)
+        }
+
+        // Request microphone permission
+        const microphoneStatus = systemPreferences.getMediaAccessStatus('microphone')
+        if (microphoneStatus === 'not-determined') {
+          console.log('[main/index.ts] Requesting microphone permission...')
+          const microphoneGranted = await systemPreferences.askForMediaAccess('microphone').catch(console.error)
+          if (!microphoneGranted) {
+            console.warn('[main/index.ts] Microphone permission not granted')
+          } else {
+            console.log('[main/index.ts] Microphone permission granted')
+          }
+        } else if (microphoneStatus === 'granted') {
+          console.log('[main/index.ts] Microphone permission already granted')
+        } else if (microphoneStatus === 'denied') {
+          console.warn('[main/index.ts] Microphone permission denied')
+          // Notify renderer about permission status
+          if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send('permissions:microphone-denied')
+          }
+        }
+
+        // Notify renderer that permission checks are complete
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('permissions:initialization-complete')
+        }
+      } catch (error) {
+        console.error('[main/index.ts] Error during permission requests:', error)
+      }
+    }, 1000) // 1 second delay to ensure smooth app startup
+  }
 
   if (!is.dev) {
     setupAutoUpdaterListeners()
@@ -548,6 +583,51 @@ app.on('ready', async () => {
 
   ipcMain.handle('electronAPI:getDisplays', () => {
     return screen.getAllDisplays()
+  })
+
+  // Permission status handlers
+  ipcMain.handle('electronAPI:getMediaAccessStatus', (event, mediaType: 'microphone' | 'screen' | 'camera') => {
+    if (process.platform === 'darwin') {
+      return systemPreferences.getMediaAccessStatus(mediaType)
+    }
+    return 'granted' // Other platforms don't have the same permission system
+  })
+
+  ipcMain.handle('electronAPI:askForMediaAccess', async (event, mediaType: 'microphone' | 'screen' | 'camera') => {
+    if (process.platform === 'darwin') {
+      try {
+        return await systemPreferences.askForMediaAccess(mediaType)
+      } catch (error) {
+        console.error(`[main/index.ts] Error requesting ${mediaType} permission:`, error)
+        return false
+      }
+    }
+    return true // Other platforms don't need explicit permission requests
+  })
+
+  ipcMain.handle('electronAPI:openSystemPreferences', async (event, prefPane: 'microphone' | 'screen' | 'camera') => {
+    if (process.platform === 'darwin') {
+      let url = ''
+      switch (prefPane) {
+        case 'microphone':
+          url = 'x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone'
+          break
+        case 'screen':
+          url = 'x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture'
+          break
+        case 'camera':
+          url = 'x-apple.systempreferences:com.apple.preference.security?Privacy_Camera'
+          break
+      }
+      try {
+        await shell.openExternal(url)
+        return true
+      } catch (error) {
+        console.error(`[main/index.ts] Error opening system preferences for ${prefPane}:`, error)
+        return false
+      }
+    }
+    return false // Not supported on other platforms
   })
 
   ipcMain.handle('electronAPI:getAppVersion', () => {

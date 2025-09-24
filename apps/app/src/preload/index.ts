@@ -26,6 +26,15 @@ const api = {
 
   getAppVersion: () => ipcRenderer.invoke('electronAPI:getAppVersion'),
 
+  getMediaAccessStatus: (mediaType: 'microphone' | 'screen' | 'camera') =>
+    ipcRenderer.invoke('electronAPI:getMediaAccessStatus', mediaType),
+
+  askForMediaAccess: (mediaType: 'microphone' | 'screen' | 'camera') =>
+    ipcRenderer.invoke('electronAPI:askForMediaAccess', mediaType),
+
+  openSystemPreferences: (prefPane: 'microphone' | 'screen' | 'camera') =>
+    ipcRenderer.invoke('electronAPI:openSystemPreferences', prefPane),
+
   getSettings: () => ipcRenderer.invoke('electronAPI:getSettings'),
 
   getMainWindowBounds: () => ipcRenderer.invoke('electronAPI:getMainWindowBounds'),
@@ -82,7 +91,9 @@ const api = {
       'app:execute-graceful-stop',
       'session:duration-update',
       'settings:changed',
-      'audio:levels-updated'
+      'audio:levels-updated',
+      'permissions:microphone-denied',
+      'permissions:initialization-complete'
     ]
     if (validChannels.includes(channel)) {
       const subscription = (event, ...args) => callback(...args)
@@ -149,6 +160,9 @@ const api = {
       'session:set-profile',
       'session:clear-profile',
       'electronAPI:getAppVersion',
+      'electronAPI:getMediaAccessStatus',
+      'electronAPI:askForMediaAccess',
+      'electronAPI:openSystemPreferences',
       'popover:consume-pending-keyword',
       'electronAPI:getActiveScreenSourceId',
       'electronAPI:getDisplays'
