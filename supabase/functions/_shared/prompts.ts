@@ -191,11 +191,84 @@ ${text_input}
   },
   screenshotAnalysis: {
     en: {
-      // The prompt is the user's direct input. This makes the structure consistent.
-      base: (text_input: string) => text_input,
+      base: ({
+        text_input,
+        existing_summary,
+        recent_transcriptions,
+      }: {
+        text_input: string;
+        existing_summary?: string;
+        recent_transcriptions?: string;
+      }) => {
+        let prompt = `Analyze the provided screenshot and answer the user's question: "${text_input}".
+
+Please provide a detailed, accurate analysis based on what you can see in the image. If the user's question is general (like "What do you see?" or "Analyze this"), provide a comprehensive description of the image content.
+
+Use the conversation context below to better understand what the user might be looking for and tailor your response accordingly. Provide your response in English.`;
+
+        if (existing_summary) {
+          prompt += `
+
+Here is the summary of the conversation so far, which might give you context:
+---
+${existing_summary}
+---`;
+        }
+
+        if (recent_transcriptions) {
+          prompt += `
+
+Here are the most recent transcriptions, which might also be relevant:
+---
+${recent_transcriptions}
+---`;
+        }
+
+        prompt += `
+
+Based on the image and the available context, please provide your analysis.`;
+        return prompt;
+      },
     },
     "zh-TW": {
-      base: (text_input: string) => text_input,
+      base: ({
+        text_input,
+        existing_summary,
+        recent_transcriptions,
+      }: {
+        text_input: string;
+        existing_summary?: string;
+        recent_transcriptions?: string;
+      }) => {
+        let prompt = `分析提供的截圖並回答使用者的問題：「${text_input}」。
+
+請根據你在圖片中看到的內容提供詳細且準確的分析。如果使用者的問題比較籠統（如「你看到什麼？」或「分析這個」），請提供圖片內容的全面描述。
+
+請利用以下對話前後文來更好地理解使用者可能在尋找什麼，並據此調整你的回應。請以繁體中文提供回應。`;
+
+        if (existing_summary) {
+          prompt += `
+
+這是目前為止的對話摘要，可能能提供相關背景資訊：
+---
+${existing_summary}
+---`;
+        }
+
+        if (recent_transcriptions) {
+          prompt += `
+
+這是最近的對話逐字稿，可能也與主題相關：
+---
+${recent_transcriptions}
+---`;
+        }
+
+        prompt += `
+
+根據圖片和現有的前後文，請提供你的分析。`;
+        return prompt;
+      },
     },
   },
   summarize: {

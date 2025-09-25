@@ -239,8 +239,17 @@ export function useAIInteraction() {
           }
           case 'screenshot': {
             functionName = 'ai-action-screenshot-analysis'
-            functionPayload.text_input = query
+            const sessionId = await (window as any).electronAPI.invoke('session:get-id')
+            const existingSummary = await (window as any).electronAPI.invoke(
+              'db:get-summary',
+              sessionId
+            )
+            const context = await gatherContext()
+
+            functionPayload.text_input = query || 'Please analyze this screenshot and describe what you see.'
             functionPayload.image_input = screenshot
+            functionPayload.existing_summary = existingSummary?.content
+            functionPayload.recent_transcriptions = context?.text
             break
           }
           case 'chat': {

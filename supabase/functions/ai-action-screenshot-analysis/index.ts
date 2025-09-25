@@ -1,12 +1,13 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { withEntitlements } from "../_shared/rbac.ts";
 import { corsHeaders } from "../_shared/cors.ts";
+import { PROMPTS, getLanguage } from "../_shared/prompts.ts";
 
 const handleRequest = async (req: Request, profile: Record<string, any>) => {
   try {
     console.log(`[ai-action-screenshot-analysis] function invoked at: ${new Date().toISOString()}`);
 
-    const { text_input, image_input } = await req.json();
+    const { text_input, image_input, existing_summary, recent_transcriptions, language } = await req.json();
     if (!text_input || !image_input) {
       return new Response(JSON.stringify({ error: "Prompt and screenshot are required" }), {
         status: 400,
@@ -19,11 +20,18 @@ const handleRequest = async (req: Request, profile: Record<string, any>) => {
       throw new Error("GOOGLE_GENERATIVE_AI_API_KEY is not set");
     }
 
+    const lang = getLanguage(language);
+    const prompt = PROMPTS.screenshotAnalysis[lang].base({
+      text_input,
+      existing_summary,
+      recent_transcriptions,
+    });
+
     const contents = [
       {
         role: "user",
         parts: [
-          { text: text_input },
+          { text: prompt },
           {
             inlineData: {
               mimeType: "image/jpeg",
