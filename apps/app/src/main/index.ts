@@ -38,6 +38,7 @@ let mainWindow: BrowserWindow | null
 let selectionWindow: BrowserWindow | null
 
 let isContentProtectionEnabled = false
+let isScreenshotInProgress = false
 
 let pendingKeyword: { keyword: string; timestamp: number } | null = null
 
@@ -812,11 +813,51 @@ app.on('ready', async () => {
   )
 
   ipcMain.on('electronAPI:startScreenshot', () => {
+    if (isScreenshotInProgress) {
+      console.warn('[main/index.ts] Screenshot process already in progress.')
+      return
+    }
+    isScreenshotInProgress = true
     console.log('[main/index.ts] startScreenshot IPC event received, creating selection window')
+  
+    if (!isContentProtectionEnabled) {
+      console.log('[main/index.ts] Temporarily enabling content protection for screenshot.')
+      for (const win of BrowserWindow.getAllWindows()) {
+        if (!win.isDestroyed()) {
+          const url = win.webContents.getURL()
+          if (!url.includes('#screen-preview')) {
+            win.setContentProtection(true)
+          }
+        }
+      }
+    }
+  
     createSelectionWindow()
-  })
+  })  function endScreenshotSession() {
+  if (!isScreenshotInProgress) return
+  isScreenshotInProgress = false
 
-  ipcMain.on('electronAPI:captureArea', async (event, bounds) => {
+  console.log('[main/index.ts] Ending screenshot session.')
+
+  if (selectionWindow) {
+    selectionWindow.close()
+    selectionWindow = null
+  }
+
+  if (!isContentProtectionEnabled) {
+    console.log('[main/index.ts] Restoring content protection state after screenshot.')
+    for (const win of BrowserWindow.getAllWindows()) {
+      if (!win.isDestroyed()) {
+        const url = win.webContents.getURL()
+        if (!url.includes('#screen-preview')) {
+          win.setContentProtection(false)
+        }
+      }
+    }
+  }
+}
+
+ipcMain.on('electronAPI:captureArea', async (event, bounds) => {
     try {
       console.log('[main/index.ts] Screenshot capture started with bounds:', bounds)
       const settings = await loadSettings()
@@ -876,11 +917,6 @@ app.on('ready', async () => {
       await fs.writeFile(screenshotPath, image)
       console.log('[main/index.ts] Screenshot saved successfully, size:', image.length, 'bytes')
 
-      if (selectionWindow) {
-        selectionWindow.close()
-        console.log('[main/index.ts] Selection window closed')
-      }
-
       // Read the file and convert to base64 for the renderer
       console.log('[main/index.ts] Converting screenshot to base64 for renderer')
       try {
@@ -911,15 +947,14 @@ app.on('ready', async () => {
           win.webContents.send('electronAPI:screenshotError', error.message)
         }
       }
+    } finally {
+      endScreenshotSession()
     }
   })
 
   ipcMain.on('electronAPI:cancelScreenshot', () => {
-    if (selectionWindow) {
-      selectionWindow.close()
-    }
+    endScreenshotSession()
   })
-
   let historyViewerServer
 
   ipcMain.on('history:open', async () => {
