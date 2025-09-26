@@ -1,9 +1,9 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { Main } from './components/main.js'
-import { useAuth } from './context/AuthContext.js'
+import { AppRouter } from './components/AppRouter'
+import { useAuth } from './context/AuthContext'
 import { Loader2 } from 'lucide-react'
-import { LoginPage, Waitlist } from './components/LoginPage.js'
+import { LoginPage, Waitlist } from './components/LoginPage'
 import { motion, AnimatePresence } from 'motion'
 
 /**
@@ -103,7 +103,7 @@ export default function App() {
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.2 }}
                 >
-                  <Main />
+                  <AppRouter />
                 </motion.div>
               )
             ) : (

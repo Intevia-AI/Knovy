@@ -43,7 +43,7 @@ function AppContainer() {
     case 'main':
       return <MainController />
     case 'screen-preview':
-      return <PreviewPanel systemAnalyserNode={null} />
+      return <PreviewPanel />
     case 'transcriptions':
       return <ChatPanel />
     case 'actions':
@@ -57,7 +57,7 @@ function AppContainer() {
   }
 }
 
-export function Main() {
+export function AppRouter() {
   const { setTheme } = useTheme()
 
   useEffect(() => {
