@@ -240,11 +240,11 @@ Based on the image and the available context, please provide your analysis.`;
         existing_summary?: string;
         recent_transcriptions?: string;
       }) => {
-        let prompt = `分析提供的截圖並回答使用者的問題：「${text_input}」。
+        let prompt = `請分析提供的截圖並回答使用者的問題：「${text_input}」。
 
-請根據你在圖片中看到的內容提供詳細且準確的分析。如果使用者的問題比較籠統（如「你看到什麼？」或「分析這個」），請提供圖片內容的全面描述。
+請根據你在圖片中看到的內容提供精簡、簡短且準確的分析。如果使用者的問題比較籠統（如「你看到什麼？」或「分析這個」），請提供圖片內容的精簡、簡短描述。
 
-請利用以下對話前後文來更好地理解使用者可能在尋找什麼，並據此調整你的回應。請以繁體中文提供回應。`;
+請利用以下對話前後文來理解使用者可能在尋找什麼，並據此調整你的回應；如果無關，那請針對截圖回應即可。請以繁體中文提供回應。`;
 
         if (existing_summary) {
           prompt += `

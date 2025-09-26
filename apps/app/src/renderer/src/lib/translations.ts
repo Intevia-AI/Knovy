@@ -89,7 +89,14 @@ export const translations = {
 
     // About Section
     versionLabel: 'Version',
-    copyrightLabel: 'Copyright'
+    copyrightLabel: 'Copyright',
+
+    // AI Action Display Messages
+    aiActionChatDisplay: 'Chat',
+    aiActionAnswerDisplay: 'Answer based on transcription',
+    aiActionSummaryDisplay: 'Generate summary from transcription',
+    aiActionKeywordSearchDisplay: 'Keyword search',
+    aiActionScreenshotDisplay: 'Screenshot analysis'
   },
   'zh-TW': {
     // Add Traditional Chinese translations here
@@ -168,7 +175,14 @@ export const translations = {
 
     // About Section
     versionLabel: '版本',
-    copyrightLabel: '版權'
+    copyrightLabel: '版權',
+
+    // AI Action Display Messages
+    aiActionChatDisplay: '聊天', // We don't actually use this translation key, but we need to keep it for compatibility
+    aiActionAnswerDisplay: '請根據前後文推薦適合的回應',
+    aiActionSummaryDisplay: '請根據前後文產生摘要',
+    aiActionKeywordSearchDisplay: '關鍵字搜尋',
+    aiActionScreenshotDisplay: '請分析這張截圖'
   }
 }
 
@@ -253,6 +267,12 @@ export type TranslationKey =
   | 'aboutSection'
   | 'versionLabel'
   | 'copyrightLabel'
+  // AI Action Display Messages
+  | 'aiActionChatDisplay'
+  | 'aiActionAnswerDisplay'
+  | 'aiActionSummaryDisplay'
+  | 'aiActionKeywordSearchDisplay'
+  | 'aiActionScreenshotDisplay'
 // ... add other keys here
 
 /**

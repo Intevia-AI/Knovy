@@ -9,9 +9,8 @@ import { Message as AIMessage } from 'ai'
 import { useI18n } from '@/hooks/useI18n'
 import { useScreenShare } from './useScreenShare'
 import { supabase } from '@/lib/supabaseClient'
-import { baseDisplayPromptMap } from '@/lib/prompts'
 
-export type AIAction = 'chat' | 'answer' | 'summary' | 'keyword_search' | 'screenshot'
+export type AIAction = 'chat' | 'answer' | 'summary' | 'keyword_search' | 'screenshot' | 'file'
 
 interface TranscriptionMessage extends AIMessage {
   timestamp: number
@@ -145,7 +144,21 @@ export function useAIInteraction() {
 
       // Avoid adding a display message for periodic summary updates
       if (action !== 'summary') {
-        const displayMsgContent = query || baseDisplayPromptMap[action][currentLanguage]
+        // Map action to translation key for display message
+        const getDisplayMessage = (action: AIAction): string => {
+          const actionToTranslationKey = {
+            chat: 'aiActionChatDisplay',
+            answer: 'aiActionAnswerDisplay',
+            summary: 'aiActionSummaryDisplay',
+            keyword_search: 'aiActionKeywordSearchDisplay',
+            screenshot: 'aiActionScreenshotDisplay',
+            file: 'aiActionUpload' // Fallback to existing translation
+          } as const
+
+          return t(actionToTranslationKey[action] as any)
+        }
+
+        const displayMsgContent = query || getDisplayMessage(action)
         const displayMsg: AIMessage = {
           id: `disp-${Date.now()}`,
           role: 'user',
@@ -245,8 +258,10 @@ export function useAIInteraction() {
               sessionId
             )
             const context = await gatherContext()
-
-            functionPayload.text_input = query || 'Please analyze this screenshot and describe what you see.'
+            // TODO: Currently we pass undefined to the query.
+            // TODO: We should let user ask what they want to know about the screenshot in the future.
+            functionPayload.text_input =
+              query || 'Please analyze this screenshot and describe what you see.'
             functionPayload.image_input = screenshot
             functionPayload.existing_summary = existingSummary?.content
             functionPayload.recent_transcriptions = context?.text
