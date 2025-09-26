@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client'
 import '@/assets/globals.css'
 
 function SelectionPage() {
+  console.log('[Selection] SelectionPage component loaded')
   const overlayRef = useRef<HTMLDivElement>(null)
   const selectionRef = useRef<HTMLDivElement>(null)
   let isSelecting = false
@@ -10,21 +11,30 @@ function SelectionPage() {
   let startY = 0
 
   useEffect(() => {
+    console.log('[Selection] Setting up event listeners')
     const overlay = overlayRef.current
     const selection = selectionRef.current
 
     if (!overlay || !selection) return
 
     const finishSelection = () => {
+      console.log('[Selection] finishSelection called, isSelecting:', isSelecting)
       if (!isSelecting) return
       isSelecting = false
 
       const bounds = selection.getBoundingClientRect()
+      console.log('[Selection] Selection bounds:', bounds)
       if (bounds.width > 0 && bounds.height > 0) {
         selection.style.display = 'none'
         overlay.style.display = 'none'
 
         setTimeout(() => {
+          console.log('[Selection] About to call captureArea with bounds:', {
+            x: Math.round(bounds.x),
+            y: Math.round(bounds.y),
+            width: Math.round(bounds.width),
+            height: Math.round(bounds.height)
+          })
           if (window.electronAPI?.captureArea) {
             window.electronAPI.captureArea({
               x: Math.round(bounds.x),
@@ -38,12 +48,14 @@ function SelectionPage() {
           // The main process will close this window
         }, 100)
       } else {
+        console.log('[Selection] Invalid selection bounds, cancelling')
         // Invalid selection, maybe close the window or just ignore
         window.electronAPI?.cancelScreenshot()
       }
     }
 
     const handleMouseDown = (e: MouseEvent) => {
+      console.log('[Selection] Mouse down at:', e.clientX, e.clientY)
       isSelecting = true
       startX = e.clientX
       startY = e.clientY
@@ -67,6 +79,7 @@ function SelectionPage() {
     }
 
     const handleMouseUp = () => {
+      console.log('[Selection] Mouse up, calling finishSelection')
       finishSelection()
     }
 

@@ -23,6 +23,7 @@ export default function ActionsPanel() {
   const [input, setInput] = useState('')
   const [isConversational, setIsConversational] = useState(false)
   const [isOpen, setIsOpen] = useState(true)
+  const [pendingScreenshot, setPendingScreenshot] = useState<string | null>(null)
   const popoverId = 'actions'
   const lastProcessedKeyword = useRef<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -109,6 +110,40 @@ export default function ActionsPanel() {
     consumeInitialKeyword()
   }, [handleKeywordSearch])
 
+  useEffect(() => {
+    console.log('[ActionsPanel] Setting up screenshot event listeners')
+
+    // Receive base64 screenshot data directly from main process
+    const unsubscribeScreenshotTaken = window.electronAPI.on('electronAPI:screenshotTaken',
+      async (base64Data: string) => {
+        console.log('[ActionsPanel] Screenshot taken event received with base64 data, size:', base64Data.length)
+
+        try {
+          // Main process already converted to base64, use it directly
+          setPendingScreenshot(base64Data)
+          setIsConversational(true)
+
+          // Send to AI analysis
+          const query = 'Please analyze this screenshot and describe what you see.'
+          console.log('[ActionsPanel] Sending screenshot to AI analysis with query:', query)
+          sendContextToAI('screenshot', query, base64Data)
+        } catch (error) {
+          console.error('[ActionsPanel] Error processing screenshot:', error)
+        }
+      }
+    )
+
+    const unsubscribeScreenshotError = window.electronAPI.on('electronAPI:screenshotError', (error: string) => {
+      console.error('[ActionsPanel] Screenshot error (generic on):', error)
+    })
+
+    return () => {
+      console.log('[ActionsPanel] Cleaning up screenshot event listeners')
+      unsubscribeScreenshotTaken()
+      unsubscribeScreenshotError()
+    }
+  }, []) // Remove dependencies to prevent constant re-setup
+
   type Action = {
     readonly action: 'summary' | 'answer' | 'screenshot' | 'file'
     readonly labelKey: string
@@ -116,13 +151,21 @@ export default function ActionsPanel() {
   }
 
   const baseActions: Action[] = [
-    { action: 'answer', labelKey: 'aiActionAnswer', icon: MessageSquareQuote }
-    // { action: 'screenshot', labelKey: 'aiActionScreenshot', icon: CameraIcon }
+    { action: 'answer', labelKey: 'aiActionAnswer', icon: MessageSquareQuote },
+    { action: 'screenshot', labelKey: 'aiActionScreenshot', icon: CameraIcon }
   ]
 
   const actions = baseActions
 
   const handleActionClick = (action: 'summary' | 'answer' | 'screenshot' | 'file') => {
+    if (action === 'screenshot') {
+      console.log('[ActionsPanel] Screenshot action clicked, starting screenshot capture')
+      console.log('[ActionsPanel] electronAPI available:', !!window.electronAPI)
+      console.log('[ActionsPanel] startScreenshot method available:', !!window.electronAPI?.startScreenshot)
+      window.electronAPI.startScreenshot()
+      return
+    }
+
     if (!isConversational) {
       setIsConversational(true)
     }
@@ -195,7 +238,24 @@ export default function ActionsPanel() {
                           : 'bg-black/5 border-black/10 mr-auto text-left'
                       )}
                     >
-                      {m.role === 'assistant' ? <Markdown>{m.content}</Markdown> : m.content}
+                      {m.role === 'assistant' ? (
+                        <Markdown>{m.content}</Markdown>
+                      ) : (
+                        <div className="space-y-2">
+                          {m.content}
+                          {/* Show screenshot if this message is about screenshot analysis */}
+                          {pendingScreenshot && (m.content.includes('screenshot') || m.content.includes('analyze')) && (
+                            <img
+                              src={pendingScreenshot}
+                              alt="Screenshot"
+                              className="max-w-full max-h-32 object-contain rounded border"
+                              onLoad={() => {
+                                setPendingScreenshot(null)
+                              }}
+                            />
+                          )}
+                        </div>
+                      )}
                     </motion.div>
                   ))}
                   {isLoading && (

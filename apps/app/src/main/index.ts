@@ -306,9 +306,11 @@ ipcMain.on('renderer-auth-ready', (event) => {
 })
 
 function createSelectionWindow() {
+  console.log('[main/index.ts] Creating selection window')
   const primaryDisplay = screen.getPrimaryDisplay()
   const { width, height } = primaryDisplay.bounds
   const menuBarHeight = process.platform === 'darwin' ? -50 : 0
+  console.log('[main/index.ts] Primary display bounds:', { width, height, menuBarHeight })
 
   selectionWindow = new BrowserWindow({
     width: width,
@@ -329,7 +331,9 @@ function createSelectionWindow() {
   if (is.dev) {
     const devServerUrl = import.meta.env['VITE_DEV_SERVER_URL']
     if (devServerUrl) {
-      selectionWindow.loadURL(`${devServerUrl}/selection.html`)
+      const selectionUrl = `${devServerUrl}/selection.html`
+      console.log('[main/index.ts] Loading selection window from:', selectionUrl)
+      selectionWindow.loadURL(selectionUrl)
     } else {
       console.warn(
         'VITE_DEV_SERVER_URL is not set, falling back to http://localhost:5173 for selection window'
@@ -337,9 +341,12 @@ function createSelectionWindow() {
       selectionWindow.loadURL('http://localhost:5173/selection.html')
     }
   } else {
-    selectionWindow.loadFile(path.join(__dirname, '../renderer/selection.html'))
+    const selectionPath = path.join(__dirname, '../renderer/selection.html')
+    console.log('[main/index.ts] Loading selection window from file:', selectionPath)
+    selectionWindow.loadFile(selectionPath)
   }
   selectionWindow.setIgnoreMouseEvents(false)
+  console.log('[main/index.ts] Selection window created and configured')
 }
 
 const createWindow = async () => {
@@ -416,8 +423,45 @@ const toggleWindow = () => {
   }
 }
 
+// Screenshot cache management function
+async function cleanupScreenshotCache() {
+  try {
+    const screenshotsDir = path.join(__dirname, '../../renderer/public/screenshots')
+    const threeDaysAgo = Date.now() - (3 * 24 * 60 * 60 * 1000) // 3 days in milliseconds
+
+    console.log(`[main/index.ts] Cleaning screenshot cache in: ${screenshotsDir}`)
+
+    // Create directory if it doesn't exist
+    await fs.mkdir(screenshotsDir, { recursive: true })
+
+    // Read directory contents
+    const files = await fs.readdir(screenshotsDir)
+    const screenshotFiles = files.filter(file => file.startsWith('screenshot-') && file.endsWith('.png'))
+
+    console.log(`[main/index.ts] Found ${screenshotFiles.length} screenshot files`)
+
+    for (const file of screenshotFiles) {
+      const filePath = path.join(screenshotsDir, file)
+      try {
+        const stats = await fs.stat(filePath)
+        if (stats.mtime.getTime() < threeDaysAgo) {
+          await fs.unlink(filePath)
+          console.log(`[main/index.ts] Deleted old screenshot: ${file}`)
+        }
+      } catch (error) {
+        console.warn(`[main/index.ts] Error processing screenshot file ${file}:`, error)
+      }
+    }
+  } catch (error) {
+    console.error('[main/index.ts] Error cleaning screenshot cache:', error)
+  }
+}
+
 app.on('ready', async () => {
   console.log('[DB Path] User data path:', app.getPath('userData'))
+
+  // Clean up screenshot cache on startup
+  await cleanupScreenshotCache()
 
   if (is.dev) {
     await installExtension(REACT_DEVELOPER_TOOLS).catch(console.log)
@@ -763,10 +807,14 @@ app.on('ready', async () => {
     }
   )
 
-  ipcMain.on('electronAPI:startScreenshot', () => createSelectionWindow())
+  ipcMain.on('electronAPI:startScreenshot', () => {
+    console.log('[main/index.ts] startScreenshot IPC event received, creating selection window')
+    createSelectionWindow()
+  })
 
   ipcMain.on('electronAPI:captureArea', async (event, bounds) => {
     try {
+      console.log('[main/index.ts] Screenshot capture started with bounds:', bounds)
       const settings = await loadSettings()
       const displays = screen.getAllDisplays()
       let targetDisplay = null
@@ -802,9 +850,11 @@ app.on('ready', async () => {
 
       const screenshotsDir = path.join(__dirname, '../../renderer/public/screenshots')
       await fs.mkdir(screenshotsDir, { recursive: true })
+      console.log('[main/index.ts] Screenshots directory created/verified:', screenshotsDir)
 
       const timestamp = Date.now()
       const screenshotPath = path.join(screenshotsDir, `screenshot-${timestamp}.png`)
+      console.log('[main/index.ts] Saving screenshot to:', screenshotPath)
 
       const captureBounds = {
         x: Math.round(bounds.x * scaleFactor),
@@ -819,18 +869,42 @@ app.on('ready', async () => {
 
       const image = source.thumbnail.crop(captureBounds).toPNG()
       await fs.writeFile(screenshotPath, image)
+      console.log('[main/index.ts] Screenshot saved successfully, size:', image.length, 'bytes')
 
       if (selectionWindow) {
         selectionWindow.close()
+        console.log('[main/index.ts] Selection window closed')
       }
 
-      const relativePath = `/screenshots/screenshot-${timestamp}.png`
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send('electronAPI:screenshotTaken', relativePath)
+      // Read the file and convert to base64 for the renderer
+      console.log('[main/index.ts] Converting screenshot to base64 for renderer')
+      try {
+        const imageBuffer = await fs.readFile(screenshotPath)
+        const base64Data = `data:image/png;base64,${imageBuffer.toString('base64')}`
+        console.log('[main/index.ts] Screenshot converted to base64, size:', base64Data.length)
+
+        // Broadcast screenshot data (base64) to all windows
+        console.log('[main/index.ts] Broadcasting screenshot base64 data to all windows')
+        for (const win of BrowserWindow.getAllWindows()) {
+          if (!win.isDestroyed()) {
+            win.webContents.send('electronAPI:screenshotTaken', base64Data)
+          }
+        }
+      } catch (readError) {
+        console.error('[main/index.ts] Error reading screenshot file:', readError)
+        for (const win of BrowserWindow.getAllWindows()) {
+          if (!win.isDestroyed()) {
+            win.webContents.send('electronAPI:screenshotError', 'Failed to read screenshot file')
+          }
+        }
       }
     } catch (error: any) {
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send('electronAPI:screenshotError', error.message)
+      console.error('[main/index.ts] Screenshot capture error:', error)
+      // Broadcast error to all windows
+      for (const win of BrowserWindow.getAllWindows()) {
+        if (!win.isDestroyed()) {
+          win.webContents.send('electronAPI:screenshotError', error.message)
+        }
       }
     }
   })

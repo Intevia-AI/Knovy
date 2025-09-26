@@ -125,7 +125,10 @@ const api = {
       'app:quit',
       'app:toggle-content-protection',
       'session:duration-update',
-      'audio:level-update'
+      'audio:level-update',
+      'electronAPI:startScreenshot',
+      'electronAPI:captureArea',
+      'electronAPI:cancelScreenshot'
     ]
     if (!validChannels.includes(channel)) {
       console.warn(`[Preload] Attempted to send on invalid channel: ${channel}`)
