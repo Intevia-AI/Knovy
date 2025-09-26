@@ -143,7 +143,8 @@ export function useAIInteraction() {
       }
 
       // Avoid adding a display message for periodic summary updates
-      if (action !== 'summary') {
+      // Also, if a screenshot is present, the calling component is responsible for creating the display message.
+      if (action !== 'summary' && !screenshot) {
         // Map action to translation key for display message
         const getDisplayMessage = (action: AIAction): string => {
           const actionToTranslationKey = {

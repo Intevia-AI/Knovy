@@ -17,12 +17,11 @@ import { Markdown } from '@/components/markdown'
 
 export default function ActionsPanel() {
   const { t } = useI18n()
-  const { sendContextToAI, aiMessages, isLoading } = useAIInteraction()
+  const { sendContextToAI, aiMessages, isLoading, setAiMessages } = useAIInteraction()
   const [isScreenSharing, setIsScreenSharing] = useState(false)
   const [input, setInput] = useState('')
   const [isConversational, setIsConversational] = useState(false)
   const [isOpen, setIsOpen] = useState(true)
-  const [pendingScreenshot, setPendingScreenshot] = useState<string | null>(null)
   const popoverId = 'actions'
   const lastProcessedKeyword = useRef<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -81,9 +80,6 @@ export default function ActionsPanel() {
       if (!keyword || keyword === lastProcessedKeyword.current) return
       lastProcessedKeyword.current = keyword
 
-      console.log(
-        `[ActionsPanel] Received 'keyword:search' event for "${keyword}". Triggering AI search.`
-      )
       if (!isConversational) {
         setIsConversational(true)
       }
@@ -110,24 +106,26 @@ export default function ActionsPanel() {
   }, [handleKeywordSearch])
 
   useEffect(() => {
-    console.log('[ActionsPanel] Setting up screenshot event listeners')
-
     // Receive base64 screenshot data directly from main process
     const unsubscribeScreenshotTaken = window.electronAPI.on(
       'electronAPI:screenshotTaken',
       async (base64Data: string) => {
-        console.log(
-          '[ActionsPanel] Screenshot taken event received with base64 data, size:',
-          base64Data.length
-        )
-
         try {
-          // Main process already converted to base64, use it directly
-          setPendingScreenshot(base64Data)
+          // Switch to conversational mode
           setIsConversational(true)
 
+          // Add a user message with the screenshot (like in chat apps)
+          const screenshotMessage = {
+            id: `screenshot-${Date.now()}`,
+            role: 'user' as const,
+            content: t('aiActionScreenshotDisplay'), // "Please analyze this screenshot"
+            screenshot: base64Data // Add screenshot data to the message
+          }
+
+          // Add the screenshot message to the conversation
+          setAiMessages(prev => [...prev, screenshotMessage])
+
           // Send to AI analysis
-          console.log('[ActionsPanel] Sending screenshot to AI analysis:')
           sendContextToAI('screenshot', undefined, base64Data)
         } catch (error) {
           console.error('[ActionsPanel] Error processing screenshot:', error)
@@ -143,7 +141,6 @@ export default function ActionsPanel() {
     )
 
     return () => {
-      console.log('[ActionsPanel] Cleaning up screenshot event listeners')
       unsubscribeScreenshotTaken()
       unsubscribeScreenshotError()
     }
@@ -164,12 +161,6 @@ export default function ActionsPanel() {
 
   const handleActionClick = (action: 'summary' | 'answer' | 'screenshot' | 'file') => {
     if (action === 'screenshot') {
-      console.log('[ActionsPanel] Screenshot action clicked, starting screenshot capture')
-      console.log('[ActionsPanel] electronAPI available:', !!window.electronAPI)
-      console.log(
-        '[ActionsPanel] startScreenshot method available:',
-        !!window.electronAPI?.startScreenshot
-      )
       window.electronAPI.startScreenshot()
       return
     }
@@ -251,18 +242,14 @@ export default function ActionsPanel() {
                       ) : (
                         <div className="space-y-2">
                           {m.content}
-                          {/* Show screenshot if this message is about screenshot analysis */}
-                          {pendingScreenshot &&
-                            (m.content.includes('screenshot') || m.content.includes('analyze')) && (
-                              <img
-                                src={pendingScreenshot}
-                                alt="Screenshot"
-                                className="max-w-full max-h-32 object-contain rounded border"
-                                onLoad={() => {
-                                  setPendingScreenshot(null)
-                                }}
-                              />
-                            )}
+                          {/* Show screenshot if this user message contains one */}
+                          {(m as any).screenshot && (
+                            <img
+                              src={(m as any).screenshot}
+                              alt="Screenshot"
+                              className="max-w-full max-h-48 object-contain rounded border mt-2"
+                            />
+                          )}
                         </div>
                       )}
                     </motion.div>
