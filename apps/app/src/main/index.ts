@@ -432,7 +432,7 @@ async function cleanupScreenshotCache() {
   try {
     // Use the same user data directory for cleanup
     const screenshotsDir = path.join(app.getPath('userData'), 'screenshots')
-    const threeDaysAgo = Date.now() - (3 * 24 * 60 * 60 * 1000) // 3 days in milliseconds
+    const threeDaysAgo = Date.now() - 3 * 24 * 60 * 60 * 1000 // 3 days in milliseconds
 
     console.log(`[main/index.ts] Cleaning screenshot cache in: ${screenshotsDir}`)
 
@@ -441,7 +441,9 @@ async function cleanupScreenshotCache() {
 
     // Read directory contents
     const files = await fs.readdir(screenshotsDir)
-    const screenshotFiles = files.filter(file => file.startsWith('screenshot-') && file.endsWith('.png'))
+    const screenshotFiles = files.filter(
+      (file) => file.startsWith('screenshot-') && file.endsWith('.png')
+    )
 
     console.log(`[main/index.ts] Found ${screenshotFiles.length} screenshot files`)
 
@@ -503,7 +505,9 @@ app.on('ready', async () => {
         const microphoneStatus = systemPreferences.getMediaAccessStatus('microphone')
         if (microphoneStatus === 'not-determined') {
           console.log('[main/index.ts] Requesting microphone permission...')
-          const microphoneGranted = await systemPreferences.askForMediaAccess('microphone').catch(console.error)
+          const microphoneGranted = await systemPreferences
+            .askForMediaAccess('microphone')
+            .catch(console.error)
           if (!microphoneGranted) {
             console.warn('[main/index.ts] Microphone permission not granted')
           } else {
@@ -635,49 +639,58 @@ app.on('ready', async () => {
   })
 
   // Permission status handlers
-  ipcMain.handle('electronAPI:getMediaAccessStatus', (event, mediaType: 'microphone' | 'screen' | 'camera') => {
-    if (process.platform === 'darwin') {
-      return systemPreferences.getMediaAccessStatus(mediaType)
+  ipcMain.handle(
+    'electronAPI:getMediaAccessStatus',
+    (event, mediaType: 'microphone' | 'screen' | 'camera') => {
+      if (process.platform === 'darwin') {
+        return systemPreferences.getMediaAccessStatus(mediaType)
+      }
+      return 'granted' // Other platforms don't have the same permission system
     }
-    return 'granted' // Other platforms don't have the same permission system
-  })
+  )
 
-  ipcMain.handle('electronAPI:askForMediaAccess', async (event, mediaType: 'microphone' | 'screen' | 'camera') => {
-    if (process.platform === 'darwin') {
-      try {
-        return await systemPreferences.askForMediaAccess(mediaType)
-      } catch (error) {
-        console.error(`[main/index.ts] Error requesting ${mediaType} permission:`, error)
-        return false
+  ipcMain.handle(
+    'electronAPI:askForMediaAccess',
+    async (event, mediaType: 'microphone' | 'screen' | 'camera') => {
+      if (process.platform === 'darwin') {
+        try {
+          return await systemPreferences.askForMediaAccess(mediaType)
+        } catch (error) {
+          console.error(`[main/index.ts] Error requesting ${mediaType} permission:`, error)
+          return false
+        }
       }
+      return true // Other platforms don't need explicit permission requests
     }
-    return true // Other platforms don't need explicit permission requests
-  })
+  )
 
-  ipcMain.handle('electronAPI:openSystemPreferences', async (event, prefPane: 'microphone' | 'screen' | 'camera') => {
-    if (process.platform === 'darwin') {
-      let url = ''
-      switch (prefPane) {
-        case 'microphone':
-          url = 'x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone'
-          break
-        case 'screen':
-          url = 'x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture'
-          break
-        case 'camera':
-          url = 'x-apple.systempreferences:com.apple.preference.security?Privacy_Camera'
-          break
+  ipcMain.handle(
+    'electronAPI:openSystemPreferences',
+    async (event, prefPane: 'microphone' | 'screen' | 'camera') => {
+      if (process.platform === 'darwin') {
+        let url = ''
+        switch (prefPane) {
+          case 'microphone':
+            url = 'x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone'
+            break
+          case 'screen':
+            url = 'x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture'
+            break
+          case 'camera':
+            url = 'x-apple.systempreferences:com.apple.preference.security?Privacy_Camera'
+            break
+        }
+        try {
+          await shell.openExternal(url)
+          return true
+        } catch (error) {
+          console.error(`[main/index.ts] Error opening system preferences for ${prefPane}:`, error)
+          return false
+        }
       }
-      try {
-        await shell.openExternal(url)
-        return true
-      } catch (error) {
-        console.error(`[main/index.ts] Error opening system preferences for ${prefPane}:`, error)
-        return false
-      }
+      return false // Not supported on other platforms
     }
-    return false // Not supported on other platforms
-  })
+  )
 
   ipcMain.handle('electronAPI:getAppVersion', () => {
     return app.getVersion()
@@ -714,6 +727,15 @@ app.on('ready', async () => {
   ipcMain.on('app:toggle-content-protection', async () => {
     isContentProtectionEnabled = !isContentProtectionEnabled
     await saveSettings({ contentProtection: isContentProtectionEnabled })
+
+    // If a screenshot is in progress, don't apply the change immediately.
+    // The `endScreenshotSession` function will apply the final correct state.
+    if (isScreenshotInProgress) {
+      console.log(
+        '[main/index.ts] Content protection toggled during screenshot. Change will be applied after.'
+      )
+      return
+    }
 
     for (const win of BrowserWindow.getAllWindows()) {
       if (!win.isDestroyed()) {
@@ -819,45 +841,47 @@ app.on('ready', async () => {
     }
     isScreenshotInProgress = true
     console.log('[main/index.ts] startScreenshot IPC event received, creating selection window')
-  
-    if (!isContentProtectionEnabled) {
-      console.log('[main/index.ts] Temporarily enabling content protection for screenshot.')
-      for (const win of BrowserWindow.getAllWindows()) {
-        if (!win.isDestroyed()) {
-          const url = win.webContents.getURL()
-          if (!url.includes('#screen-preview')) {
-            win.setContentProtection(true)
-          }
-        }
-      }
-    }
-  
-    createSelectionWindow()
-  })  function endScreenshotSession() {
-  if (!isScreenshotInProgress) return
-  isScreenshotInProgress = false
 
-  console.log('[main/index.ts] Ending screenshot session.')
-
-  if (selectionWindow) {
-    selectionWindow.close()
-    selectionWindow = null
-  }
-
-  if (!isContentProtectionEnabled) {
-    console.log('[main/index.ts] Restoring content protection state after screenshot.')
+    console.log('[main/index.ts] Forcing content protection for screenshot.')
     for (const win of BrowserWindow.getAllWindows()) {
       if (!win.isDestroyed()) {
         const url = win.webContents.getURL()
         if (!url.includes('#screen-preview')) {
+          win.setContentProtection(true)
+        }
+      }
+    }
+
+    createSelectionWindow()
+  })
+
+  function endScreenshotSession() {
+    if (!isScreenshotInProgress) return
+    isScreenshotInProgress = false
+
+    console.log('[main/index.ts] Ending screenshot session.')
+
+    if (selectionWindow) {
+      selectionWindow.close()
+      selectionWindow = null
+    }
+
+    console.log(
+      `[main/index.ts] Restoring content protection to user setting: ${isContentProtectionEnabled}`
+    )
+    for (const win of BrowserWindow.getAllWindows()) {
+      if (!win.isDestroyed()) {
+        const url = win.webContents.getURL()
+        if (url.includes('#screen-preview')) {
           win.setContentProtection(false)
+        } else {
+          win.setContentProtection(isContentProtectionEnabled)
         }
       }
     }
   }
-}
 
-ipcMain.on('electronAPI:captureArea', async (event, bounds) => {
+  ipcMain.on('electronAPI:captureArea', async (event, bounds) => {
     try {
       console.log('[main/index.ts] Screenshot capture started with bounds:', bounds)
       const settings = await loadSettings()
