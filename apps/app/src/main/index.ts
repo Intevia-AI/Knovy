@@ -424,9 +424,13 @@ const toggleWindow = () => {
 }
 
 // Screenshot cache management function
+// Screenshots are stored in: ~/Library/Application Support/Knovy/screenshots (macOS)
+//                          : %APPDATA%/Knovy/screenshots (Windows)
+//                          : ~/.config/Knovy/screenshots (Linux)
 async function cleanupScreenshotCache() {
   try {
-    const screenshotsDir = path.join(__dirname, '../../renderer/public/screenshots')
+    // Use the same user data directory for cleanup
+    const screenshotsDir = path.join(app.getPath('userData'), 'screenshots')
     const threeDaysAgo = Date.now() - (3 * 24 * 60 * 60 * 1000) // 3 days in milliseconds
 
     console.log(`[main/index.ts] Cleaning screenshot cache in: ${screenshotsDir}`)
@@ -848,7 +852,8 @@ app.on('ready', async () => {
       const source = sources.find((s) => s.display_id === String(targetDisplay.id))
       if (!source) throw new Error('Target screen source not found for screenshot')
 
-      const screenshotsDir = path.join(__dirname, '../../renderer/public/screenshots')
+      // Use user data directory for screenshots (works in both dev and production)
+      const screenshotsDir = path.join(app.getPath('userData'), 'screenshots')
       await fs.mkdir(screenshotsDir, { recursive: true })
       console.log('[main/index.ts] Screenshots directory created/verified:', screenshotsDir)
 
