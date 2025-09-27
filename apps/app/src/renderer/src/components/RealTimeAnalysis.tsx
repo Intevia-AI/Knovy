@@ -146,21 +146,48 @@ export default function RealTimeAnalysis({
                   .filter((k) => k)
               }
 
-              let highlightedTranscription = transcription
-              if (canHighlightKeywords && keywords.length > 0) {
-                const regex = new RegExp(`(${keywords.join('|')})`, 'gi')
-                highlightedTranscription = transcription.replace(regex, '`$1`')
+              // Split transcription into individual sentences
+              const splitIntoSentences = (text: string): string[] => {
+                // Chinese sentence endings: 。？！
+                // Also handle edge cases like ellipsis ... or multiple punctuation
+                const sentences = text.split(/([。？！]+)/).filter(part => part.trim())
+
+                const result: string[] = []
+                for (let i = 0; i < sentences.length; i += 2) {
+                  const sentence = sentences[i]?.trim()
+                  const punctuation = sentences[i + 1] || ''
+
+                  if (sentence) {
+                    result.push(sentence + punctuation)
+                  }
+                }
+
+                // If no clear sentence boundaries found, return original as single sentence
+                return result.length > 0 ? result : [text]
               }
-              console.log(`[RealTimeAnalysis] Sending transcription to main process:`, {
-                sourceType,
-                textLength: highlightedTranscription.length,
-                hasKeywords: keywords.length > 0,
-                transcriptionText: `"${transcription}"`,
-                highlightedText: `"${highlightedTranscription}"`,
-                keywords: keywords,
-                blockType: keywordsMatch ? 'complete' : 'transcription-only'
+
+              const sentences = splitIntoSentences(transcription)
+
+              sentences.forEach((sentence, index) => {
+                if (sentence.trim()) {
+                  let highlightedSentence = sentence
+                  if (canHighlightKeywords && keywords.length > 0) {
+                    const regex = new RegExp(`(${keywords.join('|')})`, 'gi')
+                    highlightedSentence = sentence.replace(regex, '`$1`')
+                  }
+
+                  console.log(`[RealTimeAnalysis] Sending sentence ${index + 1}/${sentences.length} to main process:`, {
+                    sourceType,
+                    sentence: `"${sentence}"`,
+                    highlighted: `"${highlightedSentence}"`,
+                    hasKeywords: keywords.length > 0,
+                    keywords: keywords,
+                    blockType: keywordsMatch ? 'complete' : 'transcription-only'
+                  })
+
+                  onTextResponse(highlightedSentence, false, sourceType)
+                }
               })
-              onTextResponse(highlightedTranscription, false, sourceType)
             }
           }
 
