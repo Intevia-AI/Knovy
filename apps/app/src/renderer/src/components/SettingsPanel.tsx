@@ -21,9 +21,9 @@ import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { useI18n } from '@/hooks/useI18n'
-import { useLanguage } from '@/context/LanguageContext'
+import { useLanguage } from '@/hooks/useLanguage'
 import { SupportedLanguage } from '@/lib/translations'
-import { useAuth } from '@/context/AuthContext'
+import { useAuth } from '@/hooks/useAuth'
 import { motion, AnimatePresence } from 'motion'
 
 export function SettingsPanel() {

@@ -1,8 +1,8 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
-import { GeminiClient } from '@/lib/geminiClient.js'
-import { useAuth } from '@/context/AuthContext'
+import { GeminiClient } from '@/services/geminiClient'
+import { useAuth } from '@/hooks/useAuth'
 
 interface RealTimeAnalysisProps {
   onTextResponse?: (

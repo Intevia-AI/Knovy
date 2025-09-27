@@ -6,7 +6,7 @@ import remarkGfm from 'remark-gfm'
 import remarkBreaks from 'remark-breaks'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
-import { useAuth } from '@/context/AuthContext'
+import { useAuth } from '@/hooks/useAuth'
 
 interface MarkdownProps {
   children: string

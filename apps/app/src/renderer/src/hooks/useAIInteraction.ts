@@ -8,7 +8,7 @@ import { useState, useCallback, useRef, useEffect } from 'react'
 import { Message as AIMessage } from 'ai'
 import { useI18n } from '@/hooks/useI18n'
 import { useScreenShare } from './useScreenShare'
-import { supabase } from '@/lib/supabaseClient'
+import { supabase } from '@/services/supabaseClient.js'
 
 export type AIAction = 'chat' | 'answer' | 'summary' | 'keyword_search' | 'screenshot' | 'file'
 

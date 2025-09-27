@@ -3,12 +3,12 @@ import { useEffect, useState } from 'react'
 import { useTheme } from 'next-themes'
 
 // Import the self-contained components for each view
-import { MainController } from './main/MainController'
-import ChatPanel from './main/ChatPanel'
-import ActionsPanel from './main/ActionsPanel'
-import { SettingsPanel } from './main/SettingsPanel'
-import { PreviewPanel } from './main/PreviewPanel'
-import { UpdaterPanel } from './main/UpdaterPanel'
+import { MainController } from '../components/MainController'
+import ChatPanel from '../components/ChatPanel'
+import ActionsPanel from '../components/ActionsPanel'
+import { SettingsPanel } from '../components/SettingsPanel'
+import { PreviewPanel } from '../components/PreviewPanel'
+import { UpdaterPanel } from '../components/UpdaterPanel'
 
 const getInitialView = () => {
   if (typeof window === 'undefined') return 'main'

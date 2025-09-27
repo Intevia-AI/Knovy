@@ -1,21 +1,17 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import App from './App.js'
+import App from './app/App.js'
 import '@/assets/globals.css'
-import { Providers } from './components/providers.js'
+import { Providers } from './app/providers.js'
 import { Toaster } from '@/components/ui/sonner'
-import { LanguageProvider } from './context/LanguageContext.js'
-import { AuthProvider } from './context/AuthContext.js'
+// Note: These providers will be simplified in the new structure
+// Language and Auth are now hooks that can be used directly in components
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
     <Providers>
-      <LanguageProvider>
-        <AuthProvider>
-          <App />
-          <Toaster />
-        </AuthProvider>
-      </LanguageProvider>
+      <App />
+      <Toaster />
     </Providers>
   </React.StrictMode>
 )

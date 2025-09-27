@@ -5,13 +5,11 @@ import { useEffect, useState, useCallback } from 'react'
 import { useElectron } from '@/hooks/useElectron'
 import { useScreenShare } from '@/hooks/useScreenShare'
 import { useAIInteraction } from '@/hooks/useAIInteraction'
-import { useLanguage } from '@/context/LanguageContext'
-
-import { useAuth } from '@/context/AuthContext'
+import { useLanguage } from '@/hooks/useLanguage'
 
 // Components
 import { MainControlBar } from './MainControlBar'
-import RealTimeAnalysis from '../RealTimeAnalysis'
+import RealTimeAnalysis from './RealTimeAnalysis'
 
 export function MainController() {
   const { language } = useLanguage()

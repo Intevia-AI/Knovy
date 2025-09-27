@@ -8,7 +8,7 @@ import { useState, useRef, useCallback, useEffect } from 'react'
 import { cleanupStream, cleanupRecorder } from '@/lib/utils'
 import { useSegmentRecorder, SEGMENT_MS } from '@/hooks/useSegmentRecorder' // Import SEGMENT_MS
 import type { Segment } from '@/types'
-import { supabase } from '@/lib/supabaseClient'
+import { supabase } from '@/services/supabaseClient.js'
 
 /**
  * @constant {number} SYSTEM_AUDIO_SEGMENT_MS - Duration of each system audio segment in milliseconds

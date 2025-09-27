@@ -4,7 +4,7 @@
  * @description React hook for accessing translations and current language
  */
 
-import { useLanguage } from '@/context/LanguageContext' // Adjust path if needed
+import { useLanguage } from '@/hooks/useLanguage'
 import { translations, TranslationKey } from '@/lib/translations' // Adjust path if needed
 
 /**

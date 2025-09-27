@@ -1,9 +1,9 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { AppRouter } from './components/AppRouter'
-import { useAuth } from './context/AuthContext'
+import { AppRouter } from './AppRouter'
+import { useAuth } from '../hooks/useAuth'
 import { Loader2 } from 'lucide-react'
-import { LoginPage, Waitlist } from './components/LoginPage'
+import { LoginPage, Waitlist } from '../components/LoginPage'
 import { motion, AnimatePresence } from 'motion'
 
 /**

@@ -1,11 +1,11 @@
 /**
- * @fileoverview Authentication context provider for Supabase OAuth integration.
+ * @fileoverview Authentication hook for Supabase OAuth integration.
  * Manages user authentication state, session profiles, and OAuth flows.
  */
 
 'use client'
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react'
-import { supabase } from '../lib/supabaseClient.js'
+import { useState, useEffect, useRef } from 'react'
+import { supabase } from '../services/supabaseClient.js'
 import type { Session, User } from '@supabase/supabase-js'
 
 interface SessionProfile {
@@ -16,7 +16,7 @@ interface SessionProfile {
   quotas: Record<string, { limit: number; used: number }>
 }
 
-interface AuthContextType {
+interface UseAuthReturn {
   session: Session | null
   user: User | null
   sessionProfile: SessionProfile | null
@@ -26,18 +26,12 @@ interface AuthContextType {
   signOut: () => Promise<void>
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined)
-
-interface AuthProviderProps {
-  children: ReactNode
-}
-
-export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
+export const useAuth = (): UseAuthReturn => {
   const [session, setSession] = useState<Session | null>(null)
   const [user, setUser] = useState<User | null>(null)
   const [sessionProfile, setSessionProfile] = useState<SessionProfile | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const isHandlingCallback = React.useRef(false)
+  const isHandlingCallback = useRef(false)
 
   const fetchSessionProfile = async (authToken: string) => {
     // Popovers are identified by having a URL hash. The main window does not.
@@ -50,7 +44,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         const cachedProfile = await window.electronAPI.invoke('session:get-profile')
         if (cachedProfile) {
           setSessionProfile(cachedProfile)
-          console.log('[AuthContext] Session profile for popover loaded from main process cache.')
+          console.log('[useAuth] Session profile for popover loaded from main process cache.')
           return
         }
       }
@@ -74,10 +68,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         if (window.electronAPI) {
           await window.electronAPI.invoke('session:set-profile', profile)
         }
-        console.log('[AuthContext] Session profile fetched and cached in main process:', profile)
+        console.log('[useAuth] Session profile fetched and cached in main process:', profile)
       } else {
         if (response.status === 401) {
-          console.log('[AuthContext] No active session or token expired. Needs login.')
+          console.log('[useAuth] No active session or token expired. Needs login.')
         } else {
           throw new Error(`Failed to fetch session profile: ${response.statusText}`)
         }
@@ -88,7 +82,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         }
       }
     } catch (error) {
-      console.error('[AuthContext] Error fetching session profile:', error)
+      console.error('[useAuth] Error fetching session profile:', error)
       setSessionProfile(null) // Clear profile on error
       // Also clear the cache on any other error.
       if (window.electronAPI) {
@@ -132,16 +126,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     const handleOAuthCallback = async (url: string) => {
       if (isHandlingCallback.current) {
-        console.log('[AuthContext] OAuth callback is already being handled. Ignoring duplicate call.')
+        console.log('[useAuth] OAuth callback is already being handled. Ignoring duplicate call.')
         return
       }
       isHandlingCallback.current = true
 
-      console.log('[AuthContext] Received OAuth callback URL from main process:', url)
+      console.log('[useAuth] Received OAuth callback URL from main process:', url)
       try {
         const hash = new URL(url.replace('intevia://', 'http://localhost/')).hash
         if (!hash) {
-          console.error('[AuthContext] No hash fragment found in callback URL.')
+          console.error('[useAuth] No hash fragment found in callback URL.')
           setIsLoading(false)
           return
         }
@@ -152,28 +146,28 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         const errorDescription = params.get('error_description')
 
         if (error) {
-          console.error(`[AuthContext] OAuth Error in callback URL: ${error} - ${errorDescription}`)
+          console.error(`[useAuth] OAuth Error in callback URL: ${error} - ${errorDescription}`)
           setIsLoading(false)
           return
         }
 
         if (code) {
-          console.log('[AuthContext] Extracted authorization code, exchanging for session.')
+          console.log('[useAuth] Extracted authorization code, exchanging for session.')
           const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
 
           if (exchangeError) {
-            console.error('[AuthContext] Error exchanging code for session:', exchangeError)
+            console.error('[useAuth] Error exchanging code for session:', exchangeError)
           } else {
-            console.log('[AuthContext] Session exchanged successfully.', data)
+            console.log('[useAuth] Session exchanged successfully.', data)
             // The onAuthStateChange listener will handle setting session and fetching the profile
           }
         } else {
           console.warn(
-            '[AuthContext] Could not extract authorization code from callback URL fragment.'
+            '[useAuth] Could not extract authorization code from callback URL fragment.'
           )
         }
       } catch (e) {
-        console.error('[AuthContext] Error processing OAuth callback URL:', e)
+        console.error('[useAuth] Error processing OAuth callback URL:', e)
       } finally {
         setTimeout(() => {
           setIsLoading(false) // Release the lock
@@ -227,7 +221,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         throw new Error('OAuth URL or Electron API not available.')
       }
     } catch (error) {
-      console.error(`[AuthContext] Error during ${provider} sign-in:`, error)
+      console.error(`[useAuth] Error during ${provider} sign-in:`, error)
       setIsLoading(false)
     }
   }
@@ -238,7 +232,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       await supabase.auth.signOut()
       // On success, isLoading is set to false by the onAuthStateChange listener.
     } catch (error) {
-      console.error('[AuthContext] Error during sign out:', error)
+      console.error('[useAuth] Error during sign out:', error)
       setIsLoading(false)
     }
   }
@@ -247,7 +241,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return sessionProfile?.entitlements[entitlement] === true
   }
 
-  const value = {
+  return {
     session,
     user,
     sessionProfile,
@@ -256,14 +250,4 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     signInWithProvider,
     signOut
   }
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
-}
-
-export const useAuth = () => {
-  const context = useContext(AuthContext)
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider')
-  }
-  return context
 }

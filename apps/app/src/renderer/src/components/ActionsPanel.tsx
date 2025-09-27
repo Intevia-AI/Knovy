@@ -12,8 +12,8 @@ import { useI18n } from '@/hooks/useI18n'
 import { useAIInteraction } from '@/hooks/useAIInteraction'
 import { motion, AnimatePresence } from 'motion'
 import { cn } from '@/lib/utils'
-import { useAuth } from '@/context/AuthContext'
-import { Markdown } from '@/components/markdown'
+import { useAuth } from '@/hooks/useAuth'
+import { Markdown } from '@/components/MarkdownRenderer'
 
 export default function ActionsPanel() {
   const { t } = useI18n()

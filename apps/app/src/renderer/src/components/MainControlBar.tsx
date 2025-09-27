@@ -10,7 +10,7 @@ import {
 } from 'lucide-react'
 import { useI18n } from '@/hooks/useI18n'
 import { formatTime } from '@/lib/utils'
-import { useAuth } from '@/context/AuthContext'
+import { useAuth } from '@/hooks/useAuth'
 
 interface MainControlBarProps {
   isAlwaysOnTop: boolean

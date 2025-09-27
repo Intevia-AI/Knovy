@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Markdown } from '@/components/markdown'
+import { Markdown } from '@/components/MarkdownRenderer'
 import { cn } from '@/lib/utils'
 import { useAIInteraction } from '@/hooks/useAIInteraction'
 import { Button } from '@/components/ui/button'

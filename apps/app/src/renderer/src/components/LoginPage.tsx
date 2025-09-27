@@ -1,8 +1,8 @@
 'use client'
-import { useAuth } from '@/context/AuthContext'
+import { useAuth } from '@/hooks/useAuth'
 import { Button } from '@/components/ui/button'
 import { Loader2, X } from 'lucide-react'
-import { Logo } from '@/components/logo'
+import { Logo } from '@/components/Logo'
 import { motion } from 'motion'
 
 const AuthPageContainer = ({ children }: { children: React.ReactNode }) => {
