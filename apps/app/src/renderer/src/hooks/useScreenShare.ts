@@ -192,13 +192,12 @@ export function useScreenShare() {
         recorder.onstop = () => {
           console.log('[ScreenShare] System audio recorder stopped.')
           makeSystemAudioBlobAndDispatch()
-          // Use the 'stream' from the closure for restarting, not currentSystemAudioStream from state
+          // Only restart if this is a genuine stop (during cleanup), not during segment creation
           if (!isStoppingSystemAudioRef.current && stream.active) {
-            // Check stream.active instead of currentSystemAudioStream
-            console.log('[ScreenShare] Restarting system audio recorder...')
+            console.log('[ScreenShare] Restarting system audio recorder due to unexpected stop...')
             recorder.start(SYSTEM_AUDIO_CHUNK_MS) // Restart the same recorder instance
           } else {
-            console.log('[ScreenShare] Not restarting system audio recorder.')
+            console.log('[ScreenShare] Not restarting system audio recorder (intentional stop or inactive stream).')
             systemAudioRecorderRef.current = null
           }
         }
@@ -219,9 +218,10 @@ export function useScreenShare() {
         systemAudioTimerRef.current = setInterval(() => {
           if (systemAudioRecorderRef.current?.state === 'recording') {
             console.log(
-              '[ScreenShare] Interval: Stopping system audio recorder to finalize segment.'
+              '[ScreenShare] Interval: Creating system audio segment without stopping recorder.'
             )
-            systemAudioRecorderRef.current.stop()
+            // ✅ Create segment from current chunks without stopping/restarting recorder
+            makeSystemAudioBlobAndDispatch()
           }
         }, SYSTEM_AUDIO_SEGMENT_MS)
       } catch (recorderError) {

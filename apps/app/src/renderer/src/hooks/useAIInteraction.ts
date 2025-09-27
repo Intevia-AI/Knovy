@@ -49,8 +49,19 @@ export function useAIInteraction() {
       turnComplete: boolean = false,
       sourceType: 'microphone' | 'system' = 'system'
     ): void => {
+      console.log(`[useAIInteraction] handleTranscriptionResponse called:`, {
+        textLength: text?.length || 0,
+        text: text ? `"${text}"` : null,
+        sourceType,
+        turnComplete,
+        hasElectronAPI: !!(window as any).electronAPI
+      })
+
       if ((window as any).electronAPI && text) {
         ;(window as any).electronAPI.send('transcription:data', { text, sourceType })
+        console.log(`[useAIInteraction] Sent transcription data to main process via IPC`)
+      } else {
+        console.warn(`[useAIInteraction] Cannot send transcription - electronAPI: ${!!(window as any).electronAPI}, text: ${!!text}`)
       }
     },
     []

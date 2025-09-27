@@ -64,13 +64,13 @@ export function useSegmentRecorder() {
       recorder.onstop = () => {
         console.log('[MicRecorder] Internal recorder stopped.')
         makeBlobAndDispatch()
-        // Only restart if not intentionally stopping
-        if (!isStoppingRef.current && streamRef.current) {
-          console.log('[MicRecorder] Restarting internal recorder...')
+        // Only restart if not intentionally stopping and stream is still active
+        if (!isStoppingRef.current && streamRef.current && streamRef.current.active) {
+          console.log('[MicRecorder] Restarting internal recorder due to unexpected stop...')
           startRecorderInternal() // Restart to continue collecting chunks for the *next* segment
         } else {
           console.log(
-            '[MicRecorder] Not restarting internal recorder (intentional stop or no stream).'
+            '[MicRecorder] Not restarting internal recorder (intentional stop or inactive stream).'
           )
           recorderRef.current = null // Clear ref if not restarting
         }
@@ -118,11 +118,12 @@ export function useSegmentRecorder() {
       timerRef.current = setInterval(() => {
         if (recorderRef.current && recorderRef.current.state === 'recording') {
           console.log(
-            `[MicRecorder] Interval timer: Stopping internal recorder to finalize segment.`
+            `[MicRecorder] Interval timer: Creating segment without stopping recorder.`
           )
-          recorderRef.current.stop() // Stop triggers onstop, which handles blob creation and restart
+          // ✅ Create segment from current chunks without stopping/restarting recorder
+          makeBlobAndDispatch()
         } else {
-          console.warn('[MicRecorder] Interval timer: Recorder not active, cannot stop.')
+          console.warn('[MicRecorder] Interval timer: Recorder not active, cannot create segment.')
         }
       }, SEGMENT_MS)
 

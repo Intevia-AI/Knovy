@@ -66,6 +66,36 @@ export class GeminiClient {
   /** @type {string|undefined} User's preferred language setting */
   private language?: string
 
+  /** @type {Map<string, object>} Track sent messages for debugging */
+  private sentMessages: Map<string, { timestamp: number; retries: number; size: number }> = new Map()
+
+  /** @type {number} Message sequence counter */
+  private messageSequence: number = 0
+
+  /** @type {number} Total messages sent */
+  private totalMessagesSent: number = 0
+
+  /** @type {number} Total messages received */
+  private totalMessagesReceived: number = 0
+
+  /** @type {NodeJS.Timeout|null} Health check interval */
+  private healthCheckInterval: NodeJS.Timeout | null = null
+
+  /** @type {number} Last ping timestamp */
+  private lastPingTime: number = 0
+
+  /** @type {number} Last pong timestamp */
+  private lastPongTime: number = 0
+
+  /** @type {boolean} Connection health status */
+  private connectionHealthy: boolean = true
+
+  /** @type {number} Health check interval in milliseconds */
+  private readonly HEALTH_CHECK_INTERVAL = 30000 // 30 seconds
+
+  /** @type {number} Ping timeout in milliseconds */
+  private readonly PING_TIMEOUT = 10000 // 10 seconds
+
   constructor(
     onMessage: (data: any) => void,
     onSetupComplete: () => void,
@@ -121,18 +151,38 @@ export class GeminiClient {
         this.onSetupCompleteCallback?.()
         this.isConnected = true
         this.reconnectAttempts = 0
+        this.connectionHealthy = true
+        this.startHealthMonitoring()
       }
 
       this.ws.onmessage = (event) => {
         try {
+          this.totalMessagesReceived++
           const data = JSON.parse(event.data)
+
+          console.log(`[Gemini] Received message #${this.totalMessagesReceived}:`, {
+            hasText: !!data.text,
+            text: data.text ? `"${data.text}"` : null,
+            textLength: data.text?.length || 0,
+            turnComplete: data.turnComplete,
+            setupComplete: data.setupComplete,
+            error: data.error
+          })
+
           if (data.text) {
             this.onMessageCallback?.(data.text, data.turnComplete || false)
           } else if (data.setupComplete) {
             this.isSetupComplete = true
+            console.log(`[Gemini] Setup complete confirmed after ${this.totalMessagesSent} sent messages`)
+          } else if (data.type === 'pong') {
+            this.handlePong(data.timestamp)
+          } else if (data.error) {
+            console.error('[Gemini] Received error from server:', data.error)
+            this.onError(new Error(`Server error: ${JSON.stringify(data.error)}`))
           }
         } catch (error) {
           console.error('[Gemini] 處理消息時發生錯誤:', error)
+          console.error('[Gemini] Raw message data:', event.data)
         }
       }
 
@@ -144,6 +194,8 @@ export class GeminiClient {
       this.ws.onclose = () => {
         console.log('[Gemini] WebSocket 已關閉')
         this.isConnected = false
+        this.connectionHealthy = false
+        this.stopHealthMonitoring()
         this.onClose()
         if (!this.isIntentionalDisconnect) {
           this.reconnect()
@@ -157,12 +209,111 @@ export class GeminiClient {
   private reconnect() {
     if (this.reconnectAttempts < this.maxReconnectAttempts) {
       this.reconnectAttempts++
+      const delay = Math.min(this.reconnectTimeout * Math.pow(2, this.reconnectAttempts - 1), 30000) // Exponential backoff with max 30s
       setTimeout(() => {
         console.log(
-          `Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts})`
+          `[Gemini] Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts}) with ${delay}ms delay`
         )
         this.connect()
-      }, this.reconnectTimeout * this.reconnectAttempts)
+      }, delay)
+    } else {
+      console.error('[Gemini] Max reconnection attempts reached. Connection failed permanently.')
+      this.onError(new Error('Max reconnection attempts reached'))
+    }
+  }
+
+  /**
+   * Start health monitoring with periodic ping/pong
+   */
+  private startHealthMonitoring() {
+    this.stopHealthMonitoring() // Clear any existing interval
+
+    this.healthCheckInterval = setInterval(() => {
+      this.performHealthCheck()
+    }, this.HEALTH_CHECK_INTERVAL)
+
+    console.log(`[Gemini] Started health monitoring (${this.HEALTH_CHECK_INTERVAL}ms interval)`)
+  }
+
+  /**
+   * Stop health monitoring
+   */
+  private stopHealthMonitoring() {
+    if (this.healthCheckInterval) {
+      clearInterval(this.healthCheckInterval)
+      this.healthCheckInterval = null
+      console.log('[Gemini] Stopped health monitoring')
+    }
+  }
+
+  /**
+   * Perform health check by sending ping
+   */
+  private performHealthCheck() {
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+      console.warn('[Gemini] Health check: WebSocket not open')
+      this.handleUnhealthyConnection()
+      return
+    }
+
+    // Check if previous ping timed out
+    if (this.lastPingTime > 0 && this.lastPongTime < this.lastPingTime) {
+      const timeSincePing = Date.now() - this.lastPingTime
+      if (timeSincePing > this.PING_TIMEOUT) {
+        console.warn(`[Gemini] Health check: Ping timeout (${timeSincePing}ms)`)
+        this.handleUnhealthyConnection()
+        return
+      }
+    }
+
+    this.sendPing()
+  }
+
+  /**
+   * Send ping message to server
+   */
+  private sendPing() {
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+      return
+    }
+
+    const pingMessage = {
+      type: 'ping',
+      timestamp: Date.now()
+    }
+
+    try {
+      this.lastPingTime = Date.now()
+      this.ws.send(JSON.stringify(pingMessage))
+      console.log(`[Gemini] Sent ping at ${this.lastPingTime}`)
+    } catch (error) {
+      console.error('[Gemini] Error sending ping:', error)
+      this.handleUnhealthyConnection()
+    }
+  }
+
+  /**
+   * Handle pong response from server
+   */
+  private handlePong(serverTimestamp: number) {
+    this.lastPongTime = Date.now()
+    const roundTripTime = this.lastPongTime - this.lastPingTime
+    console.log(`[Gemini] Received pong, RTT: ${roundTripTime}ms`)
+
+    this.connectionHealthy = true
+  }
+
+  /**
+   * Handle unhealthy connection by attempting reconnection
+   */
+  private handleUnhealthyConnection() {
+    console.warn('[Gemini] Connection detected as unhealthy, attempting reconnection')
+    this.connectionHealthy = false
+    this.stopHealthMonitoring()
+
+    // Close current connection and reconnect
+    if (this.ws) {
+      this.ws.close()
     }
   }
 
@@ -181,30 +332,92 @@ export class GeminiClient {
   }
 
   sendMediaChunk(data: string, mimeType: string) {
-    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      const message = {
-        type: 'media_chunk',
-        mimeType,
-        chunk: data
+    if (!this.ws) {
+      console.error('[GeminiClient] Cannot send media chunk: WebSocket is null')
+      return
+    }
+
+    if (this.ws.readyState !== WebSocket.OPEN) {
+      console.error(`[GeminiClient] Cannot send media chunk: WebSocket not open (state: ${this.ws.readyState})`)
+      return
+    }
+
+    const messageId = `chunk_${++this.messageSequence}_${Date.now()}`
+    const message = {
+      id: messageId,
+      type: 'media_chunk',
+      mimeType,
+      chunk: data,
+      timestamp: Date.now()
+    }
+
+    // Track sent message for debugging
+    this.sentMessages.set(messageId, {
+      timestamp: Date.now(),
+      retries: 0,
+      size: data.length
+    })
+
+    try {
+      this.ws.send(JSON.stringify(message))
+      this.totalMessagesSent++
+
+      console.log(`[GeminiClient] Sent audio chunk ${messageId} (${this.totalMessagesSent} total), size: ${data.length}`)
+
+      // Clean up old message tracking (keep last 100 messages)
+      if (this.sentMessages.size > 100) {
+        const oldestKey = this.sentMessages.keys().next().value
+        this.sentMessages.delete(oldestKey)
       }
-      try {
-        this.ws.send(JSON.stringify(message))
-      } catch (error) {
-        console.error('[GeminiClient] Error sending media chunk:', error)
+    } catch (error) {
+      console.error(`[GeminiClient] Error sending media chunk ${messageId}:`, error)
+      this.sentMessages.delete(messageId) // Remove failed message from tracking
+
+      // Handle specific WebSocket errors
+      if (error.message.includes('WebSocket is not open')) {
+        console.warn('[GeminiClient] WebSocket closed during send, will attempt reconnection')
+        this.reconnect()
       }
-    } else {
-      console.error('[GeminiClient] WebSocket not ready, state:', this.ws?.readyState)
     }
   }
 
   disconnect() {
+    console.log(`[GeminiClient] Disconnecting. Stats - Sent: ${this.totalMessagesSent}, Received: ${this.totalMessagesReceived}`)
+
     this.isSetupComplete = false
+    this.stopHealthMonitoring()
+
     if (this.ws) {
       this.isIntentionalDisconnect = true
       this.ws.close()
       this.ws = null
     }
     this.isConnected = false
+    this.connectionHealthy = false
+
+    // Clear tracking data
+    this.sentMessages.clear()
+    this.messageSequence = 0
+    this.lastPingTime = 0
+    this.lastPongTime = 0
+  }
+
+  /**
+   * Get connection statistics for debugging
+   */
+  getStats() {
+    return {
+      totalMessagesSent: this.totalMessagesSent,
+      totalMessagesReceived: this.totalMessagesReceived,
+      pendingMessages: this.sentMessages.size,
+      isConnected: this.isConnected,
+      isSetupComplete: this.isSetupComplete,
+      reconnectAttempts: this.reconnectAttempts,
+      connectionHealthy: this.connectionHealthy,
+      lastPingTime: this.lastPingTime,
+      lastPongTime: this.lastPongTime,
+      roundTripTime: this.lastPongTime > this.lastPingTime ? this.lastPongTime - this.lastPingTime : null
+    }
   }
 
   onTextResponse(text: string) {

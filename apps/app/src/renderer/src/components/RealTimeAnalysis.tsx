@@ -29,10 +29,34 @@ export default function RealTimeAnalysis({
   const systemTextBufferRef = useRef('')
   const animationFrameId = useRef<number | null>(null)
 
+  // Refs to track current audio processing instances
+  const audioContextRef = useRef<AudioContext | null>(null)
+  const systemAudioWorkletNodeRef = useRef<AudioWorkletNode | null>(null)
+  const systemAudioSourceRef = useRef<MediaStreamAudioSourceNode | null>(null)
+  const systemAnalyserRef = useRef<AnalyserNode | null>(null)
+
   useEffect(() => {
     if (!isScreenSharing) {
       return
     }
+
+    // Set up error handling for transcription issues
+    const handleTranscriptionError = (errorData: { error: string; code: string }) => {
+      console.error(`[RealTimeAnalysis] Transcription error (${errorData.code}):`, errorData.error)
+      // Could show user notification here in the future
+    }
+
+    const handleTranscriptionWarning = (warningData: { warning: string; transcriptId: string }) => {
+      console.warn(`[RealTimeAnalysis] Transcription warning for ${warningData.transcriptId}:`, warningData.warning)
+    }
+
+    const handleTranscriptionProcessed = (processedData: { transcriptId: string; broadcastCount: number; totalWindows: number }) => {
+      console.log(`[RealTimeAnalysis] Transcript ${processedData.transcriptId} processed successfully: ${processedData.broadcastCount}/${processedData.totalWindows} windows`)
+    }
+
+    const unsubscribeError = (window as any).electronAPI?.on('transcription:error', handleTranscriptionError)
+    const unsubscribeWarning = (window as any).electronAPI?.on('transcription:warning', handleTranscriptionWarning)
+    const unsubscribeProcessed = (window as any).electronAPI?.on('transcription:processed', handleTranscriptionProcessed)
 
     let micGeminiClient: GeminiClient | null = null
     let systemGeminiClient: GeminiClient | null = null
@@ -55,54 +79,94 @@ export default function RealTimeAnalysis({
       while (true) {
         const buffer = textBufferRef.current
         const transIndex = buffer.indexOf('TRANSCRIPTION:')
-        const keyIndex = buffer.indexOf('KEYWORDS:')
 
-        // If a full block is not available, break and wait for more data.
-        if (transIndex === -1 || keyIndex === -1 || keyIndex < transIndex) {
+        // If no transcription marker found, break and wait for more data
+        if (transIndex === -1) {
           break
         }
 
-        // Find the start of the next block to isolate the current one.
+        const keyIndex = buffer.indexOf('KEYWORDS:', transIndex)
         const nextTransIndex = buffer.indexOf('TRANSCRIPTION:', transIndex + 1)
-        let currentBlock
-        let remainingBuffer
 
-        if (nextTransIndex !== -1) {
+        let currentBlock: string
+        let remainingBuffer: string
+        let hasCompleteBlock = false
+
+        if (keyIndex !== -1 && (nextTransIndex === -1 || keyIndex < nextTransIndex)) {
+          // We have a complete TRANSCRIPTION + KEYWORDS block
+          if (nextTransIndex !== -1) {
+            currentBlock = buffer.substring(transIndex, nextTransIndex)
+            remainingBuffer = buffer.substring(nextTransIndex)
+          } else {
+            currentBlock = buffer.substring(transIndex)
+            remainingBuffer = ''
+          }
+          hasCompleteBlock = true
+        } else if (nextTransIndex !== -1) {
+          // We have a TRANSCRIPTION block but no KEYWORDS, but there's a next TRANSCRIPTION
+          // Process the incomplete block without KEYWORDS
           currentBlock = buffer.substring(transIndex, nextTransIndex)
           remainingBuffer = buffer.substring(nextTransIndex)
+          hasCompleteBlock = true
         } else {
-          currentBlock = buffer.substring(transIndex)
-          remainingBuffer = ''
+          // We have a TRANSCRIPTION but no KEYWORDS and no next TRANSCRIPTION
+          // Check if the buffer is long enough or if we should wait for more data
+          const partialBlock = buffer.substring(transIndex)
+          if (partialBlock.length > 200 || partialBlock.includes('\n\n')) {
+            // Process what we have - it's likely a complete transcription without keywords
+            currentBlock = partialBlock
+            remainingBuffer = ''
+            hasCompleteBlock = true
+          } else {
+            // Buffer is short, wait for more data
+            break
+          }
         }
 
-        const transcriptionMatch = currentBlock.match(/TRANSCRIPTION:\s*([\s\S]*?)KEYWORDS:/s)
-        const keywordsMatch = currentBlock.match(/KEYWORDS:\s*([\s\S]*)/s)
+        if (hasCompleteBlock) {
+          // Try to extract transcription with keywords first
+          let transcriptionMatch = currentBlock.match(/TRANSCRIPTION:\s*([\s\S]*?)KEYWORDS:/s)
+          let keywordsMatch = currentBlock.match(/KEYWORDS:\s*([\s\S]*)/s)
 
-        // Only process if the block is well-formed with both parts.
-        if (transcriptionMatch && keywordsMatch) {
-          const transcription = transcriptionMatch[1].replace(/search web/g, '').trim()
+          // If no keywords section, try to extract just the transcription
+          if (!transcriptionMatch) {
+            transcriptionMatch = currentBlock.match(/TRANSCRIPTION:\s*([\s\S]*)/s)
+          }
 
-          if (transcription && onTextResponse) {
-            const keywordsStr = keywordsMatch[1].trim()
-            let keywords: string[] = []
-            if (keywordsStr) {
-              keywords = keywordsStr
-                .split(',')
-                .map((k) => k.trim())
-                .filter((k) => k)
+          if (transcriptionMatch) {
+            const transcription = transcriptionMatch[1].replace(/search web/g, '').trim()
+
+            if (transcription && onTextResponse) {
+              const keywordsStr = keywordsMatch ? keywordsMatch[1].trim() : ''
+              let keywords: string[] = []
+              if (keywordsStr) {
+                keywords = keywordsStr
+                  .split(',')
+                  .map((k) => k.trim())
+                  .filter((k) => k)
+              }
+
+              let highlightedTranscription = transcription
+              if (canHighlightKeywords && keywords.length > 0) {
+                const regex = new RegExp(`(${keywords.join('|')})`, 'gi')
+                highlightedTranscription = transcription.replace(regex, '`$1`')
+              }
+              console.log(`[RealTimeAnalysis] Sending transcription to main process:`, {
+                sourceType,
+                textLength: highlightedTranscription.length,
+                hasKeywords: keywords.length > 0,
+                transcriptionText: `"${transcription}"`,
+                highlightedText: `"${highlightedTranscription}"`,
+                keywords: keywords,
+                blockType: keywordsMatch ? 'complete' : 'transcription-only'
+              })
+              onTextResponse(highlightedTranscription, false, sourceType)
             }
-
-            let highlightedTranscription = transcription
-            if (canHighlightKeywords && keywords.length > 0) {
-              const regex = new RegExp(`(${keywords.join('|')})`, 'gi')
-              highlightedTranscription = transcription.replace(regex, '`$1`')
-            }
-            onTextResponse(highlightedTranscription, false, sourceType)
           }
 
           textBufferRef.current = remainingBuffer
         } else {
-          // The block is incomplete, so we put it back and wait for more data.
+          // No complete block available, wait for more data
           break
         }
       }
@@ -144,6 +208,8 @@ export default function RealTimeAnalysis({
 
       try {
         audioContext = new AudioContext({ sampleRate: 16000 })
+        audioContextRef.current = audioContext
+
         await Promise.all([
           audioContext.audioWorklet.addModule('worklets/mic-audio-processor.js'),
           audioContext.audioWorklet.addModule('worklets/system-audio-processor.js')
@@ -160,6 +226,7 @@ export default function RealTimeAnalysis({
             bufferSize: 8192
           }
         })
+        systemAudioWorkletNodeRef.current = systemAudioWorkletNode
 
         micAudioWorkletNode.port.onmessage = (event) => {
           const { pcmData, sourceType } = event.data
@@ -195,18 +262,28 @@ export default function RealTimeAnalysis({
         micAudioSource.connect(micAnalyser)
         micAnalyser.connect(micAudioWorkletNode)
 
-        let systemAnalyser: AnalyserNode | null = null
-        if (systemAudioStream && audioContext) {
-          if (systemAudioSource) {
-            systemAudioSource.disconnect()
+        // Function to connect system audio stream
+        const connectSystemAudio = (stream: MediaStream | null) => {
+          if (stream && audioContext && systemAudioWorkletNode) {
+            // Disconnect previous system audio source
+            if (systemAudioSource) {
+              systemAudioSource.disconnect()
+            }
+
+            const systemAnalyser = audioContext.createAnalyser()
+            systemAnalyser.fftSize = 256
+            systemAnalyserRef.current = systemAnalyser
+
+            systemAudioSource = audioContext.createMediaStreamSource(stream)
+            systemAudioSourceRef.current = systemAudioSource
+            systemAudioSource.connect(systemAnalyser)
+            systemAnalyser.connect(systemAudioWorkletNode)
+            console.log('[RealTimeAnalysis] System audio source connected')
           }
-          systemAnalyser = audioContext.createAnalyser()
-          systemAnalyser.fftSize = 256
-          systemAudioSource = audioContext.createMediaStreamSource(systemAudioStream)
-          systemAudioSource.connect(systemAnalyser)
-          systemAnalyser.connect(systemAudioWorkletNode)
-          console.log('[RealTimeAnalysis] System audio source connected')
         }
+
+        // Connect initial system audio stream
+        connectSystemAudio(systemAudioStream)
 
         const draw = () => {
           const micDataArray = new Uint8Array(micAnalyser.frequencyBinCount)
@@ -214,9 +291,9 @@ export default function RealTimeAnalysis({
           const micLevel = micDataArray.reduce((sum, value) => sum + value, 0) / micDataArray.length
 
           let systemLevel = 0
-          if (systemAnalyser) {
-            const systemDataArray = new Uint8Array(systemAnalyser.frequencyBinCount)
-            systemAnalyser.getByteFrequencyData(systemDataArray)
+          if (systemAnalyserRef.current) {
+            const systemDataArray = new Uint8Array(systemAnalyserRef.current.frequencyBinCount)
+            systemAnalyserRef.current.getByteFrequencyData(systemDataArray)
             systemLevel =
               systemDataArray.reduce((sum, value) => sum + value, 0) / systemDataArray.length
           }
@@ -241,16 +318,31 @@ export default function RealTimeAnalysis({
 
     return () => {
       console.log('[RealTimeAnalysis] Stopping dual audio processing...')
+
+      // Clean up error handlers
+      unsubscribeError?.()
+      unsubscribeWarning?.()
+      unsubscribeProcessed?.()
+
       if (animationFrameId.current) {
         cancelAnimationFrame(animationFrameId.current)
       }
       shouldSendAudio = false
 
-      micGeminiClient?.disconnect()
-      micGeminiClient = null
+      // Log connection stats before disconnecting
+      if (micGeminiClient) {
+        const micStats = micGeminiClient.getStats()
+        console.log('[RealTimeAnalysis] Microphone connection stats:', micStats)
+        micGeminiClient.disconnect()
+        micGeminiClient = null
+      }
 
-      systemGeminiClient?.disconnect()
-      systemGeminiClient = null
+      if (systemGeminiClient) {
+        const systemStats = systemGeminiClient.getStats()
+        console.log('[RealTimeAnalysis] System audio connection stats:', systemStats)
+        systemGeminiClient.disconnect()
+        systemGeminiClient = null
+      }
 
       mediaStream?.getTracks().forEach((track) => track.stop())
       mediaStream = null
@@ -269,8 +361,49 @@ export default function RealTimeAnalysis({
 
       audioContext?.close().catch(console.error)
       audioContext = null
+
+      // Clear refs
+      audioContextRef.current = null
+      systemAudioWorkletNodeRef.current = null
+      systemAudioSourceRef.current = null
+      systemAnalyserRef.current = null
     }
-  }, [isScreenSharing, language, customPrompt, systemAudioStream, onTextResponse])
+  }, [isScreenSharing, language, customPrompt, onTextResponse]) // Removed systemAudioStream dependency
+
+  // Separate effect to handle system audio stream changes without restarting transcription
+  useEffect(() => {
+    if (!isScreenSharing || !systemAudioStream) return
+
+    console.log('[RealTimeAnalysis] System audio stream changed, reconnecting without restarting transcription')
+
+    const audioContext = audioContextRef.current
+    const systemAudioWorkletNode = systemAudioWorkletNodeRef.current
+
+    if (audioContext && systemAudioWorkletNode) {
+      // Disconnect previous system audio source
+      if (systemAudioSourceRef.current) {
+        systemAudioSourceRef.current.disconnect()
+      }
+
+      try {
+        const systemAnalyser = audioContext.createAnalyser()
+        systemAnalyser.fftSize = 256
+        systemAnalyserRef.current = systemAnalyser
+
+        const systemAudioSource = audioContext.createMediaStreamSource(systemAudioStream)
+        systemAudioSourceRef.current = systemAudioSource
+
+        systemAudioSource.connect(systemAnalyser)
+        systemAnalyser.connect(systemAudioWorkletNode)
+        console.log('[RealTimeAnalysis] System audio source reconnected successfully')
+      } catch (error) {
+        console.error('[RealTimeAnalysis] Error reconnecting system audio:', error)
+      }
+    } else {
+      console.warn('[RealTimeAnalysis] Cannot reconnect system audio - audio context or worklet not available')
+    }
+
+  }, [systemAudioStream, isScreenSharing])
 
   return null
 }

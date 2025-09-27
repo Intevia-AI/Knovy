@@ -93,7 +93,10 @@ const api = {
       'settings:changed',
       'audio:levels-updated',
       'permissions:microphone-denied',
-      'permissions:initialization-complete'
+      'permissions:initialization-complete',
+      'transcription:error',
+      'transcription:warning',
+      'transcription:processed'
     ]
     if (validChannels.includes(channel)) {
       const subscription = (event, ...args) => callback(...args)

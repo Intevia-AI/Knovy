@@ -218,6 +218,9 @@ class GeminiProxyServer {
         isSetupComplete: false,
         lastActivity: Date.now(),
         language: "zh-TW",
+        messageBuffer: [], // Buffer for messages received before setup is complete
+        messageCount: 0, // Track total messages processed
+        bufferedCount: 0, // Track buffered messages
       };
 
       this.clients.set(clientId, clientConnection);
@@ -301,6 +304,16 @@ class GeminiProxyServer {
       return;
     }
 
+    if (data.type === "ping") {
+      console.log(`[Proxy] Received ping from client ${clientId}, responding with pong`);
+      client.ws.send(JSON.stringify({
+        type: 'pong',
+        timestamp: data.timestamp,
+        serverTime: Date.now()
+      }));
+      return;
+    }
+
     if (data.type === "custom_prompt") {
       console.log(`[Proxy] Client ${clientId} set custom prompt`);
       client.customPrompt = data.prompt;
@@ -323,6 +336,18 @@ class GeminiProxyServer {
       if (!client.geminiWs) {
         await this.connectToGemini(client);
       }
+
+      // Buffer messages until setup is complete to prevent race condition
+      if (!client.isSetupComplete) {
+        client.messageBuffer.push({
+          ...data,
+          timestamp: Date.now(),
+          bufferId: `buffer_${client.bufferedCount++}`
+        });
+        console.log(`[Proxy] Buffering media chunk for client ${clientId} - setup not complete (buffer size: ${client.messageBuffer.length})`);
+        return;
+      }
+
       this.forwardToGemini(client, data);
     } else if (data.type === "disconnect") {
       console.log(`[Proxy] Client ${clientId} disconnecting...`);
@@ -425,10 +450,18 @@ class GeminiProxyServer {
   }
 
   forwardToGemini(client, data) {
-    if (!client.geminiWs || !client.isSetupComplete) {
-      console.log(
-        `[Proxy] Cannot forward to Gemini: geminiWs=${!!client.geminiWs}, isSetupComplete=${client.isSetupComplete}`,
-      );
+    if (!client.geminiWs) {
+      console.error(`[Proxy] Cannot forward to Gemini: No WebSocket connection for client ${client.id}`);
+      return;
+    }
+
+    if (!client.isSetupComplete) {
+      console.error(`[Proxy] Cannot forward to Gemini: Setup not complete for client ${client.id}. This should not happen after buffering implementation.`);
+      return;
+    }
+
+    if (client.geminiWs.readyState !== 1) { // WebSocket.OPEN = 1
+      console.error(`[Proxy] Cannot forward to Gemini: WebSocket not open (state: ${client.geminiWs.readyState}) for client ${client.id}`);
       return;
     }
 
@@ -443,10 +476,19 @@ class GeminiProxyServer {
           ],
         },
       };
-      console.log(`[Proxy] Forwarding media chunk to Gemini, size: ${data.chunk.length}`);
+
+      client.messageCount++;
+      const messageId = data.bufferId || `msg_${client.messageCount}`;
+
+      console.log(`[Proxy] Forwarding media chunk ${messageId} to Gemini for client ${client.id}, size: ${data.chunk.length}`);
       client.geminiWs.send(JSON.stringify(message));
     } catch (error) {
-      console.error(`[Proxy] Error forwarding to Gemini:`, error);
+      console.error(`[Proxy] Error forwarding to Gemini for client ${client.id}:`, error);
+      // Consider reconnecting on send errors
+      if (error.message.includes('WebSocket is not open')) {
+        console.log(`[Proxy] WebSocket closed unexpectedly, will reconnect on next message`);
+        this.cleanupGeminiConnection(client.id);
+      }
     }
   }
 
@@ -460,6 +502,21 @@ class GeminiProxyServer {
         console.log(`[Proxy] Setup complete for client ${client.id}`);
         client.isSetupComplete = true;
         client.ws.send(JSON.stringify({ setupComplete: true }));
+
+        // Process buffered messages now that setup is complete
+        if (client.messageBuffer && client.messageBuffer.length > 0) {
+          console.log(`[Proxy] Processing ${client.messageBuffer.length} buffered messages for client ${client.id}`);
+          const bufferedMessages = [...client.messageBuffer]; // Copy to avoid modification during processing
+          client.messageBuffer = []; // Clear buffer
+
+          // Process buffered messages with small delay to prevent overwhelming Gemini
+          bufferedMessages.forEach((bufferedMsg, index) => {
+            setTimeout(() => {
+              console.log(`[Proxy] Processing buffered message ${bufferedMsg.bufferId} (${index + 1}/${bufferedMessages.length})`);
+              this.forwardToGemini(client, bufferedMsg);
+            }, index * 10); // 10ms delay between messages
+          });
+        }
         return;
       }
 

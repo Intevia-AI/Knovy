@@ -790,46 +790,127 @@ app.on('ready', async () => {
     }
   })
 
-  // IPC relay for transcription data
+  // IPC relay for transcription data with enhanced error handling
   ipcMain.on(
     'transcription:data',
-    (event, transcriptionData: { text: string; sourceType: 'microphone' | 'system' }) => {
+    async (event, transcriptionData: { text: string; sourceType: 'microphone' | 'system' }) => {
+      const senderId = event.sender.id
+      console.log(`[main/index.ts] Received transcription data from renderer ${senderId}:`, {
+        textLength: transcriptionData?.text?.length || 0,
+        sourceType: transcriptionData?.sourceType,
+        hasText: !!transcriptionData?.text?.trim()
+      })
+
+      // Validate session
       if (!currentSessionId) {
-        console.warn(
-          '[main/index.ts] Received transcription data, but no active session. Ignoring.'
-        )
+        const errorMsg = 'Received transcription data, but no active session'
+        console.warn(`[main/index.ts] ${errorMsg}`)
+        event.sender.send('transcription:error', {
+          error: errorMsg,
+          code: 'NO_ACTIVE_SESSION'
+        })
         return
       }
 
-      // 1. Create the full transcript object for display (with keywords)
-      const displayTranscript = {
-        id: randomUUID(),
-        session_id: currentSessionId,
-        timestamp: new Date().toISOString(),
-        content: transcriptionData.text,
-        sourceType: transcriptionData.sourceType,
-        // Add role and type for consistency with the frontend's TranscriptionMessage type
-        role: 'assistant',
-        type: 'transcription'
+      // Validate transcription data
+      if (!transcriptionData?.text?.trim()) {
+        const errorMsg = 'Received empty or invalid transcription data'
+        console.warn(`[main/index.ts] ${errorMsg}`, transcriptionData)
+        event.sender.send('transcription:error', {
+          error: errorMsg,
+          code: 'INVALID_TRANSCRIPTION_DATA'
+        })
+        return
       }
 
-      // 2. Create a clean version for database storage (remove backticks)
-      const cleanContent = transcriptionData.text.replace(/`([^`]*)`/g, '$1')
-      const dbTranscript = {
-        ...displayTranscript,
-        content: cleanContent
-      }
-
-      // 3. Save clean version to database
-      dbService.addTranscript(dbTranscript).catch((error) => {
-        console.error('[main/index.ts] Failed to save transcript:', error)
-      })
-
-      // 4. Broadcast the original version (with keywords) to all windows for real-time display
-      for (const win of BrowserWindow.getAllWindows()) {
-        if (!win.isDestroyed()) {
-          win.webContents.send('transcription:data', displayTranscript)
+      try {
+        // 1. Create the full transcript object for display (with keywords)
+        const transcriptId = randomUUID()
+        const displayTranscript = {
+          id: transcriptId,
+          session_id: currentSessionId,
+          timestamp: new Date().toISOString(),
+          content: transcriptionData.text,
+          sourceType: transcriptionData.sourceType,
+          // Add role and type for consistency with the frontend's TranscriptionMessage type
+          role: 'assistant',
+          type: 'transcription'
         }
+
+        // 2. Create a clean version for database storage (remove backticks)
+        const cleanContent = transcriptionData.text.replace(/`([^`]*)`/g, '$1')
+        const dbTranscript = {
+          ...displayTranscript,
+          content: cleanContent
+        }
+
+        // 3. Save clean version to database with proper error handling
+        try {
+          await dbService.addTranscript(dbTranscript)
+          console.log(`[main/index.ts] Successfully saved transcript ${transcriptId} to database`)
+        } catch (dbError) {
+          console.error(`[main/index.ts] Failed to save transcript ${transcriptId} to database:`, dbError)
+          // Continue with broadcast even if database save fails
+          event.sender.send('transcription:warning', {
+            warning: 'Failed to save transcription to database',
+            transcriptId,
+            error: dbError.message
+          })
+        }
+
+        // 4. Broadcast the original version (with keywords) to all windows for real-time display
+        const windows = BrowserWindow.getAllWindows()
+        const validWindows = windows.filter(win => !win.isDestroyed())
+
+        console.log(`[main/index.ts] Broadcasting transcript ${transcriptId} to ${validWindows.length} windows`)
+
+        let broadcastSuccessCount = 0
+        const broadcastPromises = validWindows.map(async (win, index) => {
+          try {
+            // Use a promise-based approach to track broadcast success
+            return new Promise<void>((resolve, reject) => {
+              const timeout = setTimeout(() => {
+                reject(new Error(`Broadcast timeout for window ${index}`))
+              }, 2000) // 2 second timeout per window
+
+              try {
+                win.webContents.send('transcription:data', displayTranscript)
+                broadcastSuccessCount++
+                clearTimeout(timeout)
+                resolve()
+              } catch (sendError) {
+                clearTimeout(timeout)
+                reject(sendError)
+              }
+            })
+          } catch (error) {
+            console.warn(`[main/index.ts] Failed to broadcast to window ${index}:`, error)
+            throw error
+          }
+        })
+
+        // Wait for all broadcasts with timeout
+        try {
+          await Promise.allSettled(broadcastPromises)
+          console.log(`[main/index.ts] Broadcast completed for transcript ${transcriptId}. Success: ${broadcastSuccessCount}/${validWindows.length}`)
+
+          // Send confirmation back to sender
+          event.sender.send('transcription:processed', {
+            transcriptId,
+            broadcastCount: broadcastSuccessCount,
+            totalWindows: validWindows.length
+          })
+        } catch (broadcastError) {
+          console.error(`[main/index.ts] Broadcast errors for transcript ${transcriptId}:`, broadcastError)
+        }
+
+      } catch (processingError) {
+        console.error(`[main/index.ts] Error processing transcription:`, processingError)
+        event.sender.send('transcription:error', {
+          error: 'Failed to process transcription',
+          code: 'PROCESSING_ERROR',
+          details: processingError.message
+        })
       }
     }
   )
