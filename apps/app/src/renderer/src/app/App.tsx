@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { AppRouter } from './AppRouter'
-import { useAuth } from '../hooks/useAuth'
+import { useAuth, AuthProvider } from '../context/AuthContext'
 import { Loader2 } from 'lucide-react'
 import { LoginPage, Waitlist } from '../components/LoginPage'
 import { motion, AnimatePresence } from 'motion'
@@ -15,7 +15,7 @@ import { motion, AnimatePresence } from 'motion'
  * @component
  * @returns {JSX.Element} The rendered page.
  */
-export default function App() {
+function AppContent() {
   const { user, isLoading, sessionProfile } = useAuth()
   const [isInitialLoad, setIsInitialLoad] = useState(true)
   const [hasBeenPositioned, setHasBeenPositioned] = useState(false)
@@ -121,5 +121,13 @@ export default function App() {
         </div>
       )}
     </AnimatePresence>
+  )
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   )
 }
