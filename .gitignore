@@ -56,3 +56,7 @@ apps/app_old/public/history
 # Supabase local development files
 supabase/.branches/
 supabase/.temp/
+
+# Local transcription models (downloaded at runtime)
+apps/app/resources/whisper.cpp/models/
+apps/app_old/resources/whisper.cpp/models/

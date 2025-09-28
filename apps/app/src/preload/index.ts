@@ -41,6 +41,17 @@ const api = {
 
   setSettings: (settings) => ipcRenderer.invoke('electronAPI:setSettings', settings),
 
+  // Local transcription methods
+  transcriptionInitialize: () => ipcRenderer.invoke('transcription:initialize'),
+  transcriptionProcessAudio: (audioBuffer: ArrayBuffer, options: any) =>
+    ipcRenderer.invoke('transcription:process-audio', { audioBuffer, options }),
+  transcriptionGetModels: () => ipcRenderer.invoke('transcription:get-models'),
+  transcriptionDownloadModel: (modelName: string) =>
+    ipcRenderer.invoke('transcription:download-model', modelName),
+  transcriptionDeleteModel: (modelName: string) =>
+    ipcRenderer.invoke('transcription:delete-model', modelName),
+  transcriptionGetStorageUsage: () => ipcRenderer.invoke('transcription:get-storage-usage'),
+
   createSession: (session) => ipcRenderer.invoke('db:create-session', session),
   addTranscript: (transcript) => ipcRenderer.invoke('db:add-transcript', transcript),
   getSessions: () => ipcRenderer.invoke('db:get-sessions'),
@@ -96,7 +107,9 @@ const api = {
       'permissions:initialization-complete',
       'transcription:error',
       'transcription:warning',
-      'transcription:processed'
+      'transcription:processed',
+      'model:download-progress',
+      'model:download-complete'
     ]
     if (validChannels.includes(channel)) {
       const subscription = (event, ...args) => callback(...args)
@@ -171,7 +184,13 @@ const api = {
       'electronAPI:openSystemPreferences',
       'popover:consume-pending-keyword',
       'electronAPI:getActiveScreenSourceId',
-      'electronAPI:getDisplays'
+      'electronAPI:getDisplays',
+      'transcription:initialize',
+      'transcription:process-audio',
+      'transcription:get-models',
+      'transcription:download-model',
+      'transcription:delete-model',
+      'transcription:get-storage-usage'
     ]
     if (!validChannels.includes(channel)) {
       return Promise.reject(new Error(`Invalid invoke channel: ${channel}`))

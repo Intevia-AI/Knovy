@@ -27,6 +27,8 @@ import {
 } from './popoverManager'
 import { positionWindow, type PositionOptions } from './windowManager'
 import electronUpdater, { type AppUpdater } from 'electron-updater'
+import { getLocalTranscriptionService } from './services/localTranscriptionService'
+import { getModelManager } from './services/modelManager'
 
 console.log('[Debug] Imported dbService module:', dbService)
 
@@ -1189,6 +1191,80 @@ app.on('ready', async () => {
   ipcMain.handle('db:get-summary', (event, sessionId) => dbService.getSummary(sessionId))
   ipcMain.handle('db:save-summary', (event, summary) => dbService.saveSummary(summary))
 
+  // Local transcription IPC handlers
+  ipcMain.handle('transcription:initialize', async () => {
+    try {
+      const transcriptionService = getLocalTranscriptionService()
+      const modelManager = getModelManager()
+
+      await modelManager.initialize()
+      const initialized = await transcriptionService.initialize()
+
+      console.log('[main/index.ts] Local transcription service initialized:', initialized)
+      return { success: initialized }
+    } catch (error) {
+      console.error('[main/index.ts] Failed to initialize local transcription:', error)
+      return { success: false, error: error.message }
+    }
+  })
+
+  ipcMain.handle('transcription:process-audio', async (event, { audioBuffer, options }) => {
+    try {
+      const transcriptionService = getLocalTranscriptionService()
+      const result = await transcriptionService.transcribeAudio(audioBuffer, options)
+
+      console.log(`[main/index.ts] Local transcription completed: "${result.text}" (${result.processingTime}ms)`)
+      return { success: true, result }
+    } catch (error) {
+      console.error('[main/index.ts] Local transcription failed:', error)
+      return { success: false, error: error.message }
+    }
+  })
+
+  ipcMain.handle('transcription:get-models', async () => {
+    try {
+      const modelManager = getModelManager()
+      const models = await modelManager.getAllModels()
+      return { success: true, models }
+    } catch (error) {
+      console.error('[main/index.ts] Failed to get models:', error)
+      return { success: false, error: error.message }
+    }
+  })
+
+  ipcMain.handle('transcription:download-model', async (event, modelName) => {
+    try {
+      const modelManager = getModelManager()
+      const success = await modelManager.downloadModel(modelName)
+      return { success }
+    } catch (error) {
+      console.error(`[main/index.ts] Failed to download model ${modelName}:`, error)
+      return { success: false, error: error.message }
+    }
+  })
+
+  ipcMain.handle('transcription:delete-model', async (event, modelName) => {
+    try {
+      const modelManager = getModelManager()
+      const success = await modelManager.deleteModel(modelName)
+      return { success }
+    } catch (error) {
+      console.error(`[main/index.ts] Failed to delete model ${modelName}:`, error)
+      return { success: false, error: error.message }
+    }
+  })
+
+  ipcMain.handle('transcription:get-storage-usage', async () => {
+    try {
+      const modelManager = getModelManager()
+      const usage = await modelManager.getStorageUsage()
+      return { success: true, usage }
+    } catch (error) {
+      console.error('[main/index.ts] Failed to get storage usage:', error)
+      return { success: false, error: error.message }
+    }
+  })
+
   ipcMain.on('app:resize-window', (event, { width, height }) => {
     if (mainWindow) {
       const [currentWidth, currentHeight] = mainWindow.getSize()
@@ -1253,8 +1329,17 @@ process.on('uncaughtException', (error) => {
   console.error('[main/index.ts] Uncaught Exception:', error)
 })
 
-app.on('will-quit', () => {
+app.on('will-quit', async () => {
   globalShortcut.unregisterAll()
+
+  // Cleanup local transcription service
+  try {
+    const transcriptionService = getLocalTranscriptionService()
+    await transcriptionService.cleanup()
+    console.log('[main/index.ts] Local transcription service cleanup completed')
+  } catch (error) {
+    console.error('[main/index.ts] Error during local transcription cleanup:', error)
+  }
 })
 
 app.on('activate', () => {
