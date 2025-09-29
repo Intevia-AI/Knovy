@@ -32,8 +32,8 @@ export class ModelManager {
   private readonly MODELS: WhisperModel[] = [
     {
       name: 'tiny',
-      size: '39MB',
-      sizeBytes: 39 * 1024 * 1024,
+      size: '74MB',
+      sizeBytes: 77691713, // Actual size of bundled model
       url: 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.bin',
       description: 'Fastest model, good for real-time transcription',
       recommended: true

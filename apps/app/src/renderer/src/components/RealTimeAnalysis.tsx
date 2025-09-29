@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
-import { GeminiClient } from '@/services/geminiClient'
+import { TranscriptionFactory, TranscriptionProcessor } from '@/services/transcriptionFactory'
 import { useAuth } from '@/hooks/useAuth'
 
 interface RealTimeAnalysisProps {
@@ -35,6 +35,11 @@ export default function RealTimeAnalysis({
   const systemAudioSourceRef = useRef<MediaStreamAudioSourceNode | null>(null)
   const systemAnalyserRef = useRef<AnalyserNode | null>(null)
 
+  // Refs for transcription factory and processors
+  const transcriptionFactoryRef = useRef<TranscriptionFactory | null>(null)
+  const micProcessorRef = useRef<TranscriptionProcessor | null>(null)
+  const systemProcessorRef = useRef<TranscriptionProcessor | null>(null)
+
   useEffect(() => {
     if (!isScreenSharing) {
       return
@@ -58,8 +63,9 @@ export default function RealTimeAnalysis({
     const unsubscribeWarning = (window as any).electronAPI?.on('transcription:warning', handleTranscriptionWarning)
     const unsubscribeProcessed = (window as any).electronAPI?.on('transcription:processed', handleTranscriptionProcessed)
 
-    let micGeminiClient: GeminiClient | null = null
-    let systemGeminiClient: GeminiClient | null = null
+    let transcriptionFactory: TranscriptionFactory | null = null
+    let micProcessor: TranscriptionProcessor | null = null
+    let systemProcessor: TranscriptionProcessor | null = null
     let audioContext: AudioContext | null = null
     let micAudioWorkletNode: AudioWorkletNode | null = null
     let systemAudioWorkletNode: AudioWorkletNode | null = null
@@ -202,36 +208,56 @@ export default function RealTimeAnalysis({
     const startAudioProcessing = async () => {
       console.log('[RealTimeAnalysis] Starting dual audio processing with language:', language)
 
-      micGeminiClient = new GeminiClient(
-        (text) =>
-          processTranscriptionResponse(text, micTextBufferRef, 'microphone', canUseKeywordSearch),
+      // Initialize transcription factory with local transcription as primary, Gemini as fallback
+      transcriptionFactory = new TranscriptionFactory({
+        mode: 'auto', // Try local first, fallback to Gemini
+        localOptions: {
+          modelSize: 'tiny', // Use tiny model for real-time performance
+          fallbackToGemini: true
+        },
+        geminiOptions: {
+          customPrompt,
+          language
+        }
+      })
+
+      transcriptionFactoryRef.current = transcriptionFactory
+
+      // Initialize the factory
+      const factoryInitialized = await transcriptionFactory.initialize()
+      if (!factoryInitialized) {
+        console.error('[RealTimeAnalysis] Failed to initialize transcription factory')
+        return
+      }
+
+      // Create transcription processors for both audio sources
+      micProcessor = await transcriptionFactory.createTranscriptionProcessor(
+        'microphone',
+        (text, turnComplete, sourceType) =>
+          processTranscriptionResponse(text, micTextBufferRef, sourceType, canUseKeywordSearch),
         () => {
-          console.log('[RealTimeAnalysis] Microphone WebSocket setup complete')
+          console.log('[RealTimeAnalysis] Microphone transcription processor setup complete')
           shouldSendAudio = true
         },
-        () => {},
-        () => {},
-        () => {},
-        'transcription',
-        customPrompt,
         language
       )
 
-      systemGeminiClient = new GeminiClient(
-        (text) =>
-          processTranscriptionResponse(text, systemTextBufferRef, 'system', canUseKeywordSearch),
+      systemProcessor = await transcriptionFactory.createTranscriptionProcessor(
+        'system',
+        (text, turnComplete, sourceType) =>
+          processTranscriptionResponse(text, systemTextBufferRef, sourceType, canUseKeywordSearch),
         () => {
-          console.log('[RealTimeAnalysis] System audio WebSocket setup complete')
+          console.log('[RealTimeAnalysis] System audio transcription processor setup complete')
         },
-        () => {},
-        () => {},
-        () => {},
-        'transcription',
-        customPrompt,
         language
       )
 
-      await Promise.all([micGeminiClient.connect(), systemGeminiClient.connect()])
+      // Store refs for cleanup
+      micProcessorRef.current = micProcessor
+      systemProcessorRef.current = systemProcessor
+
+      // Connect both processors
+      await Promise.all([micProcessor.connect(), systemProcessor.connect()])
 
       try {
         audioContext = new AudioContext({ sampleRate: 16000 })
@@ -257,11 +283,11 @@ export default function RealTimeAnalysis({
 
         micAudioWorkletNode.port.onmessage = (event) => {
           const { pcmData, sourceType } = event.data
-          if (micGeminiClient && shouldSendAudio && sourceType === 'microphone') {
+          if (micProcessor && shouldSendAudio && sourceType === 'microphone') {
             try {
               const pcmArray = new Uint8Array(pcmData)
               const b64Data = btoa(String.fromCharCode.apply(null, Array.from(pcmArray)))
-              micGeminiClient.sendMediaChunk(b64Data, 'audio/pcm')
+              micProcessor.sendAudioChunk(b64Data, 'audio/pcm')
             } catch (error) {
               console.error('[RealTimeAnalysis] Error sending microphone audio chunk:', error)
             }
@@ -270,11 +296,11 @@ export default function RealTimeAnalysis({
 
         systemAudioWorkletNode.port.onmessage = (event) => {
           const { pcmData, sourceType } = event.data
-          if (systemGeminiClient && shouldSendAudio && sourceType === 'system') {
+          if (systemProcessor && shouldSendAudio && sourceType === 'system') {
             try {
               const pcmArray = new Uint8Array(pcmData)
               const b64Data = btoa(String.fromCharCode.apply(null, Array.from(pcmArray)))
-              systemGeminiClient.sendMediaChunk(b64Data, 'audio/pcm')
+              systemProcessor.sendAudioChunk(b64Data, 'audio/pcm')
             } catch (error) {
               console.error('[RealTimeAnalysis] Error sending system audio chunk:', error)
             }
@@ -357,18 +383,26 @@ export default function RealTimeAnalysis({
       shouldSendAudio = false
 
       // Log connection stats before disconnecting
-      if (micGeminiClient) {
-        const micStats = micGeminiClient.getStats()
-        console.log('[RealTimeAnalysis] Microphone connection stats:', micStats)
-        micGeminiClient.disconnect()
-        micGeminiClient = null
+      if (micProcessor) {
+        const micStats = micProcessor.getStats()
+        console.log('[RealTimeAnalysis] Microphone processor stats:', micStats)
+        micProcessor.disconnect()
+        micProcessor = null
+        micProcessorRef.current = null
       }
 
-      if (systemGeminiClient) {
-        const systemStats = systemGeminiClient.getStats()
-        console.log('[RealTimeAnalysis] System audio connection stats:', systemStats)
-        systemGeminiClient.disconnect()
-        systemGeminiClient = null
+      if (systemProcessor) {
+        const systemStats = systemProcessor.getStats()
+        console.log('[RealTimeAnalysis] System audio processor stats:', systemStats)
+        systemProcessor.disconnect()
+        systemProcessor = null
+        systemProcessorRef.current = null
+      }
+
+      if (transcriptionFactory) {
+        console.log('[RealTimeAnalysis] Cleaning up transcription factory')
+        transcriptionFactory = null
+        transcriptionFactoryRef.current = null
       }
 
       mediaStream?.getTracks().forEach((track) => track.stop())

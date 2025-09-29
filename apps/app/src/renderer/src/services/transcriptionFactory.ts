@@ -200,13 +200,16 @@ export abstract class TranscriptionProcessor {
 export class LocalTranscriptionProcessor extends TranscriptionProcessor {
   private localClient: LocalTranscriptionClient
   private options: LocalTranscriptionOptions
-  private audioBuffer: ArrayBuffer[] = []
-  private isConnected = false
+  private audioBuffers: ArrayBuffer[] = []
+  private connected = false
   private processingStats = {
     chunksReceived: 0,
     totalProcessingTime: 0,
     transcriptionsCompleted: 0
   }
+  private lastProcessTime = 0
+  private readonly BUFFER_DURATION_MS = 5000 // Process every 5 seconds
+  private readonly MAX_BUFFER_SIZE = 20 // Maximum number of chunks to buffer
 
   constructor(
     localClient: LocalTranscriptionClient,
@@ -232,7 +235,8 @@ export class LocalTranscriptionProcessor extends TranscriptionProcessor {
         throw new Error('Local transcription client initialization failed')
       }
 
-      this.isConnected = true
+      this.connected = true
+      this.lastProcessTime = Date.now() // Initialize timing for buffering
       this.onSetupComplete?.()
 
       console.log(`[LocalTranscriptionProcessor] ${this.sourceType} processor connected successfully`)
@@ -244,12 +248,13 @@ export class LocalTranscriptionProcessor extends TranscriptionProcessor {
 
   disconnect(): void {
     console.log(`[LocalTranscriptionProcessor] Disconnecting ${this.sourceType} processor`)
-    this.isConnected = false
-    this.audioBuffer = []
+    this.connected = false
+    this.audioBuffers = []
+    this.lastProcessTime = 0
   }
 
   sendAudioChunk(chunk: string, mimeType: string): void {
-    if (!this.isConnected) {
+    if (!this.connected) {
       console.warn(`[LocalTranscriptionProcessor] Cannot send audio chunk - ${this.sourceType} processor not connected`)
       return
     }
@@ -265,15 +270,33 @@ export class LocalTranscriptionProcessor extends TranscriptionProcessor {
       }
       const audioBuffer = bytes.buffer
 
-      // Process audio immediately (could be optimized to batch for efficiency)
-      this.processAudioBuffer(audioBuffer)
+      // Add to buffer
+      this.audioBuffers.push(audioBuffer)
+
+      // Check if we should process buffered audio
+      const now = Date.now()
+      const timeSinceLastProcess = now - this.lastProcessTime
+      const shouldProcessByTime = timeSinceLastProcess >= this.BUFFER_DURATION_MS
+      const shouldProcessBySize = this.audioBuffers.length >= this.MAX_BUFFER_SIZE
+
+      console.log(`[LocalTranscriptionProcessor] ${this.sourceType} buffering status:`, {
+        chunksBuffered: this.audioBuffers.length,
+        timeSinceLastProcess: `${timeSinceLastProcess}ms`,
+        shouldProcessByTime,
+        shouldProcessBySize
+      })
+
+      if ((shouldProcessByTime || shouldProcessBySize) && this.audioBuffers.length > 0) {
+        this.processBufferedAudio()
+        this.lastProcessTime = now
+      }
     } catch (error) {
       console.error(`[LocalTranscriptionProcessor] Error processing audio chunk for ${this.sourceType}:`, error)
     }
   }
 
   isConnected(): boolean {
-    return this.isConnected
+    return this.connected
   }
 
   getStats(): any {
@@ -287,6 +310,38 @@ export class LocalTranscriptionProcessor extends TranscriptionProcessor {
     }
   }
 
+  private processBufferedAudio(): void {
+    if (this.audioBuffers.length === 0) return
+
+    console.log(`[LocalTranscriptionProcessor] Processing ${this.audioBuffers.length} buffered chunks for ${this.sourceType}`)
+
+    // Combine all buffered audio chunks into one ArrayBuffer
+    const combinedBuffer = this.combineAudioBuffers(this.audioBuffers)
+
+    // Clear the buffer
+    this.audioBuffers = []
+
+    // Process the combined audio
+    this.processAudioBuffer(combinedBuffer)
+  }
+
+  private combineAudioBuffers(buffers: ArrayBuffer[]): ArrayBuffer {
+    // Calculate total length
+    const totalLength = buffers.reduce((sum, buffer) => sum + buffer.byteLength, 0)
+
+    // Create combined buffer
+    const combined = new Uint8Array(totalLength)
+    let offset = 0
+
+    // Copy all buffers
+    for (const buffer of buffers) {
+      combined.set(new Uint8Array(buffer), offset)
+      offset += buffer.byteLength
+    }
+
+    return combined.buffer
+  }
+
   private async processAudioBuffer(audioBuffer: ArrayBuffer): Promise<void> {
     try {
       const result = await this.localClient.transcribeAudio(audioBuffer, this.options)
@@ -295,7 +350,10 @@ export class LocalTranscriptionProcessor extends TranscriptionProcessor {
       this.processingStats.totalProcessingTime += result.processingTime
 
       if (result.text && result.text.trim()) {
+        console.log(`[LocalTranscriptionProcessor] Got transcription for ${this.sourceType}: "${result.text}"`)
         this.onTextResponse(result.text, true, this.sourceType)
+      } else {
+        console.log(`[LocalTranscriptionProcessor] Empty transcription result for ${this.sourceType} (${audioBuffer.byteLength} bytes, ${result.processingTime}ms)`)
       }
     } catch (error) {
       console.error(`[LocalTranscriptionProcessor] Transcription failed for ${this.sourceType}:`, error)
