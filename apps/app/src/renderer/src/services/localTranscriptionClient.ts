@@ -92,10 +92,27 @@ export class LocalTranscriptionClient {
         modelSize: options.modelSize || 'tiny'
       })
 
+      // Quick availability check before attempting transcription
+      const isCurrentlyAvailable = await this.isAvailable()
+      if (!isCurrentlyAvailable) {
+        throw new Error('No whisper models available. Models may have been deleted.')
+      }
+
       const response = await (window as any).electronAPI.transcriptionProcessAudio(audioBuffer, options)
 
       if (!response.success) {
-        throw new Error(response.error || 'Local transcription failed')
+        // Provide more specific error messages based on the error type
+        const error = response.error || 'Local transcription failed'
+
+        if (error.includes('No whisper models available')) {
+          throw new Error('No whisper models available. Please restart the app to re-download models.')
+        } else if (error.includes('whisper.cpp binary')) {
+          throw new Error('whisper.cpp binary error. Local transcription is temporarily unavailable.')
+        } else if (error.includes('timeout')) {
+          throw new Error('Transcription timeout. The audio segment may be too long or corrupted.')
+        } else {
+          throw new Error(error)
+        }
       }
 
       console.log(`[LocalTranscriptionClient] Transcription completed:`, {
@@ -107,6 +124,15 @@ export class LocalTranscriptionClient {
       return response.result
     } catch (error) {
       console.error('[LocalTranscriptionClient] Transcription error:', error)
+
+      // Re-throw with additional context if needed
+      if (error instanceof Error) {
+        // Add context about the source type for debugging
+        const contextualError = new Error(`${error.message} (Source: ${options.sourceType})`)
+        contextualError.stack = error.stack
+        throw contextualError
+      }
+
       throw error
     }
   }
@@ -184,8 +210,15 @@ export class LocalTranscriptionClient {
     try {
       // Check if at least one model is downloaded
       const models = await this.getAvailableModels()
-      return models.some(model => model.downloaded)
-    } catch {
+      const hasModels = models.some(model => model.downloaded)
+
+      if (!hasModels) {
+        console.warn('[LocalTranscriptionClient] No models available for transcription')
+      }
+
+      return hasModels
+    } catch (error) {
+      console.error('[LocalTranscriptionClient] Error checking availability:', error)
       return false
     }
   }
@@ -208,6 +241,9 @@ export class LocalTranscriptionClient {
   async ensureModelAvailable(): Promise<boolean> {
     try {
       console.log('[LocalTranscriptionClient] Ensuring model availability...')
+
+      // Add a small delay to ensure any progress callbacks are set up
+      await new Promise(resolve => setTimeout(resolve, 100))
 
       const response = await (window as any).electronAPI.transcriptionEnsureModelAvailable()
       return response.success
@@ -311,6 +347,8 @@ export class LocalTranscriptionClient {
     // Listen for download progress events (from ensureModelAvailable)
     const unsubscribeModelProgress = (window as any).electronAPI?.on('transcription:model-download-progress',
       ({ modelName, progress }: { modelName: string; progress: { downloaded: number; total: number; percentage: number } }) => {
+        console.log('[LocalTranscriptionClient] Received model download progress:', { modelName, progress, callbackCount: this.downloadProgressCallbacks.size })
+
         this.downloadProgressCallbacks.forEach(callback => {
           try {
             callback({

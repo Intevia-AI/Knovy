@@ -228,6 +228,25 @@ export default function RealTimeAnalysis({
       const factoryInitialized = await transcriptionFactory.initialize()
       if (!factoryInitialized) {
         console.error('[RealTimeAnalysis] Failed to initialize transcription factory')
+
+        // Check if it's a model availability issue and notify the app
+        try {
+          const localClient = transcriptionFactory.getLocalClient()
+          const isAvailable = await localClient.isAvailable()
+          if (!isAvailable) {
+            console.error('[RealTimeAnalysis] Models not available, triggering model error handler')
+            // Notify the main app about the model error
+            if ((window as any).electronAPI?.send) {
+              (window as any).electronAPI.send('transcription:model-error', {
+                sourceType: 'session-start',
+                error: 'No whisper models available during session start'
+              })
+            }
+          }
+        } catch (error) {
+          console.error('[RealTimeAnalysis] Error checking model availability:', error)
+        }
+
         return
       }
 

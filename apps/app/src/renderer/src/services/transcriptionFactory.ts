@@ -372,7 +372,66 @@ export class LocalTranscriptionProcessor extends TranscriptionProcessor {
       }
     } catch (error) {
       console.error(`[LocalTranscriptionProcessor] Transcription failed for ${this.sourceType}:`, error)
+
+      // Handle model missing error specifically
+      if (error instanceof Error && error.message.includes('No whisper models available')) {
+        console.error(`[LocalTranscriptionProcessor] Models were deleted during session - attempting recovery`)
+
+        // Notify the main app about the model error
+        if ((window as any).electronAPI?.send) {
+          (window as any).electronAPI.send('transcription:model-error', {
+            sourceType: this.sourceType,
+            error: error.message
+          })
+        }
+
+        await this.handleModelMissingError()
+      } else if (error instanceof Error && error.message.includes('whisper.cpp binary')) {
+        console.error(`[LocalTranscriptionProcessor] Binary error during transcription`)
+        this.notifyUserOfTranscriptionError('Local transcription unavailable - binary error')
+      } else {
+        // Generic transcription error
+        this.notifyUserOfTranscriptionError('Transcription temporarily unavailable')
+      }
     }
+  }
+
+  /**
+   * Handle the case where models are missing during active transcription
+   */
+  private async handleModelMissingError(): Promise<void> {
+    try {
+      console.log(`[LocalTranscriptionProcessor] Attempting to recover from missing models...`)
+
+      // Try to re-initialize and download models
+      const initialized = await this.localClient.initialize()
+      if (initialized) {
+        const ensured = await this.localClient.ensureModelAvailable()
+        if (ensured) {
+          console.log(`[LocalTranscriptionProcessor] Successfully recovered models for ${this.sourceType}`)
+          this.notifyUserOfTranscriptionError('Model recovered - transcription resumed', 'info')
+          return
+        }
+      }
+
+      // If recovery fails, notify user
+      console.error(`[LocalTranscriptionProcessor] Failed to recover models for ${this.sourceType}`)
+      this.notifyUserOfTranscriptionError('Local transcription models missing - please restart the app')
+    } catch (error) {
+      console.error(`[LocalTranscriptionProcessor] Error during model recovery:`, error)
+      this.notifyUserOfTranscriptionError('Unable to recover transcription - please restart the app')
+    }
+  }
+
+  /**
+   * Notify user of transcription errors through the UI
+   */
+  private notifyUserOfTranscriptionError(message: string, type: 'error' | 'warning' | 'info' = 'error'): void {
+    // Send a formatted error message that the UI can display
+    const errorResponse = `TRANSCRIPTION: [${type.toUpperCase()}] ${message}\nKEYWORDS: error, ${type}`
+
+    console.warn(`[LocalTranscriptionProcessor] Notifying user of ${type}: ${message}`)
+    this.onTextResponse(errorResponse, true, this.sourceType)
   }
 
   /**
