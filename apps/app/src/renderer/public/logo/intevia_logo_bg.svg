@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 768 768">
+  <rect width="768" height="768" rx="80" fill="#FFFFFF"/>
+  
+  <g id="logo-wrapper" transform="translate(384, 384) scale(0.85) translate(-351.5, -351.5)">
+    
+    <g transform="translate(0, 109.74)">
+      <polyline fill="#f29539" points="546.42 185.49 581.26 150.97 535.35 105.05 500.83 139.57 546.42 185.49"/>
+      
+      <polygon fill="#000" points="703.05 483.57 535.35 483.57 377.09 209.71 218.83 483.57 0 483.57 279.4 0 472.5 334.76 544.79 209.71 703.05 483.57 703.05 483.57"/>
+    </g>
+
+  </g>
+</svg>
