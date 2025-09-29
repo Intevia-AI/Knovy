@@ -49,11 +49,11 @@ export class LocalTranscriptionService {
       binaryName = 'whisper.exe'
     }
 
-    // For development, use resources path; for production, resources are unpacked to process.resourcesPath
+    // For development, use resources path; for production, resources are unpacked to app.asar.unpacked
     const isDev = !app.isPackaged
     const resourcesPath = isDev
       ? path.join(__dirname, '../../resources')
-      : path.join(process.resourcesPath, 'resources')
+      : path.join(process.resourcesPath, 'app.asar.unpacked', 'resources')
 
     this.whisperBinaryPath = path.join(resourcesPath, 'whisper.cpp', `${binaryName}-${platform}-${arch}`)
     this.modelsPath = path.join(app.getPath('userData'), 'whisper-models')
@@ -467,23 +467,9 @@ export class LocalTranscriptionService {
       await fs.access(tinyModelPath)
       console.log('[LocalTranscription] Default tiny model already exists')
     } catch {
-      console.log('[LocalTranscription] Default tiny model not found, copying from resources...')
-
-      // Try to copy bundled model from resources
-      const isDev = !app.isPackaged
-      const resourcesPath = isDev
-        ? path.join(__dirname, '../../resources')
-        : path.join(process.resourcesPath, 'resources')
-
-      const bundledModelPath = path.join(resourcesPath, 'whisper.cpp', 'models', 'ggml-tiny.bin')
-
-      try {
-        await fs.access(bundledModelPath)
-        await fs.copyFile(bundledModelPath, tinyModelPath)
-        console.log('[LocalTranscription] Successfully copied bundled tiny model')
-      } catch (copyError) {
-        console.warn('[LocalTranscription] No bundled model found, user will need to download:', copyError.message)
-      }
+      console.log('[LocalTranscription] Default tiny model not found, will be downloaded on first use via ensureModelAvailable()')
+      // Note: Model will be downloaded automatically when ensureModelAvailable() is called
+      // by the renderer process during initialization
     }
   }
 
