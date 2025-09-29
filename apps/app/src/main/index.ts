@@ -355,12 +355,12 @@ const createWindow = async () => {
   const settings = await loadSettings()
 
   mainWindow = new BrowserWindow({
-    width: 360,
-    height: 50,
+    width: 320,
+    height: 300,
     frame: false,
     transparent: true,
     hasShadow: false,
-    alwaysOnTop: true, // Set always on top
+    alwaysOnTop: false, // Start with false since we'll be doing loading/login first
     visualEffectState: 'active',
     backgroundMaterial: 'acrylic',
     webPreferences: {
@@ -406,6 +406,9 @@ const createWindow = async () => {
   } else {
     mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'))
   }
+
+  // Center the window initially since we always start with loading/login
+  mainWindow.center()
 
   mainWindow.on('closed', () => {
     mainWindow = null
