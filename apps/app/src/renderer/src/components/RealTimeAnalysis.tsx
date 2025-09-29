@@ -208,12 +208,13 @@ export default function RealTimeAnalysis({
     const startAudioProcessing = async () => {
       console.log('[RealTimeAnalysis] Starting dual audio processing with language:', language)
 
-      // Initialize transcription factory with local transcription as primary, Gemini as fallback
+      // Initialize transcription factory with local transcription only
       transcriptionFactory = new TranscriptionFactory({
-        mode: 'auto', // Try local first, fallback to Gemini
+        mode: 'local', // Use local transcription only for standalone operation
         localOptions: {
           modelSize: 'tiny', // Use tiny model for real-time performance
-          fallbackToGemini: true
+          enableNoiseFiltering: true, // Enable comprehensive noise filtering
+          energyThreshold: 0.01 // Default energy threshold for microphone
         },
         geminiOptions: {
           customPrompt,

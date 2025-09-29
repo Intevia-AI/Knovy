@@ -4,6 +4,7 @@ import { AppRouter } from './AppRouter'
 import { useAuth, AuthProvider } from '../context/AuthContext'
 import { Loader2 } from 'lucide-react'
 import { LoginPage, Waitlist } from '../components/LoginPage'
+import { ModelPreparationLoader } from '../components/ModelPreparationLoader'
 import { motion, AnimatePresence } from 'motion'
 
 /**
@@ -19,6 +20,8 @@ function AppContent() {
   const { user, isLoading, sessionProfile } = useAuth()
   const [isInitialLoad, setIsInitialLoad] = useState(true)
   const [hasBeenPositioned, setHasBeenPositioned] = useState(false)
+  const [isModelPreparationComplete, setIsModelPreparationComplete] = useState(false)
+  const [modelPreparationStarted, setModelPreparationStarted] = useState(false)
   const [hash] = useState(() => window.location.hash) // Get hash once
 
   const isPopover = hash.length > 1
@@ -69,6 +72,26 @@ function AppContent() {
     }
   }, [])
 
+  // Handle model preparation for authenticated users
+  useEffect(() => {
+    const isUserLoggedIn = user && sessionProfile
+    const isWaitlisted =
+      isUserLoggedIn &&
+      sessionProfile.role === 'free' &&
+      sessionProfile.app_settings.free_tier_experience?.mode === 'non-access'
+
+    // Start model preparation when user is logged in and not waitlisted
+    if (isUserLoggedIn && !isWaitlisted && !modelPreparationStarted && !isInitialLoad) {
+      console.log('[App] Starting model preparation for authenticated user')
+      setModelPreparationStarted(true)
+    }
+  }, [user, sessionProfile, isInitialLoad, modelPreparationStarted])
+
+  const handleModelPreparationComplete = (success: boolean) => {
+    console.log('[App] Model preparation completed:', success)
+    setIsModelPreparationComplete(true)
+  }
+
   return (
     <AnimatePresence mode="wait">
       {isInitialLoad || (isLoading && user && !sessionProfile) ? (
@@ -94,6 +117,16 @@ function AppContent() {
                   transition={{ duration: 0.2 }}
                 >
                   <Waitlist />
+                </motion.div>
+              ) : modelPreparationStarted && !isModelPreparationComplete ? (
+                <motion.div
+                  key="model-preparation"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <ModelPreparationLoader onComplete={handleModelPreparationComplete} />
                 </motion.div>
               ) : (
                 <motion.div
