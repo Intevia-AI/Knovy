@@ -52,6 +52,7 @@ const api = {
     ipcRenderer.invoke('transcription:delete-model', modelName),
   transcriptionGetStorageUsage: () => ipcRenderer.invoke('transcription:get-storage-usage'),
   transcriptionEnsureModelAvailable: () => ipcRenderer.invoke('transcription:ensure-model-available'),
+  transcriptionGetDiagnostics: () => ipcRenderer.invoke('transcription:get-diagnostics'),
 
   createSession: (session) => ipcRenderer.invoke('db:create-session', session),
   addTranscript: (transcript) => ipcRenderer.invoke('db:add-transcript', transcript),
@@ -192,7 +193,8 @@ const api = {
       'transcription:get-models',
       'transcription:download-model',
       'transcription:delete-model',
-      'transcription:get-storage-usage'
+      'transcription:get-storage-usage',
+      'transcription:get-diagnostics'
     ]
     if (!validChannels.includes(channel)) {
       return Promise.reject(new Error(`Invalid invoke channel: ${channel}`))

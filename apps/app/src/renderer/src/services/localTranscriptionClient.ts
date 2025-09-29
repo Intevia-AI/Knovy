@@ -261,16 +261,46 @@ export class LocalTranscriptionClient {
     try {
       console.log('[LocalTranscriptionClient] Initializing local transcription service...')
 
+      // Check if electronAPI is available
+      if (!window.electronAPI) {
+        console.error('[LocalTranscriptionClient] electronAPI not available')
+        return false
+      }
+
+      if (!window.electronAPI.transcriptionInitialize) {
+        console.error('[LocalTranscriptionClient] transcriptionInitialize method not available')
+        return false
+      }
+
+      console.log('[LocalTranscriptionClient] Calling transcriptionInitialize...')
       const response = await (window as any).electronAPI.transcriptionInitialize()
+
+      console.log('[LocalTranscriptionClient] Raw response:', response)
+
+      if (!response) {
+        console.error('[LocalTranscriptionClient] Initialization failed: response is undefined')
+        return false
+      }
 
       if (response.success) {
         this.isInitialized = true
         console.log('[LocalTranscriptionClient] Successfully initialized')
+        return true
       } else {
         console.error('[LocalTranscriptionClient] Initialization failed:', response.error)
-      }
 
-      return response.success
+        // Get diagnostic information for debugging
+        try {
+          const diagnosticsResponse = await (window as any).electronAPI.transcriptionGetDiagnostics()
+          if (diagnosticsResponse.success) {
+            console.error('[LocalTranscriptionClient] Diagnostics:', diagnosticsResponse.diagnostics)
+          }
+        } catch (diagError) {
+          console.error('[LocalTranscriptionClient] Failed to get diagnostics:', diagError)
+        }
+
+        return false
+      }
     } catch (error) {
       console.error('[LocalTranscriptionClient] Initialization error:', error)
       return false

@@ -49,11 +49,11 @@ export class LocalTranscriptionService {
       binaryName = 'whisper.exe'
     }
 
-    // For development, use resources path; for production, use app.asar
+    // For development, use resources path; for production, resources are unpacked to process.resourcesPath
     const isDev = !app.isPackaged
     const resourcesPath = isDev
       ? path.join(__dirname, '../../resources')
-      : path.join(process.resourcesPath)
+      : path.join(process.resourcesPath, 'resources')
 
     this.whisperBinaryPath = path.join(resourcesPath, 'whisper.cpp', `${binaryName}-${platform}-${arch}`)
     this.modelsPath = path.join(app.getPath('userData'), 'whisper-models')
@@ -76,18 +76,24 @@ export class LocalTranscriptionService {
     try {
       console.log('[LocalTranscription] Initializing service...')
 
+      console.log('[LocalTranscription] Step 1: Creating directories...')
       // Create necessary directories
       await this.ensureDirectories()
+      console.log('[LocalTranscription] Directories created successfully')
 
+      console.log('[LocalTranscription] Step 2: Validating binary...')
       // Validate whisper.cpp binary
       const binaryExists = await this.validateBinary()
       if (!binaryExists) {
-        console.error('[LocalTranscription] whisper.cpp binary not found:', this.whisperBinaryPath)
+        console.error('[LocalTranscription] whisper.cpp binary validation failed')
         return false
       }
+      console.log('[LocalTranscription] Binary validation passed')
 
+      console.log('[LocalTranscription] Step 3: Ensuring default model...')
       // Ensure default model is available
       await this.ensureDefaultModel()
+      console.log('[LocalTranscription] Default model ensured')
 
       this.isInitialized = true
       console.log('[LocalTranscription] Service initialized successfully')
@@ -315,6 +321,54 @@ export class LocalTranscriptionService {
   }
 
   /**
+   * Delete a downloaded model
+   */
+  async deleteModel(modelName: string): Promise<boolean> {
+    console.log(`[LocalTranscription] Deleting model: ${modelName}`)
+
+    const modelPath = path.join(this.modelsPath, `ggml-${modelName}.bin`)
+
+    try {
+      await fs.access(modelPath)
+      await fs.unlink(modelPath)
+      console.log(`[LocalTranscription] Successfully deleted model: ${modelName}`)
+      return true
+    } catch (error) {
+      console.error(`[LocalTranscription] Failed to delete model ${modelName}:`, error)
+      return false
+    }
+  }
+
+  /**
+   * Get storage usage information
+   */
+  async getStorageUsage(): Promise<{ totalBytes: number; models: Array<{ name: string; sizeBytes: number }> }> {
+    try {
+      const models = await this.getAvailableModels()
+      const modelSizes: Array<{ name: string; sizeBytes: number }> = []
+      let totalBytes = 0
+
+      for (const model of models) {
+        if (model.downloaded && model.path) {
+          try {
+            const stats = await fs.stat(model.path)
+            const sizeBytes = stats.size
+            modelSizes.push({ name: model.name, sizeBytes })
+            totalBytes += sizeBytes
+          } catch (error) {
+            console.warn(`[LocalTranscription] Could not get size for model ${model.name}:`, error)
+          }
+        }
+      }
+
+      return { totalBytes, models: modelSizes }
+    } catch (error) {
+      console.error('[LocalTranscription] Failed to get storage usage:', error)
+      return { totalBytes: 0, models: [] }
+    }
+  }
+
+  /**
    * Ensure at least one model is available, downloading if necessary
    */
   async ensureModelAvailable(onProgress?: (modelName: string, progress: { downloaded: number; total: number; percentage: number }) => void): Promise<boolean> {
@@ -382,9 +436,27 @@ export class LocalTranscriptionService {
 
   private async validateBinary(): Promise<boolean> {
     try {
-      await fs.access(this.whisperBinaryPath, fs.constants.F_OK | fs.constants.X_OK)
+      console.log(`[LocalTranscription] Checking binary at: ${this.whisperBinaryPath}`)
+
+      // Check if file exists
+      await fs.access(this.whisperBinaryPath, fs.constants.F_OK)
+      console.log(`[LocalTranscription] Binary file exists`)
+
+      // Check if file is executable
+      await fs.access(this.whisperBinaryPath, fs.constants.X_OK)
+      console.log(`[LocalTranscription] Binary is executable`)
+
+      // Get file stats for debugging
+      const stats = await fs.stat(this.whisperBinaryPath)
+      console.log(`[LocalTranscription] Binary stats:`, {
+        size: stats.size,
+        mode: stats.mode.toString(8),
+        isFile: stats.isFile()
+      })
+
       return true
-    } catch {
+    } catch (error) {
+      console.error(`[LocalTranscription] Binary validation failed:`, error)
       return false
     }
   }
@@ -401,7 +473,7 @@ export class LocalTranscriptionService {
       const isDev = !app.isPackaged
       const resourcesPath = isDev
         ? path.join(__dirname, '../../resources')
-        : path.join(process.resourcesPath)
+        : path.join(process.resourcesPath, 'resources')
 
       const bundledModelPath = path.join(resourcesPath, 'whisper.cpp', 'models', 'ggml-tiny.bin')
 

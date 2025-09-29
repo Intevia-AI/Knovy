@@ -28,7 +28,6 @@ import {
 import { positionWindow, type PositionOptions } from './windowManager'
 import electronUpdater, { type AppUpdater } from 'electron-updater'
 import { getLocalTranscriptionService } from './services/localTranscriptionService'
-import { getModelManager } from './services/modelManager'
 
 console.log('[Debug] Imported dbService module:', dbService)
 
@@ -1194,17 +1193,28 @@ app.on('ready', async () => {
   // Local transcription IPC handlers
   ipcMain.handle('transcription:initialize', async () => {
     try {
+      console.log('[main/index.ts] Starting transcription initialization...')
+
       const transcriptionService = getLocalTranscriptionService()
-      const modelManager = getModelManager()
+      console.log('[main/index.ts] Got transcription service instance')
 
-      await modelManager.initialize()
       const initialized = await transcriptionService.initialize()
+      console.log('[main/index.ts] Transcription service initialization result:', initialized)
 
-      console.log('[main/index.ts] Local transcription service initialized:', initialized)
-      return { success: initialized }
+      if (!initialized) {
+        const result = { success: false, error: 'LocalTranscriptionService.initialize() returned false - check binary or model availability' }
+        console.log('[main/index.ts] Returning failure result:', result)
+        return result
+      }
+
+      const result = { success: true }
+      console.log('[main/index.ts] Returning success result:', result)
+      return result
     } catch (error) {
       console.error('[main/index.ts] Failed to initialize local transcription:', error)
-      return { success: false, error: error.message }
+      const errorResult = { success: false, error: error?.message || 'Unknown error' }
+      console.log('[main/index.ts] Returning error result:', errorResult)
+      return errorResult
     }
   })
 
@@ -1223,8 +1233,8 @@ app.on('ready', async () => {
 
   ipcMain.handle('transcription:get-models', async () => {
     try {
-      const modelManager = getModelManager()
-      const models = await modelManager.getAllModels()
+      const transcriptionService = getLocalTranscriptionService()
+      const models = await transcriptionService.getAvailableModels()
       return { success: true, models }
     } catch (error) {
       console.error('[main/index.ts] Failed to get models:', error)
@@ -1234,8 +1244,8 @@ app.on('ready', async () => {
 
   ipcMain.handle('transcription:download-model', async (event, modelName) => {
     try {
-      const modelManager = getModelManager()
-      const success = await modelManager.downloadModel(modelName)
+      const transcriptionService = getLocalTranscriptionService()
+      const success = await transcriptionService.downloadModel(modelName)
       return { success }
     } catch (error) {
       console.error(`[main/index.ts] Failed to download model ${modelName}:`, error)
@@ -1245,8 +1255,8 @@ app.on('ready', async () => {
 
   ipcMain.handle('transcription:delete-model', async (event, modelName) => {
     try {
-      const modelManager = getModelManager()
-      const success = await modelManager.deleteModel(modelName)
+      const transcriptionService = getLocalTranscriptionService()
+      const success = await transcriptionService.deleteModel(modelName)
       return { success }
     } catch (error) {
       console.error(`[main/index.ts] Failed to delete model ${modelName}:`, error)
@@ -1256,8 +1266,8 @@ app.on('ready', async () => {
 
   ipcMain.handle('transcription:get-storage-usage', async () => {
     try {
-      const modelManager = getModelManager()
-      const usage = await modelManager.getStorageUsage()
+      const transcriptionService = getLocalTranscriptionService()
+      const usage = await transcriptionService.getStorageUsage()
       return { success: true, usage }
     } catch (error) {
       console.error('[main/index.ts] Failed to get storage usage:', error)
@@ -1277,6 +1287,68 @@ app.on('ready', async () => {
       return { success }
     } catch (error) {
       console.error('[main/index.ts] Failed to ensure model availability:', error)
+      return { success: false, error: error.message }
+    }
+  })
+
+  ipcMain.handle('transcription:get-diagnostics', async () => {
+    try {
+      const path = require('path')
+      const fs = require('fs/promises')
+      const { app } = require('electron')
+
+      const platform = process.platform
+      const arch = process.arch
+      let binaryName = 'whisper'
+      if (platform === 'win32') {
+        binaryName = 'whisper.exe'
+      }
+
+      const isDev = !app.isPackaged
+      const resourcesPath = isDev
+        ? path.join(__dirname, '../../resources')
+        : path.join(process.resourcesPath, 'resources')
+
+      const whisperBinaryPath = path.join(resourcesPath, 'whisper.cpp', `${binaryName}-${platform}-${arch}`)
+      const modelsPath = path.join(app.getPath('userData'), 'whisper-models')
+      const bundledModelPath = path.join(resourcesPath, 'whisper.cpp', 'models', 'ggml-tiny.bin')
+
+      const diagnostics = {
+        platform,
+        arch,
+        isDev,
+        resourcesPath,
+        whisperBinaryPath,
+        modelsPath,
+        bundledModelPath,
+        binaryExists: false,
+        binaryExecutable: false,
+        binarySize: 0,
+        bundledModelExists: false,
+        bundledModelSize: 0
+      }
+
+      try {
+        await fs.access(whisperBinaryPath, fs.constants.F_OK)
+        diagnostics.binaryExists = true
+        const binaryStats = await fs.stat(whisperBinaryPath)
+        diagnostics.binarySize = binaryStats.size
+
+        try {
+          await fs.access(whisperBinaryPath, fs.constants.X_OK)
+          diagnostics.binaryExecutable = true
+        } catch {}
+      } catch {}
+
+      try {
+        await fs.access(bundledModelPath, fs.constants.F_OK)
+        diagnostics.bundledModelExists = true
+        const modelStats = await fs.stat(bundledModelPath)
+        diagnostics.bundledModelSize = modelStats.size
+      } catch {}
+
+      return { success: true, diagnostics }
+    } catch (error) {
       return { success: false, error: error.message }
     }
   })
