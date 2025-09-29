@@ -4,6 +4,10 @@ import fs from 'fs/promises'
 import { app } from 'electron'
 import { randomUUID } from 'crypto'
 
+// Configuration: Change this to set the default model size
+// Options: 'tiny' (39MB, fastest), 'base' (74MB, better), 'small' (244MB, good+), 'medium' (769MB, best)
+const DEFAULT_MODEL_SIZE: 'tiny' | 'base' | 'small' | 'medium' = 'tiny'
+
 export interface TranscriptionOptions {
   language?: string
   modelSize?: 'tiny' | 'base' | 'small' | 'medium'
@@ -56,7 +60,11 @@ export class LocalTranscriptionService {
       ? path.join(__dirname, '../../resources')
       : path.join(process.resourcesPath, 'app.asar.unpacked', 'resources')
 
-    this.whisperBinaryPath = path.join(resourcesPath, 'whisper.cpp', `${binaryName}-${platform}-${arch}`)
+    this.whisperBinaryPath = path.join(
+      resourcesPath,
+      'whisper.cpp',
+      `${binaryName}-${platform}-${arch}`
+    )
     this.modelsPath = path.join(app.getPath('userData'), 'whisper-models')
     this.tempPath = path.join(app.getPath('temp'), 'knovy-transcription')
 
@@ -131,19 +139,23 @@ export class LocalTranscriptionService {
       // Pre-process audio for noise filtering (enabled by default)
       if (options.enableNoiseFiltering !== false) {
         const audioMetrics = this.analyzeAudioEnergy(audioBuffer)
-        const energyThreshold = options.energyThreshold || (options.sourceType === 'microphone' ? 0.01 : 0.005)
+        const energyThreshold =
+          options.energyThreshold || (options.sourceType === 'microphone' ? 0.01 : 0.005)
 
         console.log(`[LocalTranscription] Audio analysis for ${sessionId}:`, {
           averageEnergy: audioMetrics.averageEnergy.toFixed(6),
           maxEnergy: audioMetrics.maxEnergy.toFixed(6),
           energyThreshold: energyThreshold.toFixed(6),
-          silentFrameRatio: (audioMetrics.silentFrames / audioMetrics.totalFrames * 100).toFixed(1) + '%',
+          silentFrameRatio:
+            ((audioMetrics.silentFrames / audioMetrics.totalFrames) * 100).toFixed(1) + '%',
           passesEnergyCheck: audioMetrics.averageEnergy > energyThreshold
         })
 
         // Skip transcription if audio is too quiet (likely just noise)
         if (audioMetrics.averageEnergy < energyThreshold) {
-          console.log(`[LocalTranscription] Skipping transcription ${sessionId} - audio energy too low (${audioMetrics.averageEnergy.toFixed(6)} < ${energyThreshold.toFixed(6)})`)
+          console.log(
+            `[LocalTranscription] Skipping transcription ${sessionId} - audio energy too low (${audioMetrics.averageEnergy.toFixed(6)} < ${energyThreshold.toFixed(6)})`
+          )
           return {
             text: '',
             sourceType: options.sourceType,
@@ -155,8 +167,11 @@ export class LocalTranscriptionService {
 
         // Additional check for mostly silent audio
         const silentRatio = audioMetrics.silentFrames / audioMetrics.totalFrames
-        if (silentRatio > 0.85) { // If more than 85% of frames are silent
-          console.log(`[LocalTranscription] Skipping transcription ${sessionId} - audio mostly silent (${(silentRatio * 100).toFixed(1)}% silent frames)`)
+        if (silentRatio > 0.85) {
+          // If more than 85% of frames are silent
+          console.log(
+            `[LocalTranscription] Skipping transcription ${sessionId} - audio mostly silent (${(silentRatio * 100).toFixed(1)}% silent frames)`
+          )
           return {
             text: '',
             sourceType: options.sourceType,
@@ -177,9 +192,10 @@ export class LocalTranscriptionService {
       const transcriptionText = await this.executeWhisper(tempAudioFile, modelPath, options)
 
       // Post-process transcription result for noise filtering
-      const filteredText = options.enableNoiseFiltering !== false
-        ? this.filterTranscriptionResult(transcriptionText, options)
-        : transcriptionText
+      const filteredText =
+        options.enableNoiseFiltering !== false
+          ? this.filterTranscriptionResult(transcriptionText, options)
+          : transcriptionText
 
       // Keep WAV file for debugging (comment out cleanup)
       // await this.cleanupTempFile(tempAudioFile)
@@ -235,11 +251,16 @@ export class LocalTranscriptionService {
   /**
    * Download a specific model with progress tracking
    */
-  async downloadModel(modelName: string, onProgress?: (progress: { downloaded: number; total: number; percentage: number }) => void): Promise<boolean> {
+  async downloadModel(
+    modelName: string,
+    onProgress?: (progress: { downloaded: number; total: number; percentage: number }) => void
+  ): Promise<boolean> {
     // Check if there's already a download in progress for this model
     const existingPromise = this.downloadPromises.get(modelName)
     if (existingPromise) {
-      console.log(`[LocalTranscription] Download already in progress for model: ${modelName}, waiting for completion...`)
+      console.log(
+        `[LocalTranscription] Download already in progress for model: ${modelName}, waiting for completion...`
+      )
       return existingPromise
     }
 
@@ -258,7 +279,10 @@ export class LocalTranscriptionService {
   /**
    * Internal method to perform the actual download
    */
-  private async _performDownload(modelName: string, onProgress?: (progress: { downloaded: number; total: number; percentage: number }) => void): Promise<boolean> {
+  private async _performDownload(
+    modelName: string,
+    onProgress?: (progress: { downloaded: number; total: number; percentage: number }) => void
+  ): Promise<boolean> {
     console.log(`[LocalTranscription] Starting download for model: ${modelName}`)
 
     const modelUrl = `https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-${modelName}.bin`
@@ -336,9 +360,10 @@ export class LocalTranscriptionService {
         // Move from temp to final location
         await fs.rename(tempPath, modelPath)
 
-        console.log(`[LocalTranscription] Successfully downloaded model ${modelName} (${downloadedSize} bytes)`)
+        console.log(
+          `[LocalTranscription] Successfully downloaded model ${modelName} (${downloadedSize} bytes)`
+        )
         return true
-
       } catch (error) {
         // Cleanup temp file on error
         try {
@@ -346,7 +371,6 @@ export class LocalTranscriptionService {
         } catch {}
         throw error
       }
-
     } catch (error) {
       console.error(`[LocalTranscription] Failed to download model ${modelName}:`, error)
       return false
@@ -375,7 +399,10 @@ export class LocalTranscriptionService {
   /**
    * Get storage usage information
    */
-  async getStorageUsage(): Promise<{ totalBytes: number; models: Array<{ name: string; sizeBytes: number }> }> {
+  async getStorageUsage(): Promise<{
+    totalBytes: number
+    models: Array<{ name: string; sizeBytes: number }>
+  }> {
     try {
       const models = await this.getAvailableModels()
       const modelSizes: Array<{ name: string; sizeBytes: number }> = []
@@ -404,32 +431,41 @@ export class LocalTranscriptionService {
   /**
    * Ensure at least one model is available, downloading if necessary
    */
-  async ensureModelAvailable(onProgress?: (modelName: string, progress: { downloaded: number; total: number; percentage: number }) => void): Promise<boolean> {
+  async ensureModelAvailable(
+    onProgress?: (
+      modelName: string,
+      progress: { downloaded: number; total: number; percentage: number }
+    ) => void
+  ): Promise<boolean> {
     console.log('[LocalTranscription] Ensuring model availability...')
 
     try {
       const models = await this.getAvailableModels()
-      const downloadedModels = models.filter(m => m.downloaded)
+      const downloadedModels = models.filter((m) => m.downloaded)
 
       if (downloadedModels.length > 0) {
-        console.log(`[LocalTranscription] Found ${downloadedModels.length} existing models:`, downloadedModels.map(m => m.name))
+        console.log(
+          `[LocalTranscription] Found ${downloadedModels.length} existing models:`,
+          downloadedModels.map((m) => m.name)
+        )
         return true
       }
 
-      console.log('[LocalTranscription] No models found, downloading tiny model...')
+      console.log(
+        `[LocalTranscription] No models found, downloading ${DEFAULT_MODEL_SIZE} model...`
+      )
 
-      const success = await this.downloadModel('tiny', (progress) => {
-        onProgress?.('tiny', progress)
+      const success = await this.downloadModel(DEFAULT_MODEL_SIZE, (progress) => {
+        onProgress?.(DEFAULT_MODEL_SIZE, progress)
       })
 
       if (success) {
-        console.log('[LocalTranscription] Tiny model downloaded successfully')
+        console.log(`[LocalTranscription] ${DEFAULT_MODEL_SIZE} model downloaded successfully`)
         return true
       } else {
-        console.error('[LocalTranscription] Failed to download tiny model')
+        console.error(`[LocalTranscription] Failed to download ${DEFAULT_MODEL_SIZE} model`)
         return false
       }
-
     } catch (error) {
       console.error('[LocalTranscription] Error ensuring model availability:', error)
       return false
@@ -495,12 +531,14 @@ export class LocalTranscriptionService {
   }
 
   private async ensureDefaultModel(): Promise<void> {
-    const tinyModelPath = path.join(this.modelsPath, 'ggml-tiny.bin')
+    const defaultModelPath = path.join(this.modelsPath, `ggml-${DEFAULT_MODEL_SIZE}.bin`)
     try {
-      await fs.access(tinyModelPath)
-      console.log('[LocalTranscription] Default tiny model already exists')
+      await fs.access(defaultModelPath)
+      console.log(`[LocalTranscription] Default ${DEFAULT_MODEL_SIZE} model already exists`)
     } catch {
-      console.log('[LocalTranscription] Default tiny model not found, will be downloaded on first use via ensureModelAvailable()')
+      console.log(
+        `[LocalTranscription] Default ${DEFAULT_MODEL_SIZE} model not found, will be downloaded on first use via ensureModelAvailable()`
+      )
       // Note: Model will be downloaded automatically when ensureModelAvailable() is called
       // by the renderer process during initialization
     }
@@ -514,7 +552,9 @@ export class LocalTranscriptionService {
     const wavBuffer = this.createWavFile(audioBuffer)
     await fs.writeFile(tempFilePath, wavBuffer)
 
-    console.log(`[LocalTranscription] 💾 Created WAV file: ${tempFilePath} (${wavBuffer.length} bytes)`)
+    console.log(
+      `[LocalTranscription] 💾 Created WAV file: ${tempFilePath} (${wavBuffer.length} bytes)`
+    )
 
     return tempFilePath
   }
@@ -524,9 +564,9 @@ export class LocalTranscriptionService {
    */
   private createWavFile(pcmData: ArrayBuffer): Buffer {
     const pcmBuffer = Buffer.from(pcmData)
-    const sampleRate = 16000  // 16kHz as expected by whisper.cpp
-    const numChannels = 1     // Mono
-    const bitsPerSample = 16  // 16-bit PCM
+    const sampleRate = 16000 // 16kHz as expected by whisper.cpp
+    const numChannels = 1 // Mono
+    const bitsPerSample = 16 // 16-bit PCM
     const bytesPerSample = bitsPerSample / 8
     const blockAlign = numChannels * bytesPerSample
     const byteRate = sampleRate * blockAlign
@@ -536,23 +576,35 @@ export class LocalTranscriptionService {
     let offset = 0
 
     // RIFF header
-    header.write('RIFF', offset); offset += 4
-    header.writeUInt32LE(36 + pcmBuffer.length, offset); offset += 4  // File size - 8
-    header.write('WAVE', offset); offset += 4
+    header.write('RIFF', offset)
+    offset += 4
+    header.writeUInt32LE(36 + pcmBuffer.length, offset)
+    offset += 4 // File size - 8
+    header.write('WAVE', offset)
+    offset += 4
 
     // Format chunk
-    header.write('fmt ', offset); offset += 4
-    header.writeUInt32LE(16, offset); offset += 4  // Format chunk size
-    header.writeUInt16LE(1, offset); offset += 2   // Audio format (PCM)
-    header.writeUInt16LE(numChannels, offset); offset += 2  // Number of channels
-    header.writeUInt32LE(sampleRate, offset); offset += 4   // Sample rate
-    header.writeUInt32LE(byteRate, offset); offset += 4     // Byte rate
-    header.writeUInt16LE(blockAlign, offset); offset += 2   // Block align
-    header.writeUInt16LE(bitsPerSample, offset); offset += 2 // Bits per sample
+    header.write('fmt ', offset)
+    offset += 4
+    header.writeUInt32LE(16, offset)
+    offset += 4 // Format chunk size
+    header.writeUInt16LE(1, offset)
+    offset += 2 // Audio format (PCM)
+    header.writeUInt16LE(numChannels, offset)
+    offset += 2 // Number of channels
+    header.writeUInt32LE(sampleRate, offset)
+    offset += 4 // Sample rate
+    header.writeUInt32LE(byteRate, offset)
+    offset += 4 // Byte rate
+    header.writeUInt16LE(blockAlign, offset)
+    offset += 2 // Block align
+    header.writeUInt16LE(bitsPerSample, offset)
+    offset += 2 // Bits per sample
 
     // Data chunk
-    header.write('data', offset); offset += 4
-    header.writeUInt32LE(pcmBuffer.length, offset)  // Data size
+    header.write('data', offset)
+    offset += 4
+    header.writeUInt32LE(pcmBuffer.length, offset) // Data size
 
     // Combine header and PCM data
     return Buffer.concat([header, pcmBuffer])
@@ -565,14 +617,28 @@ export class LocalTranscriptionService {
       await fs.access(modelPath)
       return modelPath
     } catch {
-      // Fallback to tiny model if requested model not available
-      const tinyModelPath = path.join(this.modelsPath, 'ggml-tiny.bin')
+      // Fallback to default model if requested model not available
+      const defaultModelPath = path.join(this.modelsPath, `ggml-${DEFAULT_MODEL_SIZE}.bin`)
       try {
-        await fs.access(tinyModelPath)
-        console.warn(`[LocalTranscription] Model ${modelSize} not found, falling back to tiny`)
-        return tinyModelPath
+        await fs.access(defaultModelPath)
+        console.warn(
+          `[LocalTranscription] Model ${modelSize} not found, falling back to ${DEFAULT_MODEL_SIZE}`
+        )
+        return defaultModelPath
       } catch {
-        throw new Error(`No whisper models available. Please download at least the tiny model.`)
+        // Last resort: try tiny model
+        const tinyModelPath = path.join(this.modelsPath, 'ggml-tiny.bin')
+        try {
+          await fs.access(tinyModelPath)
+          console.warn(
+            `[LocalTranscription] Model ${modelSize} and ${DEFAULT_MODEL_SIZE} not found, falling back to tiny`
+          )
+          return tinyModelPath
+        } catch {
+          throw new Error(
+            `No whisper models available. Please download at least the ${DEFAULT_MODEL_SIZE} model.`
+          )
+        }
       }
     }
   }
@@ -585,10 +651,12 @@ export class LocalTranscriptionService {
     return new Promise((resolve, reject) => {
       const args = [
         audioFilePath,
-        '--model', modelPath,
+        '--model',
+        modelPath,
         '--no-timestamps',
         '--no-prints',
-        '--threads', '4'
+        '--threads',
+        '4'
       ]
 
       // Add language if specified, converting to whisper.cpp format
@@ -596,9 +664,13 @@ export class LocalTranscriptionService {
         const whisperLanguage = this.convertToWhisperLanguage(options.language)
         if (whisperLanguage) {
           args.push('--language', whisperLanguage)
-          console.log(`[LocalTranscription] Converted language '${options.language}' to '${whisperLanguage}' for whisper.cpp`)
+          console.log(
+            `[LocalTranscription] Converted language '${options.language}' to '${whisperLanguage}' for whisper.cpp`
+          )
         } else {
-          console.log(`[LocalTranscription] Skipping unsupported language '${options.language}', using auto-detection`)
+          console.log(
+            `[LocalTranscription] Skipping unsupported language '${options.language}', using auto-detection`
+          )
         }
       }
 
@@ -685,7 +757,7 @@ export class LocalTranscriptionService {
         }
       }
 
-      await Promise.all(oldFiles.map(file => fs.unlink(file).catch(console.warn)))
+      await Promise.all(oldFiles.map((file) => fs.unlink(file).catch(console.warn)))
 
       if (oldFiles.length > 0) {
         console.log(`[LocalTranscription] Cleaned up ${oldFiles.length} old temp files`)
@@ -777,7 +849,9 @@ export class LocalTranscriptionService {
     // Check for hallucination patterns
     for (const pattern of hallucination_patterns) {
       if (pattern.test(originalText)) {
-        console.log(`[LocalTranscription] Filtered hallucination: "${originalText}" (matched pattern: ${pattern})`)
+        console.log(
+          `[LocalTranscription] Filtered hallucination: "${originalText}" (matched pattern: ${pattern})`
+        )
         return ''
       }
     }
@@ -789,8 +863,11 @@ export class LocalTranscriptionService {
       const totalChars = originalText.length
       const latinRatio = latinChars / totalChars
 
-      if (latinRatio < 0.7 && totalChars < 50) { // Less than 70% Latin chars in short text
-        console.log(`[LocalTranscription] Filtered non-English text: "${originalText}" (${(latinRatio * 100).toFixed(1)}% Latin characters)`)
+      if (latinRatio < 0.7 && totalChars < 50) {
+        // Less than 70% Latin chars in short text
+        console.log(
+          `[LocalTranscription] Filtered non-English text: "${originalText}" (${(latinRatio * 100).toFixed(1)}% Latin characters)`
+        )
         return ''
       }
     }
@@ -806,8 +883,11 @@ export class LocalTranscriptionService {
     if (words.length > 1) {
       const uniqueWords = new Set(words)
       const repetitionRatio = words.length / uniqueWords.size
-      if (repetitionRatio > 3) { // Same words repeated more than 3 times on average
-        console.log(`[LocalTranscription] Filtered repetitive text: "${originalText}" (repetition ratio: ${repetitionRatio.toFixed(1)})`)
+      if (repetitionRatio > 3) {
+        // Same words repeated more than 3 times on average
+        console.log(
+          `[LocalTranscription] Filtered repetitive text: "${originalText}" (repetition ratio: ${repetitionRatio.toFixed(1)})`
+        )
         return ''
       }
     }
@@ -823,87 +903,87 @@ export class LocalTranscriptionService {
     // Language code mapping for whisper.cpp compatibility
     const languageMap: Record<string, string> = {
       // Chinese variants
-      'zh': 'chinese',
+      zh: 'chinese',
       'zh-cn': 'chinese',
       'zh-tw': 'chinese',
       'zh-hk': 'chinese',
 
       // Common languages
-      'en': 'english',
+      en: 'english',
       'en-us': 'english',
       'en-gb': 'english',
-      'es': 'spanish',
-      'fr': 'french',
-      'de': 'german',
-      'it': 'italian',
-      'pt': 'portuguese',
-      'ru': 'russian',
-      'ja': 'japanese',
-      'ko': 'korean',
-      'ar': 'arabic',
-      'hi': 'hindi',
-      'th': 'thai',
-      'vi': 'vietnamese',
-      'nl': 'dutch',
-      'tr': 'turkish',
-      'pl': 'polish',
-      'sv': 'swedish',
-      'da': 'danish',
-      'no': 'norwegian',
-      'fi': 'finnish',
-      'hu': 'hungarian',
-      'cs': 'czech',
-      'sk': 'slovak',
-      'sl': 'slovenian',
-      'hr': 'croatian',
-      'bg': 'bulgarian',
-      'ro': 'romanian',
-      'uk': 'ukrainian',
-      'el': 'greek',
-      'he': 'hebrew',
-      'fa': 'persian',
-      'ur': 'urdu',
-      'bn': 'bengali',
-      'ta': 'tamil',
-      'te': 'telugu',
-      'ml': 'malayalam',
-      'kn': 'kannada',
-      'gu': 'gujarati',
-      'pa': 'punjabi',
-      'mr': 'marathi',
-      'ne': 'nepali',
-      'si': 'sinhala',
-      'my': 'burmese',
-      'km': 'khmer',
-      'lo': 'lao',
-      'ka': 'georgian',
-      'am': 'amharic',
-      'sw': 'swahili',
-      'yo': 'yoruba',
-      'zu': 'zulu',
-      'af': 'afrikaans',
-      'sq': 'albanian',
-      'az': 'azerbaijani',
-      'be': 'belarusian',
-      'bs': 'bosnian',
-      'ca': 'catalan',
-      'cy': 'welsh',
-      'et': 'estonian',
-      'eu': 'basque',
-      'fo': 'faroese',
-      'gl': 'galician',
-      'is': 'icelandic',
-      'ga': 'irish',
-      'lv': 'latvian',
-      'lt': 'lithuanian',
-      'lb': 'luxembourgish',
-      'mk': 'macedonian',
-      'mt': 'maltese',
-      'mn': 'mongolian',
-      'sr': 'serbian',
-      'tl': 'tagalog',
-      'tt': 'tatar',
-      'uz': 'uzbek'
+      es: 'spanish',
+      fr: 'french',
+      de: 'german',
+      it: 'italian',
+      pt: 'portuguese',
+      ru: 'russian',
+      ja: 'japanese',
+      ko: 'korean',
+      ar: 'arabic',
+      hi: 'hindi',
+      th: 'thai',
+      vi: 'vietnamese',
+      nl: 'dutch',
+      tr: 'turkish',
+      pl: 'polish',
+      sv: 'swedish',
+      da: 'danish',
+      no: 'norwegian',
+      fi: 'finnish',
+      hu: 'hungarian',
+      cs: 'czech',
+      sk: 'slovak',
+      sl: 'slovenian',
+      hr: 'croatian',
+      bg: 'bulgarian',
+      ro: 'romanian',
+      uk: 'ukrainian',
+      el: 'greek',
+      he: 'hebrew',
+      fa: 'persian',
+      ur: 'urdu',
+      bn: 'bengali',
+      ta: 'tamil',
+      te: 'telugu',
+      ml: 'malayalam',
+      kn: 'kannada',
+      gu: 'gujarati',
+      pa: 'punjabi',
+      mr: 'marathi',
+      ne: 'nepali',
+      si: 'sinhala',
+      my: 'burmese',
+      km: 'khmer',
+      lo: 'lao',
+      ka: 'georgian',
+      am: 'amharic',
+      sw: 'swahili',
+      yo: 'yoruba',
+      zu: 'zulu',
+      af: 'afrikaans',
+      sq: 'albanian',
+      az: 'azerbaijani',
+      be: 'belarusian',
+      bs: 'bosnian',
+      ca: 'catalan',
+      cy: 'welsh',
+      et: 'estonian',
+      eu: 'basque',
+      fo: 'faroese',
+      gl: 'galician',
+      is: 'icelandic',
+      ga: 'irish',
+      lv: 'latvian',
+      lt: 'lithuanian',
+      lb: 'luxembourgish',
+      mk: 'macedonian',
+      mt: 'maltese',
+      mn: 'mongolian',
+      sr: 'serbian',
+      tl: 'tagalog',
+      tt: 'tatar',
+      uz: 'uzbek'
     }
 
     const normalizedLanguage = language.toLowerCase()

@@ -4,6 +4,11 @@ import { useEffect, useRef } from 'react'
 import { TranscriptionFactory, TranscriptionProcessor } from '@/services/transcriptionFactory'
 import { useAuth } from '@/hooks/useAuth'
 
+// Configuration: Change this to set the real-time transcription model size
+// Options: 'tiny' (39MB, fastest), 'base' (74MB, better), 'small' (244MB, good+), 'medium' (769MB, best)
+// Note: For real-time use, 'tiny' or 'base' are recommended for performance
+const REALTIME_MODEL_SIZE: 'tiny' | 'base' | 'small' | 'medium' = 'base'
+
 interface RealTimeAnalysisProps {
   onTextResponse?: (
     text: string,
@@ -52,16 +57,34 @@ export default function RealTimeAnalysis({
     }
 
     const handleTranscriptionWarning = (warningData: { warning: string; transcriptId: string }) => {
-      console.warn(`[RealTimeAnalysis] Transcription warning for ${warningData.transcriptId}:`, warningData.warning)
+      console.warn(
+        `[RealTimeAnalysis] Transcription warning for ${warningData.transcriptId}:`,
+        warningData.warning
+      )
     }
 
-    const handleTranscriptionProcessed = (processedData: { transcriptId: string; broadcastCount: number; totalWindows: number }) => {
-      console.log(`[RealTimeAnalysis] Transcript ${processedData.transcriptId} processed successfully: ${processedData.broadcastCount}/${processedData.totalWindows} windows`)
+    const handleTranscriptionProcessed = (processedData: {
+      transcriptId: string
+      broadcastCount: number
+      totalWindows: number
+    }) => {
+      console.log(
+        `[RealTimeAnalysis] Transcript ${processedData.transcriptId} processed successfully: ${processedData.broadcastCount}/${processedData.totalWindows} windows`
+      )
     }
 
-    const unsubscribeError = (window as any).electronAPI?.on('transcription:error', handleTranscriptionError)
-    const unsubscribeWarning = (window as any).electronAPI?.on('transcription:warning', handleTranscriptionWarning)
-    const unsubscribeProcessed = (window as any).electronAPI?.on('transcription:processed', handleTranscriptionProcessed)
+    const unsubscribeError = (window as any).electronAPI?.on(
+      'transcription:error',
+      handleTranscriptionError
+    )
+    const unsubscribeWarning = (window as any).electronAPI?.on(
+      'transcription:warning',
+      handleTranscriptionWarning
+    )
+    const unsubscribeProcessed = (window as any).electronAPI?.on(
+      'transcription:processed',
+      handleTranscriptionProcessed
+    )
 
     let transcriptionFactory: TranscriptionFactory | null = null
     let micProcessor: TranscriptionProcessor | null = null
@@ -156,7 +179,7 @@ export default function RealTimeAnalysis({
               const splitIntoSentences = (text: string): string[] => {
                 // Chinese sentence endings: 。？！
                 // Also handle edge cases like ellipsis ... or multiple punctuation
-                const sentences = text.split(/([。？！]+)/).filter(part => part.trim())
+                const sentences = text.split(/([。？！]+)/).filter((part) => part.trim())
 
                 const result: string[] = []
                 for (let i = 0; i < sentences.length; i += 2) {
@@ -182,14 +205,17 @@ export default function RealTimeAnalysis({
                     highlightedSentence = sentence.replace(regex, '`$1`')
                   }
 
-                  console.log(`[RealTimeAnalysis] Sending sentence ${index + 1}/${sentences.length} to main process:`, {
-                    sourceType,
-                    sentence: `"${sentence}"`,
-                    highlighted: `"${highlightedSentence}"`,
-                    hasKeywords: keywords.length > 0,
-                    keywords: keywords,
-                    blockType: keywordsMatch ? 'complete' : 'transcription-only'
-                  })
+                  console.log(
+                    `[RealTimeAnalysis] Sending sentence ${index + 1}/${sentences.length} to main process:`,
+                    {
+                      sourceType,
+                      sentence: `"${sentence}"`,
+                      highlighted: `"${highlightedSentence}"`,
+                      hasKeywords: keywords.length > 0,
+                      keywords: keywords,
+                      blockType: keywordsMatch ? 'complete' : 'transcription-only'
+                    }
+                  )
 
                   onTextResponse(highlightedSentence, false, sourceType)
                 }
@@ -212,7 +238,7 @@ export default function RealTimeAnalysis({
       transcriptionFactory = new TranscriptionFactory({
         mode: 'local', // Use local transcription only for standalone operation
         localOptions: {
-          modelSize: 'tiny', // Use tiny model for real-time performance
+          modelSize: REALTIME_MODEL_SIZE, // Configurable model size for real-time performance
           enableNoiseFiltering: true, // Enable comprehensive noise filtering
           energyThreshold: 0.01 // Default energy threshold for microphone
         },
@@ -237,7 +263,7 @@ export default function RealTimeAnalysis({
             console.error('[RealTimeAnalysis] Models not available, triggering model error handler')
             // Notify the main app about the model error
             if ((window as any).electronAPI?.send) {
-              (window as any).electronAPI.send('transcription:model-error', {
+              ;(window as any).electronAPI.send('transcription:model-error', {
                 sourceType: 'session-start',
                 error: 'No whisper models available during session start'
               })
@@ -455,7 +481,9 @@ export default function RealTimeAnalysis({
   useEffect(() => {
     if (!isScreenSharing || !systemAudioStream) return
 
-    console.log('[RealTimeAnalysis] System audio stream changed, reconnecting without restarting transcription')
+    console.log(
+      '[RealTimeAnalysis] System audio stream changed, reconnecting without restarting transcription'
+    )
 
     const audioContext = audioContextRef.current
     const systemAudioWorkletNode = systemAudioWorkletNodeRef.current
@@ -481,9 +509,10 @@ export default function RealTimeAnalysis({
         console.error('[RealTimeAnalysis] Error reconnecting system audio:', error)
       }
     } else {
-      console.warn('[RealTimeAnalysis] Cannot reconnect system audio - audio context or worklet not available')
+      console.warn(
+        '[RealTimeAnalysis] Cannot reconnect system audio - audio context or worklet not available'
+      )
     }
-
   }, [systemAudioStream, isScreenSharing])
 
   return null
