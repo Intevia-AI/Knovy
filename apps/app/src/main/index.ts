@@ -1265,6 +1265,22 @@ app.on('ready', async () => {
     }
   })
 
+  ipcMain.handle('transcription:ensure-model-available', async (event) => {
+    try {
+      const transcriptionService = getLocalTranscriptionService()
+
+      const success = await transcriptionService.ensureModelAvailable((modelName, progress) => {
+        // Send progress updates to the renderer process
+        event.sender.send('transcription:model-download-progress', { modelName, progress })
+      })
+
+      return { success }
+    } catch (error) {
+      console.error('[main/index.ts] Failed to ensure model availability:', error)
+      return { success: false, error: error.message }
+    }
+  })
+
   ipcMain.on('app:resize-window', (event, { width, height }) => {
     if (mainWindow) {
       const [currentWidth, currentHeight] = mainWindow.getSize()

@@ -51,6 +51,7 @@ const api = {
   transcriptionDeleteModel: (modelName: string) =>
     ipcRenderer.invoke('transcription:delete-model', modelName),
   transcriptionGetStorageUsage: () => ipcRenderer.invoke('transcription:get-storage-usage'),
+  transcriptionEnsureModelAvailable: () => ipcRenderer.invoke('transcription:ensure-model-available'),
 
   createSession: (session) => ipcRenderer.invoke('db:create-session', session),
   addTranscript: (transcript) => ipcRenderer.invoke('db:add-transcript', transcript),
@@ -108,6 +109,7 @@ const api = {
       'transcription:error',
       'transcription:warning',
       'transcription:processed',
+      'transcription:model-download-progress',
       'model:download-progress',
       'model:download-complete'
     ]
