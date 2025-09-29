@@ -110,6 +110,7 @@ const api = {
       'transcription:error',
       'transcription:warning',
       'transcription:processed',
+      'transcription:model-error',
       'transcription:model-download-progress',
       'model:download-progress',
       'model:download-complete'
@@ -145,6 +146,7 @@ const api = {
       'app:toggle-content-protection',
       'session:duration-update',
       'audio:level-update',
+      'transcription:model-error',
       'electronAPI:startScreenshot',
       'electronAPI:captureArea',
       'electronAPI:cancelScreenshot'

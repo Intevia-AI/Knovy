@@ -40,12 +40,22 @@ function AppContent() {
       sessionProfile.app_settings.free_tier_experience?.mode === 'non-access'
 
     if (isUserLoggedIn && !isWaitlisted) {
-      // Main App View
-      window.electronAPI.send('app:set-always-on-top', { alwaysOnTop: true })
-      if (!hasBeenPositioned) {
-        window.electronAPI.send('app:resize-window', { width: 360, height: 50 })
-        window.electronAPI.send('window:set-position', { position: 'bottom-left' })
-        setHasBeenPositioned(true)
+      // Check if we're showing model preparation
+      const showingModelPreparation = modelPreparationStarted && !isModelPreparationComplete
+
+      if (showingModelPreparation) {
+        // Model Preparation View (same as login)
+        window.electronAPI.send('app:set-always-on-top', { alwaysOnTop: false })
+        window.electronAPI.send('app:resize-window', { width: 320, height: 300 })
+        window.electronAPI.send('window:set-position', { position: 'center' })
+      } else {
+        // Main App View
+        window.electronAPI.send('app:set-always-on-top', { alwaysOnTop: true })
+        if (!hasBeenPositioned) {
+          window.electronAPI.send('app:resize-window', { width: 360, height: 50 })
+          window.electronAPI.send('window:set-position', { position: 'bottom-left' })
+          setHasBeenPositioned(true)
+        }
       }
     } else {
       // Login or Waitlist View
@@ -56,7 +66,16 @@ function AppContent() {
         setHasBeenPositioned(false)
       }
     }
-  }, [user, isLoading, isInitialLoad, isPopover, hasBeenPositioned, sessionProfile])
+  }, [
+    user,
+    isLoading,
+    isInitialLoad,
+    isPopover,
+    hasBeenPositioned,
+    sessionProfile,
+    modelPreparationStarted,
+    isModelPreparationComplete
+  ])
 
   useEffect(() => {
     if (window.electronAPI && window.electronAPI.on) {
@@ -72,8 +91,15 @@ function AppContent() {
     }
   }, [])
 
-  // Handle model preparation for authenticated users
+  // Handle model preparation for authenticated users (only in main window, not popovers)
   useEffect(() => {
+    // Skip model preparation for popover windows
+    if (isPopover) {
+      console.log('[App] Skipping model preparation for popover window')
+      setIsModelPreparationComplete(true) // Mark as complete to skip the preparation screen
+      return
+    }
+
     const isUserLoggedIn = user && sessionProfile
     const isWaitlisted =
       isUserLoggedIn &&
@@ -82,14 +108,50 @@ function AppContent() {
 
     // Start model preparation when user is logged in and not waitlisted
     if (isUserLoggedIn && !isWaitlisted && !modelPreparationStarted && !isInitialLoad) {
-      console.log('[App] Starting model preparation for authenticated user')
+      console.log('[App] Starting model preparation for authenticated user in main window')
+
+      // Check if models are already available before showing preparation UI
+      checkExistingModels()
+    }
+  }, [user, sessionProfile, isInitialLoad, modelPreparationStarted, isPopover])
+
+  const checkExistingModels = async () => {
+    try {
+      // Quick check if models are already available
+      const { getLocalTranscriptionClient } = await import('../services/localTranscriptionClient')
+      const localClient = getLocalTranscriptionClient()
+
+      const isAvailable = await localClient.isAvailable()
+
+      if (isAvailable) {
+        console.log('[App] Models already available, skipping preparation UI')
+        setIsModelPreparationComplete(true)
+      } else {
+        console.log('[App] Models not available, showing preparation UI')
+        setModelPreparationStarted(true)
+      }
+    } catch (error) {
+      console.error('[App] Error checking existing models:', error)
+      // If check fails, proceed with preparation to be safe
       setModelPreparationStarted(true)
     }
-  }, [user, sessionProfile, isInitialLoad, modelPreparationStarted])
+  }
 
   const handleModelPreparationComplete = (success: boolean) => {
     console.log('[App] Model preparation completed:', success)
     setIsModelPreparationComplete(true)
+
+    // Force window to resize to main app view after model preparation
+    // We need to ensure the window transitions properly
+    setTimeout(() => {
+      if (!isPopover) {
+        console.log('[App] Transitioning to main app view after model preparation')
+        window.electronAPI.send('app:set-always-on-top', { alwaysOnTop: true })
+        window.electronAPI.send('app:resize-window', { width: 360, height: 50 })
+        window.electronAPI.send('window:set-position', { position: 'bottom-left' })
+        setHasBeenPositioned(true)
+      }
+    }, 500) // Small delay to ensure state has updated
   }
 
   return (

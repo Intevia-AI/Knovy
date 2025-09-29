@@ -38,6 +38,7 @@ export class LocalTranscriptionService {
   private tempPath: string
   private isInitialized = false
   private activeProcesses = new Map<string, ChildProcess>()
+  private downloadPromises = new Map<string, Promise<boolean>>()
 
   constructor() {
     // Platform-specific binary paths
@@ -235,7 +236,30 @@ export class LocalTranscriptionService {
    * Download a specific model with progress tracking
    */
   async downloadModel(modelName: string, onProgress?: (progress: { downloaded: number; total: number; percentage: number }) => void): Promise<boolean> {
-    console.log(`[LocalTranscription] Downloading model: ${modelName}`)
+    // Check if there's already a download in progress for this model
+    const existingPromise = this.downloadPromises.get(modelName)
+    if (existingPromise) {
+      console.log(`[LocalTranscription] Download already in progress for model: ${modelName}, waiting for completion...`)
+      return existingPromise
+    }
+
+    // Create a new download promise and store it
+    const downloadPromise = this._performDownload(modelName, onProgress)
+    this.downloadPromises.set(modelName, downloadPromise)
+
+    // Clean up the promise when done
+    downloadPromise.finally(() => {
+      this.downloadPromises.delete(modelName)
+    })
+
+    return downloadPromise
+  }
+
+  /**
+   * Internal method to perform the actual download
+   */
+  private async _performDownload(modelName: string, onProgress?: (progress: { downloaded: number; total: number; percentage: number }) => void): Promise<boolean> {
+    console.log(`[LocalTranscription] Starting download for model: ${modelName}`)
 
     const modelUrl = `https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-${modelName}.bin`
     const modelPath = path.join(this.modelsPath, `ggml-${modelName}.bin`)
@@ -253,6 +277,15 @@ export class LocalTranscriptionService {
 
       console.log(`[LocalTranscription] Starting download from: ${modelUrl}`)
       console.log(`[LocalTranscription] Saving to: ${modelPath}`)
+
+      // Clean up any existing temp file from previous failed downloads
+      try {
+        await fs.access(tempPath)
+        console.log(`[LocalTranscription] Found existing temp file, removing: ${tempPath}`)
+        await fs.unlink(tempPath)
+      } catch {
+        // Temp file doesn't exist, which is expected
+      }
 
       // Use fetch to download with progress tracking
       const response = await fetch(modelUrl)
