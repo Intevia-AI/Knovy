@@ -7,6 +7,9 @@ export interface LocalTranscriptionOptions {
   language?: string
   modelSize?: 'tiny' | 'base' | 'small' | 'medium'
   sourceType: 'microphone' | 'system'
+  enableNoiseFiltering?: boolean
+  energyThreshold?: number
+  minSpeechConfidence?: number
 }
 
 export interface LocalTranscriptionResult {
@@ -200,6 +203,21 @@ export class LocalTranscriptionClient {
   }
 
   /**
+   * Ensure at least one model is available, downloading if necessary
+   */
+  async ensureModelAvailable(): Promise<boolean> {
+    try {
+      console.log('[LocalTranscriptionClient] Ensuring model availability...')
+
+      const response = await (window as any).electronAPI.transcriptionEnsureModelAvailable()
+      return response.success
+    } catch (error) {
+      console.error('[LocalTranscriptionClient] Failed to ensure model availability:', error)
+      return false
+    }
+  }
+
+  /**
    * Add callback for download progress updates
    */
   onDownloadProgress(callback: (progress: ModelDownloadProgress) => void): () => void {
@@ -260,7 +278,25 @@ export class LocalTranscriptionClient {
   }
 
   private setupEventListeners(): void {
-    // Listen for download progress events
+    // Listen for download progress events (from ensureModelAvailable)
+    const unsubscribeModelProgress = (window as any).electronAPI?.on('transcription:model-download-progress',
+      ({ modelName, progress }: { modelName: string; progress: { downloaded: number; total: number; percentage: number } }) => {
+        this.downloadProgressCallbacks.forEach(callback => {
+          try {
+            callback({
+              modelName,
+              downloaded: progress.downloaded,
+              total: progress.total,
+              percentage: progress.percentage
+            })
+          } catch (error) {
+            console.error('[LocalTranscriptionClient] Error in model download progress callback:', error)
+          }
+        })
+      }
+    )
+
+    // Listen for download progress events (general)
     const unsubscribeProgress = (window as any).electronAPI?.on('model:download-progress',
       (progress: ModelDownloadProgress) => {
         this.downloadProgressCallbacks.forEach(callback => {
@@ -287,7 +323,7 @@ export class LocalTranscriptionClient {
     )
 
     // Store cleanup functions for potential future use
-    if (unsubscribeProgress && unsubscribeComplete) {
+    if (unsubscribeModelProgress && unsubscribeProgress && unsubscribeComplete) {
       console.log('[LocalTranscriptionClient] Event listeners setup completed')
     }
   }

@@ -13,6 +13,9 @@ export interface TranscriptionConfig {
   localOptions?: {
     modelSize?: 'tiny' | 'base' | 'small' | 'medium'
     fallbackToGemini?: boolean
+    enableNoiseFiltering?: boolean
+    energyThreshold?: number
+    minSpeechConfidence?: number
   }
   geminiOptions?: {
     customPrompt?: string
@@ -103,7 +106,10 @@ export class TranscriptionFactory {
         onSetupComplete,
         {
           modelSize: this.config.localOptions?.modelSize || 'tiny',
-          language
+          language,
+          enableNoiseFiltering: this.config.localOptions?.enableNoiseFiltering,
+          energyThreshold: this.config.localOptions?.energyThreshold,
+          minSpeechConfidence: this.config.localOptions?.minSpeechConfidence
         }
       )
     } else {
@@ -351,13 +357,90 @@ export class LocalTranscriptionProcessor extends TranscriptionProcessor {
 
       if (result.text && result.text.trim()) {
         console.log(`[LocalTranscriptionProcessor] Got transcription for ${this.sourceType}: "${result.text}"`)
-        this.onTextResponse(result.text, true, this.sourceType)
+
+        // Extract keywords from the transcription for highlighting
+        const keywords = this.extractKeywords(result.text.trim())
+
+        // Format the response to match the expected Gemini format for UI compatibility
+        // The UI parser expects "TRANSCRIPTION:" prefix and optionally "KEYWORDS:"
+        const formattedResponse = `TRANSCRIPTION: ${result.text.trim()}\nKEYWORDS: ${keywords.join(', ')}`
+
+        console.log(`[LocalTranscriptionProcessor] Sending formatted response with ${keywords.length} keywords: "${formattedResponse}"`)
+        this.onTextResponse(formattedResponse, true, this.sourceType)
       } else {
         console.log(`[LocalTranscriptionProcessor] Empty transcription result for ${this.sourceType} (${audioBuffer.byteLength} bytes, ${result.processingTime}ms)`)
       }
     } catch (error) {
       console.error(`[LocalTranscriptionProcessor] Transcription failed for ${this.sourceType}:`, error)
     }
+  }
+
+  /**
+   * Extract keywords from transcription text
+   * Identifies technical terms, specialized vocabulary, and complex concepts
+   */
+  private extractKeywords(text: string): string[] {
+    const keywords: string[] = []
+
+    // Common technical/specialized vocabulary patterns
+    const technicalPatterns = [
+      // Technology terms
+      /\b(?:API|SDK|UI|UX|HTTP|URL|DNS|VPN|CPU|GPU|RAM|SSD|AI|ML|IoT|AR|VR)\b/gi,
+      // Programming terms
+      /\b(?:function|variable|array|object|database|server|client|frontend|backend|algorithm|encryption|authentication|authorization)\b/gi,
+      // Business/financial terms
+      /\b(?:revenue|profit|margin|ROI|KPI|analytics|metrics|dashboard|pipeline|workflow|optimization|strategy)\b/gi,
+      // Scientific terms
+      /\b(?:hypothesis|experiment|analysis|methodology|protocol|parameters|variables|correlation|significance|variance)\b/gi,
+      // Complex compound words (3+ syllables, technical-sounding)
+      /\b[a-z]+(?:tion|sion|ment|ness|ship|hood|ward|wise|like|able|ible|ical|ous|ive|ful|less|ing|ed|er|est|ly)\b/gi
+    ]
+
+    // Words that are typically complex/technical
+    const complexWords = text.toLowerCase().split(/\s+/).filter(word => {
+      // Remove punctuation
+      word = word.replace(/[^\w]/g, '')
+
+      // Skip common words, short words, and numbers
+      if (word.length < 4 || /^\d+$/.test(word)) return false
+
+      // Common words to exclude
+      const commonWords = new Set([
+        'that', 'this', 'with', 'have', 'will', 'from', 'they', 'been', 'said', 'each', 'which',
+        'their', 'time', 'would', 'there', 'could', 'other', 'after', 'first', 'well', 'also',
+        'some', 'very', 'what', 'know', 'just', 'into', 'over', 'think', 'also', 'back', 'work',
+        'good', 'much', 'before', 'right', 'through', 'still', 'should', 'never', 'here', 'more',
+        'need', 'come', 'take', 'make', 'want', 'about', 'when', 'where', 'being', 'going'
+      ])
+
+      if (commonWords.has(word)) return false
+
+      // Include words that are likely technical/specialized
+      // Long words (6+ chars) that aren't common
+      // Words with technical suffixes
+      // Words with multiple syllables and technical patterns
+      return word.length >= 6 ||
+             /(?:tion|sion|ment|ness|ship|hood|ward|wise|like|able|ible|ical|ous|ive|ful|less)$/.test(word) ||
+             /^(?:auto|bio|geo|micro|nano|multi|inter|trans|pre|post|anti|pro|meta)/.test(word)
+    })
+
+    // Apply technical patterns
+    for (const pattern of technicalPatterns) {
+      const matches = text.match(pattern)
+      if (matches) {
+        keywords.push(...matches.map(match => match.toLowerCase()))
+      }
+    }
+
+    // Add complex words
+    keywords.push(...complexWords)
+
+    // Remove duplicates and return limited set
+    const uniqueKeywords = [...new Set(keywords)]
+      .filter(keyword => keyword.trim().length > 0)
+      .slice(0, 5) // Limit to 5 keywords max for performance
+
+    return uniqueKeywords
   }
 }
 

@@ -8,6 +8,9 @@ export interface TranscriptionOptions {
   language?: string
   modelSize?: 'tiny' | 'base' | 'small' | 'medium'
   sourceType: 'microphone' | 'system'
+  enableNoiseFiltering?: boolean
+  energyThreshold?: number
+  minSpeechConfidence?: number
 }
 
 export interface TranscriptionResult {
@@ -114,8 +117,48 @@ export class LocalTranscriptionService {
         bufferSize: audioBuffer.byteLength,
         durationSeconds: (audioBuffer.byteLength / 2 / 16000).toFixed(2), // 16-bit samples at 16kHz
         sourceType: options.sourceType,
-        modelSize: options.modelSize || 'tiny'
+        modelSize: options.modelSize || 'tiny',
+        noiseFilteringEnabled: options.enableNoiseFiltering !== false
       })
+
+      // Pre-process audio for noise filtering (enabled by default)
+      if (options.enableNoiseFiltering !== false) {
+        const audioMetrics = this.analyzeAudioEnergy(audioBuffer)
+        const energyThreshold = options.energyThreshold || (options.sourceType === 'microphone' ? 0.01 : 0.005)
+
+        console.log(`[LocalTranscription] Audio analysis for ${sessionId}:`, {
+          averageEnergy: audioMetrics.averageEnergy.toFixed(6),
+          maxEnergy: audioMetrics.maxEnergy.toFixed(6),
+          energyThreshold: energyThreshold.toFixed(6),
+          silentFrameRatio: (audioMetrics.silentFrames / audioMetrics.totalFrames * 100).toFixed(1) + '%',
+          passesEnergyCheck: audioMetrics.averageEnergy > energyThreshold
+        })
+
+        // Skip transcription if audio is too quiet (likely just noise)
+        if (audioMetrics.averageEnergy < energyThreshold) {
+          console.log(`[LocalTranscription] Skipping transcription ${sessionId} - audio energy too low (${audioMetrics.averageEnergy.toFixed(6)} < ${energyThreshold.toFixed(6)})`)
+          return {
+            text: '',
+            sourceType: options.sourceType,
+            processingTime: Date.now() - startTime,
+            language: options.language,
+            confidence: 0
+          }
+        }
+
+        // Additional check for mostly silent audio
+        const silentRatio = audioMetrics.silentFrames / audioMetrics.totalFrames
+        if (silentRatio > 0.85) { // If more than 85% of frames are silent
+          console.log(`[LocalTranscription] Skipping transcription ${sessionId} - audio mostly silent (${(silentRatio * 100).toFixed(1)}% silent frames)`)
+          return {
+            text: '',
+            sourceType: options.sourceType,
+            processingTime: Date.now() - startTime,
+            language: options.language,
+            confidence: 0
+          }
+        }
+      }
 
       // Write audio to temporary file
       const tempAudioFile = await this.writeAudioToTempFile(audioBuffer, sessionId)
@@ -126,6 +169,11 @@ export class LocalTranscriptionService {
       // Execute whisper.cpp
       const transcriptionText = await this.executeWhisper(tempAudioFile, modelPath, options)
 
+      // Post-process transcription result for noise filtering
+      const filteredText = options.enableNoiseFiltering !== false
+        ? this.filterTranscriptionResult(transcriptionText, options)
+        : transcriptionText
+
       // Keep WAV file for debugging (comment out cleanup)
       // await this.cleanupTempFile(tempAudioFile)
       console.log(`[LocalTranscription] 🔍 WAV file preserved for inspection: ${tempAudioFile}`)
@@ -133,13 +181,15 @@ export class LocalTranscriptionService {
       const processingTime = Date.now() - startTime
 
       console.log(`[LocalTranscription] Completed transcription ${sessionId}`, {
-        text: `"${transcriptionText}"`,
+        originalText: `"${transcriptionText}"`,
+        filteredText: `"${filteredText}"`,
+        wasFiltered: transcriptionText !== filteredText,
         processingTime: `${processingTime}ms`,
         sourceType: options.sourceType
       })
 
       return {
-        text: transcriptionText,
+        text: filteredText,
         sourceType: options.sourceType,
         processingTime,
         language: options.language
@@ -176,29 +226,125 @@ export class LocalTranscriptionService {
   }
 
   /**
-   * Download a specific model
+   * Download a specific model with progress tracking
    */
-  async downloadModel(modelName: string): Promise<boolean> {
+  async downloadModel(modelName: string, onProgress?: (progress: { downloaded: number; total: number; percentage: number }) => void): Promise<boolean> {
     console.log(`[LocalTranscription] Downloading model: ${modelName}`)
 
     const modelUrl = `https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-${modelName}.bin`
     const modelPath = path.join(this.modelsPath, `ggml-${modelName}.bin`)
+    const tempPath = `${modelPath}.download`
 
     try {
-      // Note: In production, implement proper download with progress tracking
-      // For now, this is a placeholder for the download logic
-      console.log(`[LocalTranscription] Model download URL: ${modelUrl}`)
-      console.log(`[LocalTranscription] Model will be saved to: ${modelPath}`)
+      // Check if model already exists
+      try {
+        await fs.access(modelPath)
+        console.log(`[LocalTranscription] Model ${modelName} already exists, skipping download`)
+        return true
+      } catch {
+        // Model doesn't exist, proceed with download
+      }
 
-      // TODO: Implement actual download logic
-      // - Use fetch/axios for download
-      // - Show progress to user
-      // - Verify checksum
-      // - Handle resume/retry
+      console.log(`[LocalTranscription] Starting download from: ${modelUrl}`)
+      console.log(`[LocalTranscription] Saving to: ${modelPath}`)
 
-      return true
+      // Use fetch to download with progress tracking
+      const response = await fetch(modelUrl)
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
+
+      const totalSize = parseInt(response.headers.get('content-length') || '0', 10)
+      let downloadedSize = 0
+
+      if (!response.body) {
+        throw new Error('Response body is null')
+      }
+
+      // Create write stream
+      const writeStream = (await import('fs')).createWriteStream(tempPath)
+      const reader = response.body.getReader()
+
+      try {
+        while (true) {
+          const { done, value } = await reader.read()
+
+          if (done) break
+
+          downloadedSize += value.length
+          writeStream.write(Buffer.from(value))
+
+          // Report progress
+          if (onProgress && totalSize > 0) {
+            const percentage = Math.round((downloadedSize / totalSize) * 100)
+            onProgress({
+              downloaded: downloadedSize,
+              total: totalSize,
+              percentage
+            })
+          }
+        }
+
+        writeStream.end()
+
+        // Wait for write stream to finish
+        await new Promise((resolve, reject) => {
+          writeStream.on('finish', resolve)
+          writeStream.on('error', reject)
+        })
+
+        // Move from temp to final location
+        await fs.rename(tempPath, modelPath)
+
+        console.log(`[LocalTranscription] Successfully downloaded model ${modelName} (${downloadedSize} bytes)`)
+        return true
+
+      } catch (error) {
+        // Cleanup temp file on error
+        try {
+          await fs.unlink(tempPath)
+        } catch {}
+        throw error
+      }
+
     } catch (error) {
       console.error(`[LocalTranscription] Failed to download model ${modelName}:`, error)
+      return false
+    }
+  }
+
+  /**
+   * Ensure at least one model is available, downloading if necessary
+   */
+  async ensureModelAvailable(onProgress?: (modelName: string, progress: { downloaded: number; total: number; percentage: number }) => void): Promise<boolean> {
+    console.log('[LocalTranscription] Ensuring model availability...')
+
+    try {
+      const models = await this.getAvailableModels()
+      const downloadedModels = models.filter(m => m.downloaded)
+
+      if (downloadedModels.length > 0) {
+        console.log(`[LocalTranscription] Found ${downloadedModels.length} existing models:`, downloadedModels.map(m => m.name))
+        return true
+      }
+
+      console.log('[LocalTranscription] No models found, downloading tiny model...')
+
+      const success = await this.downloadModel('tiny', (progress) => {
+        onProgress?.('tiny', progress)
+      })
+
+      if (success) {
+        console.log('[LocalTranscription] Tiny model downloaded successfully')
+        return true
+      } else {
+        console.error('[LocalTranscription] Failed to download tiny model')
+        return false
+      }
+
+    } catch (error) {
+      console.error('[LocalTranscription] Error ensuring model availability:', error)
       return false
     }
   }
@@ -456,6 +602,127 @@ export class LocalTranscriptionService {
     } catch (error) {
       console.warn('[LocalTranscription] Error during temp directory cleanup:', error)
     }
+  }
+
+  /**
+   * Analyze audio energy to detect speech vs noise
+   */
+  private analyzeAudioEnergy(audioBuffer: ArrayBuffer): {
+    averageEnergy: number
+    maxEnergy: number
+    silentFrames: number
+    totalFrames: number
+  } {
+    const samples = new Int16Array(audioBuffer)
+    const frameSize = 1024 // Analyze in 1024-sample frames
+    const silenceThreshold = 500 // Absolute amplitude threshold for silence
+
+    let totalEnergy = 0
+    let maxEnergy = 0
+    let silentFrames = 0
+    let totalFrames = 0
+
+    for (let i = 0; i < samples.length; i += frameSize) {
+      const frameEnd = Math.min(i + frameSize, samples.length)
+      let frameEnergy = 0
+      let maxFrameAmplitude = 0
+
+      // Calculate RMS energy for this frame
+      for (let j = i; j < frameEnd; j++) {
+        const amplitude = Math.abs(samples[j])
+        frameEnergy += amplitude * amplitude
+        maxFrameAmplitude = Math.max(maxFrameAmplitude, amplitude)
+      }
+
+      const frameLength = frameEnd - i
+      const rmsEnergy = Math.sqrt(frameEnergy / frameLength) / 32768 // Normalize to 0-1
+
+      totalEnergy += rmsEnergy
+      maxEnergy = Math.max(maxEnergy, rmsEnergy)
+      totalFrames++
+
+      // Count as silent frame if max amplitude is below threshold
+      if (maxFrameAmplitude < silenceThreshold) {
+        silentFrames++
+      }
+    }
+
+    return {
+      averageEnergy: totalFrames > 0 ? totalEnergy / totalFrames : 0,
+      maxEnergy,
+      silentFrames,
+      totalFrames
+    }
+  }
+
+  /**
+   * Filter transcription results to remove hallucinations and noise artifacts
+   */
+  private filterTranscriptionResult(text: string, options: TranscriptionOptions): string {
+    if (!text || !text.trim()) {
+      return ''
+    }
+
+    const originalText = text.trim()
+
+    // Pattern detection for common Whisper hallucinations
+    const hallucination_patterns = [
+      // Single or few Chinese/Japanese/Korean characters (common noise hallucination)
+      /^[\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff\uac00-\ud7af]{1,3}$/,
+      // Parenthetical expressions that are likely noise
+      /^\([^)]*\)$/,
+      // Bracket expressions
+      /^\[[^\]]*\]$/,
+      // Single words that are clearly not speech in expected language
+      /^(Thanks for watching|Thank you|Thanks|Bye|Hello)$/i,
+      // Very short nonsensical text
+      /^[^a-zA-Z0-9\s]{1,5}$/,
+      // Repeated characters or patterns
+      /^(..)\1{3,}$/,
+      // Only punctuation
+      /^[\s\p{P}]+$/u
+    ]
+
+    // Check for hallucination patterns
+    for (const pattern of hallucination_patterns) {
+      if (pattern.test(originalText)) {
+        console.log(`[LocalTranscription] Filtered hallucination: "${originalText}" (matched pattern: ${pattern})`)
+        return ''
+      }
+    }
+
+    // Language-specific filtering
+    if (options.language && options.language.startsWith('en')) {
+      // If English is expected, filter out mostly non-Latin text
+      const latinChars = originalText.match(/[a-zA-Z0-9\s\p{P}]/gu)?.length || 0
+      const totalChars = originalText.length
+      const latinRatio = latinChars / totalChars
+
+      if (latinRatio < 0.7 && totalChars < 50) { // Less than 70% Latin chars in short text
+        console.log(`[LocalTranscription] Filtered non-English text: "${originalText}" (${(latinRatio * 100).toFixed(1)}% Latin characters)`)
+        return ''
+      }
+    }
+
+    // Length-based filtering for very short results
+    if (originalText.length <= 2) {
+      console.log(`[LocalTranscription] Filtered very short text: "${originalText}"`)
+      return ''
+    }
+
+    // Check for repetitive content (likely noise artifacts)
+    const words = originalText.toLowerCase().split(/\s+/)
+    if (words.length > 1) {
+      const uniqueWords = new Set(words)
+      const repetitionRatio = words.length / uniqueWords.size
+      if (repetitionRatio > 3) { // Same words repeated more than 3 times on average
+        console.log(`[LocalTranscription] Filtered repetitive text: "${originalText}" (repetition ratio: ${repetitionRatio.toFixed(1)})`)
+        return ''
+      }
+    }
+
+    // Text passes all filters
+    return originalText
   }
 
   /**
