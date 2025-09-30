@@ -14,8 +14,8 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
 // Test configuration
-const WHISPER_BINARY = path.join(__dirname, 'resources/whisper.cpp/whisper-darwin-arm64')
-const MODEL_PATH = path.join(__dirname, 'resources/whisper.cpp/models/ggml-tiny.bin')
+const WHISPER_BINARY = path.join(__dirname, '../../resources/whisper.cpp/whisper-darwin-arm64')
+const MODEL_PATH = path.join(__dirname, '../../resources/whisper.cpp/models/ggml-tiny.bin')
 const TEST_AUDIO = '/tmp/test.wav'
 
 async function testWhisperBinary() {

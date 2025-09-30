@@ -52,8 +52,8 @@ Before running tests, ensure:
    ```
 
 2. **Whisper binary and model are available:**
-   - Binary: `../resources/whisper.cpp/whisper-darwin-arm64`
-   - Model: `../resources/whisper.cpp/models/ggml-tiny.bin`
+   - Binary: `../../resources/whisper.cpp/whisper-darwin-arm64`
+   - Model: `../../resources/whisper.cpp/models/ggml-tiny.bin`
 
 3. **Node.js 18+ with ES modules support**
 
@@ -106,15 +106,15 @@ All tests should pass with 100% success rate:
 
 1. **Binary not found**
    ```bash
-   ls -la ../resources/whisper.cpp/whisper-darwin-arm64
-   chmod +x ../resources/whisper.cpp/whisper-darwin-arm64
+   ls -la ../../resources/whisper.cpp/whisper-darwin-arm64
+   chmod +x ../../resources/whisper.cpp/whisper-darwin-arm64
    ```
 
 2. **Model not found**
    ```bash
    # Download tiny model
-   mkdir -p ../resources/whisper.cpp/models
-   cd ../resources/whisper.cpp/models
+   mkdir -p ../../resources/whisper.cpp/models
+   cd ../../resources/whisper.cpp/models
    curl -L -o ggml-tiny.bin https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.bin
    ```
 
@@ -139,6 +139,6 @@ When adding new tests:
 
 ## Related Documentation
 
-- **Implementation Guide:** `../../docs/development/local-transcription-guide.md`
-- **Phase 1 Report:** `../../docs/implementation/PHASE1-TEST-REPORT.md`
+- **Whisper Architecture:** `../../docs/architecture/whisper.md`
 - **Architecture Overview:** `../../docs/architecture/overview.md`
+- **Implementation Plan:** `../../plans/20250928-local-transcription.md`
