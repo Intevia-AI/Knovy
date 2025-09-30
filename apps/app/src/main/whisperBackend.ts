@@ -5,7 +5,7 @@ import { app } from 'electron'
 import { randomUUID } from 'crypto'
 
 // Configuration: Change this to set the default model size
-// Options: 'tiny' (39MB, fastest), 'base' (74MB, better), 'small' (244MB, good+), 'medium' (769MB, best)
+// Options: 'tiny' (75MB, fastest), 'base' (142MB, better), 'small' (466MB, good+), 'medium' (1.5GB, best)
 const DEFAULT_MODEL_SIZE: 'tiny' | 'base' | 'small' | 'medium' = 'tiny'
 
 export interface TranscriptionOptions {
@@ -33,10 +33,10 @@ export interface ModelInfo {
 }
 
 /**
- * Local transcription service using whisper.cpp
+ * Whisper backend service using whisper.cpp
  * Handles audio processing, model management, and binary execution
  */
-export class LocalTranscriptionService {
+export class WhisperBackend {
   private whisperBinaryPath: string
   private modelsPath: string
   private tempPath: string
@@ -68,13 +68,13 @@ export class LocalTranscriptionService {
     this.modelsPath = path.join(app.getPath('userData'), 'whisper-models')
     this.tempPath = path.join(app.getPath('temp'), 'knovy-transcription')
 
-    console.log('[LocalTranscription] Initialized with paths:', {
+    console.log('[WhisperService] Initialized with paths:', {
       binary: this.whisperBinaryPath,
       models: this.modelsPath,
       temp: this.tempPath
     })
 
-    console.log(`[LocalTranscription] 🎵 WAV files will be saved to: ${this.tempPath}`)
+    console.log(`[WhisperService] 🎵 WAV files will be saved to: ${this.tempPath}`)
   }
 
   /**
@@ -83,32 +83,32 @@ export class LocalTranscriptionService {
    */
   async initialize(): Promise<boolean> {
     try {
-      console.log('[LocalTranscription] Initializing service...')
+      console.log('[WhisperService] Initializing service...')
 
-      console.log('[LocalTranscription] Step 1: Creating directories...')
+      console.log('[WhisperService] Step 1: Creating directories...')
       // Create necessary directories
       await this.ensureDirectories()
-      console.log('[LocalTranscription] Directories created successfully')
+      console.log('[WhisperService] Directories created successfully')
 
-      console.log('[LocalTranscription] Step 2: Validating binary...')
+      console.log('[WhisperService] Step 2: Validating binary...')
       // Validate whisper.cpp binary
       const binaryExists = await this.validateBinary()
       if (!binaryExists) {
-        console.error('[LocalTranscription] whisper.cpp binary validation failed')
+        console.error('[WhisperService] whisper.cpp binary validation failed')
         return false
       }
-      console.log('[LocalTranscription] Binary validation passed')
+      console.log('[WhisperService] Binary validation passed')
 
-      console.log('[LocalTranscription] Step 3: Ensuring default model...')
+      console.log('[WhisperService] Step 3: Ensuring default model...')
       // Ensure default model is available
       await this.ensureDefaultModel()
-      console.log('[LocalTranscription] Default model ensured')
+      console.log('[WhisperService] Default model ensured')
 
       this.isInitialized = true
-      console.log('[LocalTranscription] Service initialized successfully')
+      console.log('[WhisperService] Service initialized successfully')
       return true
     } catch (error) {
-      console.error('[LocalTranscription] Failed to initialize service:', error)
+      console.error('[WhisperService] Failed to initialize service:', error)
       return false
     }
   }
@@ -121,14 +121,14 @@ export class LocalTranscriptionService {
     options: TranscriptionOptions
   ): Promise<TranscriptionResult> {
     if (!this.isInitialized) {
-      throw new Error('LocalTranscriptionService not initialized')
+      throw new Error('WhisperBackend not initialized')
     }
 
     const startTime = Date.now()
     const sessionId = randomUUID()
 
     try {
-      console.log(`[LocalTranscription] Starting transcription ${sessionId}`, {
+      console.log(`[WhisperService] Starting transcription ${sessionId}`, {
         bufferSize: audioBuffer.byteLength,
         durationSeconds: (audioBuffer.byteLength / 2 / 16000).toFixed(2), // 16-bit samples at 16kHz
         sourceType: options.sourceType,
@@ -142,7 +142,7 @@ export class LocalTranscriptionService {
         const energyThreshold =
           options.energyThreshold || (options.sourceType === 'microphone' ? 0.01 : 0.005)
 
-        console.log(`[LocalTranscription] Audio analysis for ${sessionId}:`, {
+        console.log(`[WhisperService] Audio analysis for ${sessionId}:`, {
           averageEnergy: audioMetrics.averageEnergy.toFixed(6),
           maxEnergy: audioMetrics.maxEnergy.toFixed(6),
           energyThreshold: energyThreshold.toFixed(6),
@@ -154,7 +154,7 @@ export class LocalTranscriptionService {
         // Skip transcription if audio is too quiet (likely just noise)
         if (audioMetrics.averageEnergy < energyThreshold) {
           console.log(
-            `[LocalTranscription] Skipping transcription ${sessionId} - audio energy too low (${audioMetrics.averageEnergy.toFixed(6)} < ${energyThreshold.toFixed(6)})`
+            `[WhisperService] Skipping transcription ${sessionId} - audio energy too low (${audioMetrics.averageEnergy.toFixed(6)} < ${energyThreshold.toFixed(6)})`
           )
           return {
             text: '',
@@ -170,7 +170,7 @@ export class LocalTranscriptionService {
         if (silentRatio > 0.85) {
           // If more than 85% of frames are silent
           console.log(
-            `[LocalTranscription] Skipping transcription ${sessionId} - audio mostly silent (${(silentRatio * 100).toFixed(1)}% silent frames)`
+            `[WhisperService] Skipping transcription ${sessionId} - audio mostly silent (${(silentRatio * 100).toFixed(1)}% silent frames)`
           )
           return {
             text: '',
@@ -199,11 +199,11 @@ export class LocalTranscriptionService {
 
       // Keep WAV file for debugging (comment out cleanup)
       // await this.cleanupTempFile(tempAudioFile)
-      console.log(`[LocalTranscription] 🔍 WAV file preserved for inspection: ${tempAudioFile}`)
+      console.log(`[WhisperService] 🔍 WAV file preserved for inspection: ${tempAudioFile}`)
 
       const processingTime = Date.now() - startTime
 
-      console.log(`[LocalTranscription] Completed transcription ${sessionId}`, {
+      console.log(`[WhisperService] Completed transcription ${sessionId}`, {
         originalText: `"${transcriptionText}"`,
         filteredText: `"${filteredText}"`,
         wasFiltered: transcriptionText !== filteredText,
@@ -218,7 +218,7 @@ export class LocalTranscriptionService {
         language: options.language
       }
     } catch (error) {
-      console.error(`[LocalTranscription] Failed transcription ${sessionId}:`, error)
+      console.error(`[WhisperService] Failed transcription ${sessionId}:`, error)
       throw error
     }
   }
@@ -228,10 +228,10 @@ export class LocalTranscriptionService {
    */
   async getAvailableModels(): Promise<ModelInfo[]> {
     const models: ModelInfo[] = [
-      { name: 'tiny', size: '39MB', downloaded: false },
-      { name: 'base', size: '74MB', downloaded: false },
-      { name: 'small', size: '244MB', downloaded: false },
-      { name: 'medium', size: '769MB', downloaded: false }
+      { name: 'tiny', size: '75MB', downloaded: false },
+      { name: 'base', size: '142MB', downloaded: false },
+      { name: 'small', size: '466MB', downloaded: false },
+      { name: 'medium', size: '1.5GB', downloaded: false }
     ]
 
     for (const model of models) {
@@ -259,7 +259,7 @@ export class LocalTranscriptionService {
     const existingPromise = this.downloadPromises.get(modelName)
     if (existingPromise) {
       console.log(
-        `[LocalTranscription] Download already in progress for model: ${modelName}, waiting for completion...`
+        `[WhisperService] Download already in progress for model: ${modelName}, waiting for completion...`
       )
       return existingPromise
     }
@@ -283,7 +283,7 @@ export class LocalTranscriptionService {
     modelName: string,
     onProgress?: (progress: { downloaded: number; total: number; percentage: number }) => void
   ): Promise<boolean> {
-    console.log(`[LocalTranscription] Starting download for model: ${modelName}`)
+    console.log(`[WhisperService] Starting download for model: ${modelName}`)
 
     const modelUrl = `https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-${modelName}.bin`
     const modelPath = path.join(this.modelsPath, `ggml-${modelName}.bin`)
@@ -293,19 +293,19 @@ export class LocalTranscriptionService {
       // Check if model already exists
       try {
         await fs.access(modelPath)
-        console.log(`[LocalTranscription] Model ${modelName} already exists, skipping download`)
+        console.log(`[WhisperService] Model ${modelName} already exists, skipping download`)
         return true
       } catch {
         // Model doesn't exist, proceed with download
       }
 
-      console.log(`[LocalTranscription] Starting download from: ${modelUrl}`)
-      console.log(`[LocalTranscription] Saving to: ${modelPath}`)
+      console.log(`[WhisperService] Starting download from: ${modelUrl}`)
+      console.log(`[WhisperService] Saving to: ${modelPath}`)
 
       // Clean up any existing temp file from previous failed downloads
       try {
         await fs.access(tempPath)
-        console.log(`[LocalTranscription] Found existing temp file, removing: ${tempPath}`)
+        console.log(`[WhisperService] Found existing temp file, removing: ${tempPath}`)
         await fs.unlink(tempPath)
       } catch {
         // Temp file doesn't exist, which is expected
@@ -361,7 +361,7 @@ export class LocalTranscriptionService {
         await fs.rename(tempPath, modelPath)
 
         console.log(
-          `[LocalTranscription] Successfully downloaded model ${modelName} (${downloadedSize} bytes)`
+          `[WhisperService] Successfully downloaded model ${modelName} (${downloadedSize} bytes)`
         )
         return true
       } catch (error) {
@@ -372,7 +372,7 @@ export class LocalTranscriptionService {
         throw error
       }
     } catch (error) {
-      console.error(`[LocalTranscription] Failed to download model ${modelName}:`, error)
+      console.error(`[WhisperService] Failed to download model ${modelName}:`, error)
       return false
     }
   }
@@ -381,17 +381,17 @@ export class LocalTranscriptionService {
    * Delete a downloaded model
    */
   async deleteModel(modelName: string): Promise<boolean> {
-    console.log(`[LocalTranscription] Deleting model: ${modelName}`)
+    console.log(`[WhisperService] Deleting model: ${modelName}`)
 
     const modelPath = path.join(this.modelsPath, `ggml-${modelName}.bin`)
 
     try {
       await fs.access(modelPath)
       await fs.unlink(modelPath)
-      console.log(`[LocalTranscription] Successfully deleted model: ${modelName}`)
+      console.log(`[WhisperService] Successfully deleted model: ${modelName}`)
       return true
     } catch (error) {
-      console.error(`[LocalTranscription] Failed to delete model ${modelName}:`, error)
+      console.error(`[WhisperService] Failed to delete model ${modelName}:`, error)
       return false
     }
   }
@@ -416,14 +416,14 @@ export class LocalTranscriptionService {
             modelSizes.push({ name: model.name, sizeBytes })
             totalBytes += sizeBytes
           } catch (error) {
-            console.warn(`[LocalTranscription] Could not get size for model ${model.name}:`, error)
+            console.warn(`[WhisperService] Could not get size for model ${model.name}:`, error)
           }
         }
       }
 
       return { totalBytes, models: modelSizes }
     } catch (error) {
-      console.error('[LocalTranscription] Failed to get storage usage:', error)
+      console.error('[WhisperService] Failed to get storage usage:', error)
       return { totalBytes: 0, models: [] }
     }
   }
@@ -437,7 +437,7 @@ export class LocalTranscriptionService {
       progress: { downloaded: number; total: number; percentage: number }
     ) => void
   ): Promise<boolean> {
-    console.log('[LocalTranscription] Ensuring model availability...')
+    console.log('[WhisperService] Ensuring model availability...')
 
     try {
       const models = await this.getAvailableModels()
@@ -445,29 +445,27 @@ export class LocalTranscriptionService {
 
       if (downloadedModels.length > 0) {
         console.log(
-          `[LocalTranscription] Found ${downloadedModels.length} existing models:`,
+          `[WhisperService] Found ${downloadedModels.length} existing models:`,
           downloadedModels.map((m) => m.name)
         )
         return true
       }
 
-      console.log(
-        `[LocalTranscription] No models found, downloading ${DEFAULT_MODEL_SIZE} model...`
-      )
+      console.log(`[WhisperService] No models found, downloading ${DEFAULT_MODEL_SIZE} model...`)
 
       const success = await this.downloadModel(DEFAULT_MODEL_SIZE, (progress) => {
         onProgress?.(DEFAULT_MODEL_SIZE, progress)
       })
 
       if (success) {
-        console.log(`[LocalTranscription] ${DEFAULT_MODEL_SIZE} model downloaded successfully`)
+        console.log(`[WhisperService] ${DEFAULT_MODEL_SIZE} model downloaded successfully`)
         return true
       } else {
-        console.error(`[LocalTranscription] Failed to download ${DEFAULT_MODEL_SIZE} model`)
+        console.error(`[WhisperService] Failed to download ${DEFAULT_MODEL_SIZE} model`)
         return false
       }
     } catch (error) {
-      console.error('[LocalTranscription] Error ensuring model availability:', error)
+      console.error('[WhisperService] Error ensuring model availability:', error)
       return false
     }
   }
@@ -476,11 +474,11 @@ export class LocalTranscriptionService {
    * Cleanup service and terminate active processes
    */
   async cleanup(): Promise<void> {
-    console.log('[LocalTranscription] Cleaning up service...')
+    console.log('[WhisperService] Cleaning up service...')
 
     // Terminate any active whisper processes
     for (const [sessionId, process] of this.activeProcesses) {
-      console.log(`[LocalTranscription] Terminating active process: ${sessionId}`)
+      console.log(`[WhisperService] Terminating active process: ${sessionId}`)
       process.kill('SIGTERM')
     }
     this.activeProcesses.clear()
@@ -489,11 +487,11 @@ export class LocalTranscriptionService {
     try {
       await this.cleanupTempDirectory()
     } catch (error) {
-      console.warn('[LocalTranscription] Error cleaning temp directory:', error)
+      console.warn('[WhisperService] Error cleaning temp directory:', error)
     }
 
     this.isInitialized = false
-    console.log('[LocalTranscription] Service cleanup completed')
+    console.log('[WhisperService] Service cleanup completed')
   }
 
   // Private helper methods
@@ -505,19 +503,19 @@ export class LocalTranscriptionService {
 
   private async validateBinary(): Promise<boolean> {
     try {
-      console.log(`[LocalTranscription] Checking binary at: ${this.whisperBinaryPath}`)
+      console.log(`[WhisperService] Checking binary at: ${this.whisperBinaryPath}`)
 
       // Check if file exists
       await fs.access(this.whisperBinaryPath, fs.constants.F_OK)
-      console.log(`[LocalTranscription] Binary file exists`)
+      console.log(`[WhisperService] Binary file exists`)
 
       // Check if file is executable
       await fs.access(this.whisperBinaryPath, fs.constants.X_OK)
-      console.log(`[LocalTranscription] Binary is executable`)
+      console.log(`[WhisperService] Binary is executable`)
 
       // Get file stats for debugging
       const stats = await fs.stat(this.whisperBinaryPath)
-      console.log(`[LocalTranscription] Binary stats:`, {
+      console.log(`[WhisperService] Binary stats:`, {
         size: stats.size,
         mode: stats.mode.toString(8),
         isFile: stats.isFile()
@@ -525,7 +523,7 @@ export class LocalTranscriptionService {
 
       return true
     } catch (error) {
-      console.error(`[LocalTranscription] Binary validation failed:`, error)
+      console.error(`[WhisperService] Binary validation failed:`, error)
       return false
     }
   }
@@ -534,10 +532,10 @@ export class LocalTranscriptionService {
     const defaultModelPath = path.join(this.modelsPath, `ggml-${DEFAULT_MODEL_SIZE}.bin`)
     try {
       await fs.access(defaultModelPath)
-      console.log(`[LocalTranscription] Default ${DEFAULT_MODEL_SIZE} model already exists`)
+      console.log(`[WhisperService] Default ${DEFAULT_MODEL_SIZE} model already exists`)
     } catch {
       console.log(
-        `[LocalTranscription] Default ${DEFAULT_MODEL_SIZE} model not found, will be downloaded on first use via ensureModelAvailable()`
+        `[WhisperService] Default ${DEFAULT_MODEL_SIZE} model not found, will be downloaded on first use via ensureModelAvailable()`
       )
       // Note: Model will be downloaded automatically when ensureModelAvailable() is called
       // by the renderer process during initialization
@@ -552,9 +550,7 @@ export class LocalTranscriptionService {
     const wavBuffer = this.createWavFile(audioBuffer)
     await fs.writeFile(tempFilePath, wavBuffer)
 
-    console.log(
-      `[LocalTranscription] 💾 Created WAV file: ${tempFilePath} (${wavBuffer.length} bytes)`
-    )
+    console.log(`[WhisperService] 💾 Created WAV file: ${tempFilePath} (${wavBuffer.length} bytes)`)
 
     return tempFilePath
   }
@@ -622,7 +618,7 @@ export class LocalTranscriptionService {
       try {
         await fs.access(defaultModelPath)
         console.warn(
-          `[LocalTranscription] Model ${modelSize} not found, falling back to ${DEFAULT_MODEL_SIZE}`
+          `[WhisperService] Model ${modelSize} not found, falling back to ${DEFAULT_MODEL_SIZE}`
         )
         return defaultModelPath
       } catch {
@@ -631,7 +627,7 @@ export class LocalTranscriptionService {
         try {
           await fs.access(tinyModelPath)
           console.warn(
-            `[LocalTranscription] Model ${modelSize} and ${DEFAULT_MODEL_SIZE} not found, falling back to tiny`
+            `[WhisperService] Model ${modelSize} and ${DEFAULT_MODEL_SIZE} not found, falling back to tiny`
           )
           return tinyModelPath
         } catch {
@@ -665,16 +661,16 @@ export class LocalTranscriptionService {
         if (whisperLanguage) {
           args.push('--language', whisperLanguage)
           console.log(
-            `[LocalTranscription] Converted language '${options.language}' to '${whisperLanguage}' for whisper.cpp`
+            `[WhisperService] Converted language '${options.language}' to '${whisperLanguage}' for whisper.cpp`
           )
         } else {
           console.log(
-            `[LocalTranscription] Skipping unsupported language '${options.language}', using auto-detection`
+            `[WhisperService] Skipping unsupported language '${options.language}', using auto-detection`
           )
         }
       }
 
-      console.log(`[LocalTranscription] Executing whisper.cpp:`, {
+      console.log(`[WhisperService] Executing whisper.cpp:`, {
         binary: this.whisperBinaryPath,
         args: args.join(' '),
         audioFile: audioFilePath
@@ -698,7 +694,7 @@ export class LocalTranscriptionService {
       process.on('close', (code) => {
         this.activeProcesses.delete(sessionId)
 
-        console.log(`[LocalTranscription] whisper.cpp finished with code ${code}`, {
+        console.log(`[WhisperService] whisper.cpp finished with code ${code}`, {
           stdout: stdout ? `"${stdout.trim()}"` : '(empty)',
           stderr: stderr ? `"${stderr.trim()}"` : '(empty)',
           stdoutLength: stdout.length,
@@ -709,22 +705,22 @@ export class LocalTranscriptionService {
           const transcription = stdout.trim()
           resolve(transcription)
         } else {
-          console.error(`[LocalTranscription] whisper.cpp exited with code ${code}`)
-          console.error(`[LocalTranscription] stderr:`, stderr)
+          console.error(`[WhisperService] whisper.cpp exited with code ${code}`)
+          console.error(`[WhisperService] stderr:`, stderr)
           reject(new Error(`Whisper process failed with exit code ${code}: ${stderr}`))
         }
       })
 
       process.on('error', (error) => {
         this.activeProcesses.delete(sessionId)
-        console.error(`[LocalTranscription] Process error:`, error)
+        console.error(`[WhisperService] Process error:`, error)
         reject(error)
       })
 
       // Set timeout for long-running processes
       setTimeout(() => {
         if (this.activeProcesses.has(sessionId)) {
-          console.warn(`[LocalTranscription] Process timeout, killing: ${sessionId}`)
+          console.warn(`[WhisperService] Process timeout, killing: ${sessionId}`)
           process.kill('SIGTERM')
           this.activeProcesses.delete(sessionId)
           reject(new Error('Transcription process timeout'))
@@ -737,7 +733,7 @@ export class LocalTranscriptionService {
     try {
       await fs.unlink(filePath)
     } catch (error) {
-      console.warn(`[LocalTranscription] Could not delete temp file ${filePath}:`, error)
+      console.warn(`[WhisperService] Could not delete temp file ${filePath}:`, error)
     }
   }
 
@@ -760,10 +756,10 @@ export class LocalTranscriptionService {
       await Promise.all(oldFiles.map((file) => fs.unlink(file).catch(console.warn)))
 
       if (oldFiles.length > 0) {
-        console.log(`[LocalTranscription] Cleaned up ${oldFiles.length} old temp files`)
+        console.log(`[WhisperService] Cleaned up ${oldFiles.length} old temp files`)
       }
     } catch (error) {
-      console.warn('[LocalTranscription] Error during temp directory cleanup:', error)
+      console.warn('[WhisperService] Error during temp directory cleanup:', error)
     }
   }
 
@@ -850,7 +846,7 @@ export class LocalTranscriptionService {
     for (const pattern of hallucination_patterns) {
       if (pattern.test(originalText)) {
         console.log(
-          `[LocalTranscription] Filtered hallucination: "${originalText}" (matched pattern: ${pattern})`
+          `[WhisperService] Filtered hallucination: "${originalText}" (matched pattern: ${pattern})`
         )
         return ''
       }
@@ -866,7 +862,7 @@ export class LocalTranscriptionService {
       if (latinRatio < 0.7 && totalChars < 50) {
         // Less than 70% Latin chars in short text
         console.log(
-          `[LocalTranscription] Filtered non-English text: "${originalText}" (${(latinRatio * 100).toFixed(1)}% Latin characters)`
+          `[WhisperService] Filtered non-English text: "${originalText}" (${(latinRatio * 100).toFixed(1)}% Latin characters)`
         )
         return ''
       }
@@ -874,7 +870,7 @@ export class LocalTranscriptionService {
 
     // Length-based filtering for very short results
     if (originalText.length <= 2) {
-      console.log(`[LocalTranscription] Filtered very short text: "${originalText}"`)
+      console.log(`[WhisperService] Filtered very short text: "${originalText}"`)
       return ''
     }
 
@@ -886,7 +882,7 @@ export class LocalTranscriptionService {
       if (repetitionRatio > 3) {
         // Same words repeated more than 3 times on average
         console.log(
-          `[LocalTranscription] Filtered repetitive text: "${originalText}" (repetition ratio: ${repetitionRatio.toFixed(1)})`
+          `[WhisperService] Filtered repetitive text: "${originalText}" (repetition ratio: ${repetitionRatio.toFixed(1)})`
         )
         return ''
       }
@@ -1005,11 +1001,11 @@ export class LocalTranscriptionService {
 }
 
 // Singleton instance
-let localTranscriptionService: LocalTranscriptionService | null = null
+let whisperBackend: WhisperBackend | null = null
 
-export function getLocalTranscriptionService(): LocalTranscriptionService {
-  if (!localTranscriptionService) {
-    localTranscriptionService = new LocalTranscriptionService()
+export function getWhisperBackend(): WhisperBackend {
+  if (!whisperBackend) {
+    whisperBackend = new WhisperBackend()
   }
-  return localTranscriptionService
+  return whisperBackend
 }

@@ -1,9 +1,9 @@
 /**
- * Local transcription factory for whisper.cpp-based transcription
- * Provides unified interface for local-only transcription services
+ * Transcription factory for whisper.cpp-based transcription
+ * Provides unified interface for whisper-based transcription services
  */
 
-import { getLocalTranscriptionClient, LocalTranscriptionClient, LocalTranscriptionOptions } from './localTranscriptionClient'
+import { getWhisperClient, WhisperClient, WhisperOptions } from './whisperClient'
 
 export interface TranscriptionConfig {
   modelSize?: 'tiny' | 'base' | 'small' | 'medium'
@@ -12,7 +12,7 @@ export interface TranscriptionConfig {
   minSpeechConfidence?: number
 }
 
-export interface UnifiedTranscriptionResult {
+export interface TranscriptionResult {
   text: string
   sourceType: 'microphone' | 'system'
   processingTime?: number
@@ -20,47 +20,47 @@ export interface UnifiedTranscriptionResult {
 }
 
 /**
- * Factory class for managing local transcription services
+ * Factory class for managing whisper transcription services
  */
 export class TranscriptionFactory {
-  private localClient: LocalTranscriptionClient
+  private whisperClient: WhisperClient
   private config: TranscriptionConfig
 
   constructor(config: TranscriptionConfig) {
     this.config = config
-    this.localClient = getLocalTranscriptionClient()
+    this.whisperClient = getWhisperClient()
   }
 
   /**
-   * Initialize the local transcription factory
+   * Initialize the transcription factory
    */
   async initialize(): Promise<boolean> {
-    console.log('[TranscriptionFactory] Initializing local transcription...')
+    console.log('[TranscriptionFactory] Initializing whisper transcription...')
 
     try {
-      const localInitialized = await this.localClient.initialize()
+      const whisperInitialized = await this.whisperClient.initialize()
 
-      if (localInitialized) {
-        const isAvailable = await this.localClient.isAvailable()
+      if (whisperInitialized) {
+        const isAvailable = await this.whisperClient.isAvailable()
         if (!isAvailable) {
-          console.warn('[TranscriptionFactory] Local transcription initialized but no models available')
+          console.warn('[TranscriptionFactory] Whisper transcription initialized but no models available')
 
           // Try to ensure models are available
-          const ensured = await this.localClient.ensureModelAvailable()
+          const ensured = await this.whisperClient.ensureModelAvailable()
           if (!ensured) {
             console.error('[TranscriptionFactory] Failed to ensure models are available')
             return false
           }
         }
 
-        console.log('[TranscriptionFactory] Local transcription ready')
+        console.log('[TranscriptionFactory] Whisper transcription ready')
         return true
       } else {
-        console.error('[TranscriptionFactory] Local transcription initialization failed')
+        console.error('[TranscriptionFactory] Whisper transcription initialization failed')
         return false
       }
     } catch (error) {
-      console.error('[TranscriptionFactory] Local transcription initialization error:', error)
+      console.error('[TranscriptionFactory] Whisper transcription initialization error:', error)
       return false
     }
   }
@@ -74,10 +74,10 @@ export class TranscriptionFactory {
     onSetupComplete?: () => void,
     language?: string
   ): Promise<TranscriptionProcessor> {
-    console.log(`[TranscriptionFactory] Creating local transcription processor for ${sourceType}`)
+    console.log(`[TranscriptionFactory] Creating whisper transcription processor for ${sourceType}`)
 
-    return new LocalTranscriptionProcessor(
-      this.localClient,
+    return new WhisperTranscriptionProcessor(
+      this.whisperClient,
       sourceType,
       onTextResponse,
       onSetupComplete,
@@ -107,22 +107,24 @@ export class TranscriptionFactory {
   }
 
   /**
-   * Check if local transcription is available
+   * Check if whisper transcription is available
    */
-  async isLocalAvailable(): Promise<boolean> {
+  async isWhisperAvailable(): Promise<boolean> {
     try {
-      return await this.localClient.isAvailable()
+      return await this.whisperClient.isAvailable()
     } catch {
       return false
     }
   }
 
+
   /**
-   * Get local transcription client for direct access (e.g., model management)
+   * Get whisper client for direct access (e.g., model management)
    */
-  getLocalClient(): LocalTranscriptionClient {
-    return this.localClient
+  getWhisperClient(): WhisperClient {
+    return this.whisperClient
   }
+
 
   // Private methods - simplified for local-only operation
 }
@@ -153,11 +155,11 @@ export abstract class TranscriptionProcessor {
 }
 
 /**
- * Local transcription processor using whisper.cpp
+ * Whisper transcription processor using whisper.cpp
  */
-export class LocalTranscriptionProcessor extends TranscriptionProcessor {
-  private localClient: LocalTranscriptionClient
-  private options: LocalTranscriptionOptions
+export class WhisperTranscriptionProcessor extends TranscriptionProcessor {
+  private whisperClient: WhisperClient
+  private options: WhisperOptions
   private audioBuffers: ArrayBuffer[] = []
   private connected = false
   private processingStats = {
@@ -170,14 +172,14 @@ export class LocalTranscriptionProcessor extends TranscriptionProcessor {
   private readonly MAX_BUFFER_SIZE = 20 // Maximum number of chunks to buffer
 
   constructor(
-    localClient: LocalTranscriptionClient,
+    whisperClient: WhisperClient,
     sourceType: 'microphone' | 'system',
     onTextResponse: (text: string, turnComplete: boolean, sourceType: 'microphone' | 'system') => void,
     onSetupComplete?: () => void,
-    options: Omit<LocalTranscriptionOptions, 'sourceType'> = {}
+    options: Omit<WhisperOptions, 'sourceType'> = {}
   ) {
     super(sourceType, onTextResponse, onSetupComplete)
-    this.localClient = localClient
+    this.whisperClient = whisperClient
     this.options = {
       ...options,
       sourceType
@@ -185,27 +187,27 @@ export class LocalTranscriptionProcessor extends TranscriptionProcessor {
   }
 
   async connect(): Promise<void> {
-    console.log(`[LocalTranscriptionProcessor] Connecting ${this.sourceType} processor`)
+    console.log(`[WhisperTranscriptionProcessor] Connecting ${this.sourceType} processor`)
 
     try {
-      const initialized = await this.localClient.initialize()
+      const initialized = await this.whisperClient.initialize()
       if (!initialized) {
-        throw new Error('Local transcription client initialization failed')
+        throw new Error('Whisper client initialization failed')
       }
 
       this.connected = true
       this.lastProcessTime = Date.now() // Initialize timing for buffering
       this.onSetupComplete?.()
 
-      console.log(`[LocalTranscriptionProcessor] ${this.sourceType} processor connected successfully`)
+      console.log(`[WhisperTranscriptionProcessor] ${this.sourceType} processor connected successfully`)
     } catch (error) {
-      console.error(`[LocalTranscriptionProcessor] Failed to connect ${this.sourceType} processor:`, error)
+      console.error(`[WhisperTranscriptionProcessor] Failed to connect ${this.sourceType} processor:`, error)
       throw error
     }
   }
 
   disconnect(): void {
-    console.log(`[LocalTranscriptionProcessor] Disconnecting ${this.sourceType} processor`)
+    console.log(`[WhisperTranscriptionProcessor] Disconnecting ${this.sourceType} processor`)
     this.connected = false
     this.audioBuffers = []
     this.lastProcessTime = 0
@@ -213,7 +215,7 @@ export class LocalTranscriptionProcessor extends TranscriptionProcessor {
 
   sendAudioChunk(chunk: string, mimeType: string): void {
     if (!this.connected) {
-      console.warn(`[LocalTranscriptionProcessor] Cannot send audio chunk - ${this.sourceType} processor not connected`)
+      console.warn(`[WhisperTranscriptionProcessor] Cannot send audio chunk - ${this.sourceType} processor not connected`)
       return
     }
 
@@ -237,7 +239,7 @@ export class LocalTranscriptionProcessor extends TranscriptionProcessor {
       const shouldProcessByTime = timeSinceLastProcess >= this.BUFFER_DURATION_MS
       const shouldProcessBySize = this.audioBuffers.length >= this.MAX_BUFFER_SIZE
 
-      console.log(`[LocalTranscriptionProcessor] ${this.sourceType} buffering status:`, {
+      console.log(`[WhisperTranscriptionProcessor] ${this.sourceType} buffering status:`, {
         chunksBuffered: this.audioBuffers.length,
         timeSinceLastProcess: `${timeSinceLastProcess}ms`,
         shouldProcessByTime,
@@ -249,7 +251,7 @@ export class LocalTranscriptionProcessor extends TranscriptionProcessor {
         this.lastProcessTime = now
       }
     } catch (error) {
-      console.error(`[LocalTranscriptionProcessor] Error processing audio chunk for ${this.sourceType}:`, error)
+      console.error(`[WhisperTranscriptionProcessor] Error processing audio chunk for ${this.sourceType}:`, error)
     }
   }
 
@@ -271,7 +273,7 @@ export class LocalTranscriptionProcessor extends TranscriptionProcessor {
   private processBufferedAudio(): void {
     if (this.audioBuffers.length === 0) return
 
-    console.log(`[LocalTranscriptionProcessor] Processing ${this.audioBuffers.length} buffered chunks for ${this.sourceType}`)
+    console.log(`[WhisperTranscriptionProcessor] Processing ${this.audioBuffers.length} buffered chunks for ${this.sourceType}`)
 
     // Combine all buffered audio chunks into one ArrayBuffer
     const combinedBuffer = this.combineAudioBuffers(this.audioBuffers)
@@ -302,13 +304,13 @@ export class LocalTranscriptionProcessor extends TranscriptionProcessor {
 
   private async processAudioBuffer(audioBuffer: ArrayBuffer): Promise<void> {
     try {
-      const result = await this.localClient.transcribeAudio(audioBuffer, this.options)
+      const result = await this.whisperClient.transcribeAudio(audioBuffer, this.options)
 
       this.processingStats.transcriptionsCompleted++
       this.processingStats.totalProcessingTime += result.processingTime
 
       if (result.text && result.text.trim()) {
-        console.log(`[LocalTranscriptionProcessor] Got transcription for ${this.sourceType}: "${result.text}"`)
+        console.log(`[WhisperTranscriptionProcessor] Got transcription for ${this.sourceType}: "${result.text}"`)
 
         // Extract keywords from the transcription for highlighting
         const keywords = this.extractKeywords(result.text.trim())
@@ -317,17 +319,17 @@ export class LocalTranscriptionProcessor extends TranscriptionProcessor {
         // The UI parser expects "TRANSCRIPTION:" prefix and optionally "KEYWORDS:"
         const formattedResponse = `TRANSCRIPTION: ${result.text.trim()}\nKEYWORDS: ${keywords.join(', ')}`
 
-        console.log(`[LocalTranscriptionProcessor] Sending formatted response with ${keywords.length} keywords: "${formattedResponse}"`)
+        console.log(`[WhisperTranscriptionProcessor] Sending formatted response with ${keywords.length} keywords: "${formattedResponse}"`)
         this.onTextResponse(formattedResponse, true, this.sourceType)
       } else {
-        console.log(`[LocalTranscriptionProcessor] Empty transcription result for ${this.sourceType} (${audioBuffer.byteLength} bytes, ${result.processingTime}ms)`)
+        console.log(`[WhisperTranscriptionProcessor] Empty transcription result for ${this.sourceType} (${audioBuffer.byteLength} bytes, ${result.processingTime}ms)`)
       }
     } catch (error) {
-      console.error(`[LocalTranscriptionProcessor] Transcription failed for ${this.sourceType}:`, error)
+      console.error(`[WhisperTranscriptionProcessor] Transcription failed for ${this.sourceType}:`, error)
 
       // Handle model missing error specifically
       if (error instanceof Error && error.message.includes('No whisper models available')) {
-        console.error(`[LocalTranscriptionProcessor] Models were deleted during session - attempting recovery`)
+        console.error(`[WhisperTranscriptionProcessor] Models were deleted during session - attempting recovery`)
 
         // Notify the main app about the model error
         if ((window as any).electronAPI?.send) {
@@ -339,7 +341,7 @@ export class LocalTranscriptionProcessor extends TranscriptionProcessor {
 
         await this.handleModelMissingError()
       } else if (error instanceof Error && error.message.includes('whisper.cpp binary')) {
-        console.error(`[LocalTranscriptionProcessor] Binary error during transcription`)
+        console.error(`[WhisperTranscriptionProcessor] Binary error during transcription`)
         this.notifyUserOfTranscriptionError('Local transcription unavailable - binary error')
       } else {
         // Generic transcription error
@@ -353,24 +355,24 @@ export class LocalTranscriptionProcessor extends TranscriptionProcessor {
    */
   private async handleModelMissingError(): Promise<void> {
     try {
-      console.log(`[LocalTranscriptionProcessor] Attempting to recover from missing models...`)
+      console.log(`[WhisperTranscriptionProcessor] Attempting to recover from missing models...`)
 
       // Try to re-initialize and download models
-      const initialized = await this.localClient.initialize()
+      const initialized = await this.whisperClient.initialize()
       if (initialized) {
-        const ensured = await this.localClient.ensureModelAvailable()
+        const ensured = await this.whisperClient.ensureModelAvailable()
         if (ensured) {
-          console.log(`[LocalTranscriptionProcessor] Successfully recovered models for ${this.sourceType}`)
+          console.log(`[WhisperTranscriptionProcessor] Successfully recovered models for ${this.sourceType}`)
           this.notifyUserOfTranscriptionError('Model recovered - transcription resumed', 'info')
           return
         }
       }
 
       // If recovery fails, notify user
-      console.error(`[LocalTranscriptionProcessor] Failed to recover models for ${this.sourceType}`)
+      console.error(`[WhisperTranscriptionProcessor] Failed to recover models for ${this.sourceType}`)
       this.notifyUserOfTranscriptionError('Local transcription models missing - please restart the app')
     } catch (error) {
-      console.error(`[LocalTranscriptionProcessor] Error during model recovery:`, error)
+      console.error(`[WhisperTranscriptionProcessor] Error during model recovery:`, error)
       this.notifyUserOfTranscriptionError('Unable to recover transcription - please restart the app')
     }
   }
@@ -382,7 +384,7 @@ export class LocalTranscriptionProcessor extends TranscriptionProcessor {
     // Send a formatted error message that the UI can display
     const errorResponse = `TRANSCRIPTION: [${type.toUpperCase()}] ${message}\nKEYWORDS: error, ${type}`
 
-    console.warn(`[LocalTranscriptionProcessor] Notifying user of ${type}: ${message}`)
+    console.warn(`[WhisperTranscriptionProcessor] Notifying user of ${type}: ${message}`)
     this.onTextResponse(errorResponse, true, this.sourceType)
   }
 
@@ -454,4 +456,5 @@ export class LocalTranscriptionProcessor extends TranscriptionProcessor {
     return uniqueKeywords
   }
 }
+
 

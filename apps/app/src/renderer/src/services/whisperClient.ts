@@ -1,9 +1,9 @@
 /**
- * Local transcription client for renderer process
- * Provides interface to whisper.cpp-based local transcription service
+ * Whisper client for renderer process
+ * Provides interface to whisper.cpp-based transcription service
  */
 
-export interface LocalTranscriptionOptions {
+export interface WhisperOptions {
   language?: string
   modelSize?: 'tiny' | 'base' | 'small' | 'medium'
   sourceType: 'microphone' | 'system'
@@ -12,7 +12,7 @@ export interface LocalTranscriptionOptions {
   minSpeechConfidence?: number
 }
 
-export interface LocalTranscriptionResult {
+export interface WhisperResult {
   text: string
   confidence?: number
   language?: string
@@ -43,9 +43,9 @@ export interface StorageUsage {
 }
 
 /**
- * Local transcription client for communicating with whisper.cpp service
+ * Whisper client for communicating with whisper.cpp service
  */
-export class LocalTranscriptionClient {
+export class WhisperClient {
   private isInitialized = false
   private initializationPromise: Promise<boolean> | null = null
   private downloadProgressCallbacks = new Set<(progress: ModelDownloadProgress) => void>()
@@ -56,7 +56,7 @@ export class LocalTranscriptionClient {
   }
 
   /**
-   * Initialize the local transcription service
+   * Initialize the whisper service
    */
   async initialize(): Promise<boolean> {
     if (this.isInitialized) {
@@ -75,18 +75,18 @@ export class LocalTranscriptionClient {
   }
 
   /**
-   * Process audio data using local whisper.cpp
+   * Process audio data using whisper.cpp
    */
   async transcribeAudio(
     audioBuffer: ArrayBuffer,
-    options: LocalTranscriptionOptions
-  ): Promise<LocalTranscriptionResult> {
+    options: WhisperOptions
+  ): Promise<WhisperResult> {
     if (!this.isInitialized) {
-      throw new Error('LocalTranscriptionClient not initialized. Call initialize() first.')
+      throw new Error('WhisperClient not initialized. Call initialize() first.')
     }
 
     try {
-      console.log(`[LocalTranscriptionClient] Processing audio:`, {
+      console.log(`[WhisperClient] Processing audio:`, {
         bufferSize: audioBuffer.byteLength,
         sourceType: options.sourceType,
         modelSize: options.modelSize || 'tiny'
@@ -102,12 +102,12 @@ export class LocalTranscriptionClient {
 
       if (!response.success) {
         // Provide more specific error messages based on the error type
-        const error = response.error || 'Local transcription failed'
+        const error = response.error || 'Whisper transcription failed'
 
         if (error.includes('No whisper models available')) {
           throw new Error('No whisper models available. Please restart the app to re-download models.')
         } else if (error.includes('whisper.cpp binary')) {
-          throw new Error('whisper.cpp binary error. Local transcription is temporarily unavailable.')
+          throw new Error('whisper.cpp binary error. Whisper transcription is temporarily unavailable.')
         } else if (error.includes('timeout')) {
           throw new Error('Transcription timeout. The audio segment may be too long or corrupted.')
         } else {
@@ -115,7 +115,7 @@ export class LocalTranscriptionClient {
         }
       }
 
-      console.log(`[LocalTranscriptionClient] Transcription completed:`, {
+      console.log(`[WhisperClient] Transcription completed:`, {
         text: `"${response.result.text}"`,
         processingTime: `${response.result.processingTime}ms`,
         sourceType: response.result.sourceType
@@ -123,7 +123,7 @@ export class LocalTranscriptionClient {
 
       return response.result
     } catch (error) {
-      console.error('[LocalTranscriptionClient] Transcription error:', error)
+      console.error('[WhisperClient] Transcription error:', error)
 
       // Re-throw with additional context if needed
       if (error instanceof Error) {
@@ -150,7 +150,7 @@ export class LocalTranscriptionClient {
 
       return response.models
     } catch (error) {
-      console.error('[LocalTranscriptionClient] Failed to get models:', error)
+      console.error('[WhisperClient] Failed to get models:', error)
       throw error
     }
   }
@@ -160,12 +160,12 @@ export class LocalTranscriptionClient {
    */
   async downloadModel(modelName: string): Promise<boolean> {
     try {
-      console.log(`[LocalTranscriptionClient] Starting download for model: ${modelName}`)
+      console.log(`[WhisperClient] Starting download for model: ${modelName}`)
 
       const response = await (window as any).electronAPI.transcriptionDownloadModel(modelName)
       return response.success
     } catch (error) {
-      console.error(`[LocalTranscriptionClient] Failed to download model ${modelName}:`, error)
+      console.error(`[WhisperClient] Failed to download model ${modelName}:`, error)
       throw error
     }
   }
@@ -175,12 +175,12 @@ export class LocalTranscriptionClient {
    */
   async deleteModel(modelName: string): Promise<boolean> {
     try {
-      console.log(`[LocalTranscriptionClient] Deleting model: ${modelName}`)
+      console.log(`[WhisperClient] Deleting model: ${modelName}`)
 
       const response = await (window as any).electronAPI.transcriptionDeleteModel(modelName)
       return response.success
     } catch (error) {
-      console.error(`[LocalTranscriptionClient] Failed to delete model ${modelName}:`, error)
+      console.error(`[WhisperClient] Failed to delete model ${modelName}:`, error)
       throw error
     }
   }
@@ -198,7 +198,7 @@ export class LocalTranscriptionClient {
 
       return response.usage
     } catch (error) {
-      console.error('[LocalTranscriptionClient] Failed to get storage usage:', error)
+      console.error('[WhisperClient] Failed to get storage usage:', error)
       throw error
     }
   }
@@ -213,12 +213,12 @@ export class LocalTranscriptionClient {
       const hasModels = models.some(model => model.downloaded)
 
       if (!hasModels) {
-        console.warn('[LocalTranscriptionClient] No models available for transcription')
+        console.warn('[WhisperClient] No models available for transcription')
       }
 
       return hasModels
     } catch (error) {
-      console.error('[LocalTranscriptionClient] Error checking availability:', error)
+      console.error('[WhisperClient] Error checking availability:', error)
       return false
     }
   }
@@ -240,7 +240,7 @@ export class LocalTranscriptionClient {
    */
   async ensureModelAvailable(): Promise<boolean> {
     try {
-      console.log('[LocalTranscriptionClient] Ensuring model availability...')
+      console.log('[WhisperClient] Ensuring model availability...')
 
       // Add a small delay to ensure any progress callbacks are set up
       await new Promise(resolve => setTimeout(resolve, 100))
@@ -248,7 +248,7 @@ export class LocalTranscriptionClient {
       const response = await (window as any).electronAPI.transcriptionEnsureModelAvailable()
       return response.success
     } catch (error) {
-      console.error('[LocalTranscriptionClient] Failed to ensure model availability:', error)
+      console.error('[WhisperClient] Failed to ensure model availability:', error)
       return false
     }
   }
@@ -295,50 +295,50 @@ export class LocalTranscriptionClient {
 
   private async performInitialization(): Promise<boolean> {
     try {
-      console.log('[LocalTranscriptionClient] Initializing local transcription service...')
+      console.log('[WhisperClient] Initializing local transcription service...')
 
       // Check if electronAPI is available
       if (!window.electronAPI) {
-        console.error('[LocalTranscriptionClient] electronAPI not available')
+        console.error('[WhisperClient] electronAPI not available')
         return false
       }
 
       if (!window.electronAPI.transcriptionInitialize) {
-        console.error('[LocalTranscriptionClient] transcriptionInitialize method not available')
+        console.error('[WhisperClient] transcriptionInitialize method not available')
         return false
       }
 
-      console.log('[LocalTranscriptionClient] Calling transcriptionInitialize...')
+      console.log('[WhisperClient] Calling transcriptionInitialize...')
       const response = await (window as any).electronAPI.transcriptionInitialize()
 
-      console.log('[LocalTranscriptionClient] Raw response:', response)
+      console.log('[WhisperClient] Raw response:', response)
 
       if (!response) {
-        console.error('[LocalTranscriptionClient] Initialization failed: response is undefined')
+        console.error('[WhisperClient] Initialization failed: response is undefined')
         return false
       }
 
       if (response.success) {
         this.isInitialized = true
-        console.log('[LocalTranscriptionClient] Successfully initialized')
+        console.log('[WhisperClient] Successfully initialized')
         return true
       } else {
-        console.error('[LocalTranscriptionClient] Initialization failed:', response.error)
+        console.error('[WhisperClient] Initialization failed:', response.error)
 
         // Get diagnostic information for debugging
         try {
           const diagnosticsResponse = await (window as any).electronAPI.transcriptionGetDiagnostics()
           if (diagnosticsResponse.success) {
-            console.error('[LocalTranscriptionClient] Diagnostics:', diagnosticsResponse.diagnostics)
+            console.error('[WhisperClient] Diagnostics:', diagnosticsResponse.diagnostics)
           }
         } catch (diagError) {
-          console.error('[LocalTranscriptionClient] Failed to get diagnostics:', diagError)
+          console.error('[WhisperClient] Failed to get diagnostics:', diagError)
         }
 
         return false
       }
     } catch (error) {
-      console.error('[LocalTranscriptionClient] Initialization error:', error)
+      console.error('[WhisperClient] Initialization error:', error)
       return false
     }
   }
@@ -347,7 +347,7 @@ export class LocalTranscriptionClient {
     // Listen for download progress events (from ensureModelAvailable)
     const unsubscribeModelProgress = (window as any).electronAPI?.on('transcription:model-download-progress',
       ({ modelName, progress }: { modelName: string; progress: { downloaded: number; total: number; percentage: number } }) => {
-        console.log('[LocalTranscriptionClient] Received model download progress:', { modelName, progress, callbackCount: this.downloadProgressCallbacks.size })
+        console.log('[WhisperClient] Received model download progress:', { modelName, progress, callbackCount: this.downloadProgressCallbacks.size })
 
         this.downloadProgressCallbacks.forEach(callback => {
           try {
@@ -358,7 +358,7 @@ export class LocalTranscriptionClient {
               percentage: progress.percentage
             })
           } catch (error) {
-            console.error('[LocalTranscriptionClient] Error in model download progress callback:', error)
+            console.error('[WhisperClient] Error in model download progress callback:', error)
           }
         })
       }
@@ -371,7 +371,7 @@ export class LocalTranscriptionClient {
           try {
             callback(progress)
           } catch (error) {
-            console.error('[LocalTranscriptionClient] Error in download progress callback:', error)
+            console.error('[WhisperClient] Error in download progress callback:', error)
           }
         })
       }
@@ -384,7 +384,7 @@ export class LocalTranscriptionClient {
           try {
             callback(modelName, success)
           } catch (error) {
-            console.error('[LocalTranscriptionClient] Error in download complete callback:', error)
+            console.error('[WhisperClient] Error in download complete callback:', error)
           }
         })
       }
@@ -392,23 +392,23 @@ export class LocalTranscriptionClient {
 
     // Store cleanup functions for potential future use
     if (unsubscribeModelProgress && unsubscribeProgress && unsubscribeComplete) {
-      console.log('[LocalTranscriptionClient] Event listeners setup completed')
+      console.log('[WhisperClient] Event listeners setup completed')
     }
   }
 }
 
 // Singleton instance
-let localTranscriptionClient: LocalTranscriptionClient | null = null
+let whisperClient: WhisperClient | null = null
 
-export function getLocalTranscriptionClient(): LocalTranscriptionClient {
-  if (!localTranscriptionClient) {
-    localTranscriptionClient = new LocalTranscriptionClient()
+export function getWhisperClient(): WhisperClient {
+  if (!whisperClient) {
+    whisperClient = new WhisperClient()
   }
-  return localTranscriptionClient
+  return whisperClient
 }
 
 // Export utility functions
-export const LocalTranscriptionUtils = {
-  formatBytes: LocalTranscriptionClient.formatBytes,
-  formatProcessingTime: LocalTranscriptionClient.formatProcessingTime
+export const WhisperUtils = {
+  formatBytes: WhisperClient.formatBytes,
+  formatProcessingTime: WhisperClient.formatProcessingTime
 }
