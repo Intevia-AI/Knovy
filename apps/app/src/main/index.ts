@@ -17,7 +17,7 @@ import { installExtension, REACT_DEVELOPER_TOOLS } from 'electron-devtools-insta
 import { is } from '@electron-toolkit/utils'
 import express from 'express'
 import cors from 'cors'
-import * as dbService from './database-service'
+import * as dbService from './databaseService'
 import {
   createPopover,
   closePopover,
