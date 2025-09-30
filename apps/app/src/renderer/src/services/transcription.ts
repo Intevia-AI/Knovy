@@ -168,9 +168,8 @@ export class WhisperTranscriptionProcessor extends TranscriptionProcessor {
     totalProcessingTime: 0,
     transcriptionsCompleted: 0
   }
-  private lastProcessTime = 0
-  private readonly BUFFER_DURATION_MS = 5000 // Process every 5 seconds
   private readonly MAX_BUFFER_SIZE = 20 // Maximum number of chunks to buffer
+  private vadEventListener: ((event: CustomEvent) => void) | null = null
 
   constructor(
     whisperClient: WhisperClient,
@@ -185,6 +184,23 @@ export class WhisperTranscriptionProcessor extends TranscriptionProcessor {
       ...options,
       sourceType
     }
+
+    // Setup VAD event listener for this source type
+    this.setupVADListener()
+  }
+
+  private setupVADListener(): void {
+    const eventName = this.sourceType === 'microphone' ? 'mic_segment' : 'system_segment'
+
+    this.vadEventListener = (event: CustomEvent) => {
+      if (event.detail?.vadTriggered && this.audioBuffers.length > 0) {
+        console.log(`[WhisperTranscriptionProcessor] VAD triggered for ${this.sourceType}, processing ${this.audioBuffers.length} buffered chunks`)
+        this.processBufferedAudio()
+      }
+    }
+
+    window.addEventListener(eventName, this.vadEventListener as EventListener)
+    console.log(`[WhisperTranscriptionProcessor] Listening for VAD events: ${eventName}`)
   }
 
   async connect(): Promise<void> {
@@ -197,7 +213,6 @@ export class WhisperTranscriptionProcessor extends TranscriptionProcessor {
       }
 
       this.connected = true
-      this.lastProcessTime = Date.now() // Initialize timing for buffering
       this.onSetupComplete?.()
 
       console.log(`[WhisperTranscriptionProcessor] ${this.sourceType} processor connected successfully`)
@@ -210,8 +225,16 @@ export class WhisperTranscriptionProcessor extends TranscriptionProcessor {
   disconnect(): void {
     console.log(`[WhisperTranscriptionProcessor] Disconnecting ${this.sourceType} processor`)
     this.connected = false
+
+    // Remove VAD event listener
+    if (this.vadEventListener) {
+      const eventName = this.sourceType === 'microphone' ? 'mic_segment' : 'system_segment'
+      window.removeEventListener(eventName, this.vadEventListener as EventListener)
+      this.vadEventListener = null
+      console.log(`[WhisperTranscriptionProcessor] Removed VAD event listener: ${eventName}`)
+    }
+
     this.audioBuffers = []
-    this.lastProcessTime = 0
   }
 
   sendAudioChunk(chunk: string, mimeType: string): void {
@@ -234,22 +257,18 @@ export class WhisperTranscriptionProcessor extends TranscriptionProcessor {
       // Add to buffer
       this.audioBuffers.push(audioBuffer)
 
-      // Check if we should process buffered audio
-      const now = Date.now()
-      const timeSinceLastProcess = now - this.lastProcessTime
-      const shouldProcessByTime = timeSinceLastProcess >= this.BUFFER_DURATION_MS
+      // Only process by buffer size (VAD will trigger processing)
       const shouldProcessBySize = this.audioBuffers.length >= this.MAX_BUFFER_SIZE
 
       console.log(`[WhisperTranscriptionProcessor] ${this.sourceType} buffering status:`, {
         chunksBuffered: this.audioBuffers.length,
-        timeSinceLastProcess: `${timeSinceLastProcess}ms`,
-        shouldProcessByTime,
-        shouldProcessBySize
+        shouldProcessBySize,
+        waitingForVAD: !shouldProcessBySize
       })
 
-      if ((shouldProcessByTime || shouldProcessBySize) && this.audioBuffers.length > 0) {
+      if (shouldProcessBySize && this.audioBuffers.length > 0) {
+        console.log(`[WhisperTranscriptionProcessor] Buffer size limit reached for ${this.sourceType}, processing immediately`)
         this.processBufferedAudio()
-        this.lastProcessTime = now
       }
     } catch (error) {
       console.error(`[WhisperTranscriptionProcessor] Error processing audio chunk for ${this.sourceType}:`, error)
