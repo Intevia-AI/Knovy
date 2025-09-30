@@ -8,6 +8,14 @@ import { randomUUID } from 'crypto'
 // Options: 'tiny' (75MB, fastest), 'base' (142MB, better), 'small' (466MB, good+), 'medium' (1.5GB, best)
 const DEFAULT_MODEL_SIZE: 'tiny' | 'base' | 'small' | 'medium' = 'tiny'
 
+// Domain-specific prompts for better transcription context
+const DOMAIN_PROMPTS = {
+  technical: "Technical discussion about software development, programming, and technology.",
+  meeting: "Business meeting with multiple speakers discussing projects and decisions.",
+  casual: "Casual conversation with natural speech patterns.",
+  default: "Clear conversation with proper punctuation and grammar."
+}
+
 export interface TranscriptionOptions {
   language?: string
   modelSize?: 'tiny' | 'base' | 'small' | 'medium'
@@ -44,6 +52,10 @@ export class WhisperBackend {
   private isInitialized = false
   private activeProcesses = new Map<string, ChildProcess>()
   private downloadPromises = new Map<string, Promise<boolean>>()
+
+  // Context preservation system
+  private segmentContext = new Map<string, string>() // sessionId -> last sentence
+  private sessionHistory = new Map<string, string[]>() // sessionId -> conversation history
 
   constructor() {
     // Platform-specific binary paths
@@ -193,10 +205,12 @@ export class WhisperBackend {
       const transcriptionText = await this.executeWhisper(tempAudioFile, modelPath, options)
 
       // Post-process transcription result for noise filtering
-      const filteredText =
+      let filteredText =
         options.enableNoiseFiltering !== false
           ? this.filterTranscriptionResult(transcriptionText, options)
           : transcriptionText
+
+      // Language preference is now handled directly in whisper.cpp via --language zh argument
 
       // Keep WAV file for debugging (comment out cleanup)
       // await this.cleanupTempFile(tempAudioFile)
@@ -204,19 +218,29 @@ export class WhisperBackend {
 
       const processingTime = Date.now() - startTime
 
+      // Update context for future segments if transcription was successful
+      if (filteredText && filteredText.trim()) {
+        this.updateContext(sessionId, options.sourceType, filteredText)
+      }
+
+      // Language processing handled by whisper.cpp auto-detection
+      let detectedLanguage = options.language
+
       console.log(`[WhisperService] Completed transcription ${sessionId}`, {
         originalText: `"${transcriptionText}"`,
         filteredText: `"${filteredText}"`,
         wasFiltered: transcriptionText !== filteredText,
         processingTime: `${processingTime}ms`,
-        sourceType: options.sourceType
+        sourceType: options.sourceType,
+        detectedLanguage,
+        contextUpdated: !!(filteredText && filteredText.trim())
       })
 
       return {
         text: filteredText,
         sourceType: options.sourceType,
         processingTime,
-        language: options.language
+        language: detectedLanguage
       }
     } catch (error) {
       console.error(`[WhisperService] Failed transcription ${sessionId}:`, error)
@@ -497,6 +521,67 @@ export class WhisperBackend {
 
   // Private helper methods
 
+  /**
+   * Extract the last sentence from transcription text for context
+   */
+  private extractLastSentence(text: string): string {
+    if (!text || !text.trim()) return ''
+
+    const sentences = text.split(/[.!?]+/).filter(s => s.trim())
+    return sentences[sentences.length - 1]?.trim() || ''
+  }
+
+  /**
+   * Build context prompt from previous segments
+   */
+  private buildContextPrompt(sessionId: string, sourceType: 'microphone' | 'system'): string {
+    const contextKey = `${sessionId}-${sourceType}`
+    const previousContext = this.segmentContext.get(contextKey) || ''
+
+    if (previousContext) {
+      return `Previous context: "${previousContext}". Continue naturally.`
+    }
+
+    return ''
+  }
+
+  /**
+   * Update context after successful transcription
+   */
+  private updateContext(sessionId: string, sourceType: 'microphone' | 'system', transcriptionText: string): void {
+    if (!transcriptionText || !transcriptionText.trim()) return
+
+    const contextKey = `${sessionId}-${sourceType}`
+    const lastSentence = this.extractLastSentence(transcriptionText)
+
+    if (lastSentence) {
+      this.segmentContext.set(contextKey, lastSentence)
+
+      // Also maintain conversation history (last 5 segments for better context)
+      const history = this.sessionHistory.get(contextKey) || []
+      history.push(transcriptionText)
+      if (history.length > 5) {
+        history.shift() // Keep only last 5 segments
+      }
+      this.sessionHistory.set(contextKey, history)
+
+      console.log(`[WhisperService] Updated context for ${contextKey}: "${lastSentence}"`)
+    }
+  }
+
+  /**
+   * Clear context for a session (useful for new sessions)
+   */
+  private clearSessionContext(sessionId: string): void {
+    const keys = Array.from(this.segmentContext.keys()).filter(key => key.startsWith(sessionId))
+    keys.forEach(key => {
+      this.segmentContext.delete(key)
+      this.sessionHistory.delete(key)
+    })
+    console.log(`[WhisperService] Cleared context for session: ${sessionId}`)
+  }
+
+
   private async ensureDirectories(): Promise<void> {
     await fs.mkdir(this.modelsPath, { recursive: true })
     await fs.mkdir(this.tempPath, { recursive: true })
@@ -646,6 +731,9 @@ export class WhisperBackend {
     options: TranscriptionOptions
   ): Promise<string> {
     return new Promise((resolve, reject) => {
+      const sessionId = path.basename(audioFilePath, '.wav')
+      const contextPrompt = this.buildContextPrompt(sessionId, options.sourceType)
+
       const args = [
         audioFilePath,
         '--model',
@@ -687,7 +775,6 @@ export class WhisperBackend {
       })
 
       const process = spawn(this.whisperBinaryPath, args)
-      const sessionId = path.basename(audioFilePath, '.wav')
       this.activeProcesses.set(sessionId, process)
 
       let stdout = ''
