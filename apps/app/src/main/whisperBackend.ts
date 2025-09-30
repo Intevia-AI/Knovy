@@ -10,10 +10,10 @@ const DEFAULT_MODEL_SIZE: 'tiny' | 'base' | 'small' | 'medium' = 'tiny'
 
 // Domain-specific prompts for better transcription context
 const DOMAIN_PROMPTS = {
-  technical: "Technical discussion about software development, programming, and technology.",
-  meeting: "Business meeting with multiple speakers discussing projects and decisions.",
-  casual: "Casual conversation with natural speech patterns.",
-  default: "Clear conversation with proper punctuation and grammar."
+  technical: 'Technical discussion about software development, programming, and technology.',
+  meeting: 'Business meeting with multiple speakers discussing projects and decisions.',
+  casual: 'Casual conversation with natural speech patterns.',
+  default: 'Clear conversation with proper punctuation and grammar.'
 }
 
 export interface TranscriptionOptions {
@@ -527,7 +527,7 @@ export class WhisperBackend {
   private extractLastSentence(text: string): string {
     if (!text || !text.trim()) return ''
 
-    const sentences = text.split(/[.!?]+/).filter(s => s.trim())
+    const sentences = text.split(/[.!?]+/).filter((s) => s.trim())
     return sentences[sentences.length - 1]?.trim() || ''
   }
 
@@ -548,7 +548,11 @@ export class WhisperBackend {
   /**
    * Update context after successful transcription
    */
-  private updateContext(sessionId: string, sourceType: 'microphone' | 'system', transcriptionText: string): void {
+  private updateContext(
+    sessionId: string,
+    sourceType: 'microphone' | 'system',
+    transcriptionText: string
+  ): void {
     if (!transcriptionText || !transcriptionText.trim()) return
 
     const contextKey = `${sessionId}-${sourceType}`
@@ -573,14 +577,13 @@ export class WhisperBackend {
    * Clear context for a session (useful for new sessions)
    */
   private clearSessionContext(sessionId: string): void {
-    const keys = Array.from(this.segmentContext.keys()).filter(key => key.startsWith(sessionId))
-    keys.forEach(key => {
+    const keys = Array.from(this.segmentContext.keys()).filter((key) => key.startsWith(sessionId))
+    keys.forEach((key) => {
       this.segmentContext.delete(key)
       this.sessionHistory.delete(key)
     })
     console.log(`[WhisperService] Cleared context for session: ${sessionId}`)
   }
-
 
   private async ensureDirectories(): Promise<void> {
     await fs.mkdir(this.modelsPath, { recursive: true })
@@ -741,8 +744,27 @@ export class WhisperBackend {
         '--no-timestamps',
         '--no-prints',
         '--threads',
-        '4'
+        '4',
+        // Quality improvements
+        '--temperature',
+        '0.0',
+        '--best-of',
+        '2',
+        '--beam-size',
+        '5',
+        // Transcription quality prompt
+        '--prompt',
+        DOMAIN_PROMPTS.default
       ]
+
+      // Add context prompt if available
+      if (contextPrompt) {
+        args.push('--prompt', contextPrompt)
+        console.log(`[WhisperService] Using context prompt: "${contextPrompt}"`)
+      }
+
+      // Add word-level features
+      args.push('--word-thold', '0.01')
 
       // Enable auto-detection by default (autoDetectLanguage defaults to true)
       // Only add language constraint if explicitly disabled auto-detection
@@ -761,11 +783,9 @@ export class WhisperBackend {
           )
         }
       } else {
-        // Use --language auto to enable auto-detection WITHOUT translation
+        // Use auto-detection by default
         args.push('--language', 'auto')
-        console.log(
-          `[WhisperService] Using automatic language detection (--language auto) for mixed-language support`
-        )
+        console.log(`[WhisperService] Using auto-detection for language`)
       }
 
       console.log(`[WhisperService] Executing whisper.cpp:`, {
