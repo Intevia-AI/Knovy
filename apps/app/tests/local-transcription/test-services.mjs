@@ -6,7 +6,6 @@
  */
 
 import { spawn } from 'child_process'
-import { readFileSync } from 'fs'
 import fs from 'fs/promises'
 
 // Since we can't directly import TypeScript, we'll test via the compiled JS
@@ -26,7 +25,7 @@ class ServiceTester {
     await this.testIPCLayer()
 
     this.printResults()
-    return this.testResults.every(result => result.passed)
+    return this.testResults.every((result) => result.passed)
   }
 
   async test(name, testFn) {
@@ -64,10 +63,10 @@ class ServiceTester {
       // Test the logic that ModelManager would use
       const expectedModels = ['tiny', 'base', 'small', 'medium']
       const modelSizes = {
-        tiny: 39 * 1024 * 1024,
-        base: 74 * 1024 * 1024,
-        small: 244 * 1024 * 1024,
-        medium: 769 * 1024 * 1024
+        tiny: 75 * 1024 * 1024,
+        base: 142 * 1024 * 1024,
+        small: 466 * 1024 * 1024,
+        medium: 1.5 * 1024 * 1024 * 1024
       }
 
       for (const model of expectedModels) {
@@ -119,10 +118,12 @@ class ServiceTester {
 
       const args = [
         audioFile,
-        '--model', modelPath,
+        '--model',
+        modelPath,
         '--no-timestamps',
         '--no-prints',
-        '--threads', '4'
+        '--threads',
+        '4'
       ]
 
       // Validate argument structure
@@ -215,10 +216,7 @@ class ServiceTester {
 
     await this.test('Event channel validation', async () => {
       // Test the event channels for download progress
-      const expectedEvents = [
-        'model:download-progress',
-        'model:download-complete'
-      ]
+      const expectedEvents = ['model:download-progress', 'model:download-complete']
 
       for (const event of expectedEvents) {
         if (!event.startsWith('model:')) {
@@ -257,7 +255,10 @@ class ServiceTester {
       }
 
       // Test serialization
-      const serialized = JSON.stringify({ audioBuffer: Array.from(new Uint8Array(audioBuffer)), options })
+      const serialized = JSON.stringify({
+        audioBuffer: Array.from(new Uint8Array(audioBuffer)),
+        options
+      })
       const deserialized = JSON.parse(serialized)
 
       if (!deserialized.options || deserialized.options.sourceType !== 'microphone') {
@@ -272,7 +273,7 @@ class ServiceTester {
     console.log('\n📊 Service Test Results')
     console.log('=======================')
 
-    const passed = this.testResults.filter(r => r.passed).length
+    const passed = this.testResults.filter((r) => r.passed).length
     const total = this.testResults.length
 
     console.log(`Total Tests: ${total}`)
@@ -283,15 +284,15 @@ class ServiceTester {
     if (passed < total) {
       console.log('\n🔥 Failed Tests:')
       this.testResults
-        .filter(r => !r.passed)
-        .forEach(test => {
+        .filter((r) => !r.passed)
+        .forEach((test) => {
           console.log(`   ❌ ${test.name}: ${test.error}`)
         })
     }
 
-    const avgDuration = this.testResults
-      .filter(r => r.passed)
-      .reduce((sum, test) => sum + test.duration, 0) / passed
+    const avgDuration =
+      this.testResults.filter((r) => r.passed).reduce((sum, test) => sum + test.duration, 0) /
+      passed
 
     console.log(`\n⏱️ Average test duration: ${avgDuration.toFixed(1)}ms`)
   }
@@ -299,8 +300,9 @@ class ServiceTester {
 
 // Run the service tests
 const tester = new ServiceTester()
-tester.runTests()
-  .then(success => {
+tester
+  .runTests()
+  .then((success) => {
     if (success) {
       console.log('\n🎉 All service tests passed!')
       process.exit(0)
@@ -309,7 +311,7 @@ tester.runTests()
       process.exit(1)
     }
   })
-  .catch(error => {
+  .catch((error) => {
     console.error('\n💥 Service test error:', error)
     process.exit(1)
   })

@@ -27,7 +27,7 @@ import {
 } from './popoverManager'
 import { positionWindow, type PositionOptions } from './windowManager'
 import electronUpdater, { type AppUpdater } from 'electron-updater'
-import { getLocalTranscriptionService } from './services/localTranscriptionService'
+import { getWhisperBackend } from './whisperBackend'
 
 console.log('[Debug] Imported dbService module:', dbService)
 
@@ -1198,14 +1198,14 @@ app.on('ready', async () => {
     try {
       console.log('[main/index.ts] Starting transcription initialization...')
 
-      const transcriptionService = getLocalTranscriptionService()
+      const transcriptionService = getWhisperBackend()
       console.log('[main/index.ts] Got transcription service instance')
 
       const initialized = await transcriptionService.initialize()
       console.log('[main/index.ts] Transcription service initialization result:', initialized)
 
       if (!initialized) {
-        const result = { success: false, error: 'LocalTranscriptionService.initialize() returned false - check binary or model availability' }
+        const result = { success: false, error: 'WhisperBackend.initialize() returned false - check binary or model availability' }
         console.log('[main/index.ts] Returning failure result:', result)
         return result
       }
@@ -1223,7 +1223,7 @@ app.on('ready', async () => {
 
   ipcMain.handle('transcription:process-audio', async (event, { audioBuffer, options }) => {
     try {
-      const transcriptionService = getLocalTranscriptionService()
+      const transcriptionService = getWhisperBackend()
       const result = await transcriptionService.transcribeAudio(audioBuffer, options)
 
       console.log(`[main/index.ts] Local transcription completed: "${result.text}" (${result.processingTime}ms)`)
@@ -1236,7 +1236,7 @@ app.on('ready', async () => {
 
   ipcMain.handle('transcription:get-models', async () => {
     try {
-      const transcriptionService = getLocalTranscriptionService()
+      const transcriptionService = getWhisperBackend()
       const models = await transcriptionService.getAvailableModels()
       return { success: true, models }
     } catch (error) {
@@ -1247,7 +1247,7 @@ app.on('ready', async () => {
 
   ipcMain.handle('transcription:download-model', async (event, modelName) => {
     try {
-      const transcriptionService = getLocalTranscriptionService()
+      const transcriptionService = getWhisperBackend()
       const success = await transcriptionService.downloadModel(modelName)
       return { success }
     } catch (error) {
@@ -1258,7 +1258,7 @@ app.on('ready', async () => {
 
   ipcMain.handle('transcription:delete-model', async (event, modelName) => {
     try {
-      const transcriptionService = getLocalTranscriptionService()
+      const transcriptionService = getWhisperBackend()
       const success = await transcriptionService.deleteModel(modelName)
       return { success }
     } catch (error) {
@@ -1269,7 +1269,7 @@ app.on('ready', async () => {
 
   ipcMain.handle('transcription:get-storage-usage', async () => {
     try {
-      const transcriptionService = getLocalTranscriptionService()
+      const transcriptionService = getWhisperBackend()
       const usage = await transcriptionService.getStorageUsage()
       return { success: true, usage }
     } catch (error) {
@@ -1280,7 +1280,7 @@ app.on('ready', async () => {
 
   ipcMain.handle('transcription:ensure-model-available', async (event) => {
     try {
-      const transcriptionService = getLocalTranscriptionService()
+      const transcriptionService = getWhisperBackend()
 
       const success = await transcriptionService.ensureModelAvailable((modelName, progress) => {
         // Send progress updates to the renderer process
@@ -1425,7 +1425,7 @@ app.on('will-quit', async () => {
 
   // Cleanup local transcription service
   try {
-    const transcriptionService = getLocalTranscriptionService()
+    const transcriptionService = getWhisperBackend()
     await transcriptionService.cleanup()
     console.log('[main/index.ts] Local transcription service cleanup completed')
   } catch (error) {

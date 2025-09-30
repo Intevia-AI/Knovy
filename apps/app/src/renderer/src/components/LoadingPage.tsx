@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { motion } from 'motion'
 import { CheckCircle, AlertCircle, Loader2, X } from 'lucide-react'
-import { getLocalTranscriptionClient } from '../services/localTranscriptionClient'
+import { getWhisperClient } from '../services/whisperClient'
 import { Logo } from '@/components/Logo'
 import { Button } from '@/components/ui/button'
 
@@ -51,8 +51,8 @@ export function LoadingPage({
         }, 30) // 3 seconds total (100 steps * 30ms)
 
         // Do the actual work while progress animates
-        const localClient = getLocalTranscriptionClient()
-        const success = await localClient.ensureModelAvailable()
+        const whisperClient = getWhisperClient()
+        const success = await whisperClient.ensureModelAvailable()
 
         // Ensure progress reaches 100%
         if (mounted && currentProgress < 100) {

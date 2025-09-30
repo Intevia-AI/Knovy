@@ -21,6 +21,7 @@ The binaries should be compiled from [whisper.cpp](https://github.com/ggerganov/
 ### Build Commands
 
 **macOS (Universal Binary):**
+
 ```bash
 git clone https://github.com/ggerganov/whisper.cpp.git
 cd whisper.cpp
@@ -37,6 +38,7 @@ arch -x86_64 make -j4
 ```
 
 **Windows:**
+
 ```bash
 mkdir build
 cd build
@@ -45,6 +47,7 @@ cmake --build . --config Release
 ```
 
 **Linux:**
+
 ```bash
 make clean
 make -j4
@@ -53,15 +56,17 @@ make -j4
 ## Model Downloads
 
 Models are automatically downloaded to the user data directory at runtime:
+
 - **macOS**: `~/Library/Application Support/Knovy/whisper-models/`
 - **Windows**: `%APPDATA%/Knovy/whisper-models/`
 - **Linux**: `~/.config/Knovy/whisper-models/`
 
 Available models:
-- `ggml-tiny.bin` (39MB) - Fastest, good for real-time
-- `ggml-base.bin` (74MB) - Balanced speed/accuracy
-- `ggml-small.bin` (244MB) - Higher accuracy
-- `ggml-medium.bin` (769MB) - Best accuracy
+
+- `ggml-tiny.bin` (75MB) - Fastest, good for real-time
+- `ggml-base.bin` (142MB) - Balanced speed/accuracy
+- `ggml-small.bin` (466MB) - Higher accuracy
+- `ggml-medium.bin` (1.5GB) - Best accuracy
 
 ## Usage
 

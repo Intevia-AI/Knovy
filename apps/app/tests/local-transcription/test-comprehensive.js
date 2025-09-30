@@ -74,7 +74,7 @@ class TestSuite {
 
     await this.test('Model file exists and has correct size', async () => {
       const stats = await fs.stat(MODEL_PATH)
-      // Tiny model should be around 74MB (39MB is outdated info)
+      // Tiny model should be around 75MB
       if (stats.size < 30 * 1024 * 1024 || stats.size > 100 * 1024 * 1024) {
         throw new Error(`Model size ${Math.round(stats.size / 1024 / 1024)}MB seems incorrect`)
       }
@@ -265,7 +265,7 @@ class TestSuite {
         const memBefore = await this.getMemoryUsage()
         await this.runTranscription(TEST_AUDIO, MODEL_PATH)
         const memAfter = await this.getMemoryUsage()
-        totalMemory += (memAfter - memBefore)
+        totalMemory += memAfter - memBefore
       }
 
       const avgMemoryDelta = totalMemory / iterations
@@ -301,10 +301,12 @@ class TestSuite {
   async runTranscription(audioPath, modelPath, options = {}, timeoutMs = 30000) {
     const args = [
       audioPath,
-      '--model', modelPath,
+      '--model',
+      modelPath,
       '--no-timestamps',
       '--no-prints',
-      '--threads', options.threads || '4'
+      '--threads',
+      options.threads || '4'
     ]
 
     if (options.language) {
@@ -388,25 +390,29 @@ class TestSuite {
     console.log(`Total Tests: ${this.results.passed + this.results.failed}`)
     console.log(`✅ Passed: ${this.results.passed}`)
     console.log(`❌ Failed: ${this.results.failed}`)
-    console.log(`Success Rate: ${((this.results.passed / (this.results.passed + this.results.failed)) * 100).toFixed(1)}%`)
+    console.log(
+      `Success Rate: ${((this.results.passed / (this.results.passed + this.results.failed)) * 100).toFixed(1)}%`
+    )
 
     if (this.results.failed > 0) {
       console.log('\n🔥 Failed Tests:')
       this.results.tests
-        .filter(test => test.status === 'FAIL')
-        .forEach(test => {
+        .filter((test) => test.status === 'FAIL')
+        .forEach((test) => {
           console.log(`   ❌ ${test.name}: ${test.error}`)
         })
     }
 
     console.log('\n⏱️ Performance Summary:')
-    const passedTests = this.results.tests.filter(test => test.status === 'PASS')
-    const avgDuration = passedTests.reduce((sum, test) => sum + test.duration, 0) / passedTests.length
+    const passedTests = this.results.tests.filter((test) => test.status === 'PASS')
+    const avgDuration =
+      passedTests.reduce((sum, test) => sum + test.duration, 0) / passedTests.length
     console.log(`   Average test duration: ${avgDuration.toFixed(1)}ms`)
 
-    const transcriptionTests = passedTests.filter(test => test.name.includes('transcription'))
+    const transcriptionTests = passedTests.filter((test) => test.name.includes('transcription'))
     if (transcriptionTests.length > 0) {
-      const avgTranscription = transcriptionTests.reduce((sum, test) => sum + test.duration, 0) / transcriptionTests.length
+      const avgTranscription =
+        transcriptionTests.reduce((sum, test) => sum + test.duration, 0) / transcriptionTests.length
       console.log(`   Average transcription time: ${avgTranscription.toFixed(1)}ms`)
     }
   }
@@ -414,8 +420,9 @@ class TestSuite {
 
 // Run the comprehensive test suite
 const testSuite = new TestSuite()
-testSuite.run()
-  .then(success => {
+testSuite
+  .run()
+  .then((success) => {
     if (success) {
       console.log('\n🎉 All tests passed! System is ready for production.')
       process.exit(0)
@@ -424,7 +431,7 @@ testSuite.run()
       process.exit(1)
     }
   })
-  .catch(error => {
+  .catch((error) => {
     console.error('\n💥 Test suite error:', error)
     process.exit(1)
   })

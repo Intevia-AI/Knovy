@@ -1,42 +1,29 @@
 /**
- * Transcription factory that manages both local and remote transcription services
- * Provides unified interface and automatic fallback capabilities
+ * Local transcription factory for whisper.cpp-based transcription
+ * Provides unified interface for local-only transcription services
  */
 
-import { GeminiClient } from './geminiClient'
 import { getLocalTranscriptionClient, LocalTranscriptionClient, LocalTranscriptionOptions } from './localTranscriptionClient'
 
-export type TranscriptionMode = 'local' | 'gemini' | 'auto'
-
 export interface TranscriptionConfig {
-  mode: TranscriptionMode
-  localOptions?: {
-    modelSize?: 'tiny' | 'base' | 'small' | 'medium'
-    fallbackToGemini?: boolean
-    enableNoiseFiltering?: boolean
-    energyThreshold?: number
-    minSpeechConfidence?: number
-  }
-  geminiOptions?: {
-    customPrompt?: string
-    language?: string
-  }
+  modelSize?: 'tiny' | 'base' | 'small' | 'medium'
+  enableNoiseFiltering?: boolean
+  energyThreshold?: number
+  minSpeechConfidence?: number
 }
 
 export interface UnifiedTranscriptionResult {
   text: string
   sourceType: 'microphone' | 'system'
   processingTime?: number
-  transcriptionMode: 'local' | 'gemini'
   confidence?: number
 }
 
 /**
- * Factory class for managing transcription services
+ * Factory class for managing local transcription services
  */
 export class TranscriptionFactory {
   private localClient: LocalTranscriptionClient
-  private geminiClients = new Map<string, GeminiClient>()
   private config: TranscriptionConfig
 
   constructor(config: TranscriptionConfig) {
@@ -45,44 +32,37 @@ export class TranscriptionFactory {
   }
 
   /**
-   * Initialize the transcription factory
+   * Initialize the local transcription factory
    */
   async initialize(): Promise<boolean> {
-    console.log('[TranscriptionFactory] Initializing with mode:', this.config.mode)
+    console.log('[TranscriptionFactory] Initializing local transcription...')
 
-    if (this.config.mode === 'local' || this.config.mode === 'auto') {
-      try {
-        const localInitialized = await this.localClient.initialize()
+    try {
+      const localInitialized = await this.localClient.initialize()
 
-        if (localInitialized) {
-          const isAvailable = await this.localClient.isAvailable()
-          if (!isAvailable) {
-            console.warn('[TranscriptionFactory] Local transcription initialized but no models available')
+      if (localInitialized) {
+        const isAvailable = await this.localClient.isAvailable()
+        if (!isAvailable) {
+          console.warn('[TranscriptionFactory] Local transcription initialized but no models available')
 
-            if (this.config.mode === 'local') {
-              console.error('[TranscriptionFactory] Local mode required but no models available')
-              return false
-            }
-          } else {
-            console.log('[TranscriptionFactory] Local transcription ready')
-          }
-        } else {
-          console.warn('[TranscriptionFactory] Local transcription initialization failed')
-
-          if (this.config.mode === 'local') {
+          // Try to ensure models are available
+          const ensured = await this.localClient.ensureModelAvailable()
+          if (!ensured) {
+            console.error('[TranscriptionFactory] Failed to ensure models are available')
             return false
           }
         }
-      } catch (error) {
-        console.error('[TranscriptionFactory] Local transcription initialization error:', error)
 
-        if (this.config.mode === 'local') {
-          return false
-        }
+        console.log('[TranscriptionFactory] Local transcription ready')
+        return true
+      } else {
+        console.error('[TranscriptionFactory] Local transcription initialization failed')
+        return false
       }
+    } catch (error) {
+      console.error('[TranscriptionFactory] Local transcription initialization error:', error)
+      return false
     }
-
-    return true
   }
 
   /**
@@ -94,35 +74,21 @@ export class TranscriptionFactory {
     onSetupComplete?: () => void,
     language?: string
   ): Promise<TranscriptionProcessor> {
-    const effectiveMode = await this.determineEffectiveMode()
+    console.log(`[TranscriptionFactory] Creating local transcription processor for ${sourceType}`)
 
-    console.log(`[TranscriptionFactory] Creating ${effectiveMode} transcription processor for ${sourceType}`)
-
-    if (effectiveMode === 'local') {
-      return new LocalTranscriptionProcessor(
-        this.localClient,
-        sourceType,
-        onTextResponse,
-        onSetupComplete,
-        {
-          modelSize: this.config.localOptions?.modelSize || 'tiny',
-          language,
-          enableNoiseFiltering: this.config.localOptions?.enableNoiseFiltering,
-          energyThreshold: this.config.localOptions?.energyThreshold,
-          minSpeechConfidence: this.config.localOptions?.minSpeechConfidence
-        }
-      )
-    } else {
-      return new GeminiTranscriptionProcessor(
-        sourceType,
-        onTextResponse,
-        onSetupComplete,
-        {
-          customPrompt: this.config.geminiOptions?.customPrompt,
-          language: this.config.geminiOptions?.language || language
-        }
-      )
-    }
+    return new LocalTranscriptionProcessor(
+      this.localClient,
+      sourceType,
+      onTextResponse,
+      onSetupComplete,
+      {
+        modelSize: this.config.modelSize || 'tiny',
+        language,
+        enableNoiseFiltering: this.config.enableNoiseFiltering,
+        energyThreshold: this.config.energyThreshold,
+        minSpeechConfidence: this.config.minSpeechConfidence
+      }
+    )
   }
 
   /**
@@ -158,21 +124,7 @@ export class TranscriptionFactory {
     return this.localClient
   }
 
-  // Private methods
-
-  private async determineEffectiveMode(): Promise<'local' | 'gemini'> {
-    if (this.config.mode === 'gemini') {
-      return 'gemini'
-    }
-
-    if (this.config.mode === 'local') {
-      return 'local'
-    }
-
-    // Auto mode: prefer local if available, fallback to Gemini
-    const localAvailable = await this.isLocalAvailable()
-    return localAvailable ? 'local' : 'gemini'
-  }
+  // Private methods - simplified for local-only operation
 }
 
 /**
@@ -361,7 +313,7 @@ export class LocalTranscriptionProcessor extends TranscriptionProcessor {
         // Extract keywords from the transcription for highlighting
         const keywords = this.extractKeywords(result.text.trim())
 
-        // Format the response to match the expected Gemini format for UI compatibility
+        // Format the response to match the expected UI format for compatibility
         // The UI parser expects "TRANSCRIPTION:" prefix and optionally "KEYWORDS:"
         const formattedResponse = `TRANSCRIPTION: ${result.text.trim()}\nKEYWORDS: ${keywords.join(', ')}`
 
@@ -503,63 +455,3 @@ export class LocalTranscriptionProcessor extends TranscriptionProcessor {
   }
 }
 
-/**
- * Gemini transcription processor (wrapper around existing GeminiClient)
- */
-export class GeminiTranscriptionProcessor extends TranscriptionProcessor {
-  private geminiClient: GeminiClient | null = null
-  private options: {
-    customPrompt?: string
-    language?: string
-  }
-
-  constructor(
-    sourceType: 'microphone' | 'system',
-    onTextResponse: (text: string, turnComplete: boolean, sourceType: 'microphone' | 'system') => void,
-    onSetupComplete?: () => void,
-    options: { customPrompt?: string; language?: string } = {}
-  ) {
-    super(sourceType, onTextResponse, onSetupComplete)
-    this.options = options
-  }
-
-  async connect(): Promise<void> {
-    console.log(`[GeminiTranscriptionProcessor] Connecting ${this.sourceType} processor`)
-
-    this.geminiClient = new GeminiClient(
-      (text) => this.onTextResponse(text, false, this.sourceType),
-      () => this.onSetupComplete?.(),
-      () => {},
-      () => {},
-      () => {},
-      'transcription',
-      this.options.customPrompt,
-      this.options.language
-    )
-
-    await this.geminiClient.connect()
-  }
-
-  disconnect(): void {
-    console.log(`[GeminiTranscriptionProcessor] Disconnecting ${this.sourceType} processor`)
-
-    if (this.geminiClient) {
-      this.geminiClient.disconnect()
-      this.geminiClient = null
-    }
-  }
-
-  sendAudioChunk(chunk: string, mimeType: string): void {
-    if (this.geminiClient) {
-      this.geminiClient.sendMediaChunk(chunk, mimeType)
-    }
-  }
-
-  isConnected(): boolean {
-    return this.geminiClient !== null
-  }
-
-  getStats(): any {
-    return this.geminiClient?.getStats() || {}
-  }
-}

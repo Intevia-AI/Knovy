@@ -128,22 +128,22 @@ function AppContent() {
       window.electronAPI.send('app:resize-window', { width: 320, height: 300 })
       window.electronAPI.send('window:set-position', { position: 'center' })
 
-      const { getLocalTranscriptionClient } = await import('../services/localTranscriptionClient')
-      const localClient = getLocalTranscriptionClient()
+      const { getWhisperClient } = await import('../services/whisperClient')
+      const whisperClient = getWhisperClient()
 
       // Initialize and check models
-      const initialized = await localClient.initialize()
+      const initialized = await whisperClient.initialize()
       if (!initialized) {
-        console.error('[App] Local transcription initialization failed')
+        console.error('[App] Whisper initialization failed')
         setIsAppLoading(false)
         setModelCheckComplete(false)
         return
       }
 
-      const isAvailable = await localClient.isAvailable()
+      const isAvailable = await whisperClient.isAvailable()
       if (!isAvailable) {
         console.log('[App] Models not available, downloading...')
-        const ensured = await localClient.ensureModelAvailable()
+        const ensured = await whisperClient.ensureModelAvailable()
         if (!ensured) {
           console.error('[App] Failed to ensure models are available')
           setIsAppLoading(false)

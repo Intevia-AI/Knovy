@@ -1,11 +1,11 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
-import { TranscriptionFactory, TranscriptionProcessor } from '@/services/transcriptionFactory'
+import { TranscriptionFactory, TranscriptionProcessor } from '@/services/transcription'
 import { useAuth } from '@/hooks/useAuth'
 
 // Configuration: Change this to set the real-time transcription model size
-// Options: 'tiny' (39MB, fastest), 'base' (74MB, better), 'small' (244MB, good+), 'medium' (769MB, best)
+// Options: 'tiny' (75MB, fastest), 'base' (142MB, better), 'small' (466MB, good+), 'medium' (1.5GB, best)
 // Note: For real-time use, 'tiny' or 'base' are recommended for performance
 const REALTIME_MODEL_SIZE: 'tiny' | 'base' | 'small' | 'medium' = 'base'
 
@@ -236,16 +236,9 @@ export default function RealTimeAnalysis({
 
       // Initialize transcription factory with local transcription only
       transcriptionFactory = new TranscriptionFactory({
-        mode: 'local', // Use local transcription only for standalone operation
-        localOptions: {
-          modelSize: REALTIME_MODEL_SIZE, // Configurable model size for real-time performance
-          enableNoiseFiltering: true, // Enable comprehensive noise filtering
-          energyThreshold: 0.01 // Default energy threshold for microphone
-        },
-        geminiOptions: {
-          customPrompt,
-          language
-        }
+        modelSize: REALTIME_MODEL_SIZE, // Configurable model size for real-time performance
+        enableNoiseFiltering: true, // Enable comprehensive noise filtering
+        energyThreshold: 0.01 // Default energy threshold for microphone
       })
 
       transcriptionFactoryRef.current = transcriptionFactory
