@@ -1,8 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { cleanupStream, cleanupRecorder } from '@/lib/utils'
 
-export const SEGMENT_MS = 20_000 // segment length - Exported
-const CHUNK_MS = 1_000 // internal timeslice
 
 export function useSegmentRecorder() {
   const [recording, setRecording] = useState(false)
@@ -81,8 +79,8 @@ export function useSegmentRecorder() {
         stop() // Attempt to stop everything on error
       }
 
-      console.log(`[MicRecorder] Starting internal recorder with timeslice: ${CHUNK_MS}ms`)
-      recorder.start(CHUNK_MS)
+      console.log('[MicRecorder] Starting internal recorder with 1000ms timeslice')
+      recorder.start(1000)
     } catch (err) {
       console.error('[MicRecorder] Error creating/starting MediaRecorder:', err)
       stop() // Attempt to stop everything on error
@@ -111,21 +109,9 @@ export function useSegmentRecorder() {
 
       startRecorderInternal() // Start the internal recorder loop
 
-      // Clear previous timer
       if (timerRef.current) clearInterval(timerRef.current)
 
-      console.log(`[MicRecorder] Setting segment interval timer: ${SEGMENT_MS}ms`)
-      timerRef.current = setInterval(() => {
-        if (recorderRef.current && recorderRef.current.state === 'recording') {
-          console.log(
-            `[MicRecorder] Interval timer: Creating segment without stopping recorder.`
-          )
-          // ✅ Create segment from current chunks without stopping/restarting recorder
-          makeBlobAndDispatch()
-        } else {
-          console.warn('[MicRecorder] Interval timer: Recorder not active, cannot create segment.')
-        }
-      }, SEGMENT_MS)
+      console.log('[MicRecorder] VAD-based segmentation enabled')
 
       setRecording(true)
       console.log('[MicRecorder] Main recording process started successfully.')

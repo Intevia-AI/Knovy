@@ -6,21 +6,11 @@
 
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { cleanupStream, cleanupRecorder } from '@/lib/utils'
-import { useSegmentRecorder, SEGMENT_MS } from '@/hooks/useSegmentRecorder' // Import SEGMENT_MS
+import { useSegmentRecorder } from '@/hooks/useSegmentRecorder'
 import type { Segment } from '@/types'
 import { supabase } from '@/services/supabaseClient.js'
 
-/**
- * @constant {number} SYSTEM_AUDIO_SEGMENT_MS - Duration of each system audio segment in milliseconds
- * @description Controls how frequently complete system audio segments are created
- */
-const SYSTEM_AUDIO_SEGMENT_MS = SEGMENT_MS
-
-/**
- * @constant {number} SYSTEM_AUDIO_CHUNK_MS - Internal timeslice for system audio MediaRecorder in milliseconds
- * @description Controls how frequently the system audio MediaRecorder provides data chunks
- */
-const SYSTEM_AUDIO_CHUNK_MS = 1000 // Internal chunk collection interval
+const SYSTEM_AUDIO_CHUNK_MS = 1000
 
 /**
  * React hook for screen sharing and recording with audio
@@ -215,15 +205,7 @@ export function useScreenShare() {
         if (systemAudioTimerRef.current) {
           clearInterval(systemAudioTimerRef.current)
         }
-        systemAudioTimerRef.current = setInterval(() => {
-          if (systemAudioRecorderRef.current?.state === 'recording') {
-            console.log(
-              '[ScreenShare] Interval: Creating system audio segment without stopping recorder.'
-            )
-            // ✅ Create segment from current chunks without stopping/restarting recorder
-            makeSystemAudioBlobAndDispatch()
-          }
-        }, SYSTEM_AUDIO_SEGMENT_MS)
+        console.log('[ScreenShare] System audio segmentation handled by VAD system')
       } catch (recorderError) {
         console.error('[ScreenShare] Failed to create/start system MediaRecorder:', recorderError)
         alert(

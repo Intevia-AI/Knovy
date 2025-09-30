@@ -317,8 +317,27 @@ export default function RealTimeAnalysis({
         systemAudioWorkletNodeRef.current = systemAudioWorkletNode
 
         micAudioWorkletNode.port.onmessage = (event) => {
-          const { pcmData, sourceType } = event.data
-          if (micProcessor && shouldSendAudio && sourceType === 'microphone') {
+          const { pcmData, sourceType, type, segmentDuration, forced } = event.data
+
+          // Handle speech end events for VAD-based segmentation
+          if (type === 'speechEnd' && sourceType === 'microphone') {
+            console.log(`[RealTimeAnalysis] Microphone speech ended - duration: ${segmentDuration}ms, forced: ${forced || false}`)
+            // Trigger segment processing in the current system
+            window.dispatchEvent(
+              new CustomEvent('mic_segment', {
+                detail: {
+                  vadTriggered: true,
+                  segmentDuration,
+                  forced: forced || false,
+                  timestamp: Date.now()
+                }
+              })
+            )
+            return
+          }
+
+          // Handle regular audio data
+          if (micProcessor && shouldSendAudio && sourceType === 'microphone' && pcmData) {
             try {
               const pcmArray = new Uint8Array(pcmData)
               const b64Data = btoa(String.fromCharCode.apply(null, Array.from(pcmArray)))
@@ -330,8 +349,27 @@ export default function RealTimeAnalysis({
         }
 
         systemAudioWorkletNode.port.onmessage = (event) => {
-          const { pcmData, sourceType } = event.data
-          if (systemProcessor && shouldSendAudio && sourceType === 'system') {
+          const { pcmData, sourceType, type, segmentDuration, forced } = event.data
+
+          // Handle speech end events for VAD-based segmentation
+          if (type === 'speechEnd' && sourceType === 'system') {
+            console.log(`[RealTimeAnalysis] System audio speech ended - duration: ${segmentDuration}ms, forced: ${forced || false}`)
+            // Trigger segment processing in the current system
+            window.dispatchEvent(
+              new CustomEvent('system_segment', {
+                detail: {
+                  vadTriggered: true,
+                  segmentDuration,
+                  forced: forced || false,
+                  timestamp: Date.now()
+                }
+              })
+            )
+            return
+          }
+
+          // Handle regular audio data
+          if (systemProcessor && shouldSendAudio && sourceType === 'system' && pcmData) {
             try {
               const pcmArray = new Uint8Array(pcmData)
               const b64Data = btoa(String.fromCharCode.apply(null, Array.from(pcmArray)))
