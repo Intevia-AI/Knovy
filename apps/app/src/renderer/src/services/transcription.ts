@@ -74,7 +74,7 @@ export class TranscriptionFactory {
     onSetupComplete?: () => void,
     language?: string
   ): Promise<TranscriptionProcessor> {
-    console.log(`[TranscriptionFactory] Creating whisper transcription processor for ${sourceType}`)
+    console.log(`[TranscriptionFactory] Creating whisper transcription processor for ${sourceType} with auto-detection enabled`)
 
     return new WhisperTranscriptionProcessor(
       this.whisperClient,
@@ -83,7 +83,8 @@ export class TranscriptionFactory {
       onSetupComplete,
       {
         modelSize: this.config.modelSize || 'tiny',
-        language,
+        language, // Keep for potential fallback scenarios
+        autoDetectLanguage: true, // Enable auto-detection by default
         enableNoiseFiltering: this.config.enableNoiseFiltering,
         energyThreshold: this.config.energyThreshold,
         minSpeechConfidence: this.config.minSpeechConfidence

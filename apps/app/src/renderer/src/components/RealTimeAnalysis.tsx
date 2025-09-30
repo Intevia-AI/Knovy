@@ -18,15 +18,13 @@ interface RealTimeAnalysisProps {
   systemAudioStream?: MediaStream
   isScreenSharing: boolean
   customPrompt?: string
-  language?: string
 }
 
 export default function RealTimeAnalysis({
   onTextResponse,
   systemAudioStream,
   isScreenSharing,
-  customPrompt,
-  language
+  customPrompt
 }: RealTimeAnalysisProps) {
   const { hasEntitlement } = useAuth()
   const canUseKeywordSearch = hasEntitlement('allow_ai_action:keyword-search')
@@ -232,7 +230,7 @@ export default function RealTimeAnalysis({
     }
 
     const startAudioProcessing = async () => {
-      console.log('[RealTimeAnalysis] Starting dual audio processing with language:', language)
+      console.log('[RealTimeAnalysis] Starting dual audio processing with automatic language detection')
 
       // Initialize transcription factory with local transcription only
       transcriptionFactory = new TranscriptionFactory({
@@ -277,8 +275,7 @@ export default function RealTimeAnalysis({
         () => {
           console.log('[RealTimeAnalysis] Microphone transcription processor setup complete')
           shouldSendAudio = true
-        },
-        language
+        }
       )
 
       systemProcessor = await transcriptionFactory.createTranscriptionProcessor(
@@ -287,8 +284,7 @@ export default function RealTimeAnalysis({
           processTranscriptionResponse(text, systemTextBufferRef, sourceType, canUseKeywordSearch),
         () => {
           console.log('[RealTimeAnalysis] System audio transcription processor setup complete')
-        },
-        language
+        }
       )
 
       // Store refs for cleanup
@@ -468,7 +464,7 @@ export default function RealTimeAnalysis({
       systemAudioSourceRef.current = null
       systemAnalyserRef.current = null
     }
-  }, [isScreenSharing, language, customPrompt, onTextResponse]) // Removed systemAudioStream dependency
+  }, [isScreenSharing, customPrompt, onTextResponse]) // Removed language and systemAudioStream dependencies
 
   // Separate effect to handle system audio stream changes without restarting transcription
   useEffect(() => {

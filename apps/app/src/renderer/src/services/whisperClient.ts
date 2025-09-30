@@ -10,6 +10,7 @@ export interface WhisperOptions {
   enableNoiseFiltering?: boolean
   energyThreshold?: number
   minSpeechConfidence?: number
+  autoDetectLanguage?: boolean // Enable automatic language detection (default: true)
 }
 
 export interface WhisperResult {

@@ -15,6 +15,7 @@ export interface TranscriptionOptions {
   enableNoiseFiltering?: boolean
   energyThreshold?: number
   minSpeechConfidence?: number
+  autoDetectLanguage?: boolean // Enable automatic language detection (default: true)
 }
 
 export interface TranscriptionResult {
@@ -655,19 +656,28 @@ export class WhisperBackend {
         '4'
       ]
 
-      // Add language if specified, converting to whisper.cpp format
-      if (options.language) {
+      // Enable auto-detection by default (autoDetectLanguage defaults to true)
+      // Only add language constraint if explicitly disabled auto-detection
+      const shouldAutoDetect = options.autoDetectLanguage !== false
+
+      if (!shouldAutoDetect && options.language) {
         const whisperLanguage = this.convertToWhisperLanguage(options.language)
         if (whisperLanguage) {
           args.push('--language', whisperLanguage)
           console.log(
-            `[WhisperService] Converted language '${options.language}' to '${whisperLanguage}' for whisper.cpp`
+            `[WhisperService] Using fixed language '${options.language}' → '${whisperLanguage}' (auto-detection disabled)`
           )
         } else {
           console.log(
-            `[WhisperService] Skipping unsupported language '${options.language}', using auto-detection`
+            `[WhisperService] Unsupported language '${options.language}', falling back to auto-detection`
           )
         }
+      } else {
+        // Use --language auto to enable auto-detection WITHOUT translation
+        args.push('--language', 'auto')
+        console.log(
+          `[WhisperService] Using automatic language detection (--language auto) for mixed-language support`
+        )
       }
 
       console.log(`[WhisperService] Executing whisper.cpp:`, {
