@@ -5,9 +5,17 @@ import { getWhisperClient } from '../services/whisperClient'
 import { Logo } from '@/components/Logo'
 import { Button } from '@/components/ui/button'
 
+interface LoadingPhase {
+  name: string
+  message: string
+  weight: number // Progress weight (0-1, should sum to 1 across all phases)
+  executor?: () => Promise<boolean> // Optional executor for the phase
+}
+
 interface LoadingPageProps {
   onComplete: (success: boolean) => void
   loadingMessage?: string
+  phases?: LoadingPhase[] // Multi-phase loading support
 }
 
 interface DownloadProgress {
@@ -19,16 +27,20 @@ interface DownloadProgress {
 
 export function LoadingPage({
   onComplete,
-  loadingMessage = 'Loading the app...'
+  loadingMessage = 'Loading the app...',
+  phases
 }: LoadingPageProps) {
   const [status, setStatus] = useState<'loading' | 'complete' | 'error'>('loading')
   const [progress, setProgress] = useState<number>(0)
   const [errorMessage, setErrorMessage] = useState<string>('')
+  const [currentPhase, setCurrentPhase] = useState<number>(0)
+  const [currentPhaseProgress, setCurrentPhaseProgress] = useState<number>(0)
 
   useEffect(() => {
     let mounted = true
     let progressInterval: NodeJS.Timeout | null = null
 
+    // Legacy single-phase model loading (fallback)
     const prepareModel = async () => {
       try {
         console.log('[LoadingPage] Starting model preparation...')
@@ -95,7 +107,110 @@ export function LoadingPage({
       }
     }
 
-    prepareModel()
+    // Multi-phase loading
+    const runPhases = async () => {
+      if (!phases || phases.length === 0) {
+        await prepareModel()
+        return
+      }
+
+      try {
+        console.log(`[LoadingPage] Starting multi-phase loading with ${phases.length} phases`)
+        let totalProgress = 0
+
+        for (let i = 0; i < phases.length; i++) {
+          if (!mounted) return
+
+          const phase = phases[i]
+          setCurrentPhase(i)
+          setCurrentPhaseProgress(0)
+
+          console.log(`[LoadingPage] Starting phase ${i + 1}/${phases.length}: ${phase.name}`)
+
+          // Animate phase progress
+          const phaseSteps = 100
+          const stepDelay = 20
+          let phaseProgress = 0
+
+          const phaseInterval = setInterval(() => {
+            if (!mounted) return
+
+            phaseProgress += 1
+            setCurrentPhaseProgress(phaseProgress)
+
+            // Calculate total progress
+            const completedPhasesProgress = phases.slice(0, i).reduce((sum, p) => sum + p.weight, 0)
+            const currentPhaseContribution = (phaseProgress / 100) * phase.weight
+            const newTotalProgress = Math.min(100, (completedPhasesProgress + currentPhaseContribution) * 100)
+            setProgress(newTotalProgress)
+
+            if (phaseProgress >= 100) {
+              clearInterval(phaseInterval)
+            }
+          }, stepDelay)
+
+          // Execute phase if it has an executor
+          let phaseSuccess = true
+          if (phase.executor) {
+            try {
+              phaseSuccess = await phase.executor()
+            } catch (error) {
+              console.error(`[LoadingPage] Error in phase ${phase.name}:`, error)
+              phaseSuccess = false
+            }
+          } else {
+            // Default delay for phases without executors
+            await new Promise(resolve => setTimeout(resolve, 2000))
+          }
+
+          // Ensure phase progress completes
+          clearInterval(phaseInterval)
+          if (mounted) {
+            setCurrentPhaseProgress(100)
+            totalProgress += phase.weight
+            setProgress(Math.min(100, totalProgress * 100))
+          }
+
+          if (!phaseSuccess) {
+            setStatus('error')
+            setErrorMessage(`Failed during ${phase.name}. Please try again.`)
+            setTimeout(() => {
+              if (mounted) {
+                onComplete(false)
+              }
+            }, 3000)
+            return
+          }
+
+          // Small delay between phases
+          await new Promise(resolve => setTimeout(resolve, 200))
+        }
+
+        // All phases completed successfully
+        if (mounted) {
+          setProgress(100)
+          setStatus('complete')
+          setTimeout(() => {
+            if (mounted) {
+              onComplete(true)
+            }
+          }, 800)
+        }
+      } catch (error) {
+        console.error('[LoadingPage] Error during multi-phase loading:', error)
+        if (mounted) {
+          setStatus('error')
+          setErrorMessage(error instanceof Error ? error.message : 'Initialization failed')
+          setTimeout(() => {
+            if (mounted) {
+              onComplete(false)
+            }
+          }, 3000)
+        }
+      }
+    }
+
+    runPhases()
 
     return () => {
       mounted = false
@@ -103,7 +218,7 @@ export function LoadingPage({
         clearInterval(progressInterval)
       }
     }
-  }, [onComplete])
+  }, [onComplete, phases])
 
   const formatBytes = (bytes: number): string => {
     const sizes = ['Bytes', 'KB', 'MB', 'GB']
@@ -126,6 +241,9 @@ export function LoadingPage({
   const getStatusMessage = () => {
     switch (status) {
       case 'loading':
+        if (phases && phases.length > 0 && currentPhase < phases.length) {
+          return phases[currentPhase].message
+        }
         return loadingMessage
       case 'complete':
         return 'Ready!'
@@ -137,7 +255,10 @@ export function LoadingPage({
   const getDetailMessage = () => {
     switch (status) {
       case 'loading':
-        return progress > 0 ? `${progress}% complete` : 'This will only take a moment'
+        if (phases && phases.length > 0 && currentPhase < phases.length) {
+          return `${Math.round(progress)}% complete (${currentPhase + 1}/${phases.length})`
+        }
+        return progress > 0 ? `${Math.round(progress)}% complete` : 'This will only take a moment'
       case 'complete':
         return 'All set!'
       case 'error':
