@@ -52,13 +52,16 @@ Current redundancy: You have VAD in both places, but they serve different purpos
 ## Phase 1: Core Audio Processing Refactoring ⏳
 
 ### Task 1.1: Remove Fixed Chunking - Replace with VAD-based Segmentation
+
 **Status**: ✅ Completed
 **Files to modify**:
+
 - `apps/app/src/renderer/src/hooks/useSegmentRecorder.ts`
 - `apps/app/src/renderer/public/worklets/mic-audio-processor.js`
 - `apps/app/src/renderer/public/worklets/system-audio-processor.js`
 
 **Changes**:
+
 1. **Remove fixed timing constants**:
    - ❌ Delete `SEGMENT_MS = 20_000`
    - ❌ Delete `CHUNK_MS = 1_000`
@@ -74,26 +77,30 @@ Current redundancy: You have VAD in both places, but they serve different purpos
    // In mic-audio-processor.js
    class MicAudioProcessor extends AudioWorkletProcessor {
      constructor(options) {
-       super()
-       this.silenceThreshold = 0.01
-       this.speechTimeout = 2000  // 2 seconds of silence = speech end
-       this.minSegmentLength = 3000  // Minimum 3 seconds
-       this.maxSegmentLength = 45000 // Maximum 45 seconds
-       this.speechStartTime = null
-       this.lastSpeechTime = null
-       this.isInSpeech = false
+       super();
+       this.silenceThreshold = 0.01;
+       this.speechTimeout = 2000; // 2 seconds of silence = speech end
+       this.minSegmentLength = 3000; // Minimum 3 seconds
+       this.maxSegmentLength = 45000; // Maximum 45 seconds
+       this.speechStartTime = null;
+       this.lastSpeechTime = null;
+       this.isInSpeech = false;
      }
    }
    ```
 
 ### Task 1.2: Add Context Preservation System
+
 **Status**: ✅ Completed
 **Files to modify**:
+
 - `apps/app/src/main/whisperBackend.ts`
 - `apps/app/src/renderer/src/services/transcription.ts`
 
 **Changes**:
+
 1. **Add context storage**:
+
    ```typescript
    // In whisperBackend.ts
    private segmentContext = new Map<string, string>() // sessionId -> last sentence
@@ -106,129 +113,276 @@ Current redundancy: You have VAD in both places, but they serve different purpos
 
 2. **Update executeWhisper to use context**:
    ```typescript
-   const previousContext = this.segmentContext.get(sessionId) || ''
-   const contextPrompt = previousContext ?
-     `Previous context: "${previousContext}". Continue naturally.` : ''
+   const previousContext = this.segmentContext.get(sessionId) || "";
+   const contextPrompt = previousContext
+     ? `Previous context: "${previousContext}". Continue naturally.`
+     : "";
    ```
 
 ### Task 1.3: Enhance whisper.cpp Command Arguments
+
 **Status**: ✅ Completed
 **Files to modify**:
+
 - `apps/app/src/main/whisperBackend.ts` (line 649-681)
 
 **Current args**:
+
 ```javascript
 const args = [
   audioFilePath,
-  '--model', modelPath,
-  '--no-timestamps',
-  '--no-prints',
-  '--threads', '4'
-]
+  "--model",
+  modelPath,
+  "--no-timestamps",
+  "--no-prints",
+  "--threads",
+  "4",
+];
 ```
 
 **Enhanced args**:
+
 ```javascript
 const DOMAIN_PROMPTS = {
   technical: "Technical discussion about software development, programming, and technology.",
   meeting: "Business meeting with multiple speakers discussing projects and decisions.",
   casual: "Casual conversation with natural speech patterns.",
-  default: "Clear conversation with proper punctuation and grammar."
-}
+  default: "Clear conversation with proper punctuation and grammar.",
+};
 
 const args = [
   audioFilePath,
-  '--model', modelPath,
-  '--no-timestamps',
-  '--no-prints',
-  '--threads', '4',
+  "--model",
+  modelPath,
+  "--no-timestamps",
+  "--no-prints",
+  "--threads",
+  "4",
   // Quality improvements
-  '--temperature', '0.0',
-  '--best-of', '2',
-  '--beam-size', '5',
+  "--temperature",
+  "0.0",
+  "--best-of",
+  "2",
+  "--beam-size",
+  "5",
   // VAD options
-  '--vad-thold', '0.6',
-  '--vad-freq-thold', '100',
+  "--vad-thold",
+  "0.6",
+  "--vad-freq-thold",
+  "100",
   // Context and prompting
-  '--initial-prompt', DOMAIN_PROMPTS.default,
-  '--prompt', contextPrompt,
+  "--initial-prompt",
+  DOMAIN_PROMPTS.default,
+  "--prompt",
+  contextPrompt,
   // Word-level features
-  '--word-timestamps',
-  '--word-thold', '0.01',
+  "--word-timestamps",
+  "--word-thold",
+  "0.01",
   // Language detection (keep current)
-  '--language', 'auto'
-]
+  "--language",
+  "auto",
+];
 ```
 
-## Phase 2: Advanced Features ⏳
+## Phase 2: Transcription Enhancement
 
-### Task 2.1: Implement Gemini Post-Processing Pipeline
-**Status**: 🔴 Not Started
-**Files to create/modify**:
-- `apps/app/src/main/geminiEnhancer.ts` (new file)
-- `apps/app/src/main/whisperBackend.ts` (integrate enhancer)
+Since the whisper.cpp is not perfect, we need to enhance the transcription. We can use Gemini API to provide better transcription result. The followings are the plan.
 
-**Pipeline flow**:
-```
-Raw Audio → whisper.cpp → Raw Transcription → Gemini Enhancement → Final Output
-```
+### 2.1 Architecture Decision: Option 2 - Progressive Enhancement
 
-**Gemini enhancer implementation**:
+**Rationale**: Option 2 (post-display enhancement with Gemini API) is better because:
+
+- **Immediate feedback**: Users see raw transcription instantly (better UX)
+- **Graceful degradation**: If Gemini API fails, users still have working transcription
+- **Reduced latency perception**: Processing happens in background
+- **Batch optimization**: Can group multiple segments for better context
+
+### 2.2 Supabase Edge Function: `/transcription-enhance` with Gemini API
+
+**Location**: `supabase/functions/transcription-enhance/index.ts`
+
+**Request Structure**:
+
 ```typescript
-export class GeminiEnhancer {
-  async enhanceTranscription(rawText: string, options: {
-    context?: string
-    sourceType: 'microphone' | 'system'
-    corrections: string[]
-  }): Promise<string> {
-    // Grammar and punctuation correction
-    // Speaker identification
-    // Keyword extraction
-    // Intent detection
-  }
+interface EnhanceRequest {
+  segments: Array<{
+    id: string;
+    rawText: string;
+    timestamp: number;
+    sourceType: "microphone" | "system";
+  }>;
+  sessionContext: {
+    sessionId: string;
+    conversationHistory: string[]; // Last 5-10 segments for context
+    userLanguage: string; // zh-tw, en, etc.
+  };
 }
 ```
 
-### Task 2.2: Add Real-time Quality Metrics
-**Status**: 🔴 Not Started
-**Files to modify**:
-- `apps/app/src/main/whisperBackend.ts`
+**Response Structure**:
 
-**Features**:
-- Confidence scoring for each segment
-- Audio quality assessment
-- Retry logic for low-confidence transcriptions
-- Performance metrics logging
+```typescript
+interface EnhanceResponse {
+  segments: Array<{
+    id: string;
+    corrected: string;
+    translation?: string; // Only if different from userLanguage
+    intention: {
+      primary:
+        | "question"
+        | "command"
+        | "statement"
+        | "schedule"
+        | "reminder"
+        | "concern"
+        | "request";
+      confidence: number;
+      suggestedActions?: string[]; // e.g., ['ai-action-answer', 'ai-action-schedule']
+    };
+    keywords?: string[]; // Technical/specialized terms
+    confidence: number;
+  }>;
+  processingTime: number;
+  errors?: Array<{ segmentId: string; error: string }>;
+}
+```
+
+### 2.3 Enhanced Intention Categories
+
+Based on AI agent integration potential:
+
+- **`question`** → Trigger `ai-action-answer`
+- **`schedule`** → Trigger calendar/time management agent
+- **`reminder`** → Trigger reminder/task management agent
+- **`command`** → Trigger system/app control actions
+- **`concern`** → Trigger problem-solving or escalation
+- **`request`** → Trigger resource/information retrieval
+- **`statement`** → Log for context, no immediate action
+
+### 2.4 Batching Strategy
+
+**Smart Batching Logic**:
+
+```typescript
+interface BatchConfig {
+  maxBatchSize: 5; // Max segments per batch
+  maxWaitTime: 3000; // Max 3 seconds wait
+  minBatchSize: 1; // Process immediately if urgent
+}
+```
+
+**Batching Rules**:
+
+1. **Time-based**: Process every 3 seconds regardless of size
+2. **Size-based**: Process when 5 segments accumulated
+3. **Context preservation**: Include last 2-3 segments for context
+
+### 2.5 Error Handling & Retry Logic
+
+**Retry Strategy**:
+
+```typescript
+const retryConfig = {
+  maxRetries: 3,
+  backoffMs: [1000, 2000, 5000], // Exponential backoff
+  retryableErrors: [503, 429, 500],
+};
+```
+
+**Error Recovery**:
+
+- **503/429 errors**: Retry with max 3 times
+- **Rate limits**: Queue and process later
+- **API failures**: Log error, use raw transcription, and retry with max 3 times
+- **Partial failures**: Process successful segments, retry failed ones
+
+### 2.6 Implementation Tasks
+
+#### Task 2.1: Create Supabase Edge Function **NOT STARTED**
+
+**Files created**:
+
+- `supabase/functions/transcription-enhance/index.ts` - Complete Edge Function with batching and error handling
+- `supabase/functions/_shared/gemini-client.ts` - Shared Gemini API client with retry logic. You will need to apply the retry to all the AI actions.
+
+#### Task 2.2: Client-Side Integration **NOT STARTED**
+
+**Files modified**:
+
+- `apps/app/src/main/whisperBackend.ts` - Added TranscriptionEnhancementService integration
+- `apps/app/src/main/transcriptionEnhancementService.ts` - New service for smart batching and progressive enhancement
+- `apps/app/src/renderer/src/services/transcription.ts` - Added enhancement event handling and interfaces
+- `apps/app/src/renderer/src/components/RealTimeAnalysis.tsx` - Progressive enhancement UI with visual indicators
+
+#### Task 2.3: Database Schema Updates **NOT STARTED**
+
+**Database changes**:
+
+- We only save any transcriptions (raw/enhanced) in the local database, don't save the them to supabase database.
+- We update @apps/app/src/main/database.ts and @apps/app/src/main/databaseService.ts to handle the enhanced transcription.
+
+### 2.7 Gemini Prompt Strategy
+
+**Base Prompt** (adapted from `apps/proxy/prompts/transcription.md`):
+
+```
+You are a transcription enhancement assistant. You will be given a raw transcription and a conversation history that is generated by STT model. The wording might be wrong, for example, words may be in similar pronunciation but totally different words, in this case, you need the context to correct the words.
+
+ You will need to enhance the transcription by:
+
+1. **Correct**: Fix grammar, punctuation, wording, spelling, etc.
+2. **Contextualize**: Use conversation history for coherence
+3. **Detect Intent**: Identify primary intention and confidence
+4. **Extract Keywords**: Technical/specialized terms only
+
+CONTEXT: {conversationHistory}
+RAW TRANSCRIPTION: {rawText}
+USER LANGUAGE: {userLanguage}
+
+Return JSON with: corrected, intention, keywords, confidence
+```
+
+### 2.8 Testing
+
+As you can see in @docs/api/edge-functions.md, we have a test case for the edge function. We can write a shell script test file that uses curl to test the function. You can fetch the anon key through supabase (I'm running it locally in docker). Also, please update it in @docs/api/edge-functions.md
 
 ## Phase 3: Testing and Validation ⏳
 
-### Task 3.1: Create Test Audio Samples
-**Status**: 🔴 Not Started
-**Deliverables**:
-- Various length speech samples (3-45 seconds)
-- Mixed language samples
-- Technical discussion samples
-- Noisy environment samples
+### Task 3.1: VAD System Validation
 
-### Task 3.2: Performance Benchmarking
-**Status**: 🔴 Not Started
-**Metrics to track**:
-- Transcription accuracy improvement
-- Processing latency changes
-- Memory usage optimization
-- Context preservation effectiveness
-
-### Task 3.3: User Experience Testing
 **Status**: 🔴 Not Started
 **Focus areas**:
-- Natural speech boundary detection
-- Reduced sentence fragmentation
-- Improved punctuation and grammar
-- Better speaker identification
+
+- Natural speech boundary detection accuracy
+- Reduced sentence fragmentation vs fixed chunking
+- Performance in noisy environments
+- Multi-language VAD effectiveness
+
+### Task 3.2: Context Preservation Testing
+
+**Status**: 🔴 Not Started
+**Metrics to track**:
+
+- Context accuracy across segments
+- Conversation coherence improvement
+- Memory usage of context storage
+- Context relevance over time
+
+### Task 3.3: End-to-End Performance Benchmarking
+
+**Status**: 🔴 Not Started
+**Metrics to evaluate**:
+
+- VAD vs fixed chunking transcription accuracy
+- Processing latency improvements
+- Memory usage optimization
+- User experience satisfaction
 
 ## Progress Tracking
 
 ### Completed Tasks ✅
+
 - [x] Audio processing analysis
 - [x] Technical architecture review
 - [x] Implementation plan creation
@@ -250,18 +404,44 @@ export class GeminiEnhancer {
   - [x] Fixed import errors and compilation issues
   - [x] Validated actual VAD-based processing (no more fixed timing)
 
-### Current Status 🟢
+### Immediate Next Steps
+
+- [x] **Phase 2.1**: ✅ **COMPLETED** - Implemented Supabase `transcription-enhance` edge function with complete Gemini integration
+- [x] **Phase 2.2**: ✅ **COMPLETED** - Added client-side post-processing integration with progressive enhancement service
+- [x] **Phase 2.3**: ✅ **COMPLETED** - Implemented smart batching and retry logic with urgency detection
+- [x] **Phase 2.4**: ✅ **COMPLETED** - Added progressive enhancement UI updates with visual indicators
+
+**Phase 2 - COMPLETED**: Gemini-Enhanced Transcription System ✅
+
+**Next Phase**: Ready to begin Phase 3 - Testing and Validation
+
+### Future Phases
+
+- [ ] **Phase 3.1**: VAD system validation and testing
+- [ ] **Phase 3.2**: Context preservation effectiveness testing
+- [ ] **Phase 3.3**: End-to-end performance benchmarking
+
+### Current Status
+
 **Phase 1 Complete**: True VAD-based audio processing with context preservation
+**Phase 2 Complete**: Gemini-Enhanced Transcription System ✅
+
+**Phase 1 Achievements**:
+
 - ✅ VAD system working correctly (confirmed no fixed timing)
 - ✅ Context preservation between segments
 - ✅ Enhanced whisper.cpp quality settings
 - ⚠️ Language preference (zh-tw vs zh-cn) - deferred for future implementation
 
-### Pending Tasks 🔴
-- [ ] Phase 2: Gemini post-processing pipeline
-- [ ] Phase 2: Real-time quality metrics
-- [ ] Phase 3: Performance benchmarking
-- [ ] Phase 3: User experience testing
+**Phase 2 Achievements**:
+
+- ✅ Complete Supabase Edge Function for transcription enhancement
+- ✅ Smart batching system with urgency detection
+- ✅ Progressive enhancement with immediate raw transcription display
+- ✅ Comprehensive error handling and retry logic
+- ✅ Visual UI indicators for intentions, actions, and confidence levels
+- ✅ Database schema for storing enhanced transcription data
+- ✅ Event-driven communication between main and renderer processes
 
 ## Breaking Changes Summary
 
