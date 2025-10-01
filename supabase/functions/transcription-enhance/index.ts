@@ -39,6 +39,10 @@ interface EnhancedSegment {
 interface EnhanceResponse {
   segments: EnhancedSegment[];
   processingTime: number;
+  usage: {
+    input_tokens: number;
+    output_tokens: number;
+  };
   errors?: Array<{ segmentId: string; error: string }>;
 }
 
@@ -49,7 +53,7 @@ async function enhanceSegment(
   segment: TranscriptionSegment,
   sessionContext: SessionContext,
   geminiClient: any
-): Promise<EnhancedSegment> {
+): Promise<{ segment: EnhancedSegment; usage: { input_tokens: number; output_tokens: number } }> {
   const lang = getLanguage(sessionContext.userLanguage);
   const prompt = PROMPTS.transcriptionEnhancement[lang].base({
     rawText: segment.rawText,
@@ -59,7 +63,7 @@ async function enhanceSegment(
 
   try {
     // Use shared Gemini client with JSON parsing
-    const { data: enhancementData } = await geminiClient.generateJSON(prompt, {
+    const { data: enhancementData, usage } = await geminiClient.generateJSON(prompt, {
       temperature: 0.1,
       maxOutputTokens: 1024,
     });
@@ -78,20 +82,32 @@ async function enhanceSegment(
       confidence: Math.min(Math.max(enhancementData.confidence || 0.5, 0), 1),
     };
 
-    return enhancedSegment;
+    return {
+      segment: enhancedSegment,
+      usage: {
+        input_tokens: usage.input_tokens,
+        output_tokens: usage.output_tokens,
+      },
+    };
   } catch (error) {
     console.error(`Failed to enhance segment ${segment.id}:`, error.message);
-    // Return fallback enhancement
+    // Return fallback enhancement with zero token usage
     return {
-      id: segment.id,
-      corrected: segment.rawText,
-      intention: {
-        primary: "statement",
+      segment: {
+        id: segment.id,
+        corrected: segment.rawText,
+        intention: {
+          primary: "statement",
+          confidence: 0.3,
+          suggestedActions: [],
+        },
+        keywords: [],
         confidence: 0.3,
-        suggestedActions: [],
       },
-      keywords: [],
-      confidence: 0.3,
+      usage: {
+        input_tokens: 0,
+        output_tokens: 0,
+      },
     };
   }
 }
@@ -149,15 +165,20 @@ const handleRequest = async (req: Request, profile: Record<string, any>) => {
 
     const results = await Promise.all(enhancementPromises);
 
-    // Separate successful enhancements from errors
+    // Separate successful enhancements from errors and aggregate usage
     const enhancedSegments: EnhancedSegment[] = [];
     const errors: Array<{ segmentId: string; error: string }> = [];
+    let totalInputTokens = 0;
+    let totalOutputTokens = 0;
 
     results.forEach((result) => {
       if ('error' in result) {
         errors.push(result as { segmentId: string; error: string });
       } else {
-        enhancedSegments.push(result as EnhancedSegment);
+        const enhancementResult = result as { segment: EnhancedSegment; usage: { input_tokens: number; output_tokens: number } };
+        enhancedSegments.push(enhancementResult.segment);
+        totalInputTokens += enhancementResult.usage.input_tokens;
+        totalOutputTokens += enhancementResult.usage.output_tokens;
       }
     });
 
@@ -166,6 +187,10 @@ const handleRequest = async (req: Request, profile: Record<string, any>) => {
     const response: EnhanceResponse = {
       segments: enhancedSegments,
       processingTime,
+      usage: {
+        input_tokens: totalInputTokens,
+        output_tokens: totalOutputTokens,
+      },
       ...(errors.length > 0 && { errors }),
     };
 
