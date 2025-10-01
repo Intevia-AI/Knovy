@@ -69,7 +69,7 @@ export function useAIInteraction() {
 
   useEffect(() => {
     if ((window as any).electronAPI) {
-      const unsubscribe = (window as any).electronAPI.on(
+      const unsubscribeData = (window as any).electronAPI.on(
         'transcription:data',
         (newTranscription: TranscriptionMessage) => {
           if (!newTranscription || !newTranscription.content) return
@@ -82,7 +82,26 @@ export function useAIInteraction() {
           setTranscriptions((prev) => [...prev, formattedTranscription])
         }
       )
-      return () => unsubscribe()
+
+      // Handle transcription updates (for enhancement replacements)
+      const unsubscribeUpdate = (window as any).electronAPI.on(
+        'transcription:update',
+        (updateData: { id: string; enhancedText: string; sourceType?: 'microphone' | 'system' }) => {
+          console.log('[useAIInteraction] Received transcription update:', updateData)
+          setTranscriptions((prev) =>
+            prev.map(transcript =>
+              transcript.id === updateData.id
+                ? { ...transcript, content: updateData.enhancedText }
+                : transcript
+            )
+          )
+        }
+      )
+
+      return () => {
+        unsubscribeData()
+        unsubscribeUpdate()
+      }
     }
     return () => {} // Return empty cleanup function when electronAPI is not available
   }, [])
