@@ -1,8 +1,9 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
-import { TranscriptionFactory, TranscriptionProcessor } from '@/services/transcription'
+import { TranscriptionFactory, TranscriptionProcessor, type SegmentEnhancedEvent, type EnhancementErrorEvent } from '@/services/transcription'
 import { useAuth } from '@/hooks/useAuth'
+import { useTranscriptionEnhancement } from '@/hooks/useTranscriptionEnhancement'
 
 // Configuration: Change this to set the real-time transcription model size
 // Options: 'tiny' (75MB, fastest), 'base' (142MB, better), 'small' (466MB, good+), 'medium' (1.5GB, best)
@@ -30,6 +31,46 @@ export default function RealTimeAnalysis({
   const canUseKeywordSearch = hasEntitlement('allow_ai_action:keyword-search')
   const micTextBufferRef = useRef('')
   const systemTextBufferRef = useRef('')
+
+  // Enhancement event handlers
+  const handleSegmentEnhanced = (data: SegmentEnhancedEvent) => {
+    console.log('[RealTimeAnalysis] Segment enhanced:', {
+      sessionId: data.sessionId,
+      originalText: data.original.rawText,
+      enhancedText: data.enhanced.corrected,
+      intention: data.enhanced.intention,
+      keywords: data.enhanced.keywords,
+      confidence: data.enhanced.confidence,
+      processingTime: data.processingTime
+    })
+
+    // TODO: Update UI to show enhanced text
+    // For now, just log the enhancement
+  }
+
+  const handleEnhancementError = (error: EnhancementErrorEvent) => {
+    console.error('[RealTimeAnalysis] Enhancement error:', {
+      sessionId: error.sessionId,
+      segmentId: error.segmentId,
+      error: error.error
+    })
+  }
+
+  // Initialize transcription enhancement
+  const { isEnhancementReady } = useTranscriptionEnhancement({
+    onSegmentEnhanced: handleSegmentEnhanced,
+    onEnhancementError: handleEnhancementError,
+  })
+
+  // Log enhancement status
+  useEffect(() => {
+    if (isEnhancementReady) {
+      console.log('[RealTimeAnalysis] ✅ Transcription enhancement is ready and active')
+    } else {
+      console.log('[RealTimeAnalysis] ⏳ Transcription enhancement not ready yet')
+    }
+  }, [isEnhancementReady])
+
   const animationFrameId = useRef<number | null>(null)
 
   // Refs to track current audio processing instances
