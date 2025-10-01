@@ -189,6 +189,69 @@ export class GeminiClient {
       throw new Error(`Invalid JSON response: ${parseError.message}`);
     }
   }
+
+  /**
+   * Generate content with custom contents (for multimodal input like images)
+   */
+  async generateContentWithCustomContents(
+    contents: Array<any>,
+    config?: Partial<GeminiConfig>,
+    retryCount = 0
+  ): Promise<GeminiResponse> {
+    try {
+      const generationConfig = { ...this.baseConfig, ...config };
+
+      const postData = JSON.stringify({
+        contents,
+        generationConfig,
+      });
+
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${this.apiKey}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: postData,
+        },
+      );
+
+      if (!res.ok) {
+        const errorBody = await res.text();
+        console.error(`Gemini API Error (attempt ${retryCount + 1}):`, errorBody);
+
+        // Check if error is retryable
+        if (
+          GEMINI_RETRY_CONFIG.retryableErrors.includes(res.status) &&
+          retryCount < GEMINI_RETRY_CONFIG.maxRetries
+        ) {
+          const backoffTime = GEMINI_RETRY_CONFIG.backoffMs[retryCount] || 5000;
+          console.log(`Retrying Gemini API call in ${backoffTime}ms...`);
+          await new Promise((resolve) => setTimeout(resolve, backoffTime));
+          return this.generateContentWithCustomContents(contents, config, retryCount + 1);
+        }
+
+        throw new Error(`Gemini API request failed with status ${res.status}: ${errorBody}`);
+      }
+
+      const geminiResponse: GeminiResponse = await res.json();
+
+      if (!geminiResponse.candidates?.[0]?.content?.parts?.[0]?.text) {
+        throw new Error("Invalid response format from Gemini API");
+      }
+
+      return geminiResponse;
+    } catch (error) {
+      if (retryCount < GEMINI_RETRY_CONFIG.maxRetries) {
+        const backoffTime = GEMINI_RETRY_CONFIG.backoffMs[retryCount] || 5000;
+        console.log(`Network error, retrying Gemini API call in ${backoffTime}ms...`, error.message);
+        await new Promise((resolve) => setTimeout(resolve, backoffTime));
+        return this.generateContentWithCustomContents(contents, config, retryCount + 1);
+      }
+      throw error;
+    }
+  }
 }
 
 /**
