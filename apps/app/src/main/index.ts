@@ -919,36 +919,35 @@ app.on('ready', async () => {
             totalWindows: validWindows.length
           })
 
-          // Trigger transcription enhancement with the correct transcript ID
-          const transcriptionService = getWhisperBackend()
-          const enhancementService = transcriptionService.getEnhancementService()
-          if (enhancementService) {
-            // Get user language from cached session profile
-            const userLanguage = cachedSessionProfile?.profile?.language ||
-                               cachedSessionProfile?.app_settings?.language ||
-                               'auto'
+          // Queue segment for enhancement via unified AI action
+          setTimeout(() => {
+            const transcriptionService = getWhisperBackend()
+            const enhancementService = transcriptionService.getEnhancementService()
+            if (enhancementService) {
+              // Get user language from cached session profile
+              const userLanguage = cachedSessionProfile?.profile?.language ||
+                                 cachedSessionProfile?.app_settings?.language ||
+                                 'auto'
 
-            // Create segment with the SAME transcript ID for proper update matching
-            const segment = {
-              id: transcriptId, // Use the same ID that was saved to database
-              rawText: cleanContent,
-              timestamp: Date.now(),
-              sourceType: transcriptionData.sourceType
-            }
+              // Create segment with the SAME transcript ID for proper update matching
+              const segment = {
+                id: transcriptId,
+                rawText: cleanContent,
+                timestamp: Date.now(),
+                sourceType: transcriptionData.sourceType
+              }
 
-            // Get session context
-            const sessionContext = {
-              sessionId: currentSessionId,
-              conversationHistory: [], // TODO: Get from session history if needed
-              userLanguage: userLanguage
-            }
+              // Queue in enhancement service (batching preserved)
+              const sessionContext = {
+                sessionId: currentSessionId,
+                conversationHistory: [],
+                userLanguage: userLanguage
+              }
 
-            // Trigger enhancement (async, non-blocking)
-            setTimeout(() => {
               enhancementService.enhanceSegment(segment, sessionContext, false)
-              console.log(`[main/index.ts] Triggered enhancement for transcript ${transcriptId} with user language: ${userLanguage}`)
-            }, 100) // Small delay to ensure database save completes
-          }
+              console.log(`[main/index.ts] Queued transcript ${transcriptId} for enhancement`)
+            }
+          }, 100) // Small delay to ensure database save completes
         } catch (broadcastError) {
           console.error(`[main/index.ts] Broadcast errors for transcript ${transcriptId}:`, broadcastError)
         }
