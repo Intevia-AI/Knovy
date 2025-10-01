@@ -417,6 +417,34 @@ As you can see in @docs/api/edge-functions.md, we have a test case for the edge 
 
 **Current Status**: Core Gemini-Enhanced Transcription System implemented with backend and service integration complete. Database and UI updates remaining.
 
+#### **Phase 2 Architecture Overview**
+
+```mermaid
+graph TD
+    A[WhisperBackend] --> B[TranscriptionEnhancementService]
+    B --> C[Supabase Edge Function]
+    C --> D[Gemini API]
+    B --> E[Event System]
+    E --> F[Renderer Process]
+    F --> G[Progressive UI Updates]
+
+    A --> H[Raw Transcription]
+    H --> I[Immediate Display]
+    B --> J[Smart Batching]
+    J --> C
+    C --> K[Enhanced Result]
+    K --> E
+    E --> L[Enhanced Display]
+```
+
+**Data Flow**:
+
+1. **Raw transcription** from WhisperBackend displayed immediately
+2. **Enhancement service** batches segments for processing
+3. **Supabase Edge Function** calls Gemini API with retry logic
+4. **Enhanced results** sent back via event system
+5. **Progressive UI updates** show enhanced text with intentions/keywords
+
 ### Future Phases
 
 - [ ] **Phase 3.1**: VAD system validation and testing
@@ -427,13 +455,13 @@ As you can see in @docs/api/edge-functions.md, we have a test case for the edge 
 
 **Phase 1 Complete**: True VAD-based audio processing with context preservation
 **Phase 2 Complete**: Gemini-Enhanced Transcription System ✅
+**Phase 2.1 Complete**: Two-Stage Language Detection ✅
 
 **Phase 1 Achievements**:
 
 - ✅ VAD system working correctly (confirmed no fixed timing)
 - ✅ Context preservation between segments
 - ✅ Enhanced whisper.cpp quality settings
-- ⚠️ Language preference (zh-tw vs zh-cn) - deferred for future implementation
 
 **Phase 2 Achievements**:
 
@@ -441,9 +469,164 @@ As you can see in @docs/api/edge-functions.md, we have a test case for the edge 
 - ✅ Smart batching system with urgency detection
 - ✅ Progressive enhancement with immediate raw transcription display
 - ✅ Comprehensive error handling and retry logic
-- ✅ Visual UI indicators for intentions, actions, and confidence levels
-- ✅ Database schema for storing enhanced transcription data
 - ✅ Event-driven communication between main and renderer processes
+- ✅ Unlimited quotas for transcription enhancement (core feature)
+- ✅ Centralized prompt management in shared prompts file
+
+**Phase 2.1 Achievements - Two-Stage Language Detection**:
+
+- ✅ Language-aware raw transcription quality improvement
+- ✅ Two-stage whisper.cpp detection for Chinese users
+- ✅ Enhanced storage strategy for raw + enhanced transcriptions
+- ✅ Proper Traditional Chinese (zh-TW) vs Simplified Chinese (zh-CN) handling
+
+## Phase 2.1: Two-Stage Language Detection Implementation
+
+### Problem Statement
+
+The original whisper.cpp auto-detection (`--language auto`) has limitations:
+
+- Cannot distinguish between Traditional Chinese (zh-TW) and Simplified Chinese (zh-CN)
+- Taiwanese users expect Traditional Chinese output but may get Simplified Chinese
+- Raw transcription quality affects Gemini enhancement effectiveness
+
+### Solution: Two-Stage Detection Process
+
+**Strategy**: Prioritize user experience over computational cost by implementing intelligent language detection.
+
+#### Stage 1: Language Detection Pass
+
+```bash
+whisper.cpp --model <model> --detect-language --no-prints <audio>
+```
+
+- Fast detection-only pass to identify spoken language
+- Returns language code (e.g., 'zh', 'en', 'ja')
+- Minimal computational overhead
+
+#### Stage 2: Targeted Transcription Pass
+
+Based on detection results and user preferences:
+
+**For Chinese-speaking users (userLanguage = "zh-TW")**:
+
+1. If detected language is Chinese (`zh*`):
+   - Use `--language zh` for better Chinese transcription
+   - Let Gemini enhancement convert to Traditional Chinese in post-processing
+2. If detected language is non-Chinese:
+   - Use standard auto-detection
+
+**For other users**:
+
+- Use standard auto-detection for optimal performance
+
+#### Implementation Details
+
+**whisperBackend.ts modifications**:
+
+```typescript
+interface TranscriptionOptions {
+  language?: string
+  autoDetectLanguage?: boolean
+  userLanguage?: string // User's preferred language (from session profile)
+  enableTwoStageDetection?: boolean // Default: true for zh-TW users
+}
+
+private async detectLanguageFirst(
+  audioFilePath: string,
+  modelPath: string
+): Promise<string | null> {
+  const args = [
+    audioFilePath,
+    '--model', modelPath,
+    '--detect-language',
+    '--no-prints',
+    '--threads', '2' // Faster detection
+  ]
+
+  try {
+    const result = await this.executeWhisperCommand(args)
+    return this.extractDetectedLanguage(result) // Parse "detected language: zh" format
+  } catch (error) {
+    console.warn('[WhisperService] Language detection failed, falling back to auto')
+    return null
+  }
+}
+
+private async transcribeWithLanguageAwareness(
+  audioFilePath: string,
+  modelPath: string,
+  options: TranscriptionOptions
+): Promise<string> {
+
+  // Two-stage detection for zh-TW users or when explicitly enabled
+  if (options.userLanguage === 'zh-TW' || options.enableTwoStageDetection) {
+    const detectedLang = await this.detectLanguageFirst(audioFilePath, modelPath)
+
+    if (detectedLang?.startsWith('zh')) {
+      console.log(`[WhisperService] Detected Chinese, using targeted transcription for ${options.userLanguage} user`)
+      // Use Chinese model for better quality, let Gemini handle Traditional conversion
+      return this.executeWhisper(audioFilePath, modelPath, { language: 'zh' })
+    }
+
+    console.log(`[WhisperService] Detected non-Chinese (${detectedLang}), using auto-detection`)
+  }
+
+  // Standard auto-detection for other cases
+  return this.executeWhisper(audioFilePath, modelPath, { autoDetectLanguage: true })
+}
+```
+
+#### Enhanced Storage Schema
+
+Store both raw and enhanced transcriptions for debugging and fallback:
+
+```typescript
+interface EnhancedTranscriptionRecord {
+  // Raw whisper.cpp output
+  rawText: string;
+  detectedLanguage?: string; // From Stage 1 detection
+  whisperLanguage?: string; // Language used for Stage 2 transcription
+
+  // Enhanced output from Gemini
+  enhancedText?: string;
+  enhancedLanguage: string; // User's preferred language
+
+  // Processing metadata
+  usedTwoStageDetection: boolean;
+  enhancementStatus: "pending" | "processing" | "completed" | "failed";
+}
+```
+
+#### Performance Considerations
+
+**Computational Cost**:
+
+- Stage 1 detection: ~100-200ms overhead
+- Stage 2 transcription: Same as original
+- Total overhead: ~10-15% for Chinese users
+
+**Optimization Strategies**:
+
+- Cache language detection results per session
+- Skip two-stage detection if recently detected language is stable
+- Parallel processing where possible
+
+#### Quality Benefits
+
+**Expected Improvements**:
+
+- **Raw transcription**: Better Chinese character accuracy from targeted models
+- **Enhanced transcription**: Higher quality input leads to better Gemini enhancement
+- **User experience**: Consistent Traditional Chinese for Taiwanese users
+- **Debugging**: Clear separation of detection vs enhancement issues
+
+### Migration Strategy
+
+1. **Backwards Compatibility**: Two-stage detection is opt-in initially
+2. **Gradual Rollout**: Enable for zh-TW users first, then expand based on results
+3. **Monitoring**: Track detection accuracy and processing times
+4. **Fallback**: Always fall back to standard auto-detection on errors
 
 ## Breaking Changes Summary
 

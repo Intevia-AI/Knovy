@@ -85,12 +85,19 @@ Access the web application at `http://localhost:3000`.
 
 ### Desktop Application
 
-This command starts the Electron application and its development server.
+This command starts the Electron application and its development server. The desktop app uses **local whisper.cpp transcription** for offline, privacy-focused speech-to-text.
 
 ```bash
 # In a separate terminal
 pnpm --filter app dev
 ```
+
+**First Launch**: The app will automatically download the base whisper model (142MB) on first startup. Ensure you have an internet connection for the initial model download.
+
+**Transcription Enhancement**: The desktop app can optionally enhance raw transcriptions using the Gemini API. To enable this feature:
+1. Ensure you have a valid Supabase configuration
+2. The user must have the `transcription_enhance` entitlement
+3. Enhancement runs automatically after raw transcription is displayed
 
 ### Supabase
 
@@ -141,6 +148,8 @@ pnpm --filter app dev
 ## 5. Backend Deployment (Proxy Server)
 
 The WebSocket proxy server (`apps/proxy`) is designed for deployment as a container to **Google Cloud Run**.
+
+**Note**: The proxy server is currently used by the **web application only**. The desktop application uses local whisper.cpp transcription and does not require the proxy server.
 
 ### Storing the API Key Securely
 
