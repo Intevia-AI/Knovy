@@ -11,6 +11,8 @@ export interface WhisperOptions {
   energyThreshold?: number
   minSpeechConfidence?: number
   autoDetectLanguage?: boolean // Enable automatic language detection (default: true)
+  userLanguage?: string // User's preferred language (from session profile)
+  enableTwoStageDetection?: boolean // Enable two-stage detection for better quality
 }
 
 export interface WhisperResult {

@@ -73,16 +73,21 @@ export class TranscriptionFactory {
       const whisperInitialized = await this.whisperClient.initialize()
 
       if (whisperInitialized) {
-        const isAvailable = await this.whisperClient.isAvailable()
-        if (!isAvailable) {
-          console.warn('[TranscriptionFactory] Whisper transcription initialized but no models available')
+        // Always ensure the default model (base) is available
+        // This will download it if user only has older models like 'tiny'
+        console.log('[TranscriptionFactory] Ensuring default model is available...')
+        const ensured = await this.whisperClient.ensureModelAvailable()
+        if (!ensured) {
+          console.error('[TranscriptionFactory] Failed to ensure default model is available')
 
-          // Try to ensure models are available
-          const ensured = await this.whisperClient.ensureModelAvailable()
-          if (!ensured) {
-            console.error('[TranscriptionFactory] Failed to ensure models are available')
+          // Check if ANY models are available as fallback
+          const isAvailable = await this.whisperClient.isAvailable()
+          if (!isAvailable) {
+            console.error('[TranscriptionFactory] No whisper models available at all')
             return false
           }
+
+          console.warn('[TranscriptionFactory] Proceeding with available models (not ideal)')
         }
 
         console.log('[TranscriptionFactory] Whisper transcription ready')
@@ -146,7 +151,7 @@ export class TranscriptionFactory {
     onSetupComplete?: () => void,
     language?: string
   ): Promise<TranscriptionProcessor> {
-    console.log(`[TranscriptionFactory] Creating whisper transcription processor for ${sourceType} with auto-detection enabled`)
+    console.log(`[TranscriptionFactory] Creating whisper transcription processor for ${sourceType} with language: ${language}`)
 
     return new WhisperTranscriptionProcessor(
       this.whisperClient,
@@ -154,9 +159,11 @@ export class TranscriptionFactory {
       onTextResponse,
       onSetupComplete,
       {
-        modelSize: this.config.modelSize || 'tiny',
+        modelSize: this.config.modelSize || 'base', // Use base model by default for better quality
         language, // Keep for potential fallback scenarios
         autoDetectLanguage: true, // Enable auto-detection by default
+        userLanguage: language, // Pass user language for two-stage detection
+        enableTwoStageDetection: true, // Enable two-stage detection for better quality
         enableNoiseFiltering: this.config.enableNoiseFiltering,
         energyThreshold: this.config.energyThreshold,
         minSpeechConfidence: this.config.minSpeechConfidence
