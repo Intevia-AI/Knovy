@@ -172,11 +172,14 @@ export class TranscriptionEnhancementService extends EventEmitter {
     // Mark as processing
     this.processingBatches.add(sessionId)
 
+    // Declare batchSegments outside try block for error handling access
+    let batchSegments: PendingSegment[] = []
+
     try {
       console.log(`[TranscriptionEnhancementService] Processing batch of ${segments.length} segments for session ${sessionId}`)
 
       // Take up to maxBatchSize segments
-      const batchSegments = segments.splice(0, this.batchConfig.maxBatchSize)
+      batchSegments = segments.splice(0, this.batchConfig.maxBatchSize)
 
       // Extract session context from first segment (they should all be the same session)
       const sessionContext = batchSegments[0].sessionContext
