@@ -98,6 +98,157 @@ export async function addTranscript(transcript: {
   return { id }
 }
 
+// Enhanced transcription functions (Phase 2.1)
+
+export interface EnhancedTranscriptData {
+  id: string
+  session_id: string
+  timestamp: string
+  content: string // This becomes the display text (enhanced if available, raw otherwise)
+  sourceType?: 'microphone' | 'system'
+  // Raw whisper.cpp data
+  rawText: string
+  detectedLanguage?: string
+  whisperLanguage?: string
+  userLanguage?: string
+  usedTwoStageDetection?: boolean
+  processingTimeMs?: number
+  // Enhancement data (initially empty)
+  enhancementStatus?: 'pending' | 'processing' | 'completed' | 'failed'
+}
+
+export async function addEnhancedTranscript(transcript: EnhancedTranscriptData) {
+  console.log('[DB] Adding enhanced transcript for session:', transcript.session_id)
+  const db = await dbPromise
+
+  const {
+    id, session_id, timestamp, content, sourceType = 'system',
+    rawText, detectedLanguage, whisperLanguage, userLanguage,
+    usedTwoStageDetection = false, processingTimeMs,
+    enhancementStatus = 'pending'
+  } = transcript
+
+  const stmt = await db.prepare(`
+    INSERT INTO transcripts (
+      id, session_id, timestamp, content, source_type,
+      raw_text, detected_language, whisper_language, user_language,
+      used_two_stage_detection, processing_time_ms, enhancement_status
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `)
+
+  const result = await stmt.run(
+    id, session_id, timestamp, content, sourceType,
+    rawText, detectedLanguage, whisperLanguage, userLanguage,
+    usedTwoStageDetection ? 1 : 0, processingTimeMs, enhancementStatus
+  )
+
+  console.log('[DB] Enhanced transcript add result:', { changes: result.changes, lastID: result.lastID })
+  return { id }
+}
+
+export interface EnhancementUpdateData {
+  enhancedText: string
+  enhancementMetadata: {
+    intention?: {
+      primary: string
+      confidence: number
+      suggestedActions?: string[]
+    }
+    keywords?: string[]
+    confidence?: number
+    processingTime?: number
+  }
+}
+
+export async function updateTranscriptEnhancement(
+  transcriptId: string,
+  enhancementData: EnhancementUpdateData
+) {
+  console.log('[DB] Updating transcript enhancement for:', transcriptId)
+  const db = await dbPromise
+
+  // First check if the transcript exists
+  const checkStmt = await db.prepare('SELECT id, content, enhancement_status FROM transcripts WHERE id = ?')
+  const existingTranscript = await checkStmt.get(transcriptId)
+
+  if (!existingTranscript) {
+    console.error(`[DB] Transcript with ID ${transcriptId} not found for enhancement update`)
+    return { success: false, error: 'Transcript not found' }
+  }
+
+  console.log('[DB] Found existing transcript:', {
+    id: existingTranscript.id,
+    currentStatus: existingTranscript.enhancement_status,
+    currentContent: existingTranscript.content?.substring(0, 50) + '...'
+  })
+
+  const { enhancedText, enhancementMetadata } = enhancementData
+  const enhancementUpdatedAt = new Date().toISOString()
+
+  const stmt = await db.prepare(`
+    UPDATE transcripts
+    SET
+      enhanced_text = ?,
+      content = ?, -- Update display content to enhanced text
+      enhancement_metadata = ?,
+      enhancement_status = 'completed',
+      enhancement_updated_at = ?
+    WHERE id = ?
+  `)
+
+  const result = await stmt.run(
+    enhancedText,
+    enhancedText, // Use enhanced text as the display content
+    JSON.stringify(enhancementMetadata),
+    enhancementUpdatedAt,
+    transcriptId
+  )
+
+  console.log('[DB] Enhancement update result:', { changes: result.changes })
+  return { success: result.changes > 0 }
+}
+
+export async function updateTranscriptEnhancementStatus(
+  transcriptId: string,
+  status: 'pending' | 'processing' | 'completed' | 'failed'
+) {
+  const db = await dbPromise
+  const stmt = await db.prepare(`
+    UPDATE transcripts
+    SET enhancement_status = ?
+    WHERE id = ?
+  `)
+
+  const result = await stmt.run(status, transcriptId)
+  return { success: result.changes > 0 }
+}
+
+export async function getTranscriptById(transcriptId: string) {
+  const db = await dbPromise
+  const stmt = await db.prepare('SELECT * FROM transcripts WHERE id = ?')
+  return stmt.get(transcriptId)
+}
+
+export async function getEnhancedTranscripts(sessionId: string, page: number = 1, limit: number = 50) {
+  const db = await dbPromise
+  const offset = (page - 1) * limit
+  const stmt = await db.prepare(`
+    SELECT
+      *,
+      -- Parse enhancement metadata if available
+      CASE
+        WHEN enhancement_metadata IS NOT NULL
+        THEN enhancement_metadata
+        ELSE NULL
+      END as enhancement_metadata_parsed
+    FROM transcripts
+    WHERE session_id = ?
+    ORDER BY timestamp ASC
+    LIMIT ? OFFSET ?
+  `)
+  return stmt.all(sessionId, limit, offset)
+}
+
 export async function endSession(sessionId: string) {
   const db = await dbPromise
   try {
