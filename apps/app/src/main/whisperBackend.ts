@@ -11,7 +11,7 @@ import {
 
 // Configuration: Change this to set the default model size
 // Options: 'tiny' (75MB, fastest), 'base' (142MB, better), 'small' (466MB, good+), 'medium' (1.5GB, best)
-const DEFAULT_MODEL_SIZE: 'tiny' | 'base' | 'small' | 'medium' = 'tiny'
+const DEFAULT_MODEL_SIZE: 'tiny' | 'base' | 'small' | 'medium' = 'base'
 
 // Domain-specific prompts for better transcription context
 const DOMAIN_PROMPTS = {
@@ -29,6 +29,8 @@ export interface TranscriptionOptions {
   energyThreshold?: number
   minSpeechConfidence?: number
   autoDetectLanguage?: boolean // Enable automatic language detection (default: true)
+  userLanguage?: string // User's preferred language (from session profile)
+  enableTwoStageDetection?: boolean // Enable two-stage detection for better quality (default: true for zh-TW users)
 }
 
 export interface TranscriptionResult {
@@ -37,6 +39,9 @@ export interface TranscriptionResult {
   language?: string
   sourceType: 'microphone' | 'system'
   processingTime: number
+  detectedLanguage?: string // Language detected in Stage 1 (if two-stage detection used)
+  whisperLanguage?: string // Language used for Stage 2 transcription
+  usedTwoStageDetection?: boolean // Whether two-stage detection was used
 }
 
 export interface ModelInfo {
@@ -160,13 +165,14 @@ export class WhisperBackend {
       const sessionContext = {
         sessionId,
         conversationHistory: conversationHistory.slice(-10), // Last 10 segments for context
-        userLanguage: options.language || 'en',
+        userLanguage: options.userLanguage || options.language || 'en', // Prefer userLanguage over detected language
       }
 
-      // Trigger enhancement (async, non-blocking)
-      this.enhancementService.enhanceSegment(segment, sessionContext, false)
-
-      console.log(`[WhisperService] Triggered enhancement for segment ${segment.id} in session ${sessionId}`)
+      // Trigger enhancement (async, non-blocking) with small delay to ensure DB save completes
+      setTimeout(() => {
+        this.enhancementService.enhanceSegment(segment, sessionContext, false)
+        console.log(`[WhisperService] Triggered enhancement for segment ${segment.id} in session ${sessionId}`)
+      }, 100) // 100ms delay to allow transcript to be saved to database first
     } catch (error) {
       console.error('[WhisperService] Error triggering enhancement:', error)
     }
@@ -285,16 +291,14 @@ export class WhisperBackend {
       // Get model path
       const modelPath = await this.getModelPath(options.modelSize || 'tiny')
 
-      // Execute whisper.cpp
-      const transcriptionText = await this.executeWhisper(tempAudioFile, modelPath, options)
+      // Execute whisper.cpp with two-stage language awareness
+      const transcriptionResult = await this.transcribeWithLanguageAwareness(tempAudioFile, modelPath, options)
 
       // Post-process transcription result for noise filtering
       let filteredText =
         options.enableNoiseFiltering !== false
-          ? this.filterTranscriptionResult(transcriptionText, options)
-          : transcriptionText
-
-      // Language preference is now handled directly in whisper.cpp via --language zh argument
+          ? this.filterTranscriptionResult(transcriptionResult.text, options)
+          : transcriptionResult.text
 
       // Keep WAV file for debugging (comment out cleanup)
       // await this.cleanupTempFile(tempAudioFile)
@@ -306,27 +310,22 @@ export class WhisperBackend {
       if (filteredText && filteredText.trim()) {
         this.updateContext(transcriptionSessionId, options.sourceType, filteredText)
 
-        // Trigger enhancement if service is available
-        if (this.enhancementService) {
-          this.triggerTranscriptionEnhancement(
-            transcriptionSessionId,
-            filteredText,
-            options,
-            timestamp || Date.now()
-          )
-        }
+        // Note: Enhancement is now triggered from main/index.ts after transcript is saved
+        // This ensures the enhancement uses the same transcript ID as the database record
       }
 
-      // Language processing handled by whisper.cpp auto-detection
-      let detectedLanguage = options.language
+      // Use detected language from two-stage detection or fallback
+      const detectedLanguage = transcriptionResult.detectedLanguage || options.language
 
       console.log(`[WhisperService] Completed transcription ${transcriptionSessionId}`, {
-        originalText: `"${transcriptionText}"`,
+        originalText: `"${transcriptionResult.text}"`,
         filteredText: `"${filteredText}"`,
-        wasFiltered: transcriptionText !== filteredText,
+        wasFiltered: transcriptionResult.text !== filteredText,
         processingTime: `${processingTime}ms`,
         sourceType: options.sourceType,
         detectedLanguage,
+        whisperLanguage: transcriptionResult.whisperLanguage,
+        usedTwoStageDetection: transcriptionResult.usedTwoStageDetection,
         contextUpdated: !!(filteredText && filteredText.trim())
       })
 
@@ -334,7 +333,10 @@ export class WhisperBackend {
         text: filteredText,
         sourceType: options.sourceType,
         processingTime,
-        language: detectedLanguage
+        language: detectedLanguage,
+        detectedLanguage: transcriptionResult.detectedLanguage,
+        whisperLanguage: transcriptionResult.whisperLanguage,
+        usedTwoStageDetection: transcriptionResult.usedTwoStageDetection
       }
     } catch (error) {
       console.error(`[WhisperService] Failed transcription ${transcriptionSessionId}:`, error)
@@ -562,15 +564,25 @@ export class WhisperBackend {
       const models = await this.getAvailableModels()
       const downloadedModels = models.filter((m) => m.downloaded)
 
-      if (downloadedModels.length > 0) {
+      // Check if the default model (base) is available
+      const defaultModelExists = downloadedModels.some((m) => m.name === DEFAULT_MODEL_SIZE)
+
+      if (defaultModelExists) {
         console.log(
-          `[WhisperService] Found ${downloadedModels.length} existing models:`,
+          `[WhisperService] Default ${DEFAULT_MODEL_SIZE} model found. Available models:`,
           downloadedModels.map((m) => m.name)
         )
         return true
       }
 
-      console.log(`[WhisperService] No models found, downloading ${DEFAULT_MODEL_SIZE} model...`)
+      // If we have other models but not the default, download it
+      if (downloadedModels.length > 0 && !defaultModelExists) {
+        console.log(
+          `[WhisperService] Found ${downloadedModels.length} models but ${DEFAULT_MODEL_SIZE} is missing. Downloading...`
+        )
+      } else {
+        console.log(`[WhisperService] No models found, downloading ${DEFAULT_MODEL_SIZE} model...`)
+      }
 
       const success = await this.downloadModel(DEFAULT_MODEL_SIZE, (progress) => {
         onProgress?.(DEFAULT_MODEL_SIZE, progress)
@@ -819,6 +831,137 @@ export class WhisperBackend {
           )
         }
       }
+    }
+  }
+
+  /**
+   * Stage 1: Fast language detection using whisper.cpp --detect-language
+   */
+  private async detectLanguageFirst(
+    audioFilePath: string,
+    modelPath: string
+  ): Promise<string | null> {
+    const args = [
+      audioFilePath,
+      '--model', modelPath,
+      '--detect-language',
+      '--no-prints',
+      '--threads', '2' // Faster detection with fewer threads
+    ]
+
+    try {
+      console.log(`[WhisperService] Stage 1: Detecting language for audio file`)
+      const result = await this.executeWhisperCommand(args)
+      const detectedLang = this.extractDetectedLanguage(result)
+      console.log(`[WhisperService] Detected language: ${detectedLang}`)
+      return detectedLang
+    } catch (error) {
+      console.warn(`[WhisperService] Language detection failed: ${error.message}, falling back to auto`)
+      return null
+    }
+  }
+
+  /**
+   * Extract detected language from whisper.cpp --detect-language output
+   */
+  private extractDetectedLanguage(output: string): string | null {
+    // whisper.cpp outputs format like: "detected language: zh probability: 0.99"
+    const languageMatch = output.match(/detected language:\s*(\w+)/i)
+    return languageMatch ? languageMatch[1].toLowerCase() : null
+  }
+
+  /**
+   * Execute whisper.cpp command and return output
+   */
+  private async executeWhisperCommand(args: string[]): Promise<string> {
+    return new Promise((resolve, reject) => {
+      console.log(`[WhisperService] Executing: ${this.whisperBinaryPath} ${args.join(' ')}`)
+
+      const process = spawn(this.whisperBinaryPath, args)
+      let stdout = ''
+      let stderr = ''
+
+      process.stdout.on('data', (data) => {
+        stdout += data.toString()
+      })
+
+      process.stderr.on('data', (data) => {
+        stderr += data.toString()
+      })
+
+      process.on('close', (code) => {
+        if (code === 0) {
+          resolve(stdout)
+        } else {
+          reject(new Error(`Process exited with code ${code}: ${stderr}`))
+        }
+      })
+
+      process.on('error', (error) => {
+        reject(new Error(`Failed to start process: ${error.message}`))
+      })
+    })
+  }
+
+  /**
+   * Two-stage transcription with language awareness
+   * Stage 1: Detect language, Stage 2: Targeted transcription
+   */
+  private async transcribeWithLanguageAwareness(
+    audioFilePath: string,
+    modelPath: string,
+    options: TranscriptionOptions
+  ): Promise<{ text: string; detectedLanguage?: string; whisperLanguage?: string; usedTwoStageDetection: boolean }> {
+
+    // Determine if two-stage detection should be used
+    const shouldUseTwoStage = options.enableTwoStageDetection ??
+                             (options.userLanguage === 'zh-TW' || options.userLanguage === 'zh-CN')
+
+    if (shouldUseTwoStage) {
+      console.log(`[WhisperService] Using two-stage detection for user language: ${options.userLanguage}`)
+
+      // Stage 1: Language Detection
+      const detectedLang = await this.detectLanguageFirst(audioFilePath, modelPath)
+
+      if (detectedLang) {
+        // Stage 2: Targeted transcription based on detection
+        let targetLanguage: string | undefined
+
+        if (detectedLang.startsWith('zh') && options.userLanguage === 'zh-TW') {
+          // Chinese detected for Traditional Chinese user - use 'zh' for better quality
+          targetLanguage = 'zh'
+          console.log(`[WhisperService] Chinese detected for zh-TW user, using targeted Chinese transcription`)
+        } else if (detectedLang.startsWith('zh') && options.userLanguage === 'zh-CN') {
+          // Chinese detected for Simplified Chinese user - use 'zh' for better quality
+          targetLanguage = 'zh'
+          console.log(`[WhisperService] Chinese detected for zh-CN user, using targeted Chinese transcription`)
+        } else {
+          // Non-Chinese or different language preference - use auto-detection
+          console.log(`[WhisperService] Non-Chinese detected (${detectedLang}), using auto-detection`)
+        }
+
+        const transcriptionOptions = {
+          ...options,
+          language: targetLanguage,
+          autoDetectLanguage: !targetLanguage // Use auto if no target language
+        }
+
+        const text = await this.executeWhisper(audioFilePath, modelPath, transcriptionOptions)
+        return {
+          text,
+          detectedLanguage: detectedLang,
+          whisperLanguage: targetLanguage || 'auto',
+          usedTwoStageDetection: true
+        }
+      }
+    }
+
+    // Fallback to standard single-stage transcription
+    console.log(`[WhisperService] Using standard single-stage transcription`)
+    const text = await this.executeWhisper(audioFilePath, modelPath, options)
+    return {
+      text,
+      usedTwoStageDetection: false
     }
   }
 
