@@ -102,7 +102,15 @@ const handleRequest = async (req: Request, profile: Record<string, any>) => {
   try {
     console.log(`[transcription-enhance] function invoked at: ${new Date().toISOString()}`);
 
-    const { segments, sessionContext }: EnhanceRequest = await req.json();
+    const body = await req.json();
+
+    // Support both unified AI action format and legacy format
+    const segments = body.segments || [];
+    const sessionContext = body.sessionContext || {
+      sessionId: '',
+      conversationHistory: body.recent_transcriptions ? [body.recent_transcriptions] : [],
+      userLanguage: body.language || 'en-US'
+    };
 
     if (!segments || !Array.isArray(segments) || segments.length === 0) {
       return new Response(JSON.stringify({ error: "Segments array is required and cannot be empty" }), {

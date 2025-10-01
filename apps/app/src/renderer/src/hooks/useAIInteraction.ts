@@ -10,7 +10,7 @@ import { useI18n } from '@/hooks/useI18n'
 import { useScreenShare } from './useScreenShare'
 import { supabase } from '@/services/supabaseClient.js'
 
-export type AIAction = 'chat' | 'answer' | 'summary' | 'keyword_search' | 'screenshot' | 'file'
+export type AIAction = 'chat' | 'answer' | 'summary' | 'keyword_search' | 'screenshot' | 'file' | 'transcription_enhance'
 
 interface TranscriptionMessage extends AIMessage {
   timestamp: number
@@ -313,6 +313,31 @@ export function useAIInteraction() {
             functionPayload.recent_transcriptions = context?.text
             break
           }
+          case 'transcription_enhance': {
+            functionName = 'transcription-enhance'
+            const sessionId = await (window as any).electronAPI.invoke('session:get-id')
+            if (!sessionId) throw new Error('No active session found.')
+            const existingSummary = await (window as any).electronAPI.invoke(
+              'db:get-summary',
+              sessionId
+            )
+            const context = await gatherContext()
+
+            // Parse query as batch of segments
+            // Expected format: { segments: Array<{id, text, sourceType}> }
+            const segmentBatch = typeof query === 'string' ? JSON.parse(query) : query
+
+            functionPayload.segments = segmentBatch.segments
+            functionPayload.text_input = context?.text
+            functionPayload.existing_summary = existingSummary?.content
+            functionPayload.recent_transcriptions = context?.text
+            functionPayload.sessionContext = {
+              sessionId,
+              conversationHistory: context?.text ? [context.text] : [],
+              userLanguage: currentLanguage
+            }
+            break
+          }
           default:
             throw new Error(`AI Action '${action}' is not supported.`)
         }
@@ -334,7 +359,8 @@ export function useAIInteraction() {
           keyword_search: 'ai_action:keyword-search',
           answer: 'ai_action:recommend-response',
           screenshot: 'ai_action:screenshot-analysis',
-          summary: 'ai_action:summarize'
+          summary: 'ai_action:summarize',
+          transcription_enhance: 'ai_action:transcription-enhance'
         }
         const loggedActionName = actionToLogName[action]
 
