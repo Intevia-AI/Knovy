@@ -10,7 +10,14 @@ import { useI18n } from '@/hooks/useI18n'
 import { useScreenShare } from './useScreenShare'
 import { supabase } from '@/services/supabaseClient.js'
 
-export type AIAction = 'chat' | 'answer' | 'summary' | 'keyword_search' | 'screenshot' | 'file' | 'transcription_enhance'
+export type AIAction =
+  | 'chat'
+  | 'answer'
+  | 'summary'
+  | 'keyword_search'
+  | 'screenshot'
+  | 'file'
+  | 'transcription_enhance'
 
 interface TranscriptionMessage extends AIMessage {
   timestamp: number
@@ -61,7 +68,9 @@ export function useAIInteraction() {
         ;(window as any).electronAPI.send('transcription:data', { text, sourceType })
         console.log(`[useAIInteraction] Sent transcription data to main process via IPC`)
       } else {
-        console.warn(`[useAIInteraction] Cannot send transcription - electronAPI: ${!!(window as any).electronAPI}, text: ${!!text}`)
+        console.warn(
+          `[useAIInteraction] Cannot send transcription - electronAPI: ${!!(window as any).electronAPI}, text: ${!!text}`
+        )
       }
     },
     []
@@ -86,10 +95,14 @@ export function useAIInteraction() {
       // Handle transcription updates (for enhancement replacements)
       const unsubscribeUpdate = (window as any).electronAPI.on(
         'transcription:update',
-        (updateData: { id: string; enhancedText: string; sourceType?: 'microphone' | 'system' }) => {
+        (updateData: {
+          id: string
+          enhancedText: string
+          sourceType?: 'microphone' | 'system'
+        }) => {
           console.log('[useAIInteraction] Received transcription update:', updateData)
           setTranscriptions((prev) =>
-            prev.map(transcript =>
+            prev.map((transcript) =>
               transcript.id === updateData.id
                 ? { ...transcript, content: updateData.enhancedText }
                 : transcript
@@ -352,33 +365,6 @@ export function useAIInteraction() {
         console.log('[AIInteraction] Function returned:', { data, error })
 
         if (error) throw error
-
-        // Log the action with token usage
-        const actionToLogName = {
-          chat: 'ai_action:chat',
-          keyword_search: 'ai_action:keyword-search',
-          answer: 'ai_action:recommend-response',
-          screenshot: 'ai_action:screenshot-analysis',
-          summary: 'ai_action:summarize',
-          transcription_enhance: 'ai_action:transcription-enhance'
-        }
-        const loggedActionName = actionToLogName[action]
-
-        if (loggedActionName && data.usage) {
-          const { error: logError } = await supabase.functions.invoke('session-manager', {
-            body: {
-              log_type: 'action',
-              action_name: loggedActionName,
-              metadata: {
-                input_tokens: data.usage.input_tokens,
-                output_tokens: data.usage.output_tokens
-              }
-            }
-          })
-          if (logError) {
-            console.error(`[AIInteraction] Failed to log action '${loggedActionName}':`, logError)
-          }
-        }
 
         console.log('[AIInteraction] Raw data for response mapping:', data)
         const responseMapping = {

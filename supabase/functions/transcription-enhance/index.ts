@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { withEntitlements } from "../_shared/rbac.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 import { getLanguage, PROMPTS } from "../_shared/prompts.ts";
@@ -118,6 +119,21 @@ const handleRequest = async (req: Request, profile: Record<string, any>) => {
   try {
     console.log(`[transcription-enhance] function invoked at: ${new Date().toISOString()}`);
 
+    // Create Supabase client for logging
+    const supabaseClient = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+      { global: { headers: { Authorization: req.headers.get("Authorization")! } } }
+    );
+
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    if (!user) {
+      return new Response(JSON.stringify({ error: "User not authenticated" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const body = await req.json();
 
     // Support both unified AI action format and legacy format
@@ -195,6 +211,29 @@ const handleRequest = async (req: Request, profile: Record<string, any>) => {
     };
 
     console.log(`[transcription-enhance] processed ${segments.length} segments in ${processingTime}ms`);
+
+    // Log the action with token usage to action_logs table
+    try {
+      const { error: logError } = await supabaseClient.from("action_logs").insert({
+        user_id: user.id,
+        action: "ai_action:transcription-enhance",
+        metadata: {
+          input_tokens: totalInputTokens,
+          output_tokens: totalOutputTokens,
+          segment_count: segments.length,
+          processing_time_ms: processingTime,
+          error_count: errors.length,
+        },
+      });
+
+      if (logError) {
+        console.error("[transcription-enhance] Failed to log action:", logError);
+        // Don't fail the request if logging fails
+      }
+    } catch (logException) {
+      console.error("[transcription-enhance] Exception while logging action:", logException);
+      // Don't fail the request if logging fails
+    }
 
     return new Response(JSON.stringify(response), {
       status: 200,
