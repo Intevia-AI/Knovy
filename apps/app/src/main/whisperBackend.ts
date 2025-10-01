@@ -3,6 +3,11 @@ import path from 'path'
 import fs from 'fs/promises'
 import { app } from 'electron'
 import { randomUUID } from 'crypto'
+import {
+  getTranscriptionEnhancementService,
+  TranscriptionEnhancementService,
+  type TranscriptionSegment
+} from './transcriptionEnhancementService'
 
 // Configuration: Change this to set the default model size
 // Options: 'tiny' (75MB, fastest), 'base' (142MB, better), 'small' (466MB, good+), 'medium' (1.5GB, best)
@@ -57,6 +62,9 @@ export class WhisperBackend {
   private segmentContext = new Map<string, string>() // sessionId -> last sentence
   private sessionHistory = new Map<string, string[]>() // sessionId -> conversation history
 
+  // Enhancement service
+  private enhancementService: TranscriptionEnhancementService | null = null
+
   constructor() {
     // Platform-specific binary paths
     const platform = process.platform
@@ -88,6 +96,80 @@ export class WhisperBackend {
     })
 
     console.log(`[WhisperService] 🎵 WAV files will be saved to: ${this.tempPath}`)
+  }
+
+  /**
+   * Set up transcription enhancement service
+   */
+  setupEnhancementService(supabaseUrl: string, supabaseAnonKey: string, userToken?: string): void {
+    try {
+      this.enhancementService = getTranscriptionEnhancementService(supabaseUrl, supabaseAnonKey)
+
+      if (userToken) {
+        this.enhancementService.setUserToken(userToken)
+      }
+
+      console.log('[WhisperService] Transcription enhancement service initialized')
+    } catch (error) {
+      console.error('[WhisperService] Failed to initialize enhancement service:', error)
+    }
+  }
+
+  /**
+   * Update user token for enhancement service
+   */
+  setEnhancementUserToken(token: string): void {
+    if (this.enhancementService) {
+      this.enhancementService.setUserToken(token)
+    }
+  }
+
+  /**
+   * Get the enhancement service for event subscription
+   */
+  getEnhancementService(): TranscriptionEnhancementService | null {
+    return this.enhancementService
+  }
+
+  /**
+   * Trigger transcription enhancement for a completed transcription
+   */
+  private triggerTranscriptionEnhancement(
+    sessionId: string,
+    rawText: string,
+    options: TranscriptionOptions,
+    timestamp: number
+  ): void {
+    if (!this.enhancementService) {
+      return
+    }
+
+    try {
+      // Create transcription segment
+      const segment: TranscriptionSegment = {
+        id: randomUUID(),
+        rawText,
+        timestamp,
+        sourceType: options.sourceType,
+      }
+
+      // Get conversation history for context
+      const conversationHistory = this.sessionHistory.get(sessionId) || []
+
+      // Create session context
+      const sessionContext = {
+        sessionId,
+        conversationHistory: conversationHistory.slice(-10), // Last 10 segments for context
+        userLanguage: options.language || 'en',
+      }
+
+      // Trigger enhancement (async, non-blocking)
+      this.enhancementService.enhanceSegment(segment, sessionContext, false)
+
+      console.log(`[WhisperService] Triggered enhancement for segment ${segment.id} in session ${sessionId}`)
+    } catch (error) {
+      console.error('[WhisperService] Error triggering enhancement:', error)
+    }
   }
 
   /**
@@ -131,17 +213,19 @@ export class WhisperBackend {
    */
   async transcribeAudio(
     audioBuffer: ArrayBuffer,
-    options: TranscriptionOptions
+    options: TranscriptionOptions,
+    sessionId?: string,
+    timestamp?: number
   ): Promise<TranscriptionResult> {
     if (!this.isInitialized) {
       throw new Error('WhisperBackend not initialized')
     }
 
     const startTime = Date.now()
-    const sessionId = randomUUID()
+    const transcriptionSessionId = sessionId || randomUUID()
 
     try {
-      console.log(`[WhisperService] Starting transcription ${sessionId}`, {
+      console.log(`[WhisperService] Starting transcription ${transcriptionSessionId}`, {
         bufferSize: audioBuffer.byteLength,
         durationSeconds: (audioBuffer.byteLength / 2 / 16000).toFixed(2), // 16-bit samples at 16kHz
         sourceType: options.sourceType,
@@ -196,7 +280,7 @@ export class WhisperBackend {
       }
 
       // Write audio to temporary file
-      const tempAudioFile = await this.writeAudioToTempFile(audioBuffer, sessionId)
+      const tempAudioFile = await this.writeAudioToTempFile(audioBuffer, transcriptionSessionId)
 
       // Get model path
       const modelPath = await this.getModelPath(options.modelSize || 'tiny')
@@ -220,13 +304,23 @@ export class WhisperBackend {
 
       // Update context for future segments if transcription was successful
       if (filteredText && filteredText.trim()) {
-        this.updateContext(sessionId, options.sourceType, filteredText)
+        this.updateContext(transcriptionSessionId, options.sourceType, filteredText)
+
+        // Trigger enhancement if service is available
+        if (this.enhancementService) {
+          this.triggerTranscriptionEnhancement(
+            transcriptionSessionId,
+            filteredText,
+            options,
+            timestamp || Date.now()
+          )
+        }
       }
 
       // Language processing handled by whisper.cpp auto-detection
       let detectedLanguage = options.language
 
-      console.log(`[WhisperService] Completed transcription ${sessionId}`, {
+      console.log(`[WhisperService] Completed transcription ${transcriptionSessionId}`, {
         originalText: `"${transcriptionText}"`,
         filteredText: `"${filteredText}"`,
         wasFiltered: transcriptionText !== filteredText,
@@ -243,7 +337,7 @@ export class WhisperBackend {
         language: detectedLanguage
       }
     } catch (error) {
-      console.error(`[WhisperService] Failed transcription ${sessionId}:`, error)
+      console.error(`[WhisperService] Failed transcription ${transcriptionSessionId}:`, error)
       throw error
     }
   }

@@ -53,6 +53,10 @@ const api = {
   transcriptionGetStorageUsage: () => ipcRenderer.invoke('transcription:get-storage-usage'),
   transcriptionEnsureModelAvailable: () => ipcRenderer.invoke('transcription:ensure-model-available'),
   transcriptionGetDiagnostics: () => ipcRenderer.invoke('transcription:get-diagnostics'),
+  transcriptionSetupEnhancement: (supabaseUrl: string, supabaseAnonKey: string, userToken?: string) =>
+    ipcRenderer.invoke('transcription:setup-enhancement', { supabaseUrl, supabaseAnonKey, userToken }),
+  transcriptionSetEnhancementToken: (token: string) =>
+    ipcRenderer.invoke('transcription:set-enhancement-token', token),
 
   createSession: (session) => ipcRenderer.invoke('db:create-session', session),
   addTranscript: (transcript) => ipcRenderer.invoke('db:add-transcript', transcript),
@@ -110,6 +114,8 @@ const api = {
       'transcription:error',
       'transcription:warning',
       'transcription:processed',
+      'transcription:enhanced',
+      'transcription:enhancement-error',
       'transcription:model-error',
       'transcription:model-download-progress',
       'model:download-progress',
@@ -196,7 +202,9 @@ const api = {
       'transcription:download-model',
       'transcription:delete-model',
       'transcription:get-storage-usage',
-      'transcription:get-diagnostics'
+      'transcription:get-diagnostics',
+      'transcription:setup-enhancement',
+      'transcription:set-enhancement-token'
     ]
     if (!validChannels.includes(channel)) {
       return Promise.reject(new Error(`Invalid invoke channel: ${channel}`))

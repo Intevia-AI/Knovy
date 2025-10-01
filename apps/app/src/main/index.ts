@@ -1356,6 +1356,42 @@ app.on('ready', async () => {
     }
   })
 
+  // Transcription enhancement IPC handlers
+  ipcMain.handle('transcription:setup-enhancement', async (event, { supabaseUrl, supabaseAnonKey, userToken }) => {
+    try {
+      const transcriptionService = getWhisperBackend()
+      transcriptionService.setupEnhancementService(supabaseUrl, supabaseAnonKey, userToken)
+
+      // Set up event forwarding from enhancement service to renderer
+      const enhancementService = transcriptionService.getEnhancementService()
+      if (enhancementService) {
+        enhancementService.on('segmentEnhanced', (data) => {
+          event.sender.send('transcription:enhanced', data)
+        })
+
+        enhancementService.on('enhancementError', (error) => {
+          event.sender.send('transcription:enhancement-error', error)
+        })
+      }
+
+      return { success: true }
+    } catch (error) {
+      console.error('[main/index.ts] Failed to setup transcription enhancement:', error)
+      return { success: false, error: error.message }
+    }
+  })
+
+  ipcMain.handle('transcription:set-enhancement-token', async (event, token) => {
+    try {
+      const transcriptionService = getWhisperBackend()
+      transcriptionService.setEnhancementUserToken(token)
+      return { success: true }
+    } catch (error) {
+      console.error('[main/index.ts] Failed to set enhancement token:', error)
+      return { success: false, error: error.message }
+    }
+  })
+
   ipcMain.on('app:resize-window', (event, { width, height }) => {
     if (mainWindow) {
       const [currentWidth, currentHeight] = mainWindow.getSize()

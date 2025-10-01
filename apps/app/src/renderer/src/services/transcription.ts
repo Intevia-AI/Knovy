@@ -19,6 +19,38 @@ export interface TranscriptionResult {
   confidence?: number
 }
 
+// Enhanced transcription interfaces
+export interface EnhancedTranscription {
+  id: string
+  corrected: string
+  translation?: string
+  intention: {
+    primary: 'question' | 'command' | 'statement' | 'schedule' | 'reminder' | 'concern' | 'request'
+    confidence: number
+    suggestedActions?: string[]
+  }
+  keywords?: string[]
+  confidence: number
+}
+
+export interface SegmentEnhancedEvent {
+  sessionId: string
+  original: {
+    id: string
+    rawText: string
+    timestamp: number
+    sourceType: 'microphone' | 'system'
+  }
+  enhanced: EnhancedTranscription
+  processingTime: number
+}
+
+export interface EnhancementErrorEvent {
+  sessionId: string
+  segmentId: string
+  error: string
+}
+
 /**
  * Factory class for managing whisper transcription services
  */
@@ -63,6 +95,46 @@ export class TranscriptionFactory {
       console.error('[TranscriptionFactory] Whisper transcription initialization error:', error)
       return false
     }
+  }
+
+  /**
+   * Setup transcription enhancement service
+   */
+  async setupEnhancement(supabaseUrl: string, supabaseAnonKey: string, userToken?: string): Promise<boolean> {
+    try {
+      const result = await window.electronAPI.transcriptionSetupEnhancement(supabaseUrl, supabaseAnonKey, userToken)
+      return result.success
+    } catch (error) {
+      console.error('[TranscriptionFactory] Failed to setup enhancement:', error)
+      return false
+    }
+  }
+
+  /**
+   * Update user token for enhancement service
+   */
+  async setEnhancementToken(token: string): Promise<boolean> {
+    try {
+      const result = await window.electronAPI.transcriptionSetEnhancementToken(token)
+      return result.success
+    } catch (error) {
+      console.error('[TranscriptionFactory] Failed to set enhancement token:', error)
+      return false
+    }
+  }
+
+  /**
+   * Subscribe to enhancement events
+   */
+  onSegmentEnhanced(callback: (data: SegmentEnhancedEvent) => void): () => void {
+    return window.electronAPI.on('transcription:enhanced', callback)
+  }
+
+  /**
+   * Subscribe to enhancement error events
+   */
+  onEnhancementError(callback: (error: EnhancementErrorEvent) => void): () => void {
+    return window.electronAPI.on('transcription:enhancement-error', callback)
   }
 
   /**
