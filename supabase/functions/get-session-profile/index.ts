@@ -104,6 +104,7 @@ async function getSessionProfile(req: Request) {
     const sessionProfile = {
       user_id: user.id,
       role: userRole,
+      user_metadata: user.user_metadata || {},
       app_settings: (appSettingsRes.data || []).reduce((acc, setting) => {
         acc[setting.key] = setting.value;
         return acc;

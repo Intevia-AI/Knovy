@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { TranscriptionFactory, TranscriptionProcessor, type SegmentEnhancedEvent, type EnhancementErrorEvent } from '@/services/transcription'
 import { useAuth } from '@/hooks/useAuth'
 import { useTranscriptionEnhancement } from '@/hooks/useTranscriptionEnhancement'
+import { useLanguage } from '@/hooks/useLanguage'
 
 // Configuration: Change this to set the real-time transcription model size
 // Options: 'tiny' (75MB, fastest), 'base' (142MB, better), 'small' (466MB, good+), 'medium' (1.5GB, best)
@@ -29,7 +30,13 @@ export default function RealTimeAnalysis({
 }: RealTimeAnalysisProps) {
   const { hasEntitlement, sessionProfile } = useAuth()
   const canUseKeywordSearch = hasEntitlement('allow_ai_action:keyword-search')
-  const userLanguage = sessionProfile?.profile?.language || sessionProfile?.app_settings?.language || 'auto'
+  const { language: userLanguage } = useLanguage()
+
+  // Log the user language for debugging
+  useEffect(() => {
+    console.log('[RealTimeAnalysis] User language from useLanguage hook:', userLanguage)
+  }, [userLanguage])
+
   const micTextBufferRef = useRef('')
   const systemTextBufferRef = useRef('')
 
@@ -352,6 +359,7 @@ export default function RealTimeAnalysis({
       }
 
       // Create transcription processors for both audio sources
+      console.log('[RealTimeAnalysis] Creating microphone processor with user language:', userLanguage)
       micProcessor = await transcriptionFactory.createTranscriptionProcessor(
         'microphone',
         (text, turnComplete, sourceType) =>
@@ -363,6 +371,7 @@ export default function RealTimeAnalysis({
         userLanguage
       )
 
+      console.log('[RealTimeAnalysis] Creating system processor with user language:', userLanguage)
       systemProcessor = await transcriptionFactory.createTranscriptionProcessor(
         'system',
         (text, turnComplete, sourceType) =>
