@@ -321,7 +321,7 @@ Your task is to enhance the transcription by:
 5. **Language Consistency**: Ensure the corrected text matches the user's preferred language (${userLanguage})
 
 CONVERSATION HISTORY:
-${conversationHistory.length > 0 ? conversationHistory.join('\n') : 'No previous context'}
+${conversationHistory.length > 0 ? conversationHistory.join("\n") : "No previous context"}
 
 RAW TRANSCRIPTION: "${rawText}"
 USER LANGUAGE: ${userLanguage}
@@ -350,33 +350,33 @@ Return ONLY valid JSON with this exact structure:
         rawText: string;
         conversationHistory: string[];
         userLanguage: string;
-      }) => `你是一個轉錄增強助理。你會收到STT模型產生的原始轉錄和對話歷史作為上下文。用字可能因發音相似而錯誤，請利用上下文來修正單詞。
+      }) => `你是一個文書處理助理。你會收到語音轉文字模型生成的原始逐字稿和對話紀錄。用字可能因發音相似而錯誤，請利用上下文來修正單詞。
 
-你的任務是透過以下方式增強轉錄：
+處理規則如下：
 1. **修正**: 修正語法、標點符號、用字、拼寫
-2. **語境化**: 使用對話歷史來確保連貫性
-3. **偵測意圖**: 識別主要意圖和信心度
-4. **提取關鍵字**: 僅限技術/專業術語
-5. **語言一致性**: 確保修正後的文字符合使用者偏好的語言（${userLanguage}）
+2. **語境**: 使用對話歷史來確保連貫性
+3. **偵測意圖**: 辨識主要意圖和信心度
+4. **偵測關鍵字**: 僅限技術/專有名詞/術語/少用詞彙
+5. **翻譯**: 確保修正後的文字符合使用者偏好的語言（${userLanguage}）
 
-對話歷史：
-${conversationHistory.length > 0 ? conversationHistory.join('\n') : '無先前上下文'}
+對話紀錄：
+${conversationHistory.length > 0 ? conversationHistory.join("\n") : "無先前對話紀錄"}
 
-原始轉錄：「${rawText}」
+原始逐字稿：「${rawText}」
 使用者語言：${userLanguage}
 
-重要：如果原始轉錄是中文但使用者語言是zh-TW，請確保修正後的文字使用繁體中文字元和台灣特定術語。如果使用者語言是zh-CN，則使用簡體中文。
+重要：如果原始逐字稿是中文，請強制翻譯為使用者偏好的語言（${userLanguage}），繁體中文需使用繁體中文字元和台灣特定術語。
 
 僅回傳有效的JSON，結構如下：
 {
-  "corrected": "使用者偏好語言的增強和修正後轉錄文字",
-  "translation": "如果與使用者語言不同則翻譯，否則為null",
+  "corrected": "使用者偏好語言的增強和修正後逐字稿文字",
+  "translation": "如果與使用者語言不同則翻譯，否則為 null",
   "intention": {
     "primary": "question|command|statement|schedule|reminder|concern|request",
     "confidence": 0.95,
     "suggestedActions": ["ai-action-answer", "ai-action-schedule"]
   },
-  "keywords": ["技術", "術語", "僅限"],
+  "keywords": ["技術", "術語", "專有名詞"],
   "confidence": 0.95
 }`,
     },
