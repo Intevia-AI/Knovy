@@ -4,7 +4,15 @@
  */
 
 'use client'
-import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react'
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useRef,
+  ReactNode,
+  useCallback
+} from 'react'
 import { supabase } from '../services/supabaseClient.js'
 import type { Session, User } from '@supabase/supabase-js'
 
@@ -248,7 +256,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     return sessionProfile?.entitlements[entitlement] === true
   }
 
-  const refreshSessionProfile = async (): Promise<void> => {
+  const refreshSessionProfile = useCallback(async (): Promise<void> => {
     if (!session?.access_token) {
       console.warn('[AuthContext] Cannot refresh session profile: no active session')
       return
@@ -280,7 +288,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     } catch (error) {
       console.error('[AuthContext] Error refreshing session profile:', error)
     }
-  }
+  }, [session?.access_token])
 
   const value: AuthContextType = {
     session,
