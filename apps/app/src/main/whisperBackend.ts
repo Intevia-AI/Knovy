@@ -176,7 +176,7 @@ export class WhisperBackend {
         id: randomUUID(),
         rawText,
         timestamp,
-        sourceType: options.sourceType,
+        sourceType: options.sourceType
       }
 
       // Get conversation history for context
@@ -186,13 +186,15 @@ export class WhisperBackend {
       const sessionContext = {
         sessionId,
         conversationHistory: conversationHistory.slice(-10), // Last 10 segments for context
-        userLanguage: options.userLanguage || options.language || 'en', // Prefer userLanguage over detected language
+        userLanguage: options.userLanguage || options.language || 'en' // Prefer userLanguage over detected language
       }
 
       // Trigger enhancement (async, non-blocking) with small delay to ensure DB save completes
       setTimeout(() => {
         this.enhancementService.enhanceSegment(segment, sessionContext, false)
-        console.log(`[WhisperService] Triggered enhancement for segment ${segment.id} in session ${sessionId}`)
+        console.log(
+          `[WhisperService] Triggered enhancement for segment ${segment.id} in session ${sessionId}`
+        )
       }, 100) // 100ms delay to allow transcript to be saved to database first
     } catch (error) {
       console.error('[WhisperService] Error triggering enhancement:', error)
@@ -1014,11 +1016,11 @@ export class WhisperBackend {
         if (code === 0) {
           // Language detection output goes to stderr, so combine both streams
           const combinedOutput = stdout + stderr
-          console.log('[WhisperService] Command output:', {
-            stdout: stdout.substring(0, 200),
-            stderr: stderr.substring(0, 200),
-            combined: combinedOutput.substring(0, 200)
-          })
+          // console.log('[WhisperService] Command output:', {
+          //   stdout: stdout.substring(0, 200),
+          //   stderr: stderr.substring(0, 200),
+          //   combined: combinedOutput.substring(0, 200)
+          // })
           resolve(combinedOutput)
         } else {
           reject(new Error(`Process exited with code ${code}: ${stderr}`))

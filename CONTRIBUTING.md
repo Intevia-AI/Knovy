@@ -1,6 +1,6 @@
-# Contributing to Intevia AI
+# Contributing to Knovy
 
-Thank you for your interest in contributing to Intevia AI! This document provides guidelines and workflows for contributing to the project.
+Thank you for your interest in contributing to Knovy! This document provides guidelines and workflows for contributing to the project.
 
 ## Table of Contents
 
@@ -29,8 +29,8 @@ We expect all contributors to adhere to the following principles:
 1. **Clone the repository**
 
    ```bash
-   git clone https://github.com/your-org/intevia-ai.git
-   cd intevia-ai
+   git clone https://github.com/Intevia-AI/Knovy.git
+   cd Knovy
    ```
 
 2. **Install dependencies**
@@ -39,31 +39,38 @@ We expect all contributors to adhere to the following principles:
    pnpm install
    ```
 
-3. **Set up environment variables**
+3. **Set up Supabase**
 
    ```bash
-   bash scripts/setup-env.sh
+   supabase start
+   supabase status  # Get API keys
    ```
 
-4. **Start the development servers**
+4. **Set up environment variables**
+
+   Copy `.env.example` to `.env` in each application directory:
+   - `apps/app/.env`
+   - `apps/web/.env`
+   - `apps/proxy/.env`
+
+   Fill in required API keys (Google Generative AI, Supabase).
+
+5. **Start the development servers**
+
+   For the desktop application (recommended):
+
+   ```bash
+   pnpm --filter app dev
+   ```
 
    For the web application:
 
    ```bash
-   # Terminal 1: Start the web application
-   cd apps/web
-   pnpm dev
+   # Terminal 1: Start web app
+   pnpm --filter web dev
 
-   # Terminal 2: Start the proxy server
-   cd apps/web
-   pnpm proxy
-   ```
-
-   For the desktop application:
-
-   ```bash
-   cd apps/app
-   pnpm dev
+   # Terminal 2: Start proxy server
+   pnpm --filter web proxy
    ```
 
 ### Development Process
@@ -143,11 +150,19 @@ Closes #123
 
 ### React Guidelines
 
-- Use functional components with hooks
+- Use functional components with hooks (React 19)
 - Keep components small and focused
 - Use proper component composition
 - Follow React best practices for performance optimization
 - Use React context for state that needs to be shared across components
+
+### Electron Guidelines
+
+- Follow main/renderer process separation
+- Use IPC for secure communication between processes
+- Use preload scripts to expose limited APIs to renderer
+- Store sensitive data in main process only
+- Test cross-platform compatibility (macOS, Windows, Linux)
 
 ### Code Formatting
 
@@ -213,16 +228,19 @@ function processSpeech(audioData: AudioBuffer, options: ProcessingOptions): Spee
 - Use meaningful test descriptions
 - Follow the AAA pattern (Arrange, Act, Assert)
 
+### Edge Function Testing
+
+- Write tests for all Supabase Edge Functions
+- Test files located in `supabase/functions/*/index.test.ts`
+- Test entitlement and quota enforcement
+- Mock Supabase client and external API calls
+
 ### Integration Testing
 
 - Write integration tests for component interactions
 - Test API endpoints with realistic scenarios
 - Mock external dependencies appropriately
-
-### End-to-End Testing
-
-- Write end-to-end tests for critical user flows
-- Test across different browsers and platforms when relevant
+- Test RBAC entitlements and quota enforcement
 
 ### Running Tests
 
@@ -230,11 +248,12 @@ function processSpeech(audioData: AudioBuffer, options: ProcessingOptions): Spee
 # Run all tests
 pnpm test
 
-# Run tests with coverage
-pnpm test:coverage
+# Run Supabase Edge Function tests
+cd supabase/functions/<function-name>
+deno test --allow-all
 
-# Run tests in watch mode
-pnpm test:watch
+# Run tests with timeout (recommended for CI)
+timeout 30 pnpm test
 ```
 
 ## Pull Request Process
@@ -252,13 +271,48 @@ pnpm test:watch
 
 ## Release Process
 
-1. **Version Bump**: Update version numbers according to [Semantic Versioning](https://semver.org/)
-2. **Changelog**: Update the CHANGELOG.md file with notable changes
-3. **Release Notes**: Create detailed release notes
-4. **Tag**: Create a git tag for the release
-5. **Build**: Generate production builds for all applications
-6. **Deploy**: Deploy to production environments
+Desktop app releases are automated via GitHub Actions:
+
+1. **Version Bump**: Update `version` in `apps/app/package.json` (follow [Semantic Versioning](https://semver.org/))
+2. **Release Notes**: Create release notes following the template in previous releases
+3. **Tag and Push**:
+   ```bash
+   git tag v0.3.1
+   git push origin v0.3.1
+   ```
+4. **Automated Build**: GitHub Action builds, signs (macOS), and publishes to [Knovy-Release](https://github.com/Intevia-AI/Knovy-Release)
+
+### Deployment
+
+- **Desktop App**: Automated via GitHub Actions on tag push
+- **Edge Functions**: `supabase functions deploy`
+- **Secrets**: `supabase secrets set --env-file ./supabase/.env.production`
+- **Proxy Server**: Deploy to Google Cloud Run (see `docs/setup/development.md`)
+
+## Project-Specific Guidelines
+
+### Technology Stack
+
+- **Frontend**: React 19, TypeScript, Tailwind CSS, Radix UI
+- **Desktop**: Electron, Vite, whisper.cpp
+- **Backend**: Supabase (PostgreSQL, Auth, Edge Functions)
+- **Edge Functions**: Deno, TypeScript
+
+### Key Architecture Patterns
+
+1. **RBAC System**: All AI actions protected by entitlements middleware
+2. **Progressive Enhancement**: Raw transcription → Enhanced transcription with ID-based updates
+3. **Dual-Stream Audio**: Separate microphone and system audio processing
+4. **Local-First**: Desktop app uses local whisper.cpp for privacy
+
+### Important Files
+
+- `.claude/agents/`: Specialized AI agents for development tasks
+- `docs/architecture/`: Architecture documentation
+- `supabase/functions/_shared/`: Shared middleware and utilities
+- `apps/app/src/main/`: Electron main process
+- `apps/app/src/renderer/`: React renderer process
 
 ---
 
-Thank you for contributing to Intevia AI! Your efforts help make this project better for everyone.
+Thank you for contributing to Knovy! Your efforts help make this project better for everyone.
