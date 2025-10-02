@@ -31,6 +31,12 @@ export interface TranscriptionOptions {
   autoDetectLanguage?: boolean // Enable automatic language detection (default: true)
   userLanguage?: string // User's preferred language (from session profile)
   enableTwoStageDetection?: boolean // Enable two-stage detection for better quality (default: true for zh-TW users)
+  // VAD (Voice Activity Detection) options
+  enableVAD?: boolean // Enable VAD to filter out non-speech audio (default: true)
+  vadThreshold?: number // VAD threshold 0.0-1.0 (default: 0.60, higher = more selective)
+  vadMinSpeechDuration?: number // Minimum speech duration in ms (default: 250)
+  vadMinSilenceDuration?: number // Minimum silence duration in ms (default: 100)
+  vadSpeechPadding?: number // Speech padding in ms (default: 30)
 }
 
 export interface TranscriptionResult {
@@ -69,6 +75,9 @@ export class WhisperBackend {
 
   // Enhancement service
   private enhancementService: TranscriptionEnhancementService | null = null
+
+  // VAD (Voice Activity Detection) model path
+  private vadModelPath: string | null = null
 
   constructor() {
     // Platform-specific binary paths
@@ -205,6 +214,11 @@ export class WhisperBackend {
       await this.ensureDefaultModel()
       console.log('[WhisperService] Default model ensured')
 
+      console.log('[WhisperService] Step 4: Downloading VAD model...')
+      // Download VAD model for noise filtering
+      await this.downloadVADModel()
+      console.log('[WhisperService] VAD model ready')
+
       this.isInitialized = true
       console.log('[WhisperService] Service initialized successfully')
       return true
@@ -292,7 +306,11 @@ export class WhisperBackend {
       const modelPath = await this.getModelPath(options.modelSize || 'tiny')
 
       // Execute whisper.cpp with two-stage language awareness
-      const transcriptionResult = await this.transcribeWithLanguageAwareness(tempAudioFile, modelPath, options)
+      const transcriptionResult = await this.transcribeWithLanguageAwareness(
+        tempAudioFile,
+        modelPath,
+        options
+      )
 
       // Post-process transcription result for noise filtering
       let filteredText =
@@ -487,6 +505,92 @@ export class WhisperBackend {
       }
     } catch (error) {
       console.error(`[WhisperService] Failed to download model ${modelName}:`, error)
+      return false
+    }
+  }
+
+  /**
+   * Download Silero VAD model for voice activity detection
+   */
+  async downloadVADModel(
+    onProgress?: (progress: { downloaded: number; total: number; percentage: number }) => void
+  ): Promise<boolean> {
+    const vadModelUrl =
+      'https://huggingface.co/ggml-org/whisper-vad/resolve/main/ggml-silero-v5.1.2.bin'
+    const vadModelPath = path.join(this.modelsPath, 'ggml-silero-vad.bin')
+    const tempPath = `${vadModelPath}.download`
+
+    try {
+      // Check if VAD model already exists
+      try {
+        await fs.access(vadModelPath)
+        console.log('[WhisperService] VAD model already exists, skipping download')
+        this.vadModelPath = vadModelPath
+        return true
+      } catch {
+        // VAD model doesn't exist, proceed with download
+      }
+
+      console.log('[WhisperService] Downloading Silero VAD model...')
+      console.log(`[WhisperService] From: ${vadModelUrl}`)
+      console.log(`[WhisperService] To: ${vadModelPath}`)
+
+      // Clean up any existing temp file
+      try {
+        await fs.unlink(tempPath)
+      } catch {}
+
+      // Download with progress tracking
+      const response = await fetch(vadModelUrl)
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
+
+      const totalSize = parseInt(response.headers.get('content-length') || '0', 10)
+      let downloadedSize = 0
+
+      if (!response.body) {
+        throw new Error('Response body is null')
+      }
+
+      const writeStream = (await import('fs')).createWriteStream(tempPath)
+      const reader = response.body.getReader()
+
+      try {
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+
+          downloadedSize += value.length
+          writeStream.write(Buffer.from(value))
+
+          if (onProgress && totalSize > 0) {
+            const percentage = Math.round((downloadedSize / totalSize) * 100)
+            onProgress({ downloaded: downloadedSize, total: totalSize, percentage })
+          }
+        }
+
+        writeStream.end()
+
+        await new Promise((resolve, reject) => {
+          writeStream.on('finish', resolve)
+          writeStream.on('error', reject)
+        })
+
+        await fs.rename(tempPath, vadModelPath)
+
+        this.vadModelPath = vadModelPath
+        console.log(`[WhisperService] VAD model downloaded successfully (${downloadedSize} bytes)`)
+        return true
+      } catch (error) {
+        try {
+          await fs.unlink(tempPath)
+        } catch {}
+        throw error
+      }
+    } catch (error) {
+      console.error('[WhisperService] Failed to download VAD model:', error)
       return false
     }
   }
@@ -812,10 +916,12 @@ export class WhisperBackend {
   ): Promise<string | null> {
     const args = [
       audioFilePath,
-      '--model', modelPath,
+      '--model',
+      modelPath,
       '--detect-language',
       '--no-prints',
-      '--threads', '2' // Faster detection with fewer threads
+      '--threads',
+      '2' // Faster detection with fewer threads
     ]
 
     try {
@@ -825,7 +931,9 @@ export class WhisperBackend {
       console.log(`[WhisperService] Detected language: ${detectedLang}`)
       return detectedLang
     } catch (error) {
-      console.warn(`[WhisperService] Language detection failed: ${error.message}, falling back to auto`)
+      console.warn(
+        `[WhisperService] Language detection failed: ${error.message}, falling back to auto`
+      )
       return null
     }
   }
@@ -880,14 +988,21 @@ export class WhisperBackend {
     audioFilePath: string,
     modelPath: string,
     options: TranscriptionOptions
-  ): Promise<{ text: string; detectedLanguage?: string; whisperLanguage?: string; usedTwoStageDetection: boolean }> {
-
+  ): Promise<{
+    text: string
+    detectedLanguage?: string
+    whisperLanguage?: string
+    usedTwoStageDetection: boolean
+  }> {
     // Determine if two-stage detection should be used
-    const shouldUseTwoStage = options.enableTwoStageDetection ??
-                             (options.userLanguage === 'zh-TW' || options.userLanguage === 'zh-CN')
+    const shouldUseTwoStage =
+      options.enableTwoStageDetection ??
+      (options.userLanguage === 'zh-TW' || options.userLanguage === 'zh-CN')
 
     if (shouldUseTwoStage) {
-      console.log(`[WhisperService] Using two-stage detection for user language: ${options.userLanguage}`)
+      console.log(
+        `[WhisperService] Using two-stage detection for user language: ${options.userLanguage}`
+      )
 
       // Stage 1: Language Detection
       const detectedLang = await this.detectLanguageFirst(audioFilePath, modelPath)
@@ -899,14 +1014,14 @@ export class WhisperBackend {
         if (detectedLang.startsWith('zh') && options.userLanguage === 'zh-TW') {
           // Chinese detected for Traditional Chinese user - use 'zh' for better quality
           targetLanguage = 'zh'
-          console.log(`[WhisperService] Chinese detected for zh-TW user, using targeted Chinese transcription`)
-        } else if (detectedLang.startsWith('zh') && options.userLanguage === 'zh-CN') {
-          // Chinese detected for Simplified Chinese user - use 'zh' for better quality
-          targetLanguage = 'zh'
-          console.log(`[WhisperService] Chinese detected for zh-CN user, using targeted Chinese transcription`)
+          console.log(
+            `[WhisperService] Chinese detected for zh-TW user, using targeted Chinese transcription`
+          )
         } else {
           // Non-Chinese or different language preference - use auto-detection
-          console.log(`[WhisperService] Non-Chinese detected (${detectedLang}), using auto-detection`)
+          console.log(
+            `[WhisperService] Non-Chinese detected (${detectedLang}), using auto-detection`
+          )
         }
 
         const transcriptionOptions = {
@@ -971,6 +1086,26 @@ export class WhisperBackend {
 
       // Add word-level features
       args.push('--word-thold', '0.01')
+
+      // VAD (Voice Activity Detection) - enabled by default to filter noise
+      const enableVAD = options.enableVAD !== false // Default: true
+      if (enableVAD && this.vadModelPath) {
+        args.push('--vad')
+        args.push('--vad-model', this.vadModelPath)
+        args.push('--vad-threshold', String(options.vadThreshold ?? 0.6))
+        args.push('--vad-min-speech-duration-ms', String(options.vadMinSpeechDuration ?? 250))
+        args.push('--vad-min-silence-duration-ms', String(options.vadMinSilenceDuration ?? 100))
+        args.push('--vad-speech-pad-ms', String(options.vadSpeechPadding ?? 30))
+
+        console.log('[WhisperService] VAD enabled with settings:', {
+          threshold: options.vadThreshold ?? 0.6,
+          minSpeechDuration: options.vadMinSpeechDuration ?? 250,
+          minSilenceDuration: options.vadMinSilenceDuration ?? 100,
+          speechPadding: options.vadSpeechPadding ?? 30
+        })
+      } else if (enableVAD && !this.vadModelPath) {
+        console.warn('[WhisperService] VAD requested but model not available, skipping VAD')
+      }
 
       // Enable auto-detection by default (autoDetectLanguage defaults to true)
       // Only add language constraint if explicitly disabled auto-detection
