@@ -8,6 +8,7 @@ import {
   TranscriptionEnhancementService,
   type TranscriptionSegment
 } from './transcriptionEnhancementService'
+import { Converter, ConverterFactory, Locale } from 'opencc-js'
 
 // Configuration: Change this to set the default model size
 // Options: 'tiny' (75MB, fastest), 'base' (142MB, better), 'small' (466MB, good+), 'medium' (1.5GB, best)
@@ -79,6 +80,9 @@ export class WhisperBackend {
   // VAD (Voice Activity Detection) model path
   private vadModelPath: string | null = null
 
+  // OpenCC converter for Simplified to Traditional Chinese (Taiwan)
+  private chineseConverter: Converter | null = null
+
   constructor() {
     // Platform-specific binary paths
     const platform = process.platform
@@ -110,6 +114,14 @@ export class WhisperBackend {
     })
 
     console.log(`[WhisperService] 🎵 WAV files will be saved to: ${this.tempPath}`)
+
+    // Initialize OpenCC converter for Simplified to Traditional Chinese (Taiwan)
+    try {
+      this.chineseConverter = ConverterFactory(Locale.from.cn, Locale.to.tw)
+      console.log('[WhisperService] OpenCC converter initialized (CN → TW)')
+    } catch (error) {
+      console.error('[WhisperService] Failed to initialize OpenCC converter:', error)
+    }
   }
 
   /**
@@ -317,6 +329,17 @@ export class WhisperBackend {
         options.enableNoiseFiltering !== false
           ? this.filterTranscriptionResult(transcriptionResult.text, options)
           : transcriptionResult.text
+
+      // Convert Simplified Chinese to Traditional Chinese (Taiwan) if user language is zh-TW
+      if (filteredText && options.userLanguage === 'zh-TW' && this.chineseConverter) {
+        const originalText = filteredText
+        filteredText = this.chineseConverter(filteredText)
+        console.log('[WhisperService] Applied CN→TW conversion:', {
+          original: originalText.substring(0, 50),
+          converted: filteredText.substring(0, 50),
+          changed: originalText !== filteredText
+        })
+      }
 
       const processingTime = Date.now() - startTime
 
@@ -919,7 +942,7 @@ export class WhisperBackend {
       '--model',
       modelPath,
       '--detect-language',
-      '--no-prints',
+      // NOTE: Do NOT use --no-prints here - it suppresses language detection output
       '--threads',
       '2' // Faster detection with fewer threads
     ]
@@ -943,12 +966,33 @@ export class WhisperBackend {
    */
   private extractDetectedLanguage(output: string): string | null {
     // whisper.cpp outputs format like: "detected language: zh probability: 0.99"
-    const languageMatch = output.match(/detected language:\s*(\w+)/i)
-    return languageMatch ? languageMatch[1].toLowerCase() : null
+    // Also handles formats like "detected language = zh (p = 0.99)"
+    const patterns = [
+      /detected language:\s*(\w+)/i,
+      /detected language\s*=\s*(\w+)/i,
+      /language:\s*(\w+)/i
+    ]
+
+    for (const pattern of patterns) {
+      const match = output.match(pattern)
+      if (match) {
+        console.log(
+          `[WhisperService] Extracted language using pattern: ${pattern}, result: ${match[1]}`
+        )
+        return match[1].toLowerCase()
+      }
+    }
+
+    console.warn(
+      '[WhisperService] Could not extract language from output:',
+      output.substring(0, 500)
+    )
+    return null
   }
 
   /**
    * Execute whisper.cpp command and return output
+   * Returns combined stdout + stderr since whisper.cpp outputs to both streams
    */
   private async executeWhisperCommand(args: string[]): Promise<string> {
     return new Promise((resolve, reject) => {
@@ -968,7 +1012,14 @@ export class WhisperBackend {
 
       process.on('close', (code) => {
         if (code === 0) {
-          resolve(stdout)
+          // Language detection output goes to stderr, so combine both streams
+          const combinedOutput = stdout + stderr
+          console.log('[WhisperService] Command output:', {
+            stdout: stdout.substring(0, 200),
+            stderr: stderr.substring(0, 200),
+            combined: combinedOutput.substring(0, 200)
+          })
+          resolve(combinedOutput)
         } else {
           reject(new Error(`Process exited with code ${code}: ${stderr}`))
         }
@@ -1112,17 +1163,12 @@ export class WhisperBackend {
       const shouldAutoDetect = options.autoDetectLanguage !== false
 
       if (!shouldAutoDetect && options.language) {
-        const whisperLanguage = this.convertToWhisperLanguage(options.language)
-        if (whisperLanguage) {
-          args.push('--language', whisperLanguage)
-          console.log(
-            `[WhisperService] Using fixed language '${options.language}' → '${whisperLanguage}' (auto-detection disabled)`
-          )
-        } else {
-          console.log(
-            `[WhisperService] Unsupported language '${options.language}', falling back to auto-detection`
-          )
-        }
+        // Extract base language code (e.g., "zh-TW" → "zh", "en-US" → "en")
+        const languageCode = options.language.split('-')[0].toLowerCase()
+        args.push('--language', languageCode)
+        console.log(
+          `[WhisperService] Using fixed language '${options.language}' → '${languageCode}' (auto-detection disabled)`
+        )
       } else {
         // Use auto-detection by default
         args.push('--language', 'auto')
@@ -1314,113 +1360,6 @@ export class WhisperBackend {
 
     // Text passes all filters
     return originalText
-  }
-
-  /**
-   * Convert locale-style language codes to whisper.cpp supported language codes
-   */
-  private convertToWhisperLanguage(language: string): string | null {
-    // Language code mapping for whisper.cpp compatibility
-    const languageMap: Record<string, string> = {
-      // Chinese variants
-      zh: 'chinese',
-      'zh-cn': 'chinese',
-      'zh-tw': 'chinese',
-      'zh-hk': 'chinese',
-
-      // Common languages
-      en: 'english',
-      'en-us': 'english',
-      'en-gb': 'english',
-      es: 'spanish',
-      fr: 'french',
-      de: 'german',
-      it: 'italian',
-      pt: 'portuguese',
-      ru: 'russian',
-      ja: 'japanese',
-      ko: 'korean',
-      ar: 'arabic',
-      hi: 'hindi',
-      th: 'thai',
-      vi: 'vietnamese',
-      nl: 'dutch',
-      tr: 'turkish',
-      pl: 'polish',
-      sv: 'swedish',
-      da: 'danish',
-      no: 'norwegian',
-      fi: 'finnish',
-      hu: 'hungarian',
-      cs: 'czech',
-      sk: 'slovak',
-      sl: 'slovenian',
-      hr: 'croatian',
-      bg: 'bulgarian',
-      ro: 'romanian',
-      uk: 'ukrainian',
-      el: 'greek',
-      he: 'hebrew',
-      fa: 'persian',
-      ur: 'urdu',
-      bn: 'bengali',
-      ta: 'tamil',
-      te: 'telugu',
-      ml: 'malayalam',
-      kn: 'kannada',
-      gu: 'gujarati',
-      pa: 'punjabi',
-      mr: 'marathi',
-      ne: 'nepali',
-      si: 'sinhala',
-      my: 'burmese',
-      km: 'khmer',
-      lo: 'lao',
-      ka: 'georgian',
-      am: 'amharic',
-      sw: 'swahili',
-      yo: 'yoruba',
-      zu: 'zulu',
-      af: 'afrikaans',
-      sq: 'albanian',
-      az: 'azerbaijani',
-      be: 'belarusian',
-      bs: 'bosnian',
-      ca: 'catalan',
-      cy: 'welsh',
-      et: 'estonian',
-      eu: 'basque',
-      fo: 'faroese',
-      gl: 'galician',
-      is: 'icelandic',
-      ga: 'irish',
-      lv: 'latvian',
-      lt: 'lithuanian',
-      lb: 'luxembourgish',
-      mk: 'macedonian',
-      mt: 'maltese',
-      mn: 'mongolian',
-      sr: 'serbian',
-      tl: 'tagalog',
-      tt: 'tatar',
-      uz: 'uzbek'
-    }
-
-    const normalizedLanguage = language.toLowerCase()
-
-    // Direct match
-    if (languageMap[normalizedLanguage]) {
-      return languageMap[normalizedLanguage]
-    }
-
-    // Try base language (e.g., 'en' from 'en-us')
-    const baseLanguage = normalizedLanguage.split('-')[0]
-    if (languageMap[baseLanguage]) {
-      return languageMap[baseLanguage]
-    }
-
-    // No mapping found
-    return null
   }
 }
 
