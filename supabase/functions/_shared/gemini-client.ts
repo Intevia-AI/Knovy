@@ -10,8 +10,19 @@ export const GEMINI_RETRY_CONFIG = {
   retryableErrors: [503, 429, 500], // Server errors and rate limits
 };
 
+// Gemini model registry
+export const GEMINI_MODELS = {
+  FLASH_LITE: "gemini-2.5-flash-lite",
+  FLASH: "gemini-2.5-flash",
+  PRO: "gemini-2.5-pro",
+  PRO_VISION: "gemini-2.5-pro-vision",
+} as const;
+
+export type GeminiModelType = typeof GEMINI_MODELS[keyof typeof GEMINI_MODELS];
+
 // Gemini API configuration
 export interface GeminiConfig {
+  model?: string;
   temperature?: number;
   topK?: number;
   topP?: number;
@@ -45,6 +56,7 @@ export interface GeminiUsage {
 export class GeminiClient {
   private apiKey: string;
   private baseConfig: GeminiConfig;
+  private model: string;
 
   constructor(apiKey?: string, config?: GeminiConfig) {
     this.apiKey = apiKey || Deno.env.get("GOOGLE_GENERATIVE_AI_API_KEY") || "";
@@ -52,12 +64,18 @@ export class GeminiClient {
       throw new Error("GOOGLE_GENERATIVE_AI_API_KEY is not set");
     }
 
+    // Extract model from config, default to flash-lite for backward compatibility
+    this.model = config?.model || GEMINI_MODELS.FLASH_LITE;
+
+    // Extract config without model (model goes in URL, not request body)
+    const { model: _, ...configWithoutModel } = config || {};
+
     this.baseConfig = {
       temperature: 0.1,
       topK: 1,
       topP: 0.8,
       maxOutputTokens: 2048,
-      ...config,
+      ...configWithoutModel,
     };
   }
 
@@ -79,7 +97,7 @@ export class GeminiClient {
       });
 
       const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${this.apiKey}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/${this.model}:generateContent?key=${this.apiKey}`,
         {
           method: "POST",
           headers: {
@@ -207,7 +225,7 @@ export class GeminiClient {
       });
 
       const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${this.apiKey}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/${this.model}:generateContent?key=${this.apiKey}`,
         {
           method: "POST",
           headers: {
@@ -255,13 +273,16 @@ export class GeminiClient {
 }
 
 /**
- * Create a singleton Gemini client instance
+ * Create Gemini client instances with model-based caching
+ * Each model gets its own cached instance for efficiency
  */
-let geminiClientInstance: GeminiClient | null = null;
+const geminiClientCache = new Map<string, GeminiClient>();
 
 export function getGeminiClient(config?: GeminiConfig): GeminiClient {
-  if (!geminiClientInstance) {
-    geminiClientInstance = new GeminiClient(undefined, config);
+  const model = config?.model || GEMINI_MODELS.FLASH_LITE;
+
+  if (!geminiClientCache.has(model)) {
+    geminiClientCache.set(model, new GeminiClient(undefined, config));
   }
-  return geminiClientInstance;
+  return geminiClientCache.get(model)!;
 }

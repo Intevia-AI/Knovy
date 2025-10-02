@@ -3,7 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { withEntitlements } from "../_shared/rbac.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 import { PROMPTS, getLanguage } from "../_shared/prompts.ts";
-import { getGeminiClient } from "../_shared/gemini-client.ts";
+import { getGeminiClient, GEMINI_MODELS } from "../_shared/gemini-client.ts";
 
 const handleRequest = async (req: Request, profile: Record<string, any>) => {
   try {
@@ -13,10 +13,12 @@ const handleRequest = async (req: Request, profile: Record<string, any>) => {
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_ANON_KEY") ?? "",
-      { global: { headers: { Authorization: req.headers.get("Authorization")! } } }
+      { global: { headers: { Authorization: req.headers.get("Authorization")! } } },
     );
 
-    const { data: { user } } = await supabaseClient.auth.getUser();
+    const {
+      data: { user },
+    } = await supabaseClient.auth.getUser();
     if (!user) {
       return new Response(JSON.stringify({ error: "User not authenticated" }), {
         status: 401,
@@ -37,6 +39,7 @@ const handleRequest = async (req: Request, profile: Record<string, any>) => {
 
     // Use shared Gemini client with retry logic
     const geminiClient = getGeminiClient({
+      model: GEMINI_MODELS.FLASH_LITE,
       temperature: 0.5,
       topK: 40,
       topP: 0.9,
@@ -65,16 +68,19 @@ const handleRequest = async (req: Request, profile: Record<string, any>) => {
       // Don't fail the request if logging fails
     }
 
-    return new Response(JSON.stringify({
-      recommendation: recommendation || "",
-      usage: {
-        input_tokens: usage.input_tokens,
-        output_tokens: usage.output_tokens,
+    return new Response(
+      JSON.stringify({
+        recommendation: recommendation || "",
+        usage: {
+          input_tokens: usage.input_tokens,
+          output_tokens: usage.output_tokens,
+        },
+      }),
+      {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       },
-    }), {
-      status: 200,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    );
   } catch (error: any) {
     console.error(error.message);
     return new Response(JSON.stringify({ error: "Internal Server Error" }), {
