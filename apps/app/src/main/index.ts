@@ -314,14 +314,13 @@ function createSelectionWindow() {
   console.log('[main/index.ts] Creating selection window')
   const primaryDisplay = screen.getPrimaryDisplay()
   const { width, height } = primaryDisplay.bounds
-  const menuBarHeight = process.platform === 'darwin' ? -50 : 0
-  console.log('[main/index.ts] Primary display bounds:', { width, height, menuBarHeight })
+  console.log('[main/index.ts] Primary display bounds:', { width, height })
 
   selectionWindow = new BrowserWindow({
     width: width,
-    height: height + menuBarHeight,
+    height: height,
     x: 0,
-    y: menuBarHeight,
+    y: 0,
     transparent: true,
     frame: false,
     alwaysOnTop: true,

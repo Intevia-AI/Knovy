@@ -36,6 +36,14 @@ export default defineConfig({
       watch: {
         ignored: ['**/.env*']
       }
+    },
+    build: {
+      rollupOptions: {
+        input: {
+          index: resolve(__dirname, 'src/renderer/index.html'),
+          selection: resolve(__dirname, 'src/renderer/selection.html')
+        }
+      }
     }
   }
 })

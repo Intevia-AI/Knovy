@@ -1,8 +1,6 @@
 import React, { useEffect, useRef } from 'react'
-import ReactDOM from 'react-dom/client'
-import '@/assets/globals.css'
 
-function SelectionPage() {
+export default function SelectionPage() {
   console.log('[Selection] SelectionPage component loaded')
   const overlayRef = useRef<HTMLDivElement>(null)
   const selectionRef = useRef<HTMLDivElement>(null)
@@ -123,9 +121,3 @@ function SelectionPage() {
     </div>
   )
 }
-
-ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
-    <SelectionPage />
-  </React.StrictMode>
-)
