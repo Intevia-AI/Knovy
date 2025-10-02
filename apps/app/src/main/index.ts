@@ -471,11 +471,55 @@ async function cleanupScreenshotCache() {
   }
 }
 
+// Audio cache management function
+// Cached audio files are stored in: /private/var/folders/.../T/knovy-transcription (macOS)
+//                                  : %TEMP%/knovy-transcription (Windows)
+//                                  : /tmp/knovy-transcription (Linux)
+async function cleanupAudioCache() {
+  try {
+    const audioTempDir = path.join(app.getPath('temp'), 'knovy-transcription')
+
+    console.log(`[main/index.ts] Cleaning audio cache in: ${audioTempDir}`)
+
+    // Check if directory exists
+    try {
+      await fs.access(audioTempDir)
+    } catch {
+      console.log(`[main/index.ts] Audio cache directory does not exist, skipping cleanup`)
+      return
+    }
+
+    // Read directory contents
+    const files = await fs.readdir(audioTempDir)
+    const audioFiles = files.filter((file) => file.startsWith('audio-') && file.endsWith('.wav'))
+
+    console.log(`[main/index.ts] Found ${audioFiles.length} cached audio files to remove`)
+
+    // Delete all cached audio files from previous sessions
+    for (const file of audioFiles) {
+      try {
+        const filePath = path.join(audioTempDir, file)
+        await fs.unlink(filePath)
+        console.log(`[main/index.ts] Deleted cached audio file: ${file}`)
+      } catch (error) {
+        console.warn(`[main/index.ts] Error deleting audio file ${file}:`, error)
+      }
+    }
+
+    console.log(`[main/index.ts] Audio cache cleanup completed`)
+  } catch (error) {
+    console.error('[main/index.ts] Error cleaning audio cache:', error)
+  }
+}
+
 app.on('ready', async () => {
   console.log('[DB Path] User data path:', app.getPath('userData'))
 
   // Clean up screenshot cache on startup
   await cleanupScreenshotCache()
+
+  // Clean up audio cache on startup
+  await cleanupAudioCache()
 
   if (is.dev) {
     await installExtension(REACT_DEVELOPER_TOOLS).catch(console.log)
