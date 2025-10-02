@@ -909,9 +909,14 @@ app.on('ready', async () => {
         // 3. Save enhanced transcript to database with proper error handling
         try {
           await dbService.addEnhancedTranscript(enhancedDbTranscript)
-          console.log(`[main/index.ts] Successfully saved enhanced transcript ${transcriptId} to database`)
+          console.log(
+            `[main/index.ts] Successfully saved enhanced transcript ${transcriptId} to database`
+          )
         } catch (dbError) {
-          console.error(`[main/index.ts] Failed to save enhanced transcript ${transcriptId} to database:`, dbError)
+          console.error(
+            `[main/index.ts] Failed to save enhanced transcript ${transcriptId} to database:`,
+            dbError
+          )
           // Continue with broadcast even if database save fails
           event.sender.send('transcription:warning', {
             warning: 'Failed to save transcription to database',
@@ -922,9 +927,11 @@ app.on('ready', async () => {
 
         // 4. Broadcast the original version (with keywords) to all windows for real-time display
         const windows = BrowserWindow.getAllWindows()
-        const validWindows = windows.filter(win => !win.isDestroyed())
+        const validWindows = windows.filter((win) => !win.isDestroyed())
 
-        console.log(`[main/index.ts] Broadcasting transcript ${transcriptId} to ${validWindows.length} windows`)
+        console.log(
+          `[main/index.ts] Broadcasting transcript ${transcriptId} to ${validWindows.length} windows`
+        )
 
         let broadcastSuccessCount = 0
         const broadcastPromises = validWindows.map(async (win, index) => {
@@ -954,7 +961,9 @@ app.on('ready', async () => {
         // Wait for all broadcasts with timeout
         try {
           await Promise.allSettled(broadcastPromises)
-          console.log(`[main/index.ts] Broadcast completed for transcript ${transcriptId}. Success: ${broadcastSuccessCount}/${validWindows.length}`)
+          console.log(
+            `[main/index.ts] Broadcast completed for transcript ${transcriptId}. Success: ${broadcastSuccessCount}/${validWindows.length}`
+          )
 
           // Send confirmation back to sender
           event.sender.send('transcription:processed', {
@@ -969,9 +978,10 @@ app.on('ready', async () => {
             const enhancementService = transcriptionService.getEnhancementService()
             if (enhancementService) {
               // Get user language from cached session profile
-              const userLanguage = cachedSessionProfile?.profile?.language ||
-                                 cachedSessionProfile?.app_settings?.language ||
-                                 'auto'
+              const userLanguage =
+                cachedSessionProfile?.profile?.language ||
+                cachedSessionProfile?.app_settings?.language ||
+                'auto'
 
               // Create segment with the SAME transcript ID for proper update matching
               const segment = {
@@ -993,9 +1003,11 @@ app.on('ready', async () => {
             }
           }, 100) // Small delay to ensure database save completes
         } catch (broadcastError) {
-          console.error(`[main/index.ts] Broadcast errors for transcript ${transcriptId}:`, broadcastError)
+          console.error(
+            `[main/index.ts] Broadcast errors for transcript ${transcriptId}:`,
+            broadcastError
+          )
         }
-
       } catch (processingError) {
         console.error(`[main/index.ts] Error processing transcription:`, processingError)
         event.sender.send('transcription:error', {
@@ -1008,19 +1020,27 @@ app.on('ready', async () => {
   )
 
   // Handle transcription updates (for enhancement replacements)
-  ipcMain.on('transcription:update', (event, updateData: { id: string; enhancedText: string; sourceType?: 'microphone' | 'system' }) => {
-    console.log(`[main/index.ts] Received transcription update for ID ${updateData.id}`)
+  ipcMain.on(
+    'transcription:update',
+    (
+      event,
+      updateData: { id: string; enhancedText: string; sourceType?: 'microphone' | 'system' }
+    ) => {
+      console.log(`[main/index.ts] Received transcription update for ID ${updateData.id}`)
 
-    // Broadcast the update to all windows
-    const windows = BrowserWindow.getAllWindows()
-    const validWindows = windows.filter(win => !win.isDestroyed())
+      // Broadcast the update to all windows
+      const windows = BrowserWindow.getAllWindows()
+      const validWindows = windows.filter((win) => !win.isDestroyed())
 
-    validWindows.forEach(win => {
-      win.webContents.send('transcription:update', updateData)
-    })
+      validWindows.forEach((win) => {
+        win.webContents.send('transcription:update', updateData)
+      })
 
-    console.log(`[main/index.ts] Broadcasted transcription update to ${validWindows.length} windows`)
-  })
+      console.log(
+        `[main/index.ts] Broadcasted transcription update to ${validWindows.length} windows`
+      )
+    }
+  )
 
   ipcMain.on('electronAPI:startScreenshot', () => {
     if (isScreenshotInProgress) {
@@ -1285,13 +1305,18 @@ app.on('ready', async () => {
     return dbService.createSession(session)
   })
   ipcMain.handle('db:add-transcript', (event, transcript) => dbService.addTranscript(transcript))
-  ipcMain.handle('db:add-enhanced-transcript', (event, transcript) => dbService.addEnhancedTranscript(transcript))
+  ipcMain.handle('db:add-enhanced-transcript', (event, transcript) =>
+    dbService.addEnhancedTranscript(transcript)
+  )
   ipcMain.handle('db:update-transcript-enhancement', (event, { transcriptId, enhancementData }) =>
-    dbService.updateTranscriptEnhancement(transcriptId, enhancementData))
+    dbService.updateTranscriptEnhancement(transcriptId, enhancementData)
+  )
   ipcMain.handle('db:update-transcript-enhancement-status', (event, { transcriptId, status }) =>
-    dbService.updateTranscriptEnhancementStatus(transcriptId, status))
+    dbService.updateTranscriptEnhancementStatus(transcriptId, status)
+  )
   ipcMain.handle('db:get-transcript-by-id', (event, transcriptId) =>
-    dbService.getTranscriptById(transcriptId))
+    dbService.getTranscriptById(transcriptId)
+  )
   ipcMain.handle('db:get-sessions', () => dbService.getSessions())
   ipcMain.handle('db:get-transcripts', (event, { sessionId, page, limit }) =>
     dbService.getTranscripts(sessionId, page, limit)
@@ -1318,7 +1343,10 @@ app.on('ready', async () => {
       console.log('[main/index.ts] Transcription service initialization result:', initialized)
 
       if (!initialized) {
-        const result = { success: false, error: 'WhisperBackend.initialize() returned false - check binary or model availability' }
+        const result = {
+          success: false,
+          error: 'WhisperBackend.initialize() returned false - check binary or model availability'
+        }
         console.log('[main/index.ts] Returning failure result:', result)
         return result
       }
@@ -1339,7 +1367,9 @@ app.on('ready', async () => {
       const transcriptionService = getWhisperBackend()
       const result = await transcriptionService.transcribeAudio(audioBuffer, options)
 
-      console.log(`[main/index.ts] Local transcription completed: "${result.text}" (${result.processingTime}ms)`)
+      console.log(
+        `[main/index.ts] Local transcription completed: "${result.text}" (${result.processingTime}ms)`
+      )
       return { success: true, result }
     } catch (error) {
       console.error('[main/index.ts] Local transcription failed:', error)
@@ -1425,7 +1455,11 @@ app.on('ready', async () => {
         ? path.join(__dirname, '../../resources')
         : path.join(process.resourcesPath, 'resources')
 
-      const whisperBinaryPath = path.join(resourcesPath, 'whisper.cpp', `${binaryName}-${platform}-${arch}`)
+      const whisperBinaryPath = path.join(
+        resourcesPath,
+        'whisper.cpp',
+        `${binaryName}-${platform}-${arch}`
+      )
       const modelsPath = path.join(app.getPath('userData'), 'whisper-models')
       const bundledModelPath = path.join(resourcesPath, 'whisper.cpp', 'models', 'ggml-tiny.bin')
 
@@ -1470,80 +1504,95 @@ app.on('ready', async () => {
   })
 
   // Transcription enhancement IPC handlers
-  ipcMain.handle('transcription:setup-enhancement', async (event, { supabaseUrl, supabaseAnonKey, userToken }) => {
-    try {
-      // Clean up old event listeners to prevent duplicates
-      console.log(`[main/index.ts] Cleaning up ${enhancementEventCleanups.length} old enhancement event listeners`)
-      enhancementEventCleanups.forEach(cleanup => cleanup())
-      enhancementEventCleanups = []
+  ipcMain.handle(
+    'transcription:setup-enhancement',
+    async (event, { supabaseUrl, supabaseAnonKey, userToken }) => {
+      try {
+        // Clean up old event listeners to prevent duplicates
+        console.log(
+          `[main/index.ts] Cleaning up ${enhancementEventCleanups.length} old enhancement event listeners`
+        )
+        enhancementEventCleanups.forEach((cleanup) => cleanup())
+        enhancementEventCleanups = []
 
-      const transcriptionService = getWhisperBackend()
-      transcriptionService.setupEnhancementService(supabaseUrl, supabaseAnonKey, userToken)
+        const transcriptionService = getWhisperBackend()
+        transcriptionService.setupEnhancementService(supabaseUrl, supabaseAnonKey, userToken)
 
-      // Set up event forwarding from enhancement service to renderer
-      const enhancementService = transcriptionService.getEnhancementService()
-      if (enhancementService) {
-        const segmentEnhancedHandler = async (data) => {
-          try {
-            // Update database with enhanced transcription
-            const enhancementData = {
-              enhancedText: data.enhanced.corrected,
-              enhancementMetadata: {
-                intention: data.enhanced.intention,
-                keywords: data.enhanced.keywords,
-                confidence: data.enhanced.confidence,
-                processingTime: data.processingTime
+        // Set up event forwarding from enhancement service to renderer
+        const enhancementService = transcriptionService.getEnhancementService()
+        if (enhancementService) {
+          const segmentEnhancedHandler = async (data) => {
+            try {
+              // Update database with enhanced transcription
+              const enhancementData = {
+                enhancedText: data.enhanced.corrected,
+                enhancementMetadata: {
+                  intention: data.enhanced.intention,
+                  keywords: data.enhanced.keywords,
+                  confidence: data.enhanced.confidence,
+                  processingTime: data.processingTime
+                }
               }
+
+              await dbService.updateTranscriptEnhancement(data.original.id, enhancementData)
+              console.log(
+                `[main/index.ts] Updated transcript ${data.original.id} with enhancement in database`
+              )
+
+              // Forward to renderer
+              event.sender.send('transcription:enhanced', data)
+            } catch (dbError) {
+              console.error(
+                `[main/index.ts] Failed to update enhancement in database for ${data.original.id}:`,
+                dbError
+              )
+              // Still forward the event to renderer even if database update fails
+              event.sender.send('transcription:enhanced', data)
+            }
+          }
+
+          enhancementService.on('segmentEnhanced', segmentEnhancedHandler)
+
+          // Store cleanup function
+          enhancementEventCleanups.push(() => {
+            enhancementService.off('segmentEnhanced', segmentEnhancedHandler)
+          })
+
+          const enhancementErrorHandler = async (error) => {
+            try {
+              // Update database with failed status
+              await dbService.updateTranscriptEnhancementStatus(error.segmentId, 'failed')
+              console.log(
+                `[main/index.ts] Updated transcript ${error.segmentId} enhancement status to failed`
+              )
+            } catch (dbError) {
+              console.error(
+                `[main/index.ts] Failed to update enhancement status in database for ${error.segmentId}:`,
+                dbError
+              )
             }
 
-            await dbService.updateTranscriptEnhancement(data.original.id, enhancementData)
-            console.log(`[main/index.ts] Updated transcript ${data.original.id} with enhancement in database`)
-
             // Forward to renderer
-            event.sender.send('transcription:enhanced', data)
-          } catch (dbError) {
-            console.error(`[main/index.ts] Failed to update enhancement in database for ${data.original.id}:`, dbError)
-            // Still forward the event to renderer even if database update fails
-            event.sender.send('transcription:enhanced', data)
-          }
-        }
-
-        enhancementService.on('segmentEnhanced', segmentEnhancedHandler)
-
-        // Store cleanup function
-        enhancementEventCleanups.push(() => {
-          enhancementService.off('segmentEnhanced', segmentEnhancedHandler)
-        })
-
-        const enhancementErrorHandler = async (error) => {
-          try {
-            // Update database with failed status
-            await dbService.updateTranscriptEnhancementStatus(error.segmentId, 'failed')
-            console.log(`[main/index.ts] Updated transcript ${error.segmentId} enhancement status to failed`)
-          } catch (dbError) {
-            console.error(`[main/index.ts] Failed to update enhancement status in database for ${error.segmentId}:`, dbError)
+            event.sender.send('transcription:enhancement-error', error)
           }
 
-          // Forward to renderer
-          event.sender.send('transcription:enhancement-error', error)
+          enhancementService.on('enhancementError', enhancementErrorHandler)
+
+          // Store cleanup function
+          enhancementEventCleanups.push(() => {
+            enhancementService.off('enhancementError', enhancementErrorHandler)
+          })
+
+          console.log('[main/index.ts] Enhancement event listeners registered successfully')
         }
 
-        enhancementService.on('enhancementError', enhancementErrorHandler)
-
-        // Store cleanup function
-        enhancementEventCleanups.push(() => {
-          enhancementService.off('enhancementError', enhancementErrorHandler)
-        })
-
-        console.log('[main/index.ts] Enhancement event listeners registered successfully')
+        return { success: true }
+      } catch (error) {
+        console.error('[main/index.ts] Failed to setup transcription enhancement:', error)
+        return { success: false, error: error.message }
       }
-
-      return { success: true }
-    } catch (error) {
-      console.error('[main/index.ts] Failed to setup transcription enhancement:', error)
-      return { success: false, error: error.message }
     }
-  })
+  )
 
   ipcMain.handle('transcription:set-enhancement-token', async (event, token) => {
     try {
@@ -1622,15 +1671,6 @@ process.on('uncaughtException', (error) => {
 
 app.on('will-quit', async () => {
   globalShortcut.unregisterAll()
-
-  // Cleanup local transcription service
-  try {
-    const transcriptionService = getWhisperBackend()
-    await transcriptionService.cleanup()
-    console.log('[main/index.ts] Local transcription service cleanup completed')
-  } catch (error) {
-    console.error('[main/index.ts] Error during local transcription cleanup:', error)
-  }
 })
 
 app.on('activate', () => {

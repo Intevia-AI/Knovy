@@ -300,18 +300,11 @@ export class WhisperBackend {
           ? this.filterTranscriptionResult(transcriptionResult.text, options)
           : transcriptionResult.text
 
-      // Keep WAV file for debugging (comment out cleanup)
-      // await this.cleanupTempFile(tempAudioFile)
-      console.log(`[WhisperService] 🔍 WAV file preserved for inspection: ${tempAudioFile}`)
-
       const processingTime = Date.now() - startTime
 
       // Update context for future segments if transcription was successful
       if (filteredText && filteredText.trim()) {
         this.updateContext(transcriptionSessionId, options.sourceType, filteredText)
-
-        // Note: Enhancement is now triggered from main/index.ts after transcript is saved
-        // This ensures the enhancement uses the same transcript ID as the database record
       }
 
       // Use detected language from two-stage detection or fallback
@@ -599,30 +592,6 @@ export class WhisperBackend {
       console.error('[WhisperService] Error ensuring model availability:', error)
       return false
     }
-  }
-
-  /**
-   * Cleanup service and terminate active processes
-   */
-  async cleanup(): Promise<void> {
-    console.log('[WhisperService] Cleaning up service...')
-
-    // Terminate any active whisper processes
-    for (const [sessionId, process] of this.activeProcesses) {
-      console.log(`[WhisperService] Terminating active process: ${sessionId}`)
-      process.kill('SIGTERM')
-    }
-    this.activeProcesses.clear()
-
-    // Cleanup temporary files
-    try {
-      await this.cleanupTempDirectory()
-    } catch (error) {
-      console.warn('[WhisperService] Error cleaning temp directory:', error)
-    }
-
-    this.isInitialized = false
-    console.log('[WhisperService] Service cleanup completed')
   }
 
   // Private helper methods
@@ -1081,40 +1050,6 @@ export class WhisperBackend {
         }
       }, 30000) // 30 second timeout
     })
-  }
-
-  private async cleanupTempFile(filePath: string): Promise<void> {
-    try {
-      await fs.unlink(filePath)
-    } catch (error) {
-      console.warn(`[WhisperService] Could not delete temp file ${filePath}:`, error)
-    }
-  }
-
-  private async cleanupTempDirectory(): Promise<void> {
-    try {
-      const files = await fs.readdir(this.tempPath)
-      const oldFiles = []
-
-      for (const file of files) {
-        const filePath = path.join(this.tempPath, file)
-        const stats = await fs.stat(filePath)
-        const ageMs = Date.now() - stats.mtime.getTime()
-
-        // Remove files older than 1 hour
-        if (ageMs > 60 * 60 * 1000) {
-          oldFiles.push(filePath)
-        }
-      }
-
-      await Promise.all(oldFiles.map((file) => fs.unlink(file).catch(console.warn)))
-
-      if (oldFiles.length > 0) {
-        console.log(`[WhisperService] Cleaned up ${oldFiles.length} old temp files`)
-      }
-    } catch (error) {
-      console.warn('[WhisperService] Error during temp directory cleanup:', error)
-    }
   }
 
   /**
