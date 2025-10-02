@@ -22,6 +22,7 @@ interface AuthContextType {
   sessionProfile: SessionProfile | null
   isLoading: boolean
   hasEntitlement: (entitlement: string) => boolean
+  refreshSessionProfile: () => Promise<void>
   signInWithProvider: (provider: 'google') => Promise<void>
   signOut: () => Promise<void>
 }
@@ -247,12 +248,47 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     return sessionProfile?.entitlements[entitlement] === true
   }
 
+  const refreshSessionProfile = async (): Promise<void> => {
+    if (!session?.access_token) {
+      console.warn('[AuthContext] Cannot refresh session profile: no active session')
+      return
+    }
+
+    try {
+      console.log('[AuthContext] Refreshing session profile...')
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-session-profile`,
+        {
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+            apikey: import.meta.env.VITE_SUPABASE_ANON_KEY!
+          }
+        }
+      )
+
+      if (response.ok) {
+        const profile = await response.json()
+        setSessionProfile(profile)
+        // Update cache in main process
+        if (window.electronAPI) {
+          await window.electronAPI.invoke('session:set-profile', profile)
+        }
+        console.log('[AuthContext] Session profile refreshed successfully')
+      } else {
+        console.error('[AuthContext] Failed to refresh session profile:', response.status)
+      }
+    } catch (error) {
+      console.error('[AuthContext] Error refreshing session profile:', error)
+    }
+  }
+
   const value: AuthContextType = {
     session,
     user,
     sessionProfile,
     isLoading,
     hasEntitlement,
+    refreshSessionProfile,
     signInWithProvider,
     signOut
   }

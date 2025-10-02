@@ -29,7 +29,7 @@ import { motion, AnimatePresence } from 'motion'
 export function SettingsPanel() {
   const { t } = useI18n()
   const { language, setLanguage } = useLanguage()
-  const { signOut, sessionProfile } = useAuth()
+  const { signOut, sessionProfile, refreshSessionProfile } = useAuth()
 
   const [isScreenSharing, setIsScreenSharing] = useState(false)
   const [draftPrompt, setDraftPrompt] = useState('')
@@ -109,6 +109,9 @@ export function SettingsPanel() {
     const getInitialData = async () => {
       if (window.electronAPI) {
         try {
+          // Refresh session profile to get latest quota usage
+          await refreshSessionProfile()
+
           // Fetch screen share state
           const sharingState = await window.electronAPI.invoke('get-screenshare-state')
           setIsScreenSharing(sharingState)
@@ -140,7 +143,7 @@ export function SettingsPanel() {
       }
     }
     getInitialData()
-  }, [])
+  }, [refreshSessionProfile])
 
   const languages = [
     { code: 'zh-TW', name: '繁體中文' },
