@@ -60,4 +60,5 @@ publish:
   repo: Knovy-Release
 electronDownload:
   mirror: https://npmmirror.com/mirrors/electron/
+afterPack: './code-signing/sign-dylibs.js'
 afterSign: './code-signing/notarize.js'

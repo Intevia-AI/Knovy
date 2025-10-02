@@ -1,17 +1,21 @@
 # Whisper.cpp Binaries
 
-This directory contains the whisper.cpp binaries used for local transcription.
+This directory contains the whisper.cpp binaries and dynamic libraries used for local transcription.
 
 ## Directory Structure
 
 ```
 whisper.cpp/
-├── whisper-darwin-x64       # macOS Intel binary
-├── whisper-darwin-arm64     # macOS Apple Silicon binary
-├── whisper-win32-x64.exe    # Windows x64 binary
-├── whisper-linux-x64        # Linux x64 binary
+├── whisper-darwin-arm64     # macOS Apple Silicon binary (patched rpath)
+├── libwhisper.1.dylib       # Whisper library
+├── libwhisper.1.7.6.dylib   # Whisper library (versioned)
+├── libggml.dylib            # GGML core library
+├── libggml-base.dylib       # GGML base library
+├── libggml-cpu.dylib        # GGML CPU backend
+├── libggml-blas.dylib       # GGML BLAS backend
+├── libggml-metal.dylib      # GGML Metal backend (GPU)
 ├── models/                  # Downloaded models (created at runtime)
-└── README.md               # This file
+└── README.md                # This file
 ```
 
 ## Binary Requirements
@@ -81,9 +85,40 @@ The binaries are executed by the LocalTranscriptionService with these parameters
   --language auto
 ```
 
+## Important: Dynamic Library Loading (macOS)
+
+The whisper binary has been **patched** to load libraries from `@executable_path` (same directory).
+
+**DO NOT** replace `whisper-darwin-arm64` without updating its rpath:
+
+```bash
+install_name_tool -add_rpath "@executable_path" whisper-darwin-arm64
+install_name_tool -change "@rpath/libwhisper.1.dylib" "@executable_path/libwhisper.1.dylib" whisper-darwin-arm64
+install_name_tool -change "@rpath/libggml.dylib" "@executable_path/libggml.dylib" whisper-darwin-arm64
+install_name_tool -change "@rpath/libggml-cpu.dylib" "@executable_path/libggml-cpu.dylib" whisper-darwin-arm64
+install_name_tool -change "@rpath/libggml-blas.dylib" "@executable_path/libggml-blas.dylib" whisper-darwin-arm64
+install_name_tool -change "@rpath/libggml-metal.dylib" "@executable_path/libggml-metal.dylib" whisper-darwin-arm64
+install_name_tool -change "@rpath/libggml-base.dylib" "@executable_path/libggml-base.dylib" whisper-darwin-arm64
+```
+
+Verify the binary's library dependencies:
+
+```bash
+otool -L whisper-darwin-arm64
+```
+
+Should show `@executable_path/` for all whisper/ggml libraries.
+
+## Code Signing (Production Builds)
+
+All `.dylib` files and the binary are automatically code-signed during production builds via `code-signing/sign-dylibs.js`.
+
+For local unsigned builds, set `SKIP_NOTARIZE=true` to skip signing.
+
 ## Notes
 
 - Binaries must be executable (`chmod +x`)
+- All dylibs must be present in the same directory as the binary
 - Models are downloaded from HuggingFace on first use
 - Temporary audio files are created in system temp directory
 - All processing is done locally without network dependencies
