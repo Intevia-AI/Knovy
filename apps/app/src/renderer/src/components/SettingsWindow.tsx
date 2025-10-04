@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { motion, AnimatePresence } from 'motion'
 import { Settings } from 'lucide-react'
 import { SettingsSidebar } from './SettingsSidebar'
 import { GeneralSettings } from './settings/GeneralSettings'
@@ -9,13 +10,7 @@ import { ShortcutsView } from './settings/ShortcutsView'
 import { AboutView } from './settings/AboutView'
 import { useAuth } from '@/hooks/useAuth'
 
-export type SettingsSection =
-  | 'general'
-  | 'history'
-  | 'account'
-  | 'display'
-  | 'shortcuts'
-  | 'about'
+export type SettingsSection = 'general' | 'history' | 'account' | 'display' | 'shortcuts' | 'about'
 
 export function SettingsWindow() {
   const [activeSection, setActiveSection] = useState<SettingsSection>('general')
@@ -33,28 +28,33 @@ export function SettingsWindow() {
   }, [])
 
   const renderContent = () => {
-    switch (activeSection) {
-      case 'general':
-        return <GeneralSettings />
-      case 'history':
-        return <HistoryView />
-      case 'account':
-        return <AccountSettings sessionProfile={sessionProfile} />
-      case 'display':
-        return <DisplaySettings />
-      case 'shortcuts':
-        return <ShortcutsView />
-      case 'about':
-        return <AboutView />
-      default:
-        return <GeneralSettings />
+    const components = {
+      general: <GeneralSettings />,
+      history: <HistoryView />,
+      account: <AccountSettings sessionProfile={sessionProfile} />,
+      display: <DisplaySettings />,
+      shortcuts: <ShortcutsView />,
+      about: <AboutView />
     }
+
+    return components[activeSection] || <GeneralSettings />
   }
 
   return (
-    <div className="flex flex-col h-screen w-screen bg-transparent">
+    <motion.div
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.95 }}
+      transition={{ duration: 0.2, ease: 'easeOut' }}
+      className="flex flex-col h-screen w-screen bg-transparent"
+    >
       {/* Custom Title Bar */}
-      <div className="h-[52px] bg-background/40 backdrop-blur-xl border-b border-border/30 flex items-center select-none drag-region z-20 flex-shrink-0">
+      <motion.div
+        initial={{ y: -20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.3, delay: 0.1 }}
+        className="h-[52px] bg-background/40 backdrop-blur-xl border-b border-border/30 flex items-center select-none drag-region z-20 flex-shrink-0"
+      >
         {/* macOS traffic lights spacing (left side) */}
         <div className="w-[80px]" />
 
@@ -66,22 +66,38 @@ export function SettingsWindow() {
 
         {/* Right side spacing for symmetry */}
         <div className="w-[80px]" />
-      </div>
+      </motion.div>
 
       {/* Main Content Area (Sidebar + Content) */}
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar */}
-        <div className="flex-shrink-0">
+        <motion.div
+          initial={{ x: -20, opacity: 0 }}
+          animate={{ x: 0, opacity: 1 }}
+          transition={{ duration: 0.3, delay: 0.15 }}
+          className="flex-shrink-0"
+        >
           <SettingsSidebar activeSection={activeSection} onSectionChange={setActiveSection} />
-        </div>
+        </motion.div>
 
         {/* Content Area */}
         <div className="flex-1 overflow-hidden">
           <div className="h-full w-full overflow-y-auto bg-background/30 backdrop-blur-xl settings-scrollbar">
-            <div className="p-6">{renderContent()}</div>
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={activeSection}
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.2 }}
+                className="p-6"
+              >
+                {renderContent()}
+              </motion.div>
+            </AnimatePresence>
           </div>
         </div>
       </div>
-    </div>
+    </motion.div>
   )
 }

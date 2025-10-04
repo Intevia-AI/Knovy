@@ -1,3 +1,4 @@
+import { motion } from 'motion'
 import { Settings, History, User, Monitor, Keyboard, Info } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { SettingsSection } from './SettingsWindow'
@@ -26,13 +27,18 @@ export function SettingsSidebar({ activeSection, onSectionChange }: SettingsSide
   return (
     <div className="w-[180px] h-full bg-background/40 backdrop-blur-xl border-r border-border/30 p-4">
       <nav className="space-y-1">
-        {navItems.map((item) => {
+        {navItems.map((item, index) => {
           const Icon = item.icon
           const isActive = activeSection === item.id
 
           return (
-            <button
+            <motion.button
               key={item.id}
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.2, delay: index * 0.05 }}
+              whileHover={{ scale: 1.02, x: 4 }}
+              whileTap={{ scale: 0.98 }}
               onClick={() => onSectionChange(item.id)}
               className={cn(
                 'flex items-center gap-3 px-4 py-2.5 rounded-lg w-full text-left',
@@ -44,7 +50,7 @@ export function SettingsSidebar({ activeSection, onSectionChange }: SettingsSide
             >
               <Icon className="w-4 h-4" />
               <span>{item.label}</span>
-            </button>
+            </motion.button>
           )
         })}
       </nav>
