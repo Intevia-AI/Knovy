@@ -23,6 +23,7 @@ interface MainControlBarProps {
   recordingDuration: number
   onTogglePanel: (panelId: string) => void
   openPanels: Set<string>
+  isSettingsOpen: boolean
 }
 
 export function MainControlBar({
@@ -31,7 +32,8 @@ export function MainControlBar({
   isSummarizing,
   recordingDuration,
   onTogglePanel,
-  openPanels
+  openPanels,
+  isSettingsOpen
 }: MainControlBarProps) {
   const { t } = useI18n()
   const { sessionProfile } = useAuth()
@@ -118,7 +120,7 @@ export function MainControlBar({
           variant="ghost"
           size="icon"
           onClick={() => onTogglePanel('settings')}
-          className={`h-8 w-8 rounded-full shadow hover:bg-white ${openPanels.has('settings') ? 'bg-white' : ''}`}
+          className={`h-8 w-8 rounded-full shadow hover:bg-white ${isSettingsOpen ? 'bg-white' : ''}`}
           title="Settings"
         >
           <SettingsIcon className="h-4 w-4" />

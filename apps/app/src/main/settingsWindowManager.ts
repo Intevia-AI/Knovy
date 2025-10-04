@@ -60,6 +60,10 @@ export function createSettingsWindow(mainWindow: BrowserWindow): BrowserWindow {
 
   // Cleanup on close
   settingsWindow.on('closed', () => {
+    // Notify main window that settings was closed
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('settings:closed')
+    }
     settingsWindow = null
   })
 

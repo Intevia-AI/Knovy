@@ -14,6 +14,7 @@ import RealTimeAnalysis from './RealTimeAnalysis'
 export function MainController() {
   const { language } = useLanguage()
   const [openPanels, setOpenPanels] = useState<Set<string>>(new Set())
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
 
   // Electron Interactions
   const { isAlwaysOnTop, toggleAlwaysOnTop, minimizeWindow, closeWindow } = useElectron()
@@ -60,11 +61,23 @@ export function MainController() {
     }
   }, [])
 
+  // Track settings window state
+  useEffect(() => {
+    const handleSettingsClosed = () => {
+      setIsSettingsOpen(false)
+    }
+    const unsubscribe = window.electronAPI.on('settings:closed', handleSettingsClosed)
+    return () => {
+      unsubscribe()
+    }
+  }, [])
+
   const handleTogglePanel = useCallback(
     async (panelId: string, options?: { ensureOpen?: boolean }) => {
       // Handle settings separately - open new window instead of popover
       if (panelId === 'settings') {
         await window.electronAPI.invoke('settings:open')
+        setIsSettingsOpen(true)
         return
       }
 
@@ -261,6 +274,7 @@ export function MainController() {
         recordingDuration={recordingDuration}
         onTogglePanel={handleTogglePanel}
         openPanels={openPanels}
+        isSettingsOpen={isSettingsOpen}
       />
       <RealTimeAnalysis
         isScreenSharing={isScreenSharing}
