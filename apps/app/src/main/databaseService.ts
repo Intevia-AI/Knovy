@@ -264,3 +264,89 @@ export async function endSession(sessionId: string) {
     throw new Error(`Failed to end session ${sessionId}`)
   }
 }
+
+// History pagination functions
+
+export async function getSessionsWithTranscripts(
+  userId: string, // Not used currently as sessions table doesn't have user_id
+  limit: number = 20,
+  offset: number = 0
+) {
+  console.log('[DB] getSessionsWithTranscripts called with userId:', userId, 'limit:', limit, 'offset:', offset)
+  const db = await dbPromise
+
+  // Get sessions with pagination (without user_id filter since table doesn't have it)
+  const sessionsStmt = await db.prepare(`
+    SELECT
+      s.*,
+      sm.content as summary,
+      CAST((julianday(s.ended_at) - julianday(s.started_at)) * 86400 AS INTEGER) as duration
+    FROM sessions s
+    LEFT JOIN summaries sm ON s.id = sm.session_id
+    ORDER BY s.started_at DESC
+    LIMIT ? OFFSET ?
+  `)
+  const sessions = await sessionsStmt.all(limit, offset)
+  console.log('[DB] Found sessions:', sessions.length)
+
+  // Get transcripts for each session
+  const sessionsWithTranscripts = await Promise.all(
+    sessions.map(async (session) => {
+      const transcriptsStmt = await db.prepare(`
+        SELECT
+          id, session_id, content as text, timestamp, timestamp as created_at, source_type
+        FROM transcripts
+        WHERE session_id = ?
+        ORDER BY timestamp ASC
+      `)
+      const transcripts = await transcriptsStmt.all(session.id)
+      console.log(`[DB] Session ${session.id} has ${transcripts.length} transcripts`)
+
+      return {
+        ...session,
+        user_id: userId, // Add user_id to match type expectations
+        transcripts
+      }
+    })
+  )
+
+  console.log('[DB] Returning', sessionsWithTranscripts.length, 'sessions with transcripts')
+  return sessionsWithTranscripts
+}
+
+export async function getTotalSessionCount(userId: string) {
+  const db = await dbPromise
+  const stmt = await db.prepare('SELECT COUNT(*) as count FROM sessions')
+  const result = await stmt.get()
+  return result?.count || 0
+}
+
+export async function exportSession(sessionId: string) {
+  const db = await dbPromise
+
+  // Get session with summary
+  const sessionStmt = await db.prepare(`
+    SELECT
+      s.*,
+      sm.content as summary
+    FROM sessions s
+    LEFT JOIN summaries sm ON s.id = sm.session_id
+    WHERE s.id = ?
+  `)
+  const session = await sessionStmt.get(sessionId)
+
+  if (!session) {
+    throw new Error(`Session ${sessionId} not found`)
+  }
+
+  // Get all transcripts
+  const transcriptsStmt = await db.prepare(`
+    SELECT * FROM transcripts WHERE session_id = ? ORDER BY timestamp ASC
+  `)
+  const transcripts = await transcriptsStmt.all(sessionId)
+
+  return {
+    session,
+    transcripts
+  }
+}

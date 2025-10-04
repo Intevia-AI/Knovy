@@ -1348,6 +1348,14 @@ app.on('ready', async () => {
   ipcMain.handle('db:end-session', (event, sessionId) => dbService.endSession(sessionId))
   ipcMain.handle('db:get-summary', (event, sessionId) => dbService.getSummary(sessionId))
   ipcMain.handle('db:save-summary', (event, summary) => dbService.saveSummary(summary))
+  ipcMain.handle('db:get-sessions-with-transcripts', (event, { userId, limit, offset }) =>
+    dbService.getSessionsWithTranscripts(userId, limit, offset)
+  )
+  ipcMain.handle('db:get-total-session-count', (event, userId) =>
+    dbService.getTotalSessionCount(userId)
+  )
+  ipcMain.handle('db:export-session', (event, sessionId) => dbService.exportSession(sessionId))
+  ipcMain.handle('db:delete-session', (event, sessionId) => dbService.deleteSession(sessionId))
 
   // Local transcription IPC handlers
   ipcMain.handle('transcription:initialize', async () => {
