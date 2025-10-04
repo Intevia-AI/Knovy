@@ -38,8 +38,8 @@ export function SettingsSidebar({ activeSection, onSectionChange }: SettingsSide
                 'flex items-center gap-3 px-4 py-2.5 rounded-lg w-full text-left',
                 'text-sm transition-all duration-200',
                 isActive
-                  ? 'text-foreground font-medium bg-accent/70 backdrop-blur-sm shadow-sm border border-border/30'
-                  : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
+                  ? 'text-foreground font-medium bg-white/90 backdrop-blur-sm shadow-sm'
+                  : 'text-muted-foreground hover:bg-white/60 hover:text-foreground'
               )}
             >
               <Icon className="w-4 h-4" />
