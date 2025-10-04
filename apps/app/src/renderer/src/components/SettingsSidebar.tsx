@@ -1,0 +1,53 @@
+import { Settings, History, User, Monitor, Keyboard, Info } from 'lucide-react'
+import { cn } from '@/lib/utils'
+import type { SettingsSection } from './SettingsWindow'
+
+interface NavItem {
+  id: SettingsSection
+  label: string
+  icon: React.ComponentType<{ className?: string }>
+}
+
+const navItems: NavItem[] = [
+  { id: 'general', label: 'General', icon: Settings },
+  { id: 'history', label: 'History', icon: History },
+  { id: 'account', label: 'Account', icon: User },
+  { id: 'display', label: 'Display', icon: Monitor },
+  { id: 'shortcuts', label: 'Shortcuts', icon: Keyboard },
+  { id: 'about', label: 'About', icon: Info }
+]
+
+interface SettingsSidebarProps {
+  activeSection: SettingsSection
+  onSectionChange: (section: SettingsSection) => void
+}
+
+export function SettingsSidebar({ activeSection, onSectionChange }: SettingsSidebarProps) {
+  return (
+    <div className="w-[180px] h-full bg-background/40 backdrop-blur-xl border-r border-border/30 p-4">
+      <nav className="space-y-1">
+        {navItems.map((item) => {
+          const Icon = item.icon
+          const isActive = activeSection === item.id
+
+          return (
+            <button
+              key={item.id}
+              onClick={() => onSectionChange(item.id)}
+              className={cn(
+                'flex items-center gap-3 px-4 py-2.5 rounded-lg w-full text-left',
+                'text-sm transition-all duration-200',
+                isActive
+                  ? 'text-foreground font-medium bg-accent/70 backdrop-blur-sm shadow-sm border border-border/30'
+                  : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
+              )}
+            >
+              <Icon className="w-4 h-4" />
+              <span>{item.label}</span>
+            </button>
+          )
+        })}
+      </nav>
+    </div>
+  )
+}

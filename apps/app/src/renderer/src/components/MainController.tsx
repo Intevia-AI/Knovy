@@ -35,11 +35,7 @@ export function MainController() {
     const newWidth = isScreenSharing ? 440 : 360
     window.electronAPI.send('app:resize-window', { width: newWidth })
 
-    if (isScreenSharing) {
-      if (openPanels.has('settings')) {
-        handleTogglePanel('settings', { ensureOpen: true })
-      }
-    } else {
+    if (!isScreenSharing) {
       // Close all popovers when screen sharing stops
       window.electronAPI.send('popover:close-all')
       setOpenPanels(new Set())
@@ -66,6 +62,12 @@ export function MainController() {
 
   const handleTogglePanel = useCallback(
     async (panelId: string, options?: { ensureOpen?: boolean }) => {
+      // Handle settings separately - open new window instead of popover
+      if (panelId === 'settings') {
+        await window.electronAPI.invoke('settings:open')
+        return
+      }
+
       const currentPanels = new Set(openPanels)
       const isOpening = options?.ensureOpen ? true : !currentPanels.has(panelId)
       const newPanels = new Set(currentPanels)
@@ -106,12 +108,6 @@ export function MainController() {
       const panelConfigs = {
         transcriptions: { id: 'transcriptions', hash: 'transcriptions', width: 440, height: 340 },
         actions: { id: 'actions', hash: 'actions', width: 440, height: 340 },
-        settings: {
-          id: 'settings',
-          hash: 'settings',
-          width: isScreenSharing ? 440 : 360,
-          height: 340
-        },
         'screen-preview': {
           id: 'screen-preview',
           hash: 'screen-preview',

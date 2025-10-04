@@ -28,6 +28,7 @@ import {
 import { positionWindow, type PositionOptions } from './windowManager'
 import electronUpdater, { type AppUpdater } from 'electron-updater'
 import { getWhisperBackend } from './whisperBackend'
+import { createSettingsWindow, closeSettingsWindow } from './settingsWindowManager'
 
 console.log('[Debug] Imported dbService module:', dbService)
 
@@ -589,6 +590,24 @@ app.on('ready', async () => {
   }
 
   globalShortcut.register("alt+'", toggleWindow)
+
+  // Settings window IPC handlers
+  ipcMain.handle('settings:open', () => {
+    if (mainWindow) {
+      createSettingsWindow(mainWindow)
+      return { success: true }
+    }
+    return { success: false, error: 'Main window not available' }
+  })
+
+  ipcMain.on('settings:close', () => {
+    closeSettingsWindow()
+  })
+
+  ipcMain.handle('settings:navigate', (event, section: string) => {
+    // Navigation handled in renderer, just for future use
+    return { success: true, section }
+  })
 
   ipcMain.handle('supabase:signInWithOAuth', async (event, provider) => {
     if (provider.urlToOpen) {

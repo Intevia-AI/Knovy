@@ -120,7 +120,8 @@ const api = {
       'transcription:model-error',
       'transcription:model-download-progress',
       'model:download-progress',
-      'model:download-complete'
+      'model:download-complete',
+      'settings:closed'
     ]
     if (validChannels.includes(channel)) {
       const subscription = (event, ...args) => callback(...args)
@@ -157,7 +158,8 @@ const api = {
       'transcription:model-error',
       'electronAPI:startScreenshot',
       'electronAPI:captureArea',
-      'electronAPI:cancelScreenshot'
+      'electronAPI:cancelScreenshot',
+      'settings:close'
     ]
     if (!validChannels.includes(channel)) {
       console.warn(`[Preload] Attempted to send on invalid channel: ${channel}`)
@@ -206,7 +208,9 @@ const api = {
       'transcription:get-storage-usage',
       'transcription:get-diagnostics',
       'transcription:setup-enhancement',
-      'transcription:set-enhancement-token'
+      'transcription:set-enhancement-token',
+      'settings:open',
+      'settings:navigate'
     ]
     if (!validChannels.includes(channel)) {
       return Promise.reject(new Error(`Invalid invoke channel: ${channel}`))
