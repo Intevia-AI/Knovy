@@ -1356,6 +1356,7 @@ app.on('ready', async () => {
   )
   ipcMain.handle('db:export-session', (event, sessionId) => dbService.exportSession(sessionId))
   ipcMain.handle('db:delete-session', (event, sessionId) => dbService.deleteSession(sessionId))
+  ipcMain.handle('db:get-all-session-dates', () => dbService.getAllSessionDates())
 
   // Local transcription IPC handlers
   ipcMain.handle('transcription:initialize', async () => {

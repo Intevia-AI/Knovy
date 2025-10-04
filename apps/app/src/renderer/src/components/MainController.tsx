@@ -74,10 +74,17 @@ export function MainController() {
 
   const handleTogglePanel = useCallback(
     async (panelId: string, options?: { ensureOpen?: boolean }) => {
-      // Handle settings separately - open new window instead of popover
+      // Handle settings separately - toggle window instead of popover
       if (panelId === 'settings') {
-        await window.electronAPI.invoke('settings:open')
-        setIsSettingsOpen(true)
+        if (isSettingsOpen) {
+          // Close if already open
+          window.electronAPI.send('settings:close')
+          setIsSettingsOpen(false)
+        } else {
+          // Open if closed
+          await window.electronAPI.invoke('settings:open')
+          setIsSettingsOpen(true)
+        }
         return
       }
 
@@ -186,7 +193,7 @@ export function MainController() {
       // Update React state
       setOpenPanels(newPanels)
     },
-    [isScreenSharing, openPanels]
+    [isScreenSharing, openPanels, isSettingsOpen]
   )
 
   useEffect(() => {

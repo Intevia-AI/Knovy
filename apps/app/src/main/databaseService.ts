@@ -321,6 +321,20 @@ export async function getTotalSessionCount(userId: string) {
   return result?.count || 0
 }
 
+export async function getAllSessionDates() {
+  console.log('[DB] getAllSessionDates called')
+  const db = await dbPromise
+  const stmt = await db.prepare(`
+    SELECT DISTINCT DATE(started_at) as date
+    FROM sessions
+    WHERE started_at IS NOT NULL
+    ORDER BY started_at DESC
+  `)
+  const results = await stmt.all()
+  console.log('[DB] Found session dates:', results.length)
+  return results.map(r => r.date)
+}
+
 export async function exportSession(sessionId: string) {
   const db = await dbPromise
 

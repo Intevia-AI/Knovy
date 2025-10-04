@@ -70,6 +70,7 @@ const api = {
     ipcRenderer.invoke('db:get-total-session-count', userId),
   exportSession: (sessionId: string) => ipcRenderer.invoke('db:export-session', sessionId),
   deleteSession: (sessionId: string) => ipcRenderer.invoke('db:delete-session', sessionId),
+  getAllSessionDates: () => ipcRenderer.invoke('db:get-all-session-dates'),
 
   startScreenshot: () => ipcRenderer.send('electronAPI:startScreenshot'),
 
