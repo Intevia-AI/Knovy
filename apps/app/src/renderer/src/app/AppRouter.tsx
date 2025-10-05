@@ -6,7 +6,6 @@ import { useTheme } from 'next-themes'
 import { MainController } from '../components/MainController'
 import ChatPanel from '../components/ChatPanel'
 import ActionsPanel from '../components/ActionsPanel'
-import { SettingsPanel } from '../components/SettingsPanel'
 import { PreviewPanel } from '../components/PreviewPanel'
 import { UpdaterPanel } from '../components/UpdaterPanel'
 
@@ -16,7 +15,6 @@ const getInitialView = () => {
   switch (hash) {
     case 'transcriptions':
     case 'actions':
-    case 'settings':
     case 'screen-preview':
     case 'updater':
       return hash
@@ -48,8 +46,6 @@ function AppContainer() {
       return <ChatPanel />
     case 'actions':
       return <ActionsPanel />
-    case 'settings':
-      return <SettingsPanel />
     case 'updater':
       return <UpdaterPanel />
     default:
