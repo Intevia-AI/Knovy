@@ -260,7 +260,7 @@ export const translations = {
     aboutTitle: '關於',
     aboutDescription: '關於 Knovy 和版本資訊',
     aiPoweredTranscription: 'AI 驅動即時逐字稿',
-    visitWebsite: '訪問網站',
+    visitWebsite: '來去官網',
     checkForUpdates: '檢查更新',
     generalSettingsDescription: '管理您的一般設定',
     languageChangeWarning: '變更語言將會停止您目前的錄製對話紀錄',

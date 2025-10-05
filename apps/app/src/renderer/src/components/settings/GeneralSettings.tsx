@@ -179,7 +179,7 @@ export function GeneralSettings() {
                           {`${t('displayLabelPrefix')} ${index + 1}${display.primary ? ` ${t('primaryDisplaySuffix')}` : ''}`}
                         </span>
                         {isCurrentDisplay && (
-                          <span className="ml-2 text-xs text-primary">● Current</span>
+                          <span className="ml-2 text-xs text-primary">（Current）</span>
                         )}
                       </div>
                     </SelectItem>

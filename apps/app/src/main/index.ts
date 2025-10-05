@@ -795,7 +795,18 @@ app.on('ready', async () => {
     event.reply('electronAPI:alwaysOnTopChanged', mainWindow?.isAlwaysOnTop())
   })
   ipcMain.handle('electronAPI:getInitialAlwaysOnTop', () => mainWindow?.isAlwaysOnTop() ?? false)
-  ipcMain.handle('electronAPI:getSettings', async () => loadSettings())
+  ipcMain.handle('electronAPI:getSettings', async () => {
+    const settings = await loadSettings()
+
+    // Always return the actual display where the main window is currently positioned
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      const windowBounds = mainWindow.getBounds()
+      const currentDisplay = screen.getDisplayMatching(windowBounds)
+      settings.displayId = currentDisplay.id
+    }
+
+    return settings
+  })
   ipcMain.handle('electronAPI:setSettings', async (event, settingsToUpdate) => {
     const currentSettings = await loadSettings()
     const newSettings = { ...currentSettings, ...settingsToUpdate }
