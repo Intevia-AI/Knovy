@@ -212,7 +212,7 @@ export function HistoryView() {
         className="flex gap-3"
       >
         {/* Search Bar */}
-        <div className="relative flex-1">
+        <div className="relative flex-1" role="search">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <input
             type="text"
@@ -220,6 +220,7 @@ export function HistoryView() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-10 pr-4 py-2 bg-background/40 backdrop-blur-md rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+            aria-label="Search sessions"
           />
         </div>
 
@@ -236,13 +237,14 @@ export function HistoryView() {
               setShowCalendar(!showCalendar)
             }
           }}
-          className={`px-4 py-2 rounded-lg text-sm transition-all duration-200 flex items-center gap-2 ${
+          className={`px-4 py-2 rounded-lg text-sm transition-all duration-200 flex items-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
             selectedDate
               ? 'bg-primary text-white shadow-sm'
               : showCalendar
                 ? 'bg-white/90 text-foreground shadow-sm'
                 : 'bg-background/40 backdrop-blur-md hover:bg-white/60 text-muted-foreground'
           }`}
+          aria-label={selectedDate ? 'Clear date filter' : showCalendar ? 'Close calendar' : 'Select date'}
         >
           {selectedDate ? (
             <>

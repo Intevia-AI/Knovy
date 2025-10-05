@@ -48,8 +48,9 @@ export function SessionCard({ session, onExport, onDelete }: SessionCardProps) {
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
               onClick={() => onExport(session.id)}
-              className="p-1.5 rounded-md hover:bg-background/60 text-muted-foreground hover:text-foreground transition-colors"
+              className="p-1.5 rounded-md hover:bg-background/60 text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               title="Export session"
+              aria-label="Export session"
             >
               <Download className="w-4 h-4" />
             </motion.button>
@@ -57,8 +58,9 @@ export function SessionCard({ session, onExport, onDelete }: SessionCardProps) {
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
               onClick={() => onDelete(session.id)}
-              className="p-1.5 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+              className="p-1.5 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive"
               title="Delete session"
+              aria-label="Delete session"
             >
               <Trash2 className="w-4 h-4" />
             </motion.button>
@@ -66,8 +68,10 @@ export function SessionCard({ session, onExport, onDelete }: SessionCardProps) {
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
               onClick={() => setIsExpanded(!isExpanded)}
-              className="p-1.5 rounded-md hover:bg-background/60 text-muted-foreground hover:text-foreground transition-colors"
+              className="p-1.5 rounded-md hover:bg-background/60 text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               title={isExpanded ? 'Collapse' : 'Expand'}
+              aria-label={isExpanded ? 'Collapse session details' : 'Expand session details'}
+              aria-expanded={isExpanded}
             >
               {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
             </motion.button>

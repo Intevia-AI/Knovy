@@ -82,7 +82,7 @@ export function SettingsWindow() {
 
         {/* Content Area */}
         <div className="flex-1 overflow-hidden">
-          <div className="h-full w-full overflow-y-auto bg-background/30 backdrop-blur-xl settings-scrollbar">
+          <div className="h-full w-full overflow-y-auto bg-background/50 backdrop-blur-xl settings-scrollbar" style={{ backdropFilter: 'blur(40px) saturate(180%)' }}>
             <AnimatePresence mode="wait">
               <motion.div
                 key={activeSection}
