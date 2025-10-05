@@ -109,7 +109,7 @@ export const translations = {
     aboutTab: 'About',
     // Settings Pages
     settingsTitle: 'Settings',
-    settingsDescription: 'Manage your general application settings',
+    settingsDescription: 'Manage your general settings',
     historyTitle: 'History',
     historyDescription: 'View and manage your session history',
     searchSessions: 'Search sessions...',
@@ -134,7 +134,12 @@ export const translations = {
     generalSettingsDescription: 'Manage your general application settings',
     languageChangeWarning: 'Changing language will stop your current recording session',
     displaySettingsDescription: 'Configure display and screen settings',
-    accountSettingsDescription: 'Manage your account and subscription'
+    accountSettingsDescription: 'Manage your account and subscription',
+    // Delete Confirmation Dialog
+    deleteSessionTitle: 'Delete Session?',
+    deleteSessionMessage: 'Are you sure you want to delete this session? This action cannot be undone.',
+    deleteButton: 'Delete',
+    cancelDeleteButton: 'Cancel'
   },
   'zh-TW': {
     // Add Traditional Chinese translations here
@@ -222,10 +227,10 @@ export const translations = {
     aiActionKeywordSearchDisplay: '關鍵字搜尋',
     aiActionScreenshotDisplay: '請分析這張截圖',
     // ChatPanel Tabs
-    transcriptionTab: '轉錄',
+    transcriptionTab: '逐字稿',
     summaryTab: '摘要',
     // Settings Sidebar
-    generalTab: '一般',
+    generalTab: '設定',
     historyTab: '歷史紀錄',
     accountTab: '帳戶',
     displayTab: '顯示器',
@@ -233,13 +238,13 @@ export const translations = {
     aboutTab: '關於',
     // Settings Pages
     settingsTitle: '設定',
-    settingsDescription: '管理您的一般應用程式設定',
+    settingsDescription: '管理您的一般設定',
     historyTitle: '歷史紀錄',
-    historyDescription: '查看和管理您的會話歷史紀錄',
-    searchSessions: '搜尋會話...',
+    historyDescription: '查看和管理您的對話紀錄',
+    searchSessions: '搜尋對話紀錄...',
     calendar: '日曆',
-    noSessionsFound: '找不到符合您搜尋的會話',
-    noSessionsYet: '尚無會話紀錄',
+    noSessionsFound: '找不到符合您搜尋的對話紀錄',
+    noSessionsYet: '尚無對話紀錄',
     shortcutsTitle: '鍵盤快捷鍵',
     shortcutsDescription: '查看所有可用的鍵盤快捷鍵',
     keyboardShortcuts: '鍵盤快捷鍵',
@@ -252,13 +257,18 @@ export const translations = {
     hideWindow: '隱藏視窗',
     aboutTitle: '關於',
     aboutDescription: '關於 Knovy 和版本資訊',
-    aiPoweredTranscription: 'AI 驅動即時轉錄',
+    aiPoweredTranscription: 'AI 驅動即時逐字稿',
     visitWebsite: '訪問網站',
     checkForUpdates: '檢查更新',
-    generalSettingsDescription: '管理您的一般應用程式設定',
-    languageChangeWarning: '變更語言將會停止您目前的錄製會話',
+    generalSettingsDescription: '管理您的一般設定',
+    languageChangeWarning: '變更語言將會停止您目前的錄製對話紀錄',
     displaySettingsDescription: '配置顯示器和螢幕設定',
-    accountSettingsDescription: '管理您的帳戶和訂閱'
+    accountSettingsDescription: '管理您的帳戶和訂閱',
+    // Delete Confirmation Dialog
+    deleteSessionTitle: '刪除對話紀錄？',
+    deleteSessionMessage: '您確定要刪除此對話紀錄嗎？此操作無法復原。',
+    deleteButton: '刪除',
+    cancelDeleteButton: '取消'
   }
 }
 
@@ -387,6 +397,11 @@ export type TranslationKey =
   | 'languageChangeWarning'
   | 'displaySettingsDescription'
   | 'accountSettingsDescription'
+  // Delete Confirmation Dialog
+  | 'deleteSessionTitle'
+  | 'deleteSessionMessage'
+  | 'deleteButton'
+  | 'cancelDeleteButton'
 
 /**
  * Type definition for supported language codes in the application

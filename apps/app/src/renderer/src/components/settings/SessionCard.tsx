@@ -1,8 +1,18 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'motion'
-import { ChevronDown, ChevronUp, Download, Trash2 } from 'lucide-react'
+import { ChevronDown, ChevronUp, Download, Trash2, AlertTriangle } from 'lucide-react'
 import { SessionWithTranscripts } from '@/types/history'
 import { formatTime, formatDate, formatDuration } from '@/lib/date-utils'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+import { useTranslation } from '@/context/TranslationContext'
 
 interface SessionCardProps {
   session: SessionWithTranscripts
@@ -11,13 +21,30 @@ interface SessionCardProps {
 }
 
 export function SessionCard({ session, onExport, onDelete }: SessionCardProps) {
+  const { t } = useTranslation()
   const [isExpanded, setIsExpanded] = useState(false)
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
 
   const sessionDate = formatDate(session.started_at)
   const sessionTime = formatTime(session.started_at)
   const duration = formatDuration(session.duration)
 
+  const handleDeleteClick = () => {
+    setShowDeleteDialog(true)
+  }
+
+  const confirmDelete = async () => {
+    try {
+      await onDelete(session.id)
+      setShowDeleteDialog(false)
+    } catch (error) {
+      console.error('Failed to delete session:', error)
+      setShowDeleteDialog(false)
+    }
+  }
+
   return (
+    <>
     <motion.div
       whileHover={{ scale: 1.01 }}
       transition={{ duration: 0.2 }}
@@ -57,7 +84,7 @@ export function SessionCard({ session, onExport, onDelete }: SessionCardProps) {
             <motion.button
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
-              onClick={() => onDelete(session.id)}
+              onClick={handleDeleteClick}
               className="p-1.5 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive"
               title="Delete session"
               aria-label="Delete session"
@@ -138,6 +165,32 @@ export function SessionCard({ session, onExport, onDelete }: SessionCardProps) {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center justify-center w-12 h-12 rounded-full bg-destructive/10">
+                <AlertTriangle className="w-6 h-6 text-destructive" />
+              </div>
+              <DialogTitle className="text-xl">{t('deleteSessionTitle')}</DialogTitle>
+            </div>
+          </DialogHeader>
+          <DialogDescription className="text-base py-4">
+            {t('deleteSessionMessage')}
+          </DialogDescription>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>
+              {t('cancelDeleteButton')}
+            </Button>
+            <Button variant="destructive" onClick={confirmDelete}>
+              {t('deleteButton')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </motion.div>
+    </>
   )
 }

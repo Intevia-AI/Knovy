@@ -10,10 +10,10 @@ import { ShortcutsView } from './settings/ShortcutsView'
 import { AboutView } from './settings/AboutView'
 import { useAuth } from '@/hooks/useAuth'
 
-export type SettingsSection = 'general' | 'history' | 'account' | 'display' | 'shortcuts' | 'about'
+export type SettingsSection = 'history' | 'general' | 'shortcuts' | 'account' | 'about'
 
 export function SettingsWindow() {
-  const [activeSection, setActiveSection] = useState<SettingsSection>('general')
+  const [activeSection, setActiveSection] = useState<SettingsSection>('history')
   const { sessionProfile } = useAuth()
 
   // Handle ESC key to close
@@ -29,15 +29,14 @@ export function SettingsWindow() {
 
   const renderContent = () => {
     const components = {
-      general: <GeneralSettings />,
       history: <HistoryView />,
-      account: <AccountSettings sessionProfile={sessionProfile} />,
-      display: <DisplaySettings />,
+      general: <GeneralSettings />,
       shortcuts: <ShortcutsView />,
+      account: <AccountSettings sessionProfile={sessionProfile} />,
       about: <AboutView />
     }
 
-    return components[activeSection] || <GeneralSettings />
+    return components[activeSection] || <HistoryView />
   }
 
   return (
@@ -82,7 +81,10 @@ export function SettingsWindow() {
 
         {/* Content Area */}
         <div className="flex-1 overflow-hidden">
-          <div className="h-full w-full overflow-y-auto bg-background/50 backdrop-blur-xl settings-scrollbar" style={{ backdropFilter: 'blur(40px) saturate(180%)' }}>
+          <div
+            className="h-full w-full overflow-y-auto bg-background/50 backdrop-blur-xl settings-scrollbar"
+            style={{ backdropFilter: 'blur(40px) saturate(180%)' }}
+          >
             <AnimatePresence mode="wait">
               <motion.div
                 key={activeSection}

@@ -12,11 +12,10 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { id: 'general', labelKey: 'generalTab', icon: Settings },
   { id: 'history', labelKey: 'historyTab', icon: History },
-  { id: 'account', labelKey: 'accountTab', icon: User },
-  { id: 'display', labelKey: 'displayTab', icon: Monitor },
+  { id: 'general', labelKey: 'generalTab', icon: Settings },
   { id: 'shortcuts', labelKey: 'shortcutsTab', icon: Keyboard },
+  { id: 'account', labelKey: 'accountTab', icon: User },
   { id: 'about', labelKey: 'aboutTab', icon: Info }
 ]
 
@@ -48,7 +47,7 @@ export function SettingsSidebar({ activeSection, onSectionChange }: SettingsSide
                 'flex items-center gap-3 px-4 py-2.5 rounded-lg w-full text-left',
                 'text-sm transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
                 isActive
-                  ? 'text-foreground font-medium bg-accent/70 backdrop-blur-sm shadow-sm border border-border/30'
+                  ? 'text-foreground font-medium bg-accent/70 backdrop-blur-sm shadow-sm'
                   : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
               )}
             >

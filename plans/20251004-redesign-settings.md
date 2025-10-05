@@ -2,10 +2,10 @@
 
 **Date**: 2025-10-04
 **Last Updated**: 2025-10-05
-**Status**: In Progress (Phase 3 Complete, Phase 4 40% Complete)
+**Status**: In Progress (Phase 4 Complete, Starting Phase 5)
 **Priority**: High
 **Estimated Effort**: 3-4 days
-**Progress**: ~65% Complete
+**Progress**: ~95% Complete
 
 ## Executive Summary
 
@@ -1846,14 +1846,18 @@ Balance transparency for aesthetics vs readability:
   - [x] Infinite scroll with pagination
   - [x] Date grouping (Today, Yesterday, This Week, etc.)
   - [x] Session cards with expand/collapse
-- [~] Phase 4: All settings sections implemented (40% complete)
+- [x] Phase 4: All settings sections implemented ✅
   - [x] Account Settings (quota display, sign out)
-  - [x] Display Settings (display selection, content protection)
-  - [ ] General Settings (language selector)
-  - [ ] Shortcuts View (keyboard shortcuts reference)
-  - [ ] About View (app info, links, credits)
-- [ ] Phase 5: Integration and cleanup complete
+  - [x] Display Settings - **Merged into General Settings**
+  - [x] General Settings (language selector with translations)
+  - [x] Shortcuts View (keyboard shortcuts reference with translations)
+  - [x] About View (app info, links, version display with translations)
+- [ ] Phase 5: Integration and cleanup
   - [x] Settings button toggle state tracking
+  - [x] Custom delete confirmation dialog with translations
+  - [x] Display Settings merged into General Settings
+  - [x] Comprehensive translations for all UI elements
+  - [x] Translation context integration (app-wide language switching)
   - [ ] Add ⌘+, keyboard shortcut
   - [ ] Remove `apps/history-viewer` directory
   - [ ] Remove Express server dependencies
@@ -1927,42 +1931,57 @@ Balance transparency for aesthetics vs readability:
    - Infinite scroll pagination
    - Date grouping logic
    - Session cards with expand/collapse
-4. **Account & Display Settings** - Migrated from old SettingsPanel
+   - Custom delete confirmation dialog with translations
+4. **All Settings Sections** - Complete implementation:
+   - Account Settings (quota display, sign out)
+   - General Settings (language selector, merged display settings)
+   - Shortcuts View (keyboard shortcuts reference)
+   - About View (app info, version, links)
+5. **Global Translation System** - App-wide i18n support:
+   - TranslationContext provider with settings persistence
+   - Translations for ChatPanel tabs (Transcription/Summary)
+   - Translations for all Settings sections and UI elements
+   - Custom delete dialog with translated messages
+   - 50+ translation keys in English and Traditional Chinese
 
 ### Recent Enhancements Beyond Plan 🎨
 - **Motion Animation System**: Smooth fade-in, slide transitions, staggered animations
 - **Calendar Date Picker**: Visual calendar with session highlighting and month navigation
-- **Dynamic Window Sizing**: Window size now responds to screen resolution (70% of display)
+- **Global Translation Context**: App-wide language switching with persistent storage
+- **Custom Delete Dialog**: Styled confirmation dialog matching app design
+- **Merged Display Settings**: Simplified navigation by integrating display into general settings
+- **Tab Reordering**: History → General → Shortcuts → Account → About
 
 ### Remaining Work 🚧
-**Phase 4 Completion** (Estimated: 2-3 hours)
-- [ ] GeneralSettings: Language selector with recording session warning
-- [ ] ShortcutsView: Keyboard shortcuts reference table with Kbd component
-- [ ] AboutView: App info, links, open source credits
-
-**Phase 5 Integration** (Estimated: 4-6 hours)
+**Phase 5 Integration** (Estimated: 3-4 hours)
 - [ ] Remove history-viewer app (critical dependency)
 - [ ] Update build scripts and package.json
 - [ ] Add ⌘+, keyboard shortcut
 - [ ] Remove old SettingsPanel.tsx
 - [ ] End-to-end production testing
 
-### Critical Issues to Address ⚠️
-1. **Glass Effect Readability**: Increase opacity to bg-background/50 for better contrast
-2. **Sidebar Active State**: Restore accent-based styling per plan specifications
-3. **Accessibility Gaps**: Add focus indicators, ARIA attributes, motion preferences
-4. **Build Dependencies**: Careful removal of history-viewer to prevent build breakage
+### Critical Issues Resolved ✅
+1. ✅ **Glass Effect Readability**: Increased to bg-background/50 with enhanced backdrop-filter
+2. ✅ **Sidebar Active State**: Restored accent/70 styling per plan specifications
+3. ✅ **Accessibility**: Added focus indicators, ARIA attributes throughout
+4. ✅ **Custom Delete Dialog**: Replaced native confirm() with styled, translated dialog
+5. ✅ **Display Settings**: Merged into General Settings to simplify navigation
+
+### Remaining Critical Tasks ⚠️
+1. **Build Dependencies**: Careful removal of history-viewer to prevent build breakage
+2. **Keyboard Shortcut**: Add ⌘+, shortcut for settings window
+3. **Production Testing**: Full end-to-end testing in production build
 
 ### Estimated Completion
-- **Phase 4**: By end of October 5, 2025
-- **Phase 5**: October 6-7, 2025
-- **PR Ready**: October 7, 2025
+- **Phase 4**: ✅ Completed October 5, 2025
+- **Phase 5**: October 6, 2025
+- **PR Ready**: October 6, 2025
 
 ---
 
 **Plan Created**: October 4, 2025
-**Last Updated**: October 5, 2025
-**Estimated Completion**: October 7, 2025 (revised from October 8)
+**Last Updated**: October 5, 2025 (Evening Update)
+**Estimated Completion**: October 6, 2025 (revised from October 7)
 **Assigned**: Development Team
-**Status**: In Progress - Phase 3 Complete, Phase 4 Underway
-**Overall Progress**: 65% Complete
+**Status**: In Progress - Phase 4 Complete, Phase 5 Integration Remaining
+**Overall Progress**: 95% Complete
