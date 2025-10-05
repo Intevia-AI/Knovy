@@ -138,7 +138,8 @@ export const translations = {
     accountSettingsDescription: 'Manage your account and subscription',
     // Delete Confirmation Dialog
     deleteSessionTitle: 'Delete Session?',
-    deleteSessionMessage: 'Are you sure you want to delete this session? This action cannot be undone.',
+    deleteSessionMessage:
+      'Are you sure you want to delete this session? This action cannot be undone.',
     deleteButton: 'Delete',
     cancelDeleteButton: 'Cancel'
   },
@@ -263,11 +264,11 @@ export const translations = {
     checkForUpdates: '檢查更新',
     generalSettingsDescription: '管理您的一般設定',
     languageChangeWarning: '變更語言將會停止您目前的錄製對話紀錄',
-    displaySettingsDescription: '配置顯示器和螢幕設定',
+    displaySettingsDescription: '設置顯示器和螢幕設定',
     contentProtectionDescription: '隱藏應用程式內容，防止螢幕截圖和錄影',
     accountSettingsDescription: '管理您的帳戶和訂閱',
     // Delete Confirmation Dialog
-    deleteSessionTitle: '刪除對話紀錄？',
+    deleteSessionTitle: '刪除紀錄',
     deleteSessionMessage: '您確定要刪除此對話紀錄嗎？此操作無法復原。',
     deleteButton: '刪除',
     cancelDeleteButton: '取消'

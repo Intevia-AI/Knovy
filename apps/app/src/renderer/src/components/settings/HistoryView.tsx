@@ -181,10 +181,7 @@ export function HistoryView() {
   }, [])
 
   const handleDelete = useCallback(async (sessionId: string) => {
-    if (!confirm('Are you sure you want to delete this session? This action cannot be undone.')) {
-      return
-    }
-
+    // Confirmation dialog is handled by SessionCard component
     try {
       await window.electronAPI.deleteSession(sessionId)
 
