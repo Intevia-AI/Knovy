@@ -24,6 +24,7 @@ export function SessionCard({ session, onExport, onDelete }: SessionCardProps) {
   const { t } = useTranslation()
   const [isExpanded, setIsExpanded] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   const sessionDate = formatDate(session.started_at)
   const sessionTime = formatTime(session.started_at)
@@ -34,11 +35,15 @@ export function SessionCard({ session, onExport, onDelete }: SessionCardProps) {
   }
 
   const confirmDelete = async () => {
+    if (isDeleting) return // Prevent multiple clicks
+
+    setIsDeleting(true)
     try {
       await onDelete(session.id)
       setShowDeleteDialog(false)
     } catch (error) {
       console.error('Failed to delete session:', error)
+      setIsDeleting(false)
       setShowDeleteDialog(false)
     }
   }
@@ -167,29 +172,57 @@ export function SessionCard({ session, onExport, onDelete }: SessionCardProps) {
       </AnimatePresence>
 
       {/* Delete Confirmation Dialog */}
-      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <div className="flex items-center gap-3">
-              <div className="flex items-center justify-center w-12 h-12 rounded-full bg-destructive/10">
-                <AlertTriangle className="w-6 h-6 text-destructive" />
-              </div>
-              <DialogTitle className="text-xl">{t('deleteSessionTitle')}</DialogTitle>
-            </div>
-          </DialogHeader>
-          <DialogDescription className="text-base py-4">
-            {t('deleteSessionMessage')}
-          </DialogDescription>
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>
-              {t('cancelDeleteButton')}
-            </Button>
-            <Button variant="destructive" onClick={confirmDelete}>
-              {t('deleteButton')}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <AnimatePresence mode="wait">
+        {showDeleteDialog && (
+          <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+            <DialogContent className="bg-background/95 backdrop-blur-xl border-border/50 shadow-2xl">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                transition={{ duration: 0.2, ease: 'easeOut' }}
+              >
+                <DialogHeader>
+                  <div className="flex items-center gap-3">
+                    <motion.div
+                      initial={{ scale: 0, rotate: -180 }}
+                      animate={{ scale: 1, rotate: 0 }}
+                      transition={{ delay: 0.1, duration: 0.3, ease: 'backOut' }}
+                      className="flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-red-500/20 to-orange-500/20 border border-red-500/30"
+                    >
+                      <AlertTriangle className="w-6 h-6 text-red-500 dark:text-red-400" />
+                    </motion.div>
+                    <DialogTitle className="text-xl text-foreground">
+                      {t('deleteSessionTitle')}
+                    </DialogTitle>
+                  </div>
+                </DialogHeader>
+                <DialogDescription className="text-base py-4 text-muted-foreground leading-relaxed">
+                  {t('deleteSessionMessage')}
+                </DialogDescription>
+                <DialogFooter className="gap-2 sm:gap-0">
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowDeleteDialog(false)}
+                    disabled={isDeleting}
+                    className="text-foreground hover:bg-accent/50 hover:text-accent-foreground"
+                  >
+                    {t('cancelDeleteButton')}
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    onClick={confirmDelete}
+                    disabled={isDeleting}
+                    className="bg-gradient-to-r from-red-600 to-red-500 hover:from-red-700 hover:to-red-600 border-red-700 shadow-lg shadow-red-500/20"
+                  >
+                    {isDeleting ? 'Deleting...' : t('deleteButton')}
+                  </Button>
+                </DialogFooter>
+              </motion.div>
+            </DialogContent>
+          </Dialog>
+        )}
+      </AnimatePresence>
     </motion.div>
     </>
   )
