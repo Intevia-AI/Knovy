@@ -1,21 +1,23 @@
 import { motion } from 'motion'
 import { Settings, History, User, Monitor, Keyboard, Info } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useTranslation } from '@/context/TranslationContext'
 import type { SettingsSection } from './SettingsWindow'
+import type { TranslationKey } from '@/lib/translations'
 
 interface NavItem {
   id: SettingsSection
-  label: string
+  labelKey: TranslationKey
   icon: React.ComponentType<{ className?: string }>
 }
 
 const navItems: NavItem[] = [
-  { id: 'general', label: 'General', icon: Settings },
-  { id: 'history', label: 'History', icon: History },
-  { id: 'account', label: 'Account', icon: User },
-  { id: 'display', label: 'Display', icon: Monitor },
-  { id: 'shortcuts', label: 'Shortcuts', icon: Keyboard },
-  { id: 'about', label: 'About', icon: Info }
+  { id: 'general', labelKey: 'generalTab', icon: Settings },
+  { id: 'history', labelKey: 'historyTab', icon: History },
+  { id: 'account', labelKey: 'accountTab', icon: User },
+  { id: 'display', labelKey: 'displayTab', icon: Monitor },
+  { id: 'shortcuts', labelKey: 'shortcutsTab', icon: Keyboard },
+  { id: 'about', labelKey: 'aboutTab', icon: Info }
 ]
 
 interface SettingsSidebarProps {
@@ -24,6 +26,8 @@ interface SettingsSidebarProps {
 }
 
 export function SettingsSidebar({ activeSection, onSectionChange }: SettingsSidebarProps) {
+  const { t } = useTranslation()
+
   return (
     <div className="w-[180px] h-full bg-background/40 backdrop-blur-xl border-r border-border/30 p-4">
       <nav className="space-y-1">
@@ -49,7 +53,7 @@ export function SettingsSidebar({ activeSection, onSectionChange }: SettingsSide
               )}
             >
               <Icon className="w-4 h-4" />
-              <span>{item.label}</span>
+              <span>{t(item.labelKey)}</span>
             </motion.button>
           )
         })}

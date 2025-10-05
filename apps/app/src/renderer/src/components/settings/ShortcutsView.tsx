@@ -10,9 +10,11 @@ import {
   TableHeader,
   TableRow
 } from '@/components/ui/table'
+import { useTranslation } from '@/context/TranslationContext'
+import type { TranslationKey } from '@/lib/translations'
 
 interface Shortcut {
-  action: string
+  actionKey: TranslationKey
   keys: string
 }
 
@@ -23,20 +25,22 @@ const Kbd = ({ children }: { children: string }) => (
 )
 
 const shortcuts: Shortcut[] = [
-  { action: 'Show/Hide Knovy', keys: 'Alt + \'' },
-  { action: 'Open Settings', keys: '⌘ + ,' },
-  { action: 'Start/Stop Recording', keys: '⌘ + R' },
-  { action: 'Take Screenshot', keys: '⌘ + Shift + S' },
-  { action: 'Open History', keys: '⌘ + H' },
-  { action: 'Close Window', keys: 'Esc' }
+  { actionKey: 'showHideKnovy', keys: 'Alt + \'' },
+  { actionKey: 'openSettings', keys: '⌘ + ,' },
+  { actionKey: 'startStopRecording', keys: '⌘ + R' },
+  { actionKey: 'screenshotAndAsk', keys: '⌘ + Shift + S' },
+  { actionKey: 'viewHistory', keys: '⌘ + H' },
+  { actionKey: 'hideWindow', keys: 'Esc' }
 ]
 
 export function ShortcutsView() {
+  const { t } = useTranslation()
+
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-semibold text-foreground mb-2">Shortcuts</h2>
-        <p className="text-sm text-muted-foreground">Keyboard shortcuts reference</p>
+        <h2 className="text-2xl font-semibold text-foreground mb-2">{t('shortcutsTab')}</h2>
+        <p className="text-sm text-muted-foreground">{t('shortcutsDescription')}</p>
       </div>
 
       {/* Info Alert */}
@@ -61,20 +65,20 @@ export function ShortcutsView() {
       >
         <Card>
           <CardHeader>
-            <h3 className="text-lg font-medium">Keyboard Shortcuts</h3>
+            <h3 className="text-lg font-medium">{t('keyboardShortcuts')}</h3>
           </CardHeader>
           <CardContent>
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[60%]">Action</TableHead>
-                  <TableHead>Shortcut</TableHead>
+                  <TableHead className="w-[60%]">{t('shortcutAction')}</TableHead>
+                  <TableHead>{t('shortcutKey')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {shortcuts.map((shortcut, index) => (
                   <TableRow key={index}>
-                    <TableCell className="font-medium">{shortcut.action}</TableCell>
+                    <TableCell className="font-medium">{t(shortcut.actionKey)}</TableCell>
                     <TableCell>
                       <Kbd>{shortcut.keys}</Kbd>
                     </TableCell>

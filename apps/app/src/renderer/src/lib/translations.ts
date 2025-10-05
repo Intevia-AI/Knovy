@@ -96,7 +96,45 @@ export const translations = {
     aiActionAnswerDisplay: 'Answer based on transcription',
     aiActionSummaryDisplay: 'Generate summary from transcription',
     aiActionKeywordSearchDisplay: 'Keyword search',
-    aiActionScreenshotDisplay: 'Screenshot analysis'
+    aiActionScreenshotDisplay: 'Screenshot analysis',
+    // ChatPanel Tabs
+    transcriptionTab: 'Transcription',
+    summaryTab: 'Summary',
+    // Settings Sidebar
+    generalTab: 'General',
+    historyTab: 'History',
+    accountTab: 'Account',
+    displayTab: 'Display',
+    shortcutsTab: 'Shortcuts',
+    aboutTab: 'About',
+    // Settings Pages
+    settingsTitle: 'Settings',
+    settingsDescription: 'Manage your general application settings',
+    historyTitle: 'History',
+    historyDescription: 'View and manage your session history',
+    searchSessions: 'Search sessions...',
+    calendar: 'Calendar',
+    noSessionsFound: 'No sessions found matching your search',
+    noSessionsYet: 'No sessions yet',
+    shortcutsTitle: 'Keyboard Shortcuts',
+    shortcutsDescription: 'View all available keyboard shortcuts',
+    keyboardShortcuts: 'Keyboard Shortcuts',
+    shortcutAction: 'Action',
+    shortcutKey: 'Shortcut',
+    showHideKnovy: 'Show/Hide Knovy',
+    openSettings: 'Open Settings',
+    startStopRecording: 'Start/Stop Recording',
+    screenshotAndAsk: 'Screenshot & Ask',
+    hideWindow: 'Hide Window',
+    aboutTitle: 'About',
+    aboutDescription: 'About Knovy and version information',
+    aiPoweredTranscription: 'AI-Powered Real-Time Transcription',
+    visitWebsite: 'Visit Website',
+    checkForUpdates: 'Check for Updates',
+    generalSettingsDescription: 'Manage your general application settings',
+    languageChangeWarning: 'Changing language will stop your current recording session',
+    displaySettingsDescription: 'Configure display and screen settings',
+    accountSettingsDescription: 'Manage your account and subscription'
   },
   'zh-TW': {
     // Add Traditional Chinese translations here
@@ -182,7 +220,45 @@ export const translations = {
     aiActionAnswerDisplay: '請根據前後文推薦適合的回應',
     aiActionSummaryDisplay: '請根據前後文產生摘要',
     aiActionKeywordSearchDisplay: '關鍵字搜尋',
-    aiActionScreenshotDisplay: '請分析這張截圖'
+    aiActionScreenshotDisplay: '請分析這張截圖',
+    // ChatPanel Tabs
+    transcriptionTab: '轉錄',
+    summaryTab: '摘要',
+    // Settings Sidebar
+    generalTab: '一般',
+    historyTab: '歷史紀錄',
+    accountTab: '帳戶',
+    displayTab: '顯示器',
+    shortcutsTab: '快捷鍵',
+    aboutTab: '關於',
+    // Settings Pages
+    settingsTitle: '設定',
+    settingsDescription: '管理您的一般應用程式設定',
+    historyTitle: '歷史紀錄',
+    historyDescription: '查看和管理您的會話歷史紀錄',
+    searchSessions: '搜尋會話...',
+    calendar: '日曆',
+    noSessionsFound: '找不到符合您搜尋的會話',
+    noSessionsYet: '尚無會話紀錄',
+    shortcutsTitle: '鍵盤快捷鍵',
+    shortcutsDescription: '查看所有可用的鍵盤快捷鍵',
+    keyboardShortcuts: '鍵盤快捷鍵',
+    shortcutAction: '動作',
+    shortcutKey: '快捷鍵',
+    showHideKnovy: '顯示/隱藏 Knovy',
+    openSettings: '開啟設定',
+    startStopRecording: '開始/停止錄製',
+    screenshotAndAsk: '截圖提問',
+    hideWindow: '隱藏視窗',
+    aboutTitle: '關於',
+    aboutDescription: '關於 Knovy 和版本資訊',
+    aiPoweredTranscription: 'AI 驅動即時轉錄',
+    visitWebsite: '訪問網站',
+    checkForUpdates: '檢查更新',
+    generalSettingsDescription: '管理您的一般應用程式設定',
+    languageChangeWarning: '變更語言將會停止您目前的錄製會話',
+    displaySettingsDescription: '配置顯示器和螢幕設定',
+    accountSettingsDescription: '管理您的帳戶和訂閱'
   }
 }
 
@@ -273,7 +349,44 @@ export type TranslationKey =
   | 'aiActionSummaryDisplay'
   | 'aiActionKeywordSearchDisplay'
   | 'aiActionScreenshotDisplay'
-// ... add other keys here
+  // ChatPanel Tabs
+  | 'transcriptionTab'
+  | 'summaryTab'
+  // Settings Sidebar
+  | 'generalTab'
+  | 'historyTab'
+  | 'accountTab'
+  | 'displayTab'
+  | 'shortcutsTab'
+  | 'aboutTab'
+  // Settings Pages
+  | 'settingsTitle'
+  | 'settingsDescription'
+  | 'historyTitle'
+  | 'historyDescription'
+  | 'searchSessions'
+  | 'calendar'
+  | 'noSessionsFound'
+  | 'noSessionsYet'
+  | 'shortcutsTitle'
+  | 'shortcutsDescription'
+  | 'keyboardShortcuts'
+  | 'shortcutAction'
+  | 'shortcutKey'
+  | 'showHideKnovy'
+  | 'openSettings'
+  | 'startStopRecording'
+  | 'screenshotAndAsk'
+  | 'hideWindow'
+  | 'aboutTitle'
+  | 'aboutDescription'
+  | 'aiPoweredTranscription'
+  | 'visitWebsite'
+  | 'checkForUpdates'
+  | 'generalSettingsDescription'
+  | 'languageChangeWarning'
+  | 'displaySettingsDescription'
+  | 'accountSettingsDescription'
 
 /**
  * Type definition for supported language codes in the application

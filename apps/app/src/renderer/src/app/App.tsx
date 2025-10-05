@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { AppRouter } from './AppRouter'
 import { useAuth, AuthProvider } from '../context/AuthContext'
+import { TranslationProvider } from '../context/TranslationContext'
 import { Loader2 } from 'lucide-react'
 import { LoginPage, Waitlist } from '../components/LoginPage'
 import { LoadingPage } from '../components/LoadingPage'
@@ -293,8 +294,10 @@ function AppContent() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
+    <TranslationProvider>
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
+    </TranslationProvider>
   )
 }

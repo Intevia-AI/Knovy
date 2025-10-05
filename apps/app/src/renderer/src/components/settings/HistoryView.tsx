@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { motion } from 'motion'
 import { Search, Loader2, Calendar, X } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
+import { useTranslation } from '@/context/TranslationContext'
 import { SessionWithTranscripts, GroupedSessions } from '@/types/history'
 import { groupSessionsByDate, filterSessions } from '@/lib/history-utils'
 import { SessionCard } from './SessionCard'
@@ -10,6 +11,7 @@ import { CalendarPicker } from './CalendarPicker'
 const SESSIONS_PER_PAGE = 20
 
 export function HistoryView() {
+  const { t } = useTranslation()
   const { sessionProfile } = useAuth()
   const [sessions, setSessions] = useState<SessionWithTranscripts[]>([])
   const [allSessionDates, setAllSessionDates] = useState<string[]>([])
@@ -200,8 +202,8 @@ export function HistoryView() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
       >
-        <h2 className="text-2xl font-bold text-foreground mb-2">History</h2>
-        <p className="text-sm text-muted-foreground">View and manage your session history</p>
+        <h2 className="text-2xl font-bold text-foreground mb-2">{t('historyTitle')}</h2>
+        <p className="text-sm text-muted-foreground">{t('historyDescription')}</p>
       </motion.div>
 
       {/* Search and Calendar Controls */}
@@ -216,11 +218,11 @@ export function HistoryView() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <input
             type="text"
-            placeholder="Search sessions..."
+            placeholder={t('searchSessions')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-10 pr-4 py-2 bg-background/40 backdrop-blur-md rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
-            aria-label="Search sessions"
+            aria-label={t('searchSessions')}
           />
         </div>
 
@@ -254,7 +256,7 @@ export function HistoryView() {
           ) : (
             <>
               <Calendar className="w-4 h-4" />
-              Calendar
+              {t('calendar')}
             </>
           )}
         </motion.button>
@@ -286,7 +288,7 @@ export function HistoryView() {
             className="text-center py-12"
           >
             <p className="text-muted-foreground">
-              {searchQuery ? 'No sessions found matching your search' : 'No sessions yet'}
+              {searchQuery ? t('noSessionsFound') : t('noSessionsYet')}
             </p>
           </motion.div>
         ) : (

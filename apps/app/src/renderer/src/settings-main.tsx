@@ -2,13 +2,16 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { SettingsWindow } from './components/SettingsWindow'
 import { AuthProvider } from './context/AuthContext'
+import { TranslationProvider } from './context/TranslationContext'
 import './assets/main.css'
 import './assets/globals.css'
 
 ReactDOM.createRoot(document.getElementById('settings-root')!).render(
   <React.StrictMode>
-    <AuthProvider>
-      <SettingsWindow />
-    </AuthProvider>
+    <TranslationProvider>
+      <AuthProvider>
+        <SettingsWindow />
+      </AuthProvider>
+    </TranslationProvider>
   </React.StrictMode>
 )

@@ -9,7 +9,7 @@ import {
   SelectContent,
   SelectItem
 } from '@/components/ui/select'
-import { useLanguage } from '@/hooks/useLanguage'
+import { useTranslation } from '@/context/TranslationContext'
 import type { SupportedLanguage } from '@/lib/translations'
 
 const languages = [
@@ -18,7 +18,7 @@ const languages = [
 ]
 
 export function GeneralSettings() {
-  const { language, setLanguage } = useLanguage()
+  const { language, setLanguage, t } = useTranslation()
   const [isRecording, setIsRecording] = useState(false)
 
   useEffect(() => {
@@ -42,10 +42,8 @@ export function GeneralSettings() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-semibold text-foreground mb-2">General</h2>
-        <p className="text-sm text-muted-foreground">
-          Manage your general application settings
-        </p>
+        <h2 className="text-2xl font-semibold text-foreground mb-2">{t('generalSection')}</h2>
+        <p className="text-sm text-muted-foreground">{t('generalSettingsDescription')}</p>
       </div>
 
       {/* Language Settings Card */}
@@ -53,15 +51,15 @@ export function GeneralSettings() {
         <CardHeader>
           <div className="flex items-center gap-2">
             <Languages className="w-5 h-5 text-primary" />
-            <h3 className="text-lg font-medium">Language Settings</h3>
+            <h3 className="text-lg font-medium">{t('languageSettings')}</h3>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex-1">
-              <Label className="text-sm font-medium">Output Language</Label>
+              <Label className="text-sm font-medium">{t('selectOutputLanguage')}</Label>
               <p className="text-xs text-muted-foreground mt-1">
-                Choose your preferred transcription language
+                {t('generalSettingsDescription')}
               </p>
             </div>
             <Select value={language || 'zh-TW'} onValueChange={handleLanguageChange}>
@@ -81,9 +79,7 @@ export function GeneralSettings() {
           {isRecording && (
             <div className="flex items-start gap-3 rounded-lg border border-border/50 bg-muted/50 p-4">
               <Info className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-              <p className="text-sm text-muted-foreground">
-                Changing language will stop your current recording session
-              </p>
+              <p className="text-sm text-muted-foreground">{t('languageChangeWarning')}</p>
             </div>
           )}
         </CardContent>

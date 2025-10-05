@@ -4,10 +4,12 @@ import { cn } from '@/lib/utils'
 import { useAIInteraction } from '@/hooks/useAIInteraction'
 import { Button } from '@/components/ui/button'
 import { motion, AnimatePresence } from 'motion'
+import { useTranslation } from '@/context/TranslationContext'
 
 interface ChatPanelProps {}
 
 export default function ChatPanel({}: ChatPanelProps) {
+  const { t } = useTranslation()
   const [activeTab, setActiveTab] = useState('transcription')
   const { transcriptions, aiMessages, sendContextToAI, isLoading, isSummarizing } =
     useAIInteraction()
@@ -106,7 +108,7 @@ export default function ChatPanel({}: ChatPanelProps) {
                 onClick={() => handleTabChange('transcription')}
                 className="h-6 text-md select-none"
               >
-                Transcription
+                {t('transcriptionTab')}
               </Button>
               <Button
                 variant={activeTab === 'summary' ? 'secondary' : 'ghost'}
@@ -114,7 +116,7 @@ export default function ChatPanel({}: ChatPanelProps) {
                 onClick={() => handleTabChange('summary')}
                 className="h-6 text-md select-none"
               >
-                Summary
+                {t('summaryTab')}
               </Button>
             </div>
           </div>
