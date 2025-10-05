@@ -147,7 +147,15 @@ export function HistoryView() {
       console.log('[HistoryView] Received sessions:', result)
 
       if (result && result.length > 0) {
-        setSessions((prev) => (isInitial ? result : [...prev, ...result]))
+        setSessions((prev) => {
+          if (isInitial) {
+            return result
+          }
+          // Deduplicate sessions by ID when loading more
+          const existingIds = new Set(prev.map((s) => s.id))
+          const newSessions = result.filter((s) => !existingIds.has(s.id))
+          return [...prev, ...newSessions]
+        })
         setOffset(currentOffset + SESSIONS_PER_PAGE)
         setHasMore(result.length === SESSIONS_PER_PAGE)
         console.log('[HistoryView] Updated sessions state, total count:', result.length)
