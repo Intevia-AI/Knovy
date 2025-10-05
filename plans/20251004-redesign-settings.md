@@ -1934,7 +1934,7 @@ Balance transparency for aesthetics vs readability:
    - Custom delete confirmation dialog with translations
 4. **All Settings Sections** - Complete implementation:
    - Account Settings (quota display, sign out)
-   - General Settings (language selector, merged display settings)
+   - General Settings (language selector, display selection, content protection toggle)
    - Shortcuts View (keyboard shortcuts reference)
    - About View (app info, version, links)
 5. **Global Translation System** - App-wide i18n support:
@@ -1949,7 +1949,8 @@ Balance transparency for aesthetics vs readability:
 - **Calendar Date Picker**: Visual calendar with session highlighting and month navigation
 - **Global Translation Context**: App-wide language switching with persistent storage
 - **Custom Delete Dialog**: Styled confirmation dialog matching app design
-- **Merged Display Settings**: Simplified navigation by integrating display into general settings
+- **Display Selection in General Settings**: Multi-screen support with display picker integrated into general settings
+- **Content Protection Toggle**: Privacy feature to hide app content from screenshots and recordings
 - **Tab Reordering**: History → General → Shortcuts → Account → About
 
 ### Remaining Work 🚧
@@ -1965,7 +1966,9 @@ Balance transparency for aesthetics vs readability:
 2. ✅ **Sidebar Active State**: Restored accent/70 styling per plan specifications
 3. ✅ **Accessibility**: Added focus indicators, ARIA attributes throughout
 4. ✅ **Custom Delete Dialog**: Replaced native confirm() with styled, translated dialog
-5. ✅ **Display Settings**: Merged into General Settings to simplify navigation
+5. ✅ **Display Settings Integration**: Added display selection and content protection to General Settings
+6. ✅ **Multi-Screen Support**: Screen picker for users with multiple displays
+7. ✅ **Content Protection**: Toggle to hide app from screenshots and screen recordings
 
 ### Remaining Critical Tasks ⚠️
 1. **Build Dependencies**: Careful removal of history-viewer to prevent build breakage

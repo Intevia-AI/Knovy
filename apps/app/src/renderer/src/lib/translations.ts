@@ -134,6 +134,7 @@ export const translations = {
     generalSettingsDescription: 'Manage your general application settings',
     languageChangeWarning: 'Changing language will stop your current recording session',
     displaySettingsDescription: 'Configure display and screen settings',
+    contentProtectionDescription: 'Hide app content from screenshots and screen recordings',
     accountSettingsDescription: 'Manage your account and subscription',
     // Delete Confirmation Dialog
     deleteSessionTitle: 'Delete Session?',
@@ -263,6 +264,7 @@ export const translations = {
     generalSettingsDescription: '管理您的一般設定',
     languageChangeWarning: '變更語言將會停止您目前的錄製對話紀錄',
     displaySettingsDescription: '配置顯示器和螢幕設定',
+    contentProtectionDescription: '隱藏應用程式內容，防止螢幕截圖和錄影',
     accountSettingsDescription: '管理您的帳戶和訂閱',
     // Delete Confirmation Dialog
     deleteSessionTitle: '刪除對話紀錄？',
@@ -396,6 +398,7 @@ export type TranslationKey =
   | 'generalSettingsDescription'
   | 'languageChangeWarning'
   | 'displaySettingsDescription'
+  | 'contentProtectionDescription'
   | 'accountSettingsDescription'
   // Delete Confirmation Dialog
   | 'deleteSessionTitle'
