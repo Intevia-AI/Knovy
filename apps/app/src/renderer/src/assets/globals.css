@@ -20,19 +20,26 @@
     --accent-foreground: 0 0% 9%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 0% / 0.1;
+    --border: 0 0% 100% / 0.1;
     --input: 0 0% 89.8%;
     --ring: 0 0% 0%;
     --radius: 1rem;
   }
 
   body {
-    @apply bg-transparent;
+    @apply bg-transparent text-foreground;
   }
 
   * {
     @apply border-border;
   }
+}
+
+/* Override base.css dark colors for light mode */
+html.light body,
+body {
+  background: transparent !important;
+  color: hsl(var(--foreground)) !important;
 }
 
 .glass-popover {

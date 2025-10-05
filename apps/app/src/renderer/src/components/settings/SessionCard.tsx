@@ -53,7 +53,7 @@ export function SessionCard({ session, onExport, onDelete }: SessionCardProps) {
     <motion.div
       whileHover={{ scale: 1.01 }}
       transition={{ duration: 0.2 }}
-      className="bg-background/40 backdrop-blur-md border border-border/30 rounded-lg overflow-hidden"
+      className="bg-background/40 backdrop-blur-md rounded-lg overflow-hidden"
     >
       {/* Card Header */}
       <div className="p-4">
