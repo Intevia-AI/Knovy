@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'motion'
 import { Settings } from 'lucide-react'
-import { SettingsSidebar } from './SettingsSidebar'
+import { SettingsSidebar } from './settings/SettingsSidebar'
 import { GeneralSettings } from './settings/GeneralSettings'
 import { HistoryView } from './settings/HistoryView'
 import { AccountSettings } from './settings/AccountSettings'
@@ -51,7 +51,7 @@ export function SettingsWindow() {
         initial={{ y: -20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.3, delay: 0.1 }}
-        className="h-[52px] bg-background/40 backdrop-blur-xl border-b border-border/30 flex items-center select-none drag-region z-20 flex-shrink-0"
+        className="h-[52px] bg-background/40 backdrop-blur-xl border-b border-white/50 flex items-center select-none drag-region z-20 flex-shrink-0"
       >
         {/* macOS traffic lights spacing (left side) */}
         <div className="w-[80px]" />

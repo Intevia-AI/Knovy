@@ -2,7 +2,7 @@ import { motion } from 'motion'
 import { Settings, History, User, Monitor, Keyboard, Info } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useTranslation } from '@/context/TranslationContext'
-import type { SettingsSection } from './SettingsWindow'
+import type { SettingsSection } from '../SettingsPage'
 import type { TranslationKey } from '@/lib/translations'
 
 interface NavItem {
@@ -28,7 +28,7 @@ export function SettingsSidebar({ activeSection, onSectionChange }: SettingsSide
   const { t } = useTranslation()
 
   return (
-    <div className="w-[180px] h-full bg-background/40 backdrop-blur-xl border-r border-border/30 p-4">
+    <div className="w-[180px] h-full bg-background/40 backdrop-blur-xl border-r border-white/50 p-4">
       <nav className="space-y-1">
         {navItems.map((item, index) => {
           const Icon = item.icon
