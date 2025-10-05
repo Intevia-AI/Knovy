@@ -67,13 +67,21 @@ export function GeneralSettings() {
 
   const handleDisplayChange = async (displayIdStr: string) => {
     const displayId = parseInt(displayIdStr, 10)
+
+    // Don't do anything if selecting the same display
+    if (displayId === selectedDisplayId) {
+      return
+    }
+
     setSelectedDisplayId(displayId)
     await window.electronAPI.invoke('electronAPI:setSettings', { displayId })
+
+    // Move both main window and settings window to new display
     window.electronAPI.send('window:set-position', { position: 'bottom-left', displayId })
+    window.electronAPI.send('settings:move-to-display', { displayId })
 
     // If recording, user should restart manually
     if (isRecording) {
-      // Could show a toast notification here about restarting
       console.log('[GeneralSettings] Display changed while recording - restart recommended')
     }
   }
@@ -147,14 +155,36 @@ export function GeneralSettings() {
             </div>
             <Select value={selectedDisplayId?.toString()} onValueChange={handleDisplayChange}>
               <SelectTrigger className="w-[200px] bg-background/50 border-border/30">
-                <SelectValue placeholder={t('defaultDisplayLabel')} />
+                <SelectValue placeholder={t('defaultDisplayLabel')}>
+                  {selectedDisplayId !== undefined && displays.length > 0
+                    ? (() => {
+                        const index = displays.findIndex((d) => d.id === selectedDisplayId)
+                        const display = displays[index]
+                        return `${t('displayLabelPrefix')} ${index + 1}${display?.primary ? ` ${t('primaryDisplaySuffix')}` : ''}`
+                      })()
+                    : t('defaultDisplayLabel')}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
-                {displays.map((display, index) => (
-                  <SelectItem key={display.id} value={display.id.toString()}>
-                    {`${t('displayLabelPrefix')} ${index + 1}${display.primary ? ` ${t('primaryDisplaySuffix')}` : ''}`}
-                  </SelectItem>
-                ))}
+                {displays.map((display, index) => {
+                  const isCurrentDisplay = display.id === selectedDisplayId
+                  return (
+                    <SelectItem
+                      key={display.id}
+                      value={display.id.toString()}
+                      className={isCurrentDisplay ? 'bg-primary/10' : ''}
+                    >
+                      <div className="flex items-center justify-between w-full">
+                        <span>
+                          {`${t('displayLabelPrefix')} ${index + 1}${display.primary ? ` ${t('primaryDisplaySuffix')}` : ''}`}
+                        </span>
+                        {isCurrentDisplay && (
+                          <span className="ml-2 text-xs text-primary">● Current</span>
+                        )}
+                      </div>
+                    </SelectItem>
+                  )
+                })}
               </SelectContent>
             </Select>
           </div>

@@ -28,7 +28,11 @@ import {
 import { positionWindow, type PositionOptions } from './windowManager'
 import electronUpdater, { type AppUpdater } from 'electron-updater'
 import { getWhisperBackend } from './whisperBackend'
-import { createSettingsWindow, closeSettingsWindow } from './settingsWindowManager'
+import {
+  createSettingsWindow,
+  closeSettingsWindow,
+  moveSettingsWindowToDisplay
+} from './settingsWindowManager'
 
 console.log('[Debug] Imported dbService module:', dbService)
 
@@ -374,7 +378,19 @@ const createWindow = async () => {
     }
   })
 
-  positionWindow(mainWindow, { position: 'bottom-left', displayId: settings.displayId })
+  const actualDisplayId = positionWindow(mainWindow, {
+    position: 'bottom-left',
+    displayId: settings.displayId
+  })
+
+  // If the window was positioned on a different display than what was saved,
+  // update the settings to reflect reality
+  if (actualDisplayId !== -1 && actualDisplayId !== settings.displayId) {
+    console.log(
+      `[createWindow] Window positioned on display ${actualDisplayId}, updating settings from ${settings.displayId}`
+    )
+    await saveSettings({ ...settings, displayId: actualDisplayId })
+  }
 
   mainWindow.webContents.on('did-finish-load', () => {
     if (oauthCallbackUrlOnStartup) {
@@ -602,6 +618,10 @@ app.on('ready', async () => {
 
   ipcMain.on('settings:close', () => {
     closeSettingsWindow()
+  })
+
+  ipcMain.on('settings:move-to-display', (event, { displayId }: { displayId: number }) => {
+    moveSettingsWindowToDisplay(displayId)
   })
 
   ipcMain.handle('settings:navigate', (event, section: string) => {

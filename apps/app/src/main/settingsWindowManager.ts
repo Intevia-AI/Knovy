@@ -93,3 +93,28 @@ export function closeSettingsWindow(): void {
     settingsWindow.close()
   }
 }
+
+export function moveSettingsWindowToDisplay(displayId: number): void {
+  if (!settingsWindow || settingsWindow.isDestroyed()) {
+    return
+  }
+
+  const displays = screen.getAllDisplays()
+  const targetDisplay = displays.find((d) => d.id === displayId)
+
+  if (!targetDisplay) {
+    console.warn(`[settingsWindowManager] Display with ID ${displayId} not found`)
+    return
+  }
+
+  // Center settings window on the target display
+  const x = targetDisplay.bounds.x + (targetDisplay.bounds.width - 900) / 2
+  const y = targetDisplay.bounds.y + (targetDisplay.bounds.height - 600) / 2
+
+  settingsWindow.setBounds({
+    x: Math.round(x),
+    y: Math.round(y),
+    width: 900,
+    height: 600
+  })
+}

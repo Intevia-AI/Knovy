@@ -26,9 +26,9 @@ function getTargetDisplay(displayId?: number): Display {
   return screen.getPrimaryDisplay()
 }
 
-export function positionWindow(window: BrowserWindow, options: PositionOptions): void {
+export function positionWindow(window: BrowserWindow, options: PositionOptions): number {
   if (!window || window.isDestroyed()) {
-    return
+    return -1
   }
 
   const { position, displayId, margin = 30, animate = true } = options
@@ -72,4 +72,7 @@ export function positionWindow(window: BrowserWindow, options: PositionOptions):
   }
 
   window.setPosition(Math.round(x), Math.round(y), animate)
+
+  // Return the actual display ID where the window was positioned
+  return targetDisplay.id
 }
