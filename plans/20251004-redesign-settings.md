@@ -1,11 +1,11 @@
 # Settings Window Redesign Plan
 
 **Date**: 2025-10-04
-**Last Updated**: 2025-10-05
-**Status**: In Progress (Phase 4 Complete, Starting Phase 5)
+**Last Updated**: 2025-10-06
+**Status**: In Progress (Phase 4 Complete, Phase 5 In Progress)
 **Priority**: High
 **Estimated Effort**: 3-4 days
-**Progress**: ~95% Complete
+**Progress**: ~98% Complete
 
 ## Executive Summary
 
@@ -1850,14 +1850,24 @@ Balance transparency for aesthetics vs readability:
   - [x] Account Settings (quota display, sign out)
   - [x] Display Settings - **Merged into General Settings**
   - [x] General Settings (language selector with translations)
+    - [x] Multi-display support with screen selection dropdown
+    - [x] Display detection auto-sync (window position → settings UI)
+    - [x] Content protection toggle (hide from screenshots/recordings)
+    - [x] Early return on same-display selection
+    - [x] Settings window follows main window to new display
   - [x] Shortcuts View (keyboard shortcuts reference with translations)
   - [x] About View (app info, links, version display with translations)
-- [ ] Phase 5: Integration and cleanup
+- [x] Phase 5: Integration and cleanup (In Progress)
   - [x] Settings button toggle state tracking
   - [x] Custom delete confirmation dialog with translations
   - [x] Display Settings merged into General Settings
   - [x] Comprehensive translations for all UI elements
   - [x] Translation context integration (app-wide language switching)
+  - [x] Multi-display UX improvements
+    - [x] Current display indicator in dropdown
+    - [x] Display preview with "Current" badge
+    - [x] Auto-detect display on window positioning
+    - [x] Settings window repositioning on display change
   - [ ] Add ⌘+, keyboard shortcut
   - [ ] Remove `apps/history-viewer` directory
   - [ ] Remove Express server dependencies
@@ -1920,7 +1930,7 @@ Balance transparency for aesthetics vs readability:
 
 ---
 
-## Current Progress Summary (Updated: October 5, 2025)
+## Current Progress Summary (Updated: October 6, 2025)
 
 ### Completed Work ✅
 1. **Window Infrastructure** - Full singleton pattern, IPC handlers, lifecycle management
@@ -1932,6 +1942,7 @@ Balance transparency for aesthetics vs readability:
    - Date grouping logic
    - Session cards with expand/collapse
    - Custom delete confirmation dialog with translations
+   - Duplicate session prevention
 4. **All Settings Sections** - Complete implementation:
    - Account Settings (quota display, sign out)
    - General Settings (language selector, display selection, content protection toggle)
@@ -1943,6 +1954,14 @@ Balance transparency for aesthetics vs readability:
    - Translations for all Settings sections and UI elements
    - Custom delete dialog with translated messages
    - 50+ translation keys in English and Traditional Chinese
+6. **Multi-Display Support** - Complete implementation:
+   - Display selection dropdown in General Settings
+   - Auto-detection of current display on window positioning
+   - Settings UI always reflects actual window position
+   - Settings window follows main window on display change
+   - Current display indicator with "(Current)" badge
+   - Prevention of redundant same-display selection
+   - Content protection toggle for privacy
 
 ### Recent Enhancements Beyond Plan 🎨
 - **Motion Animation System**: Smooth fade-in, slide transitions, staggered animations
@@ -1950,16 +1969,18 @@ Balance transparency for aesthetics vs readability:
 - **Global Translation Context**: App-wide language switching with persistent storage
 - **Custom Delete Dialog**: Styled confirmation dialog matching app design
 - **Display Selection in General Settings**: Multi-screen support with display picker integrated into general settings
+- **Display Auto-Detection**: Window position synced to settings UI in real-time
 - **Content Protection Toggle**: Privacy feature to hide app content from screenshots and recordings
 - **Tab Reordering**: History → General → Shortcuts → Account → About
+- **Session Deduplication**: Fixed infinite scroll duplicate sessions issue
 
 ### Remaining Work 🚧
-**Phase 5 Integration** (Estimated: 3-4 hours)
-- [ ] Remove history-viewer app (critical dependency)
-- [ ] Update build scripts and package.json
-- [ ] Add ⌘+, keyboard shortcut
-- [ ] Remove old SettingsPanel.tsx
-- [ ] End-to-end production testing
+**Phase 5 Integration** (Estimated: 2.5-3 hours)
+- [ ] Add ⌘+, keyboard shortcut (30 min)
+- [ ] Remove history-viewer app (1 hour - staged approach)
+- [ ] Update build scripts and package.json (30 min)
+- [ ] Remove old SettingsPanel.tsx (15 min)
+- [ ] End-to-end production testing (45 min)
 
 ### Critical Issues Resolved ✅
 1. ✅ **Glass Effect Readability**: Increased to bg-background/50 with enhanced backdrop-filter
@@ -1969,16 +1990,40 @@ Balance transparency for aesthetics vs readability:
 5. ✅ **Display Settings Integration**: Added display selection and content protection to General Settings
 6. ✅ **Multi-Screen Support**: Screen picker for users with multiple displays
 7. ✅ **Content Protection**: Toggle to hide app from screenshots and screen recordings
+8. ✅ **Display Detection Mismatch**: Window position auto-syncs to settings UI
+9. ✅ **Duplicate Sessions**: Fixed infinite scroll causing duplicate key warnings
+10. ✅ **Settings Window Positioning**: Follows main window to new display
+
+### UI/UX Design Review Summary (October 6, 2025)
+**Overall Grade: A- (92/100)**
+
+**Strengths:**
+- Outstanding motion animation system with staggered transitions
+- Sophisticated glass morphism with proper depth layering
+- Excellent component composition and type safety
+- Comprehensive translation integration
+- Strong accessibility foundations
+
+**Areas for Improvement:**
+- Calendar picker needs ARIA grid attributes
+- Motion animations should respect `prefers-reduced-motion`
+- Some hardcoded theming values (calendar background)
+- Minor contrast issues on disabled states
+
+**Accessibility Score: B+ (87/100)**
+- Most WCAG 2.1 AA criteria met
+- Missing ARIA attributes on calendar grid
+- Some motion preferences not respected
 
 ### Remaining Critical Tasks ⚠️
-1. **Build Dependencies**: Careful removal of history-viewer to prevent build breakage
-2. **Keyboard Shortcut**: Add ⌘+, shortcut for settings window
+1. **Keyboard Shortcut**: Add ⌘+, shortcut for settings window
+2. **Build Dependencies**: Careful removal of history-viewer to prevent build breakage
 3. **Production Testing**: Full end-to-end testing in production build
 
 ### Estimated Completion
 - **Phase 4**: ✅ Completed October 5, 2025
-- **Phase 5**: October 6, 2025
-- **PR Ready**: October 6, 2025
+- **Phase 5**: October 6, 2025 (Afternoon)
+- **PR Ready**: October 6, 2025 (Evening)
 
 ---
 

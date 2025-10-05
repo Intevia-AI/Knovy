@@ -607,6 +607,13 @@ app.on('ready', async () => {
 
   globalShortcut.register("alt+'", toggleWindow)
 
+  // Register ⌘+, (Cmd+Comma) shortcut for settings window (macOS standard)
+  globalShortcut.register('CommandOrControl+,', () => {
+    if (mainWindow) {
+      createSettingsWindow(mainWindow)
+    }
+  })
+
   // Settings window IPC handlers
   ipcMain.handle('settings:open', () => {
     if (mainWindow) {
