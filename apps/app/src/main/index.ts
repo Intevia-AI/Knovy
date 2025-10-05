@@ -15,8 +15,6 @@ import { randomUUID } from 'crypto'
 import fs from 'fs/promises'
 import { installExtension, REACT_DEVELOPER_TOOLS } from 'electron-devtools-installer'
 import { is } from '@electron-toolkit/utils'
-import express from 'express'
-import cors from 'cors'
 import * as dbService from './databaseService'
 import {
   createPopover,
@@ -1243,107 +1241,9 @@ app.on('ready', async () => {
   ipcMain.on('electronAPI:cancelScreenshot', () => {
     endScreenshotSession()
   })
-  let historyViewerServer
 
-  ipcMain.on('history:open', async () => {
-    await startHistoryViewerServer()
-  })
-
-  async function startHistoryViewerServer() {
-    if (historyViewerServer) {
-      const address = historyViewerServer.address()
-      if (address && typeof address === 'object') {
-        const url = is.dev ? 'http://localhost:3000' : `http://localhost:${address.port}`
-        shell.openExternal(url)
-      }
-      return
-    }
-
-    const historyViewerApp = express()
-    historyViewerApp.use(cors())
-    const apiRouter = express.Router()
-
-    apiRouter.get('/sessions', async (req, res) => {
-      try {
-        const sessions = await dbService.getSessions()
-        res.json(sessions)
-      } catch (error) {
-        console.error('[History API] Error fetching sessions:', error)
-        res.status(500).json({ error: 'Failed to fetch sessions' })
-      }
-    })
-
-    apiRouter.get('/sessions/:id/transcripts', async (req, res) => {
-      try {
-        const transcripts = await dbService.getTranscripts(req.params.id)
-        if (!transcripts || transcripts.length === 0) {
-          return res.status(404).json({
-            error: 'No transcripts found for this session',
-            code: 'TRANSCRIPTS_NOT_FOUND'
-          })
-        }
-        res.json(transcripts)
-      } catch (error) {
-        console.error(
-          `[History API] Error fetching transcripts for session ${req.params.id}`,
-          error
-        )
-        res.status(500).json({
-          error: `Failed to fetch transcripts for session ${req.params.id}`,
-          code: 'INTERNAL_ERROR'
-        })
-      }
-    })
-
-    apiRouter.get('/sessions/:id/summary', async (req, res) => {
-      try {
-        const summary = await dbService.getSummary(req.params.id)
-        if (!summary) {
-          return res.status(404).json({
-            error: 'No summary found for this session',
-            code: 'SUMMARY_NOT_FOUND'
-          })
-        }
-        res.json(summary)
-      } catch (error) {
-        console.error(`[History API] Error fetching summary for session ${req.params.id}`, error)
-        res.status(500).json({
-          error: `Failed to fetch summary for session ${req.params.id}`,
-          code: 'INTERNAL_ERROR'
-        })
-      }
-    })
-
-    apiRouter.delete('/sessions/:id', async (req, res) => {
-      try {
-        await dbService.deleteSession(req.params.id)
-        res.json({ success: true })
-      } catch (error) {
-        console.error(`[History API] Error deleting session ${req.params.id}:`, error)
-        res.status(500).json({ error: `Failed to delete session ${req.params.id}` })
-      }
-    })
-
-    historyViewerApp.use('/api', apiRouter)
-
-    if (!is.dev) {
-      const historyPath = path.join(__dirname, '../renderer/history')
-      historyViewerApp.use(express.static(historyPath))
-      historyViewerApp.get('*', (req, res) => {
-        res.sendFile(path.join(historyPath, 'index.html'))
-      })
-    }
-
-    return new Promise<boolean>((resolve) => {
-      const port = 4000
-      historyViewerServer = historyViewerApp.listen(port, () => {
-        console.log(`History viewer API server started on port ${port}`)
-        const url = is.dev ? 'http://localhost:3000' : `http://localhost:${port}`
-        shell.openExternal(url)
-        resolve(true)
-      })
-    })
-  }
+  // Note: History viewer has been integrated into the settings window.
+  // The old Express server and separate Next.js app have been removed.
 
   if (process.platform !== 'darwin' && gotTheLock) {
     const cmdLineUrl = process.argv.find((arg) => arg.startsWith(`${PROTOCOL}://`))

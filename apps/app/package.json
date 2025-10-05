@@ -21,12 +21,10 @@
   "type": "module",
   "main": "out/main/index.js",
   "scripts": {
-    "dev": "concurrently \"pnpm --filter history-viewer dev\" \"electron-vite dev\"",
-    "build:history": "pnpm --filter history-viewer build",
-    "copy:history": "rm -rf src/renderer/public/history && cp -r ../history-viewer/out src/renderer/public/history",
-    "build": "source ./code-signing/build-mac-signed.sh && pnpm run build:history && pnpm run copy:history && electron-vite build && electron-builder",
-    "build:ci": "pnpm run build:history && pnpm run copy:history && electron-vite build && electron-builder",
-    "build:local": "export SKIP_NOTARIZE=true && pnpm run build:history && pnpm run copy:history && electron-vite build && electron-builder -c.mac.identity=null",
+    "dev": "electron-vite dev",
+    "build": "source ./code-signing/build-mac-signed.sh && electron-vite build && electron-builder",
+    "build:ci": "electron-vite build && electron-builder",
+    "build:local": "export SKIP_NOTARIZE=true && electron-vite build && electron-builder -c.mac.identity=null",
     "postinstall": "electron-builder install-app-deps"
   },
   "dependencies": {
@@ -42,9 +40,7 @@
     "bindings": "^1.5.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "cors": "^2.8.5",
     "electron-updater": "^6.6.2",
-    "express": "^4.21.2",
     "lucide-react": "^0.475.0",
     "motion": "npm:framer-motion@^12.23.12",
     "next-themes": "^0.4.6",
