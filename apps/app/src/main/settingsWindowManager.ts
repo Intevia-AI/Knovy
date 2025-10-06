@@ -94,6 +94,16 @@ export function closeSettingsWindow(): void {
   }
 }
 
+export function toggleSettingsWindow(mainWindow: BrowserWindow): void {
+  if (settingsWindow && !settingsWindow.isDestroyed()) {
+    // Settings window exists, close it
+    settingsWindow.close()
+  } else {
+    // Settings window doesn't exist, create it
+    createSettingsWindow(mainWindow)
+  }
+}
+
 export function moveSettingsWindowToDisplay(displayId: number): void {
   if (!settingsWindow || settingsWindow.isDestroyed()) {
     return
