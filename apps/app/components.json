@@ -15,5 +15,8 @@
     "hooks": "@/hooks",
     "lib": "@/lib",
     "utils": "@/lib/utils"
+  },
+  "resolveAlias": {
+    "@": "./src/renderer/src"
   }
 }

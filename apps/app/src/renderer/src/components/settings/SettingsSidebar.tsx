@@ -1,9 +1,10 @@
 import { motion } from 'motion'
-import { Settings, History, User, Monitor, Keyboard, Info } from 'lucide-react'
+import { Settings, History, User, Monitor, Keyboard, Info, Power } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useTranslation } from '@/context/TranslationContext'
 import type { SettingsSection } from '../SettingsPage'
 import type { TranslationKey } from '@/lib/translations'
+import { Button } from '@/components/ui/button'
 
 interface NavItem {
   id: SettingsSection
@@ -27,9 +28,13 @@ interface SettingsSidebarProps {
 export function SettingsSidebar({ activeSection, onSectionChange }: SettingsSidebarProps) {
   const { t } = useTranslation()
 
+  const handleQuit = () => {
+    window.electronAPI.quitApp()
+  }
+
   return (
-    <div className="w-[180px] h-full bg-background/40 backdrop-blur-xl border-r border-white/50 p-4">
-      <nav className="space-y-1">
+    <div className="w-[180px] h-full bg-background/40 backdrop-blur-xl border-r border-white/50 p-4 flex flex-col">
+      <nav className="space-y-1 flex-1">
         {navItems.map((item, index) => {
           const Icon = item.icon
           const isActive = activeSection === item.id
@@ -57,6 +62,23 @@ export function SettingsSidebar({ activeSection, onSectionChange }: SettingsSide
           )
         })}
       </nav>
+
+      {/* Quit Button at the bottom */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, delay: 0.3 }}
+        className="mt-4 pt-4 border-t border-border/50"
+      >
+        <Button
+          variant="ghost"
+          onClick={handleQuit}
+          className="w-full justify-start gap-3 text-destructive hover:bg-destructive/10 hover:text-destructive"
+        >
+          <Power className="w-4 h-4" />
+          <span className="text-sm">Quit Knovy</span>
+        </Button>
+      </motion.div>
     </div>
   )
 }
