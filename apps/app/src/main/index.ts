@@ -602,7 +602,18 @@ app.on('ready', async () => {
 
   if (!is.dev) {
     setupAutoUpdaterListeners()
-    getAutoUpdater().checkForUpdatesAndNotify()
+
+    // Check if there's an update already downloaded and ready to install
+    const autoUpdater = getAutoUpdater()
+    const checkResult = await autoUpdater.checkForUpdates()
+
+    // If there's a downloaded update ready, notify the user immediately
+    if (checkResult && checkResult.downloadedFile) {
+      console.log('[AutoUpdater] Previously downloaded update found, notifying user')
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('updater:update-downloaded', checkResult.updateInfo)
+      }
+    }
   }
 
   // Global shortcuts - All using Alt modifier to avoid conflicts with other apps
