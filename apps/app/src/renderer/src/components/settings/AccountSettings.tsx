@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Progress } from '@/components/ui/progress'
+import { Skeleton } from '@/components/ui/skeleton'
 import { RefreshCw, LogOut } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 
@@ -80,9 +81,57 @@ export function AccountSettings({ sessionProfile }: AccountSettingsProps) {
     return (
       <div className="space-y-6">
         <div>
-          <h2 className="text-2xl font-semibold text-foreground mb-2">Account</h2>
-          <p className="text-sm text-muted-foreground">Loading account information...</p>
+          <Skeleton className="h-8 w-32 mb-2" />
+          <Skeleton className="h-4 w-56" />
         </div>
+
+        {/* Profile Card Skeleton */}
+        <Card className="bg-background/50 backdrop-blur-sm">
+          <CardHeader>
+            <Skeleton className="h-5 w-20" />
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-start gap-4">
+              <Skeleton className="h-16 w-16 rounded-full" />
+              <div className="flex-1 space-y-2">
+                <Skeleton className="h-4 w-48" />
+                <Skeleton className="h-5 w-16 rounded-full" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Daily Quotas Card Skeleton */}
+        <Card className="bg-background/50 backdrop-blur-sm">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <Skeleton className="h-5 w-32 mb-1" />
+                <Skeleton className="h-3 w-40" />
+              </div>
+              <Skeleton className="h-9 w-24 rounded-md" />
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="flex items-center gap-3 text-sm">
+                <Skeleton className="h-4 w-[160px]" />
+                <Skeleton className="h-1.5 flex-1 rounded-full" />
+                <Skeleton className="h-4 w-[90px]" />
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+
+        {/* Actions Card Skeleton */}
+        <Card className="bg-background/50 backdrop-blur-sm">
+          <CardHeader>
+            <Skeleton className="h-5 w-32" />
+          </CardHeader>
+          <CardContent>
+            <Skeleton className="h-10 w-full rounded-md" />
+          </CardContent>
+        </Card>
       </div>
     )
   }

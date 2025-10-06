@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import { motion } from 'motion'
 import { Info } from 'lucide-react'
 import { Card, CardHeader, CardContent } from '@/components/ui/card'
@@ -10,6 +11,7 @@ import {
   TableHeader,
   TableRow
 } from '@/components/ui/table'
+import { Skeleton } from '@/components/ui/skeleton'
 import { useTranslation } from '@/context/TranslationContext'
 import type { TranslationKey } from '@/lib/translations'
 
@@ -70,6 +72,71 @@ const shortcutCategories: ShortcutCategory[] = [
 
 export function ShortcutsView() {
   const { t } = useTranslation()
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    // Simulate loading for consistent UX
+    const timer = setTimeout(() => setIsLoading(false), 300)
+    return () => clearTimeout(timer)
+  }, [])
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <Skeleton className="h-8 w-32 mb-2" />
+          <Skeleton className="h-4 w-64" />
+        </div>
+
+        {/* Alert Skeleton */}
+        <div className="flex items-start gap-3 rounded-lg border border-border/50 bg-muted/50 p-4">
+          <Skeleton className="w-4 h-4 flex-shrink-0 mt-0.5" />
+          <Skeleton className="h-4 flex-1" />
+        </div>
+
+        {/* Shortcut Cards Skeleton */}
+        <div className="space-y-6">
+          {[1, 2, 3, 4].map((i) => (
+            <Card key={i} className="bg-background/50 backdrop-blur-sm">
+              <CardHeader>
+                <Skeleton className="h-6 w-40" />
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-4">
+                    <Skeleton className="h-4 w-[60%]" />
+                    <Skeleton className="h-4 w-[40%]" />
+                  </div>
+                  {Array.from({ length: i === 1 ? 3 : i === 4 ? 2 : 1 }, (_, j) => (
+                    <div key={j} className="flex items-center gap-4">
+                      <Skeleton className="h-8 w-[60%]" />
+                      <div className="flex gap-1">
+                        <Skeleton className="h-7 w-10 rounded" />
+                        <Skeleton className="h-7 w-10 rounded" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        {/* Help Footer Skeleton */}
+        <Card className="border-dashed">
+          <CardContent className="pt-6">
+            <div className="flex items-start gap-3">
+              <Skeleton className="w-4 h-4 flex-shrink-0 mt-0.5" />
+              <div className="flex-1 space-y-2">
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-3/4" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">

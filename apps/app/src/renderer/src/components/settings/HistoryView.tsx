@@ -7,6 +7,8 @@ import { SessionWithTranscripts, GroupedSessions } from '@/types/history'
 import { groupSessionsByDate, filterSessions } from '@/lib/history-utils'
 import { SessionCard } from './SessionCard'
 import { CalendarPicker } from './CalendarPicker'
+import { Skeleton } from '@/components/ui/skeleton'
+import { Card, CardHeader, CardContent } from '@/components/ui/card'
 
 const SESSIONS_PER_PAGE = 20
 
@@ -20,6 +22,7 @@ export function HistoryView() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
   const [showCalendar, setShowCalendar] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [isInitialLoading, setIsInitialLoading] = useState(true)
   const [hasMore, setHasMore] = useState(true)
   const [offset, setOffset] = useState(0)
   const observerTarget = useRef<HTMLDivElement>(null)
@@ -167,6 +170,9 @@ export function HistoryView() {
       console.error('[HistoryView] Failed to load sessions:', error)
     } finally {
       setIsLoading(false)
+      if (isInitial) {
+        setIsInitialLoading(false)
+      }
     }
   }
 
@@ -199,6 +205,57 @@ export function HistoryView() {
       console.error('Failed to delete session:', error)
     }
   }, [])
+
+  if (isInitialLoading) {
+    return (
+      <div className="space-y-4">
+        <div>
+          <Skeleton className="h-8 w-32 mb-2" />
+          <Skeleton className="h-4 w-64" />
+        </div>
+
+        {/* Search and Calendar Controls Skeleton */}
+        <div className="flex gap-3">
+          <Skeleton className="h-10 flex-1 rounded-lg" />
+          <Skeleton className="h-10 w-32 rounded-lg" />
+        </div>
+
+        {/* Session Cards Skeleton */}
+        <div className="space-y-6">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="space-y-3">
+              <Skeleton className="h-4 w-24" />
+              <div className="space-y-2">
+                {[1, 2].map((j) => (
+                  <Card key={j} className="bg-background/50 backdrop-blur-sm">
+                    <CardHeader className="pb-3">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1 space-y-2">
+                          <div className="flex items-center gap-2">
+                            <Skeleton className="h-4 w-4 rounded" />
+                            <Skeleton className="h-4 w-20" />
+                            <Skeleton className="h-5 w-24 rounded-full" />
+                          </div>
+                          <Skeleton className="h-3 w-40" />
+                        </div>
+                        <div className="flex gap-1">
+                          <Skeleton className="h-8 w-8 rounded" />
+                          <Skeleton className="h-8 w-8 rounded" />
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="pt-0">
+                      <Skeleton className="h-4 w-24" />
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-4">

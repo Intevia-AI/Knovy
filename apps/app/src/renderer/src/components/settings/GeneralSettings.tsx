@@ -10,6 +10,7 @@ import {
   SelectContent,
   SelectItem
 } from '@/components/ui/select'
+import { Skeleton } from '@/components/ui/skeleton'
 import { useTranslation } from '@/context/TranslationContext'
 import type { SupportedLanguage } from '@/lib/translations'
 
@@ -24,6 +25,7 @@ export function GeneralSettings() {
   const [displays, setDisplays] = useState<any[]>([])
   const [selectedDisplayId, setSelectedDisplayId] = useState<number | undefined>()
   const [isContentProtectionEnabled, setIsContentProtectionEnabled] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     // Get initial recording state
@@ -50,6 +52,8 @@ export function GeneralSettings() {
         }
       } catch (error) {
         console.error('[GeneralSettings] Error fetching display settings:', error)
+      } finally {
+        setIsLoading(false)
       }
     }
 
@@ -89,6 +93,74 @@ export function GeneralSettings() {
   const handleContentProtectionToggle = () => {
     setIsContentProtectionEnabled(!isContentProtectionEnabled)
     window.electronAPI.toggleContentProtection()
+  }
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <Skeleton className="h-8 w-32 mb-2" />
+          <Skeleton className="h-4 w-64" />
+        </div>
+
+        {/* Language Settings Card Skeleton */}
+        <Card className="bg-background/50 backdrop-blur-sm">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Skeleton className="w-5 h-5 rounded" />
+              <Skeleton className="h-6 w-40" />
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <Skeleton className="h-5 w-32 mb-1" />
+                <Skeleton className="h-3 w-48" />
+              </div>
+              <Skeleton className="h-10 w-[200px] rounded-md" />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Display Settings Card Skeleton */}
+        <Card className="bg-background/50 backdrop-blur-sm">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Skeleton className="w-5 h-5 rounded" />
+              <Skeleton className="h-6 w-32" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <Skeleton className="h-5 w-28 mb-1" />
+                <Skeleton className="h-3 w-56" />
+              </div>
+              <Skeleton className="h-10 w-[200px] rounded-md" />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Content Protection Card Skeleton */}
+        <Card className="bg-background/50 backdrop-blur-sm">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Skeleton className="w-5 h-5 rounded" />
+              <Skeleton className="h-6 w-36" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <Skeleton className="h-5 w-32 mb-1" />
+                <Skeleton className="h-3 w-64" />
+              </div>
+              <Skeleton className="h-6 w-11 rounded-full" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
   }
 
   return (

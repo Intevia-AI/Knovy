@@ -3,23 +3,64 @@ import { Logo } from '@/components/Logo'
 import { Sparkles, ExternalLink, Download } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Skeleton } from '@/components/ui/skeleton'
 import { motion } from 'motion'
 import { useTranslation } from '@/context/TranslationContext'
 
 export function AboutView() {
   const { t } = useTranslation()
   const [appVersion, setAppVersion] = useState<string>('Loading...')
+  const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     // Fetch app version from Electron
     window.electronAPI.getAppVersion().then((version: string) => {
       setAppVersion(version)
+      setIsLoading(false)
     })
   }, [])
 
   const checkForUpdates = () => {
     // Trigger update check via Electron IPC
     window.electronAPI.send('check-for-updates')
+  }
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <Skeleton className="h-8 w-24 mb-2" />
+          <Skeleton className="h-4 w-64" />
+        </div>
+
+        {/* App Info Card Skeleton */}
+        <Card className="text-center">
+          <CardContent className="pt-6 space-y-4">
+            {/* App Icon Skeleton */}
+            <div className="w-24 h-24 mx-auto rounded-2xl bg-muted animate-pulse" />
+
+            {/* App Name Skeleton */}
+            <div className="flex flex-col items-center gap-2">
+              <Skeleton className="h-8 w-32" />
+              <Skeleton className="h-4 w-56" />
+            </div>
+
+            <div className="text-sm space-y-2 flex flex-col items-center">
+              <Skeleton className="h-4 w-28" />
+              <Skeleton className="h-4 w-32" />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Links Card Skeleton */}
+        <Card>
+          <CardContent className="pt-6 space-y-3">
+            <Skeleton className="h-10 w-full rounded-md" />
+            <Skeleton className="h-10 w-full rounded-md" />
+          </CardContent>
+        </Card>
+      </div>
+    )
   }
 
   return (

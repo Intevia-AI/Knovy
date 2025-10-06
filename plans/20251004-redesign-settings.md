@@ -5,7 +5,7 @@
 **Status**: In Progress (Phase 4 Complete, Phase 5 In Progress)
 **Priority**: High
 **Estimated Effort**: 3-4 days
-**Progress**: ~98% Complete
+**Progress**: ~99% Complete
 
 ## Executive Summary
 
@@ -1847,7 +1847,14 @@ Balance transparency for aesthetics vs readability:
   - [x] Date grouping (Today, Yesterday, This Week, etc.)
   - [x] Session cards with expand/collapse
 - [x] Phase 4: All settings sections implemented ✅
-  - [x] Account Settings (quota display, sign out)
+  - [x] Account Settings
+    - [x] User profile display (avatar, email, role badge)
+    - [x] Daily quotas with horizontal progress bars
+    - [x] Custom quota aliases and ordering
+    - [x] Quota filtering (hide sessions, enhancement)
+    - [x] Manual refresh button for quotas
+    - [x] Sign out with window close
+    - [x] Google avatar integration via OAuth
   - [x] Display Settings - **Merged into General Settings**
   - [x] General Settings (language selector with translations)
     - [x] Multi-display support with screen selection dropdown
@@ -1857,6 +1864,7 @@ Balance transparency for aesthetics vs readability:
     - [x] Settings window follows main window to new display
   - [x] Shortcuts View (keyboard shortcuts reference with translations)
   - [x] About View (app info, links, version display with translations)
+  - [x] Quit button in sidebar with Power icon
 - [x] Phase 5: Integration and cleanup (In Progress)
   - [x] Settings button toggle state tracking
   - [x] Custom delete confirmation dialog with translations
@@ -1868,6 +1876,14 @@ Balance transparency for aesthetics vs readability:
     - [x] Display preview with "Current" badge
     - [x] Auto-detect display on window positioning
     - [x] Settings window repositioning on display change
+  - [x] Account Settings enhancements
+    - [x] Custom quota aliases with friendly names
+    - [x] Custom quota ordering (Session Duration #1, Chat #2)
+    - [x] Horizontal progress bars with fixed alignment
+    - [x] Filter unwanted quotas (sessions, enhancement)
+    - [x] Sign out closes settings window
+    - [x] Quit button in sidebar
+  - [ ] Skeleton loading states for all tabs
   - [ ] Add ⌘+, keyboard shortcut
   - [ ] Remove `apps/history-viewer` directory
   - [ ] Remove Express server dependencies
