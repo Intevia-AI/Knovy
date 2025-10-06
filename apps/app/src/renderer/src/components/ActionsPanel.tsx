@@ -105,6 +105,19 @@ export default function ActionsPanel() {
     consumeInitialKeyword()
   }, [handleKeywordSearch])
 
+  // Listen for AI action shortcuts via IPC
+  useEffect(() => {
+    const handleRecommendResponse = () => {
+      console.log('[ActionsPanel] Shortcut: Recommend response triggered')
+      handleActionClick('answer')
+    }
+
+    const unsubscribe = window.electronAPI.on('ai-action:recommend-response', handleRecommendResponse)
+    return () => {
+      unsubscribe()
+    }
+  }, [isConversational, sendContextToAI])
+
   useEffect(() => {
     // Receive base64 screenshot data directly from main process
     const unsubscribeScreenshotTaken = window.electronAPI.on(
