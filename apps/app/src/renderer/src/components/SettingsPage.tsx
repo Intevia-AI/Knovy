@@ -82,7 +82,7 @@ export function SettingsWindow() {
         <div className="flex-1 overflow-hidden">
           <div
             className="h-full w-full overflow-y-auto bg-background/50 backdrop-blur-xl settings-scrollbar"
-            style={{ backdropFilter: 'blur(40px) saturate(180%)' }}
+            style={{ backdropFilter: 'blur(40px) saturate(180%)', scrollbarGutter: 'stable' }}
           >
             <AnimatePresence mode="wait">
               <motion.div
