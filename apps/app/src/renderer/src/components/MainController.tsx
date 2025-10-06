@@ -336,12 +336,30 @@ export function MainController() {
       }
     }
 
-    const unsubscribeToggleRecording = window.electronAPI.on('shortcut:toggle-recording', handleToggleRecording)
-    const unsubscribeTogglePreview = window.electronAPI.on('shortcut:toggle-preview-panel', handleTogglePreviewPanel)
-    const unsubscribeToggleChat = window.electronAPI.on('shortcut:toggle-chat-panel', handleToggleChatPanel)
-    const unsubscribeToggleActions = window.electronAPI.on('shortcut:toggle-actions-panel', handleToggleActionsPanel)
-    const unsubscribeAIRecommend = window.electronAPI.on('shortcut:ai-action-recommend-response', handleAIActionRecommendResponse)
-    const unsubscribeAIScreenshot = window.electronAPI.on('shortcut:ai-action-screenshot-analysis', handleAIActionScreenshotAnalysis)
+    const unsubscribeToggleRecording = window.electronAPI.on(
+      'shortcut:toggle-recording',
+      handleToggleRecording
+    )
+    const unsubscribeTogglePreview = window.electronAPI.on(
+      'shortcut:toggle-preview-panel',
+      handleTogglePreviewPanel
+    )
+    const unsubscribeToggleChat = window.electronAPI.on(
+      'shortcut:toggle-chat-panel',
+      handleToggleChatPanel
+    )
+    const unsubscribeToggleActions = window.electronAPI.on(
+      'shortcut:toggle-actions-panel',
+      handleToggleActionsPanel
+    )
+    const unsubscribeAIRecommend = window.electronAPI.on(
+      'shortcut:ai-action-recommend-response',
+      handleAIActionRecommendResponse
+    )
+    const unsubscribeAIScreenshot = window.electronAPI.on(
+      'shortcut:ai-action-screenshot-analysis',
+      handleAIActionScreenshotAnalysis
+    )
 
     return () => {
       unsubscribeToggleRecording()

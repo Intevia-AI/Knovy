@@ -39,9 +39,11 @@ export function MainControlBar({
   const { sessionProfile } = useAuth()
 
   // Check if any AI action entitlements are enabled in the session profile
-  const canShowActions = sessionProfile?.entitlements && Object.keys(sessionProfile.entitlements).some(
-    (key) => key.startsWith('allow_ai_action:') && sessionProfile.entitlements[key] === true
-  );
+  const canShowActions =
+    sessionProfile?.entitlements &&
+    Object.keys(sessionProfile.entitlements).some(
+      (key) => key.startsWith('allow_ai_action:') && sessionProfile.entitlements[key] === true
+    )
 
   return (
     <header

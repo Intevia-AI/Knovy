@@ -308,7 +308,9 @@ export function HistoryView() {
                 ? 'bg-white/90 text-foreground shadow-sm'
                 : 'bg-background/40 backdrop-blur-md hover:bg-white/60 text-muted-foreground'
           }`}
-          aria-label={selectedDate ? 'Clear date filter' : showCalendar ? 'Close calendar' : 'Select date'}
+          aria-label={
+            selectedDate ? 'Clear date filter' : showCalendar ? 'Close calendar' : 'Select date'
+          }
         >
           {selectedDate ? (
             <>

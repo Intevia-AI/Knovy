@@ -112,7 +112,10 @@ export default function ActionsPanel() {
       handleActionClick('answer')
     }
 
-    const unsubscribe = window.electronAPI.on('ai-action:recommend-response', handleRecommendResponse)
+    const unsubscribe = window.electronAPI.on(
+      'ai-action:recommend-response',
+      handleRecommendResponse
+    )
     return () => {
       unsubscribe()
     }
@@ -136,7 +139,7 @@ export default function ActionsPanel() {
           }
 
           // Add the screenshot message to the conversation
-          setAiMessages(prev => [...prev, screenshotMessage])
+          setAiMessages((prev) => [...prev, screenshotMessage])
 
           // Send to AI analysis
           sendContextToAI('screenshot', undefined, base64Data)

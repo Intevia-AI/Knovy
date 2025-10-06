@@ -49,9 +49,7 @@ const shortcutCategories: ShortcutCategory[] = [
   },
   {
     categoryKey: 'shortcutCategoryRecording',
-    shortcuts: [
-      { actionKey: 'toggleRecording', keys: ['⌥', 'R'] }
-    ]
+    shortcuts: [{ actionKey: 'toggleRecording', keys: ['⌥', 'R'] }]
   },
   {
     categoryKey: 'shortcutCategoryPanels',
@@ -89,7 +87,7 @@ export function ShortcutsView() {
         </div>
 
         {/* Alert Skeleton */}
-        <div className="flex items-start gap-3 rounded-lg border border-border/50 bg-muted/50 p-4">
+        <div className="flex items-start gap-3 rounded-lg bg-muted/50 p-4">
           <Skeleton className="w-4 h-4 flex-shrink-0 mt-0.5" />
           <Skeleton className="h-4 flex-1" />
         </div>

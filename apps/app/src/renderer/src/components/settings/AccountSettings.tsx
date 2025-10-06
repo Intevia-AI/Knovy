@@ -137,9 +137,7 @@ export function AccountSettings({ sessionProfile }: AccountSettingsProps) {
   }
 
   // Extract quota data - all quotas from session profile
-  const quotas = sessionProfile?.quotas
-    ? Object.entries(sessionProfile.quotas)
-    : []
+  const quotas = sessionProfile?.quotas ? Object.entries(sessionProfile.quotas) : []
 
   return (
     <div className="space-y-6">

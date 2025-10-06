@@ -72,7 +72,7 @@ export function LoadingPage({
         }
 
         // Wait a moment to show 100%
-        await new Promise(resolve => setTimeout(resolve, 500))
+        await new Promise((resolve) => setTimeout(resolve, 500))
 
         if (mounted) {
           if (success) {
@@ -85,7 +85,9 @@ export function LoadingPage({
             }, 800)
           } else {
             setStatus('error')
-            setErrorMessage('Failed to prepare transcription models. Please check your internet connection and try again.')
+            setErrorMessage(
+              'Failed to prepare transcription models. Please check your internet connection and try again.'
+            )
             setTimeout(() => {
               if (mounted) {
                 onComplete(false)
@@ -141,7 +143,10 @@ export function LoadingPage({
             // Calculate total progress
             const completedPhasesProgress = phases.slice(0, i).reduce((sum, p) => sum + p.weight, 0)
             const currentPhaseContribution = (phaseProgress / 100) * phase.weight
-            const newTotalProgress = Math.min(100, (completedPhasesProgress + currentPhaseContribution) * 100)
+            const newTotalProgress = Math.min(
+              100,
+              (completedPhasesProgress + currentPhaseContribution) * 100
+            )
             setProgress(newTotalProgress)
 
             if (phaseProgress >= 100) {
@@ -160,7 +165,7 @@ export function LoadingPage({
             }
           } else {
             // Default delay for phases without executors
-            await new Promise(resolve => setTimeout(resolve, 2000))
+            await new Promise((resolve) => setTimeout(resolve, 2000))
           }
 
           // Ensure phase progress completes
@@ -183,7 +188,7 @@ export function LoadingPage({
           }
 
           // Small delay between phases
-          await new Promise(resolve => setTimeout(resolve, 200))
+          await new Promise((resolve) => setTimeout(resolve, 200))
         }
 
         // All phases completed successfully

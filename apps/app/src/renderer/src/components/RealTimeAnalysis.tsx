@@ -1,7 +1,12 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { TranscriptionFactory, TranscriptionProcessor, type SegmentEnhancedEvent, type EnhancementErrorEvent } from '@/services/transcription'
+import {
+  TranscriptionFactory,
+  TranscriptionProcessor,
+  type SegmentEnhancedEvent,
+  type EnhancementErrorEvent
+} from '@/services/transcription'
 import { useAuth } from '@/hooks/useAuth'
 import { useTranscriptionEnhancement } from '@/hooks/useTranscriptionEnhancement'
 import { useLanguage } from '@/hooks/useLanguage'
@@ -41,9 +46,15 @@ export default function RealTimeAnalysis({
   const systemTextBufferRef = useRef('')
 
   // Enhanced transcription state
-  const [enhancedTranscriptions, setEnhancedTranscriptions] = useState<Map<string, SegmentEnhancedEvent>>(new Map())
-  const [transcriptionReplacements, setTranscriptionReplacements] = useState<Map<string, string>>(new Map())
-  const [enhancementStatuses, setEnhancementStatuses] = useState<Map<string, 'pending' | 'processing' | 'completed' | 'failed'>>(new Map())
+  const [enhancedTranscriptions, setEnhancedTranscriptions] = useState<
+    Map<string, SegmentEnhancedEvent>
+  >(new Map())
+  const [transcriptionReplacements, setTranscriptionReplacements] = useState<Map<string, string>>(
+    new Map()
+  )
+  const [enhancementStatuses, setEnhancementStatuses] = useState<
+    Map<string, 'pending' | 'processing' | 'completed' | 'failed'>
+  >(new Map())
 
   // Enhancement event handlers
   const handleSegmentEnhanced = (data: SegmentEnhancedEvent) => {
@@ -59,10 +70,10 @@ export default function RealTimeAnalysis({
     })
 
     // Store enhanced transcription data
-    setEnhancedTranscriptions(prev => new Map(prev.set(data.original.id, data)))
+    setEnhancedTranscriptions((prev) => new Map(prev.set(data.original.id, data)))
 
     // Update enhancement status to completed
-    setEnhancementStatuses(prev => new Map(prev.set(data.original.id, 'completed')))
+    setEnhancementStatuses((prev) => new Map(prev.set(data.original.id, 'completed')))
 
     // Send update event to the main process to update the existing transcript in UI
     // This will trigger useAIInteraction to update the existing message instead of adding a new one
@@ -73,7 +84,7 @@ export default function RealTimeAnalysis({
       // Format text with backticks around keywords for MarkdownRenderer
       let formattedText = enhancedText
       if (keywords.length > 0) {
-        keywords.forEach(keyword => {
+        keywords.forEach((keyword) => {
           // Use regex to replace keyword with backtick-wrapped version (case-insensitive)
           const regex = new RegExp(`(${keyword})`, 'gi')
           formattedText = formattedText.replace(regex, '`$1`')
@@ -100,16 +111,18 @@ export default function RealTimeAnalysis({
     })
 
     // Update enhancement status to failed
-    setEnhancementStatuses(prev => new Map(prev.set(error.segmentId, 'failed')))
+    setEnhancementStatuses((prev) => new Map(prev.set(error.segmentId, 'failed')))
 
     // Optionally show error indicator in UI
-    console.warn(`[RealTimeAnalysis] Enhancement failed for segment ${error.segmentId}: ${error.error}`)
+    console.warn(
+      `[RealTimeAnalysis] Enhancement failed for segment ${error.segmentId}: ${error.error}`
+    )
   }
 
   // Initialize transcription enhancement
   const { isEnhancementReady } = useTranscriptionEnhancement({
     onSegmentEnhanced: handleSegmentEnhanced,
-    onEnhancementError: handleEnhancementError,
+    onEnhancementError: handleEnhancementError
   })
 
   // Log enhancement status
@@ -321,7 +334,9 @@ export default function RealTimeAnalysis({
     }
 
     const startAudioProcessing = async () => {
-      console.log('[RealTimeAnalysis] Starting dual audio processing with automatic language detection')
+      console.log(
+        '[RealTimeAnalysis] Starting dual audio processing with automatic language detection'
+      )
 
       // Initialize transcription factory with local transcription only
       transcriptionFactory = new TranscriptionFactory({
@@ -359,7 +374,10 @@ export default function RealTimeAnalysis({
       }
 
       // Create transcription processors for both audio sources
-      console.log('[RealTimeAnalysis] Creating microphone processor with user language:', userLanguage)
+      console.log(
+        '[RealTimeAnalysis] Creating microphone processor with user language:',
+        userLanguage
+      )
       micProcessor = await transcriptionFactory.createTranscriptionProcessor(
         'microphone',
         (text, turnComplete, sourceType) =>
@@ -416,7 +434,9 @@ export default function RealTimeAnalysis({
 
           // Handle speech end events for VAD-based segmentation
           if (type === 'speechEnd' && sourceType === 'microphone') {
-            console.log(`[RealTimeAnalysis] Microphone speech ended - duration: ${segmentDuration}ms, forced: ${forced || false}`)
+            console.log(
+              `[RealTimeAnalysis] Microphone speech ended - duration: ${segmentDuration}ms, forced: ${forced || false}`
+            )
             // Trigger segment processing in the current system
             window.dispatchEvent(
               new CustomEvent('mic_segment', {
@@ -448,7 +468,9 @@ export default function RealTimeAnalysis({
 
           // Handle speech end events for VAD-based segmentation
           if (type === 'speechEnd' && sourceType === 'system') {
-            console.log(`[RealTimeAnalysis] System audio speech ended - duration: ${segmentDuration}ms, forced: ${forced || false}`)
+            console.log(
+              `[RealTimeAnalysis] System audio speech ended - duration: ${segmentDuration}ms, forced: ${forced || false}`
+            )
             // Trigger segment processing in the current system
             window.dispatchEvent(
               new CustomEvent('system_segment', {
