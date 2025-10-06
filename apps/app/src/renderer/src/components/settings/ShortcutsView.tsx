@@ -15,22 +15,57 @@ import type { TranslationKey } from '@/lib/translations'
 
 interface Shortcut {
   actionKey: TranslationKey
-  keys: string
+  keys: string[]
 }
 
-const Kbd = ({ children }: { children: string }) => (
-  <kbd className="px-2 py-1 text-xs font-semibold text-foreground bg-muted border border-border rounded">
-    {children}
-  </kbd>
+interface ShortcutCategory {
+  categoryKey: TranslationKey
+  shortcuts: Shortcut[]
+}
+
+const Kbd = ({ keys }: { keys: string[] }) => (
+  <span className="inline-flex items-center gap-1">
+    {keys.map((key, index) => (
+      <kbd
+        key={index}
+        className="inline-flex items-center justify-center px-2 py-1 text-xs font-semibold text-foreground bg-muted border border-border rounded shadow-sm font-mono min-w-[24px]"
+      >
+        {key}
+      </kbd>
+    ))}
+  </span>
 )
 
-const shortcuts: Shortcut[] = [
-  { actionKey: 'showHideKnovy', keys: 'Alt + \'' },
-  { actionKey: 'openSettings', keys: '⌘ + ,' },
-  { actionKey: 'startStopRecording', keys: '⌘ + R' },
-  { actionKey: 'screenshotAndAsk', keys: '⌘ + Shift + S' },
-  { actionKey: 'viewHistory', keys: '⌘ + H' },
-  { actionKey: 'hideWindow', keys: 'Esc' }
+const shortcutCategories: ShortcutCategory[] = [
+  {
+    categoryKey: 'shortcutCategoryGlobal',
+    shortcuts: [
+      { actionKey: 'toggleKnovy', keys: ['⌥', '\\'] },
+      { actionKey: 'toggleSettings', keys: ['⌥', ','] },
+      { actionKey: 'hideWindow', keys: ['Esc'] }
+    ]
+  },
+  {
+    categoryKey: 'shortcutCategoryRecording',
+    shortcuts: [
+      { actionKey: 'toggleRecording', keys: ['⌥', 'R'] }
+    ]
+  },
+  {
+    categoryKey: 'shortcutCategoryPanels',
+    shortcuts: [
+      { actionKey: 'togglePreviewPanel', keys: ['⌥', 'P'] },
+      { actionKey: 'toggleChatPanel', keys: ['⌥', 'C'] },
+      { actionKey: 'toggleActionsPanel', keys: ['⌥', 'A'] }
+    ]
+  },
+  {
+    categoryKey: 'shortcutCategoryAiActions',
+    shortcuts: [
+      { actionKey: 'aiActionRecommendResponse', keys: ['⌥', '1'] },
+      { actionKey: 'aiActionScreenshotAnalysis', keys: ['⌥', '2'] }
+    ]
+  }
 ]
 
 export function ShortcutsView() {
@@ -57,38 +92,58 @@ export function ShortcutsView() {
         </Alert>
       </motion.div>
 
-      {/* Shortcuts Table Card */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, delay: 0.1 }}
-      >
-        <Card>
-          <CardHeader>
-            <h3 className="text-lg font-medium">{t('keyboardShortcuts')}</h3>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[60%]">{t('shortcutAction')}</TableHead>
-                  <TableHead>{t('shortcutKey')}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {shortcuts.map((shortcut, index) => (
-                  <TableRow key={index}>
-                    <TableCell className="font-medium">{t(shortcut.actionKey)}</TableCell>
-                    <TableCell>
-                      <Kbd>{shortcut.keys}</Kbd>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      </motion.div>
+      {/* Shortcuts by Category */}
+      <div className="space-y-6">
+        {shortcutCategories.map((category, categoryIndex) => (
+          <motion.div
+            key={category.categoryKey}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.1 * (categoryIndex + 1) }}
+          >
+            <Card>
+              <CardHeader>
+                <h3 className="text-lg font-medium">{t(category.categoryKey)}</h3>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[60%]">{t('shortcutAction')}</TableHead>
+                      <TableHead>{t('shortcutKey')}</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {category.shortcuts.map((shortcut, index) => (
+                      <TableRow key={index}>
+                        <TableCell className="font-medium">{t(shortcut.actionKey)}</TableCell>
+                        <TableCell>
+                          <Kbd keys={shortcut.keys} />
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </motion.div>
+        ))}
+      </div>
+
+      {/* Help Footer */}
+      <Card className="border-dashed">
+        <CardContent className="pt-6">
+          <div className="flex items-start gap-3">
+            <Info className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+            <div className="text-sm text-muted-foreground space-y-1">
+              <p>
+                <strong>Tip:</strong> Global shortcuts work even when Knovy is hidden.
+              </p>
+              <p>Shortcuts for Panels and AI Actions only work when recording is active.</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }
