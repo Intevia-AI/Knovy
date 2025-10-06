@@ -121,14 +121,24 @@ export const translations = {
     keyboardShortcuts: 'Keyboard Shortcuts',
     shortcutAction: 'Action',
     shortcutKey: 'Shortcut',
-    showHideKnovy: 'Show/Hide Knovy',
-    openSettings: 'Open Settings',
-    startStopRecording: 'Start/Stop Recording',
-    screenshotAndAsk: 'Screenshot & Ask',
+    // Shortcut Categories
+    shortcutCategoryGlobal: 'Global',
+    shortcutCategoryRecording: 'Recording',
+    shortcutCategoryPanels: 'Panels',
+    shortcutCategoryAiActions: 'AI Actions',
+    // Shortcut Actions
+    toggleKnovy: 'Show / Hide Knovy',
+    toggleSettings: 'Show / Hide Settings',
+    toggleRecording: 'Toggle Recording',
     hideWindow: 'Hide Window',
+    togglePreviewPanel: 'Show / Hide Preview Panel',
+    toggleChatPanel: 'Show / Hide Chat Panel',
+    toggleActionsPanel: 'Show / Hide Actions Panel',
+    aiActionRecommendResponse: 'Recommend Response',
+    aiActionScreenshotAnalysis: 'Analyze Screenshot',
     aboutTitle: 'About',
     aboutDescription: 'About Knovy and version information',
-    aiPoweredTranscription: 'AI-Powered Real-Time Transcription',
+    aiPoweredTranscription: 'Your All-in-One AI working assistant',
     visitWebsite: 'Visit Website',
     checkForUpdates: 'Check for Updates',
     generalSettingsDescription: 'Manage your general application settings',
@@ -252,19 +262,29 @@ export const translations = {
     keyboardShortcuts: '鍵盤快捷鍵',
     shortcutAction: '動作',
     shortcutKey: '快捷鍵',
-    showHideKnovy: '顯示/隱藏 Knovy',
-    openSettings: '開啟設定',
-    startStopRecording: '開始/停止錄製',
-    screenshotAndAsk: '截圖提問',
+    // Shortcut Categories
+    shortcutCategoryGlobal: '一般',
+    shortcutCategoryRecording: '螢幕錄製',
+    shortcutCategoryPanels: '控制面板',
+    shortcutCategoryAiActions: 'AI 動作',
+    // Shortcut Actions
+    toggleKnovy: '切換 Knovy',
+    toggleSettings: '切換設定',
+    toggleRecording: '切換錄製',
     hideWindow: '隱藏視窗',
+    togglePreviewPanel: '切換預覽面板',
+    toggleChatPanel: '切換聊天面板',
+    toggleActionsPanel: '切換動作面板',
+    aiActionRecommendResponse: '推薦回應',
+    aiActionScreenshotAnalysis: '分析截圖',
     aboutTitle: '關於',
     aboutDescription: '關於 Knovy 和版本資訊',
-    aiPoweredTranscription: 'AI 驅動即時逐字稿',
+    aiPoweredTranscription: 'Your All-in-One AI working assistant',
     visitWebsite: '來去官網',
     checkForUpdates: '檢查更新',
     generalSettingsDescription: '管理您的一般設定',
     languageChangeWarning: '變更語言將會停止您目前的錄製對話紀錄',
-    displaySettingsDescription: '設置顯示器和螢幕設定',
+    displaySettingsDescription: '設定 Knovy 所處的螢幕',
     contentProtectionDescription: '隱藏應用程式內容，防止螢幕截圖和錄影',
     accountSettingsDescription: '管理您的帳戶和訂閱',
     // Delete Confirmation Dialog
@@ -386,11 +406,21 @@ export type TranslationKey =
   | 'keyboardShortcuts'
   | 'shortcutAction'
   | 'shortcutKey'
-  | 'showHideKnovy'
-  | 'openSettings'
-  | 'startStopRecording'
-  | 'screenshotAndAsk'
+  // Shortcut Categories
+  | 'shortcutCategoryGlobal'
+  | 'shortcutCategoryRecording'
+  | 'shortcutCategoryPanels'
+  | 'shortcutCategoryAiActions'
+  // Shortcut Actions
+  | 'toggleKnovy'
+  | 'toggleSettings'
+  | 'toggleRecording'
   | 'hideWindow'
+  | 'togglePreviewPanel'
+  | 'toggleChatPanel'
+  | 'toggleActionsPanel'
+  | 'aiActionRecommendResponse'
+  | 'aiActionScreenshotAnalysis'
   | 'aboutTitle'
   | 'aboutDescription'
   | 'aiPoweredTranscription'
