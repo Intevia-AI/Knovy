@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Progress } from '@/components/ui/progress'
 import { RefreshCw, LogOut } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 
@@ -37,6 +38,20 @@ export function AccountSettings({ sessionProfile }: AccountSettingsProps) {
     window.electronAPI.send('settings:close')
   }
 
+  const getQuotaAlias = (metric: string): string => {
+    const aliases: Record<string, string> = {
+      daily_transcription_minutes: 'Session Duration',
+      'daily_ai_action:keyword-search_calls': 'Keyword Search',
+      'daily_ai_action:recommend-response_calls': 'Recommend Response',
+      'daily_ai_action:chat_calls': 'Chat',
+      'daily_ai_action:screenshot_calls': 'Screenshot',
+      'daily_ai_action:answer_calls': 'Answer',
+      'daily_ai_action:summary_calls': 'Summary'
+    }
+
+    return aliases[metric] || formatQuotaName(metric)
+  }
+
   const formatQuotaName = (metric: string) => {
     const name = metric
       .replace('daily_', '')
@@ -45,6 +60,20 @@ export function AccountSettings({ sessionProfile }: AccountSettingsProps) {
       .replace('session_count', 'sessions')
       .replace('_', ' ')
     return name.charAt(0).toUpperCase() + name.slice(1)
+  }
+
+  const getQuotaOrder = (metric: string): number => {
+    const order: Record<string, number> = {
+      daily_transcription_minutes: 1,
+      'daily_ai_action:chat_calls': 2,
+      'daily_ai_action:keyword-search_calls': 3,
+      'daily_ai_action:recommend-response_calls': 4,
+      'daily_ai_action:screenshot_calls': 5,
+      'daily_ai_action:answer_calls': 6,
+      'daily_ai_action:summary_calls': 7
+    }
+
+    return order[metric] || 999
   }
 
   if (!user || !sessionProfile) {
@@ -113,16 +142,39 @@ export function AccountSettings({ sessionProfile }: AccountSettingsProps) {
             </Button>
           </div>
         </CardHeader>
-        <CardContent className="space-y-2 text-sm">
+        <CardContent className="space-y-3">
           {quotas.length > 0 ? (
-            quotas.map(([metric, data]) => (
-              <div key={metric} className="flex justify-between items-center">
-                <span className="text-muted-foreground">{formatQuotaName(metric)}</span>
-                <span className="font-mono text-foreground">
-                  {data.limit === -1 ? '∞' : `${Math.round(data.used)} / ${data.limit}`}
-                </span>
-              </div>
-            ))
+            quotas
+              .filter(([metric]) => {
+                // Hide specific quotas
+                const lowercaseMetric = metric.toLowerCase()
+                return (
+                  !lowercaseMetric.includes('session') &&
+                  !lowercaseMetric.includes('transcription_enhance') &&
+                  !lowercaseMetric.includes('enhancement')
+                )
+              })
+              .sort(([metricA], [metricB]) => getQuotaOrder(metricA) - getQuotaOrder(metricB))
+              .map(([metric, data]) => {
+                const isUnlimited = data.limit === -1
+                const percentage = isUnlimited ? 0 : Math.min((data.used / data.limit) * 100, 100)
+
+                return (
+                  <div key={metric} className="flex items-center gap-3 text-sm">
+                    <span className="text-muted-foreground whitespace-nowrap w-[160px]">
+                      {getQuotaAlias(metric)}
+                    </span>
+                    {isUnlimited ? (
+                      <div className="flex-1" />
+                    ) : (
+                      <Progress value={percentage} className="h-1.5 flex-1" />
+                    )}
+                    <span className="font-mono text-foreground whitespace-nowrap w-[90px] text-right">
+                      {isUnlimited ? '∞' : `${Math.round(data.used)} / ${data.limit}`}
+                    </span>
+                  </div>
+                )
+              })
           ) : (
             <p className="text-muted-foreground text-xs text-center py-4">
               Usage data not available.

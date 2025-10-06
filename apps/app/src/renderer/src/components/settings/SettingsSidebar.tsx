@@ -68,7 +68,6 @@ export function SettingsSidebar({ activeSection, onSectionChange }: SettingsSide
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3, delay: 0.3 }}
-        className="mt-4 pt-4 border-t border-border/50"
       >
         <Button
           variant="ghost"
