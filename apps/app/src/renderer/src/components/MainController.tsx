@@ -227,6 +227,18 @@ export function MainController() {
     }
   }, [handleTogglePanel, restartScreenShare])
 
+  const handleToggleScreenShare = useCallback(async () => {
+    if (isSummarizing) return // Prevent action while summarizing
+
+    if (isScreenSharing) {
+      // Delegate graceful stop to the centralized handler
+      window.electronAPI.send('app:graceful-stop-and-execute', { postAction: 'stop' })
+    } else {
+      // Starting is simple
+      await toggleScreenShare()
+    }
+  }, [isSummarizing, isScreenSharing, toggleScreenShare])
+
   useEffect(() => {
     const handleGracefulStop = async ({ postAction }: { postAction: string }) => {
       if (isScreenSharing && !isSummarizing) {
@@ -256,17 +268,90 @@ export function MainController() {
     }
   }, [isScreenSharing, isSummarizing, sendContextToAI, toggleScreenShare])
 
-  const handleToggleScreenShare = async () => {
-    if (isSummarizing) return // Prevent action while summarizing
-
-    if (isScreenSharing) {
-      // Delegate graceful stop to the centralized handler
-      window.electronAPI.send('app:graceful-stop-and-execute', { postAction: 'stop' })
-    } else {
-      // Starting is simple
-      await toggleScreenShare()
+  // Keyboard shortcut handlers
+  useEffect(() => {
+    const handleToggleRecording = () => {
+      console.log('[MainController] Shortcut: Toggle recording')
+      handleToggleScreenShare()
     }
-  }
+
+    const handleTogglePreviewPanel = () => {
+      console.log('[MainController] Shortcut: Toggle preview panel')
+      if (isScreenSharing) {
+        handleTogglePanel('screen-preview')
+      }
+    }
+
+    const handleToggleChatPanel = () => {
+      console.log('[MainController] Shortcut: Toggle chat panel')
+      if (isScreenSharing) {
+        handleTogglePanel('transcriptions')
+      }
+    }
+
+    const handleToggleActionsPanel = () => {
+      console.log('[MainController] Shortcut: Toggle actions panel')
+      if (isScreenSharing) {
+        handleTogglePanel('actions')
+      }
+    }
+
+    const handleAIActionRecommendResponse = async () => {
+      console.log('[MainController] Shortcut: AI action - recommend response')
+      if (isScreenSharing) {
+        // Check if actions panel is already open
+        const isPanelOpen = openPanels.has('actions')
+
+        if (!isPanelOpen) {
+          // Panel is not open, open it first
+          await handleTogglePanel('actions', { ensureOpen: true })
+          // Give the panel time to mount before triggering action
+          setTimeout(() => {
+            window.electronAPI.send('ai-action:trigger-recommend-response')
+          }, 150)
+        } else {
+          // Panel is already open, trigger immediately
+          window.electronAPI.send('ai-action:trigger-recommend-response')
+        }
+      }
+    }
+
+    const handleAIActionScreenshotAnalysis = async () => {
+      console.log('[MainController] Shortcut: AI action - screenshot analysis')
+      if (isScreenSharing) {
+        // Check if actions panel is already open
+        const isPanelOpen = openPanels.has('actions')
+
+        if (!isPanelOpen) {
+          // Panel is not open, open it first then take screenshot
+          await handleTogglePanel('actions', { ensureOpen: true })
+          // Give the panel time to mount before taking screenshot
+          setTimeout(() => {
+            window.electronAPI.send('electronAPI:startScreenshot')
+          }, 150)
+        } else {
+          // Panel is already open, trigger screenshot immediately
+          window.electronAPI.send('electronAPI:startScreenshot')
+        }
+      }
+    }
+
+    const unsubscribeToggleRecording = window.electronAPI.on('shortcut:toggle-recording', handleToggleRecording)
+    const unsubscribeTogglePreview = window.electronAPI.on('shortcut:toggle-preview-panel', handleTogglePreviewPanel)
+    const unsubscribeToggleChat = window.electronAPI.on('shortcut:toggle-chat-panel', handleToggleChatPanel)
+    const unsubscribeToggleActions = window.electronAPI.on('shortcut:toggle-actions-panel', handleToggleActionsPanel)
+    const unsubscribeAIRecommend = window.electronAPI.on('shortcut:ai-action-recommend-response', handleAIActionRecommendResponse)
+    const unsubscribeAIScreenshot = window.electronAPI.on('shortcut:ai-action-screenshot-analysis', handleAIActionScreenshotAnalysis)
+
+    return () => {
+      unsubscribeToggleRecording()
+      unsubscribeTogglePreview()
+      unsubscribeToggleChat()
+      unsubscribeToggleActions()
+      unsubscribeAIRecommend()
+      unsubscribeAIScreenshot()
+    }
+  }, [isScreenSharing, openPanels, handleTogglePanel, handleToggleScreenShare])
 
   return (
     <div className="flex flex-col h-screen rounded-lg glass-popover">
