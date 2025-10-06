@@ -128,7 +128,16 @@ const api = {
       'transcription:model-download-progress',
       'model:download-progress',
       'model:download-complete',
-      'settings:closed'
+      'settings:closed',
+      // Keyboard shortcut events
+      'shortcut:toggle-recording',
+      'shortcut:toggle-preview-panel',
+      'shortcut:toggle-chat-panel',
+      'shortcut:toggle-actions-panel',
+      'shortcut:ai-action-recommend-response',
+      'shortcut:ai-action-screenshot-analysis',
+      // AI action triggers
+      'ai-action:recommend-response'
     ]
     if (validChannels.includes(channel)) {
       const subscription = (event, ...args) => callback(...args)
@@ -166,7 +175,8 @@ const api = {
       'electronAPI:startScreenshot',
       'electronAPI:captureArea',
       'electronAPI:cancelScreenshot',
-      'settings:close'
+      'settings:close',
+      'ai-action:trigger-recommend-response'
     ]
     if (!validChannels.includes(channel)) {
       console.warn(`[Preload] Attempted to send on invalid channel: ${channel}`)

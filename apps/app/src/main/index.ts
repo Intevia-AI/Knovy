@@ -29,6 +29,7 @@ import { getWhisperBackend } from './whisperBackend'
 import {
   createSettingsWindow,
   closeSettingsWindow,
+  toggleSettingsWindow,
   moveSettingsWindowToDisplay
 } from './settingsWindowManager'
 
@@ -603,12 +604,57 @@ app.on('ready', async () => {
     getAutoUpdater().checkForUpdatesAndNotify()
   }
 
-  globalShortcut.register("alt+'", toggleWindow)
+  // Global shortcuts - All using Alt modifier to avoid conflicts with other apps
 
-  // Register ⌘+, (Cmd+Comma) shortcut for settings window (macOS standard)
-  globalShortcut.register('CommandOrControl+,', () => {
+  // Alt+\ - Toggle main window (show/hide Knovy)
+  globalShortcut.register('alt+\\', toggleWindow)
+
+  // Alt+, - Toggle Settings window (opens to History tab)
+  globalShortcut.register('alt+,', () => {
     if (mainWindow) {
-      createSettingsWindow(mainWindow)
+      toggleSettingsWindow(mainWindow)
+    }
+  })
+
+  // Alt+R - Toggle recording
+  globalShortcut.register('alt+r', () => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('shortcut:toggle-recording')
+    }
+  })
+
+  // Alt+P - Toggle Preview Panel (only works when recording)
+  globalShortcut.register('alt+p', () => {
+    if (mainWindow && !mainWindow.isDestroyed() && isScreenSharing) {
+      mainWindow.webContents.send('shortcut:toggle-preview-panel')
+    }
+  })
+
+  // Alt+C - Toggle Chat Panel (only works when recording)
+  globalShortcut.register('alt+c', () => {
+    if (mainWindow && !mainWindow.isDestroyed() && isScreenSharing) {
+      mainWindow.webContents.send('shortcut:toggle-chat-panel')
+    }
+  })
+
+  // Alt+A - Toggle Actions Panel (only works when recording)
+  globalShortcut.register('alt+a', () => {
+    if (mainWindow && !mainWindow.isDestroyed() && isScreenSharing) {
+      mainWindow.webContents.send('shortcut:toggle-actions-panel')
+    }
+  })
+
+  // Alt+1 - AI Action: Recommend Response (only works when recording)
+  globalShortcut.register('alt+1', () => {
+    if (mainWindow && !mainWindow.isDestroyed() && isScreenSharing) {
+      mainWindow.webContents.send('shortcut:ai-action-recommend-response')
+    }
+  })
+
+  // Alt+2 - AI Action: Screenshot Analysis (only works when recording)
+  globalShortcut.register('alt+2', () => {
+    if (mainWindow && !mainWindow.isDestroyed() && isScreenSharing) {
+      mainWindow.webContents.send('shortcut:ai-action-screenshot-analysis')
     }
   })
 
@@ -1603,6 +1649,16 @@ app.on('ready', async () => {
     for (const win of BrowserWindow.getAllWindows()) {
       if (!win.isDestroyed()) {
         win.webContents.send('audio:levels-updated', levels)
+      }
+    }
+  })
+
+  // AI action triggers - broadcast to all windows
+  ipcMain.on('ai-action:trigger-recommend-response', () => {
+    console.log('[main/index.ts] Broadcasting ai-action:recommend-response to all windows')
+    for (const win of BrowserWindow.getAllWindows()) {
+      if (!win.isDestroyed()) {
+        win.webContents.send('ai-action:recommend-response')
       }
     }
   })
