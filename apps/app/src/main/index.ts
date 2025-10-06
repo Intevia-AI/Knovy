@@ -30,7 +30,8 @@ import {
   createSettingsWindow,
   closeSettingsWindow,
   toggleSettingsWindow,
-  moveSettingsWindowToDisplay
+  moveSettingsWindowToDisplay,
+  syncSettingsWindowAlwaysOnTop
 } from './settingsWindowManager'
 
 console.log('[Debug] Imported dbService module:', dbService)
@@ -839,10 +840,14 @@ app.on('ready', async () => {
   ipcMain.on('app:set-always-on-top', (event, { alwaysOnTop }) => {
     if (mainWindow) {
       mainWindow.setAlwaysOnTop(alwaysOnTop)
+      // Sync settings window to match
+      syncSettingsWindowAlwaysOnTop(alwaysOnTop)
     }
   })
   ipcMain.on('electronAPI:toggleAlwaysOnTop', (event, isAlwaysOnTop) => {
     mainWindow?.setAlwaysOnTop(isAlwaysOnTop)
+    // Sync settings window to match
+    syncSettingsWindowAlwaysOnTop(isAlwaysOnTop)
     event.reply('electronAPI:alwaysOnTopChanged', mainWindow?.isAlwaysOnTop())
   })
   ipcMain.handle('electronAPI:getInitialAlwaysOnTop', () => mainWindow?.isAlwaysOnTop() ?? false)

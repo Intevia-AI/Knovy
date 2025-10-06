@@ -165,6 +165,7 @@ const api = {
       'updater:quit-and-install',
       'keyword:click',
       'window:set-position',
+      'settings:move-to-display',
       'screenshare:source-changed',
       'app:graceful-stop-and-execute',
       'app:quit',
