@@ -142,8 +142,9 @@ export const translations = {
     visitWebsite: 'Visit Website',
     checkForUpdates: 'Check for Updates',
     generalSettingsDescription: 'Manage your general application settings',
-    languageChangeWarning: 'Changing language will stop your current recording session',
+    languageChangeWarning: 'Changing language will restart your current recording session',
     displaySettingsDescription: 'Configure display and screen settings',
+    displayChangeWarning: 'Changing display will restart your current recording session',
     contentProtectionDescription: 'Hide app content from screenshots and screen recordings',
     accountSettingsDescription: 'Manage your account and subscription',
     // Delete Confirmation Dialog
@@ -287,8 +288,9 @@ export const translations = {
     visitWebsite: '來去官網',
     checkForUpdates: '檢查更新',
     generalSettingsDescription: '管理您的一般設定',
-    languageChangeWarning: '變更語言將會停止您目前的錄製對話紀錄',
+    languageChangeWarning: '變更語言將會重新開始您目前的錄製對話紀錄',
     displaySettingsDescription: '設定 Knovy 所處的螢幕',
+    displayChangeWarning: '變更顯示器將會重新開始您目前的錄製對話紀錄',
     contentProtectionDescription: '隱藏應用程式內容，防止螢幕截圖和錄影',
     accountSettingsDescription: '管理您的帳戶和訂閱',
     // Delete Confirmation Dialog
@@ -437,6 +439,7 @@ export type TranslationKey =
   | 'generalSettingsDescription'
   | 'languageChangeWarning'
   | 'displaySettingsDescription'
+  | 'displayChangeWarning'
   | 'contentProtectionDescription'
   | 'accountSettingsDescription'
   // Delete Confirmation Dialog

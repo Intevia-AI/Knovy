@@ -187,7 +187,7 @@ export function GeneralSettings() {
               </p>
             </div>
             <Select value={language || 'zh-TW'} onValueChange={handleLanguageChange}>
-              <SelectTrigger className="w-[200px] bg-background/50 border-border/30">
+              <SelectTrigger className="w-[200px] bg-background/50">
                 <SelectValue placeholder="Select language" />
               </SelectTrigger>
               <SelectContent>
@@ -201,7 +201,7 @@ export function GeneralSettings() {
           </div>
 
           {isRecording && (
-            <div className="flex items-start gap-3 rounded-lg border border-border/50 bg-muted/50 p-4">
+            <div className="flex items-start gap-3 rounded-lg bg-muted/50 p-4">
               <Info className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
               <p className="text-sm text-muted-foreground">{t('languageChangeWarning')}</p>
             </div>
@@ -217,7 +217,7 @@ export function GeneralSettings() {
             <h3 className="text-lg font-medium">{t('displaySettingsTitle')}</h3>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex-1">
               <Label className="text-sm font-medium">{t('showOnLabel')}</Label>
@@ -226,7 +226,7 @@ export function GeneralSettings() {
               </p>
             </div>
             <Select value={selectedDisplayId?.toString()} onValueChange={handleDisplayChange}>
-              <SelectTrigger className="w-[200px] bg-background/50 border-border/30">
+              <SelectTrigger className="w-[200px] bg-background/50">
                 <SelectValue placeholder={t('defaultDisplayLabel')}>
                   {selectedDisplayId !== undefined && displays.length > 0
                     ? (() => {
@@ -260,6 +260,13 @@ export function GeneralSettings() {
               </SelectContent>
             </Select>
           </div>
+
+          {isRecording && (
+            <div className="flex items-start gap-3 rounded-lg bg-muted/50 p-4">
+              <Info className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+              <p className="text-sm text-muted-foreground">{t('displayChangeWarning')}</p>
+            </div>
+          )}
         </CardContent>
       </Card>
 

@@ -734,14 +734,38 @@ app.on('ready', async () => {
       .then(async (sources) => {
         const settings = await loadSettings()
         let targetSource = null
+        let targetDisplayId = null
 
-        // 1. Try to find source based on saved displayId
-        if (settings.displayId) {
+        // 1. PRIORITY: Use the display where the main window is currently located
+        // This ensures the preview always matches where the app is visually shown
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          const windowDisplay = screen.getDisplayMatching(mainWindow.getBounds())
+          const windowSource = sources.find((s) => s.display_id === String(windowDisplay.id))
+          if (windowSource) {
+            targetSource = windowSource
+            targetDisplayId = windowDisplay.id
+            console.log(
+              `[ScreenShare] Using display where main window is located: Display ${windowDisplay.id}`
+            )
+
+            // Update settings if it differs from saved displayId
+            if (settings.displayId !== windowDisplay.id) {
+              console.log(
+                `[ScreenShare] Updating saved displayId from ${settings.displayId} to ${windowDisplay.id}`
+              )
+              await saveSettings({ ...settings, displayId: windowDisplay.id })
+            }
+          }
+        }
+
+        // 2. Fallback: Try saved displayId (if window detection failed)
+        if (!targetSource && settings.displayId) {
           const selectedDisplaySource = sources.find(
             (s) => s.display_id === String(settings.displayId)
           )
           if (selectedDisplaySource) {
             targetSource = selectedDisplaySource
+            targetDisplayId = settings.displayId
             console.log(`[ScreenShare] Using saved display ID: ${settings.displayId}`)
           } else {
             console.warn(
@@ -750,29 +774,18 @@ app.on('ready', async () => {
           }
         }
 
-        // 2. If no target yet, find source for the display where the main window is
-        if (!targetSource && mainWindow) {
-          const windowDisplay = screen.getDisplayMatching(mainWindow.getBounds())
-          const windowSource = sources.find((s) => s.display_id === String(windowDisplay.id))
-          if (windowSource) {
-            targetSource = windowSource
-            console.log(
-              `[ScreenShare] Using display where main window is located: ${windowDisplay.id}`
-            )
-          }
-        }
-
-        // 3. If no target yet, fallback to primary display
+        // 3. Fallback: Primary display
         if (!targetSource) {
           const primaryDisplay = screen.getPrimaryDisplay()
           const primarySource = sources.find((s) => s.display_id === String(primaryDisplay.id))
           if (primarySource) {
             targetSource = primarySource
+            targetDisplayId = primaryDisplay.id
             console.log(`[ScreenShare] Falling back to primary display.`)
           }
         }
 
-        // 4. If still no target, fallback to first available source
+        // 4. Final fallback: First available source
         if (!targetSource && sources.length > 0) {
           targetSource = sources[0]
           console.warn('[ScreenShare] Falling back to first available screen source.')
@@ -780,6 +793,9 @@ app.on('ready', async () => {
 
         if (targetSource) {
           activeScreenSourceId = targetSource.id // Store the source ID
+          console.log(
+            `[ScreenShare] activeScreenSourceId set to: ${activeScreenSourceId} (Display ${targetDisplayId})`
+          )
           callback({ video: targetSource, audio: 'loopback' })
         } else {
           console.error('No screen sources found!')
@@ -900,6 +916,45 @@ app.on('ready', async () => {
     const currentSettings = await loadSettings()
     const newSettings = { ...currentSettings, ...settingsToUpdate }
     await saveSettings(newSettings)
+
+    // If display ID changed and screen sharing is active, update the active screen source
+    if (
+      settingsToUpdate.displayId !== undefined &&
+      settingsToUpdate.displayId !== currentSettings.displayId &&
+      isScreenSharing
+    ) {
+      console.log(
+        `[main/index.ts] Display changed from ${currentSettings.displayId} to ${settingsToUpdate.displayId} during active session`
+      )
+
+      // Update the active screen source ID for the new display
+      try {
+        const sources = await desktopCapturer.getSources({ types: ['screen'] })
+        const newDisplaySource = sources.find(
+          (s) => s.display_id === String(settingsToUpdate.displayId)
+        )
+
+        if (newDisplaySource) {
+          activeScreenSourceId = newDisplaySource.id
+          console.log(
+            `[main/index.ts] Updated activeScreenSourceId to ${activeScreenSourceId} for display ${settingsToUpdate.displayId}`
+          )
+
+          // Broadcast source-changed event to trigger PreviewPanel refresh
+          for (const win of BrowserWindow.getAllWindows()) {
+            if (!win.isDestroyed()) {
+              win.webContents.send('screenshare:source-changed')
+            }
+          }
+        } else {
+          console.warn(
+            `[main/index.ts] Could not find screen source for display ${settingsToUpdate.displayId}`
+          )
+        }
+      } catch (error) {
+        console.error('[main/index.ts] Error updating screen source after display change:', error)
+      }
+    }
 
     // Broadcast the settings change to all windows
     for (const win of BrowserWindow.getAllWindows()) {
