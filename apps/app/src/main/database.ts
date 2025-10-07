@@ -2,11 +2,24 @@ import path from 'path'
 import { app } from 'electron'
 import { open } from 'sqlite'
 import sqlite3 from 'sqlite3'
+import fs from 'fs'
 
-const dbPath = path.join(app.getPath('userData'), 'intevia_sessions.db')
+const dbPath = path.join(app.getPath('userData'), 'knovy_sessions.db')
+const oldDbPath = path.join(app.getPath('userData'), 'intevia_sessions.db')
+
+// Migrate old database file to new name
+function migrateOldDatabase() {
+  if (fs.existsSync(oldDbPath) && !fs.existsSync(dbPath)) {
+    console.log('[DB] Migrating database from intevia_sessions.db to knovy_sessions.db')
+    fs.renameSync(oldDbPath, dbPath)
+    console.log('[DB] Migration completed successfully')
+  }
+}
 
 // This function will open the database and create tables if they don't exist
 async function initializeDatabase() {
+  // Migrate old database if it exists
+  migrateOldDatabase()
   const db = await open({
     filename: dbPath,
     driver: sqlite3.Database
