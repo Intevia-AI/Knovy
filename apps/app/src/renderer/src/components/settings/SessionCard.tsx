@@ -53,12 +53,25 @@ export function SessionCard({ session, onExport, onDelete }: SessionCardProps) {
       <motion.div
         whileHover={{ scale: 1.01 }}
         transition={{ duration: 0.2 }}
-        className="bg-background/40 backdrop-blur-md rounded-lg overflow-hidden"
+        className="bg-background/40 backdrop-blur-md rounded-lg p-2 overflow-hidden"
       >
-        {/* Card Header */}
-        <div className="p-4">
+        {/* Card Header - Now clickable as accordion */}
+        <div
+          className="p-4 cursor-pointer select-none"
+          onClick={() => setIsExpanded(!isExpanded)}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault()
+              setIsExpanded(!isExpanded)
+            }
+          }}
+          aria-expanded={isExpanded}
+          aria-label={isExpanded ? 'Collapse session details' : 'Expand session details'}
+        >
           <div className="flex items-start justify-between gap-4">
-            <div className="flex-1 min-w-0">
+            <div className="flex-1 min-w-0 pointer-events-none">
               {/* Date and Time */}
               <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
                 <span>{sessionDate}</span>
@@ -75,11 +88,14 @@ export function SessionCard({ session, onExport, onDelete }: SessionCardProps) {
             </div>
 
             {/* Action Buttons */}
-            <div className="flex items-center gap-2 flex-shrink-0">
+            <div className="flex items-center gap-2 flex-shrink-0 pointer-events-auto">
               <motion.button
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
-                onClick={() => onExport(session.id)}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onExport(session.id)
+                }}
                 className="p-1.5 rounded-md hover:bg-background/60 text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                 title="Export session"
                 aria-label="Export session"
@@ -89,28 +105,23 @@ export function SessionCard({ session, onExport, onDelete }: SessionCardProps) {
               <motion.button
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
-                onClick={handleDeleteClick}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleDeleteClick()
+                }}
                 className="p-1.5 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive"
                 title="Delete session"
                 aria-label="Delete session"
               >
                 <Trash2 className="w-4 h-4" />
               </motion.button>
-              <motion.button
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-                onClick={() => setIsExpanded(!isExpanded)}
-                className="p-1.5 rounded-md hover:bg-background/60 text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                title={isExpanded ? 'Collapse' : 'Expand'}
-                aria-label={isExpanded ? 'Collapse session details' : 'Expand session details'}
-                aria-expanded={isExpanded}
+              <motion.div
+                animate={{ rotate: isExpanded ? 180 : 0 }}
+                transition={{ duration: 0.2 }}
+                className="p-1.5 text-muted-foreground"
               >
-                {isExpanded ? (
-                  <ChevronUp className="w-4 h-4" />
-                ) : (
-                  <ChevronDown className="w-4 h-4" />
-                )}
-              </motion.button>
+                <ChevronDown className="w-4 h-4" />
+              </motion.div>
             </div>
           </div>
         </div>
@@ -123,7 +134,7 @@ export function SessionCard({ session, onExport, onDelete }: SessionCardProps) {
               animate={{ height: 'auto', opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
               transition={{ duration: 0.2, ease: 'easeInOut' }}
-              className="border-t border-border/30 overflow-hidden"
+              className="border-t border-secondary p-2 overflow-hidden"
             >
               <div className="p-4 space-y-3">
                 {/* Summary Section */}
