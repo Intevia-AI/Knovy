@@ -42,10 +42,14 @@ interface AuthProviderProps {
 }
 
 export const AuthProvider = ({ children }: AuthProviderProps) => {
+  // Popovers are identified by having a URL hash. The main window does not.
+  const isPopover = window.location.hash.length > 1
+
   const [session, setSession] = useState<Session | null>(null)
   const [user, setUser] = useState<User | null>(null)
   const [sessionProfile, setSessionProfile] = useState<SessionProfile | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+  // For popovers, start with isLoading=false to prevent loading flashes
+  const [isLoading, setIsLoading] = useState(!isPopover)
   const isHandlingCallback = useRef(false)
 
   const fetchSessionProfile = async (authToken: string) => {
@@ -107,7 +111,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   useEffect(() => {
     const getInitialSession = async () => {
-      setIsLoading(true)
+      // For popovers, don't show loading state - they should load instantly from cache
+      if (!isPopover) {
+        setIsLoading(true)
+      }
+
       const {
         data: { session }
       } = await supabase.auth.getSession()
@@ -116,7 +124,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       if (session?.user) {
         await fetchSessionProfile(session.access_token)
       }
-      setIsLoading(false)
+
+      if (!isPopover) {
+        setIsLoading(false)
+      }
     }
 
     getInitialSession()
@@ -126,15 +137,22 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       setUser(session?.user ?? null)
 
       if (session?.user && (_event === 'SIGNED_IN' || _event === 'TOKEN_REFRESHED')) {
-        setIsLoading(true)
+        // For popovers, don't show loading state during auth state changes
+        if (!isPopover) {
+          setIsLoading(true)
+        }
         await fetchSessionProfile(session.access_token)
-        setIsLoading(false)
+        if (!isPopover) {
+          setIsLoading(false)
+        }
       } else if (_event === 'SIGNED_OUT') {
         setSessionProfile(null)
         if (window.electronAPI) {
           window.electronAPI.invoke('session:clear-profile')
         }
-        setIsLoading(false)
+        if (!isPopover) {
+          setIsLoading(false)
+        }
       }
     })
 
