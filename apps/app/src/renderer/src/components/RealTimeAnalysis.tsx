@@ -138,6 +138,10 @@ export default function RealTimeAnalysis({
 
   // Refs to track current audio processing instances
   const audioContextRef = useRef<AudioContext | null>(null)
+  const micAudioWorkletNodeRef = useRef<AudioWorkletNode | null>(null)
+  const micAudioSourceRef = useRef<MediaStreamAudioSourceNode | null>(null)
+  const micAnalyserRef = useRef<AnalyserNode | null>(null)
+  const micMediaStreamRef = useRef<MediaStream | null>(null)
   const systemAudioWorkletNodeRef = useRef<AudioWorkletNode | null>(null)
   const systemAudioSourceRef = useRef<MediaStreamAudioSourceNode | null>(null)
   const systemAnalyserRef = useRef<AnalyserNode | null>(null)
@@ -333,6 +337,8 @@ export default function RealTimeAnalysis({
       }
     }
 
+    let deviceChangeHandler: (() => Promise<void>) | null = null
+
     const startAudioProcessing = async () => {
       console.log(
         '[RealTimeAnalysis] Starting dual audio processing with automatic language detection'
@@ -497,13 +503,44 @@ export default function RealTimeAnalysis({
           }
         }
 
-        const micAnalyser = audioContext.createAnalyser()
-        micAnalyser.fftSize = 256
+        // Function to connect microphone stream
+        const connectMicrophoneAudio = async () => {
+          if (!audioContext || !micAudioWorkletNode) return null
 
-        mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true })
-        micAudioSource = audioContext.createMediaStreamSource(mediaStream)
-        micAudioSource.connect(micAnalyser)
-        micAnalyser.connect(micAudioWorkletNode)
+          try {
+            // Stop previous microphone stream if it exists
+            if (micMediaStreamRef.current) {
+              micMediaStreamRef.current.getTracks().forEach((track) => track.stop())
+            }
+
+            // Disconnect previous microphone audio source
+            if (micAudioSourceRef.current) {
+              micAudioSourceRef.current.disconnect()
+            }
+
+            const micAnalyser = audioContext.createAnalyser()
+            micAnalyser.fftSize = 256
+            micAnalyserRef.current = micAnalyser
+
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+            micMediaStreamRef.current = stream
+
+            const micSource = audioContext.createMediaStreamSource(stream)
+            micAudioSourceRef.current = micSource
+
+            micSource.connect(micAnalyser)
+            micAnalyser.connect(micAudioWorkletNode)
+
+            console.log('[RealTimeAnalysis] Microphone audio source connected')
+            return stream
+          } catch (error) {
+            console.error('[RealTimeAnalysis] Error connecting microphone:', error)
+            return null
+          }
+        }
+
+        // Connect initial microphone stream
+        mediaStream = await connectMicrophoneAudio()
 
         // Function to connect system audio stream
         const connectSystemAudio = (stream: MediaStream | null) => {
@@ -528,10 +565,31 @@ export default function RealTimeAnalysis({
         // Connect initial system audio stream
         connectSystemAudio(systemAudioStream)
 
+        // Set up device change listener for automatic reconnection
+        deviceChangeHandler = async () => {
+          console.log('[RealTimeAnalysis] Audio device change detected, attempting to reconnect microphone')
+
+          // Check if the current microphone stream is still active
+          if (micMediaStreamRef.current) {
+            const tracks = micMediaStreamRef.current.getTracks()
+            const isActive = tracks.some(track => track.readyState === 'live')
+
+            if (!isActive) {
+              console.log('[RealTimeAnalysis] Current microphone stream is inactive, reconnecting...')
+              await connectMicrophoneAudio()
+            }
+          }
+        }
+
+        navigator.mediaDevices.addEventListener('devicechange', deviceChangeHandler)
+
         const draw = () => {
-          const micDataArray = new Uint8Array(micAnalyser.frequencyBinCount)
-          micAnalyser.getByteFrequencyData(micDataArray)
-          const micLevel = micDataArray.reduce((sum, value) => sum + value, 0) / micDataArray.length
+          let micLevel = 0
+          if (micAnalyserRef.current) {
+            const micDataArray = new Uint8Array(micAnalyserRef.current.frequencyBinCount)
+            micAnalyserRef.current.getByteFrequencyData(micDataArray)
+            micLevel = micDataArray.reduce((sum, value) => sum + value, 0) / micDataArray.length
+          }
 
           let systemLevel = 0
           if (systemAnalyserRef.current) {
@@ -561,6 +619,12 @@ export default function RealTimeAnalysis({
 
     return () => {
       console.log('[RealTimeAnalysis] Stopping dual audio processing...')
+
+      // Remove device change listener
+      if (deviceChangeHandler) {
+        navigator.mediaDevices.removeEventListener('devicechange', deviceChangeHandler)
+        deviceChangeHandler = null
+      }
 
       // Clean up error handlers
       unsubscribeError?.()
@@ -595,15 +659,28 @@ export default function RealTimeAnalysis({
         transcriptionFactoryRef.current = null
       }
 
+      // Stop microphone stream tracks
+      if (micMediaStreamRef.current) {
+        micMediaStreamRef.current.getTracks().forEach((track) => track.stop())
+        micMediaStreamRef.current = null
+      }
+
+      // Legacy cleanup for mediaStream variable
       mediaStream?.getTracks().forEach((track) => track.stop())
       mediaStream = null
 
+      // Disconnect audio sources
+      if (micAudioSourceRef.current) {
+        micAudioSourceRef.current.disconnect()
+        micAudioSourceRef.current = null
+      }
       micAudioSource?.disconnect()
       micAudioSource = null
 
       systemAudioSource?.disconnect()
       systemAudioSource = null
 
+      // Disconnect worklet nodes
       micAudioWorkletNode?.disconnect()
       micAudioWorkletNode = null
 
@@ -613,8 +690,11 @@ export default function RealTimeAnalysis({
       audioContext?.close().catch(console.error)
       audioContext = null
 
-      // Clear refs
+      // Clear all refs
       audioContextRef.current = null
+      micAudioWorkletNodeRef.current = null
+      micAudioSourceRef.current = null
+      micAnalyserRef.current = null
       systemAudioWorkletNodeRef.current = null
       systemAudioSourceRef.current = null
       systemAnalyserRef.current = null
