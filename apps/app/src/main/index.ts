@@ -317,18 +317,35 @@ ipcMain.on('renderer-auth-ready', (event) => {
 
 function createSelectionWindow() {
   console.log('[main/index.ts] Creating selection window')
-  const primaryDisplay = screen.getPrimaryDisplay()
-  const { width, height } = primaryDisplay.bounds
-  console.log('[main/index.ts] Primary display bounds:', { width, height })
+
+  // Get the display where the main window is located
+  let targetDisplay = screen.getPrimaryDisplay()
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    targetDisplay = screen.getDisplayMatching(mainWindow.getBounds())
+    console.log('[main/index.ts] Using display where main window is located:', targetDisplay.id)
+  } else {
+    console.log('[main/index.ts] Main window not available, falling back to primary display')
+  }
+
+  // Use bounds (full display including menu bar) instead of workArea
+  const { x, y, width, height } = targetDisplay.bounds
+  console.log('[main/index.ts] Target display bounds:', { x, y, width, height })
 
   selectionWindow = new BrowserWindow({
     width: width,
     height: height,
-    x: 0,
-    y: 0,
+    x: x,
+    y: y,
     transparent: true,
     frame: false,
+    resizable: false,
+    movable: false,
     alwaysOnTop: true,
+    fullscreen: false,
+    simpleFullscreen: false,
+    skipTaskbar: true,
+    enableLargerThanScreen: true, // Allow window to be larger than screen
+    hasShadow: false,
     webPreferences: {
       preload: path.join(__dirname, '../preload/index.cjs'),
       contextIsolation: true,
@@ -336,6 +353,11 @@ function createSelectionWindow() {
       sandbox: false
     }
   })
+
+  // Set window level to be above menu bar on macOS
+  if (process.platform === 'darwin') {
+    selectionWindow.setAlwaysOnTop(true, 'screen-saver')
+  }
 
   if (is.dev) {
     const devServerUrl = import.meta.env['VITE_DEV_SERVER_URL']
@@ -1208,23 +1230,19 @@ app.on('ready', async () => {
   ipcMain.on('electronAPI:captureArea', async (event, bounds) => {
     try {
       console.log('[main/index.ts] Screenshot capture started with bounds:', bounds)
-      const settings = await loadSettings()
-      const displays = screen.getAllDisplays()
       let targetDisplay = null
 
-      // 1. Find target display from settings
-      if (settings.displayId) {
-        targetDisplay = displays.find((d) => d.id === settings.displayId)
-      }
-
-      // 2. If not found, find display where window is
-      if (!targetDisplay && mainWindow) {
+      // 1. Prioritize the display where the main window is currently located
+      // This ensures screenshot captures from the same display as the selection mask
+      if (mainWindow && !mainWindow.isDestroyed()) {
         targetDisplay = screen.getDisplayMatching(mainWindow.getBounds())
+        console.log('[main/index.ts] Using display where main window is located:', targetDisplay.id)
       }
 
-      // 3. Fallback to primary
+      // 2. Fallback to primary display if main window is not available
       if (!targetDisplay) {
         targetDisplay = screen.getPrimaryDisplay()
+        console.log('[main/index.ts] Falling back to primary display')
       }
 
       const { width, height } = targetDisplay.bounds

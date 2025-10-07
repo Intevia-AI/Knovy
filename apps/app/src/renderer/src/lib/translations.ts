@@ -151,7 +151,11 @@ export const translations = {
     deleteSessionMessage:
       'Are you sure you want to delete this session? This action cannot be undone.',
     deleteButton: 'Delete',
-    cancelDeleteButton: 'Cancel'
+    cancelDeleteButton: 'Cancel',
+    // Screenshot Selection Window
+    screenshotSelectionHint: 'Click and drag to select an area',
+    screenshotSelectionCapture: 'Release mouse or press Enter to capture',
+    screenshotSelectionCancel: 'Press ESC to cancel'
   },
   'zh-TW': {
     // Add Traditional Chinese translations here
@@ -291,7 +295,11 @@ export const translations = {
     deleteSessionTitle: '刪除紀錄',
     deleteSessionMessage: '您確定要刪除此對話紀錄嗎？此操作無法復原。',
     deleteButton: '刪除',
-    cancelDeleteButton: '取消'
+    cancelDeleteButton: '取消',
+    // Screenshot Selection Window
+    screenshotSelectionHint: '點擊並拖曳以選擇區域',
+    screenshotSelectionCapture: '放開滑鼠或按 Enter 進行截圖',
+    screenshotSelectionCancel: '按 ESC 取消'
   }
 }
 

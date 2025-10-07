@@ -1,9 +1,12 @@
 import React, { useEffect, useRef } from 'react'
+import { useI18n } from '@/hooks/useI18n'
 
 export default function SelectionPage() {
+  const { t } = useI18n()
   console.log('[Selection] SelectionPage component loaded')
   const overlayRef = useRef<HTMLDivElement>(null)
   const selectionRef = useRef<HTMLDivElement>(null)
+  const hintRef = useRef<HTMLDivElement>(null)
   let isSelecting = false
   let startX = 0
   let startY = 0
@@ -62,6 +65,10 @@ export default function SelectionPage() {
       selection.style.top = startY + 'px'
       selection.style.width = '0'
       selection.style.height = '0'
+      // Hide hint during selection
+      if (hintRef.current) {
+        hintRef.current.style.display = 'none'
+      }
     }
 
     const handleMouseMove = (e: MouseEvent) => {
@@ -106,18 +113,33 @@ export default function SelectionPage() {
 
   return (
     <div className="fixed inset-0">
+      {/* Hint window - will be hidden during selection */}
+      <div
+        ref={hintRef}
+        className="fixed top-6 left-6 text-white bg-black/80 backdrop-blur-sm px-4 py-3 rounded-lg z-[60] pointer-events-none shadow-2xl border border-white/10"
+      >
+        <div className="flex flex-col gap-1.5 text-sm">
+          <div className="flex items-center gap-2">
+            <div className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+            <span className="font-medium">{t('screenshotSelectionHint')}</span>
+          </div>
+          <div className="flex items-center gap-2 text-gray-300">
+            <div className="w-1.5 h-1.5 rounded-full bg-green-400" />
+            <span>{t('screenshotSelectionCapture')}</span>
+          </div>
+          <div className="flex items-center gap-2 text-gray-300">
+            <div className="w-1.5 h-1.5 rounded-full bg-red-400" />
+            <span>{t('screenshotSelectionCancel')}</span>
+          </div>
+        </div>
+      </div>
+      {/* Overlay for selection */}
       <div ref={overlayRef} className="fixed inset-0 bg-black/30 cursor-crosshair z-50" />
+      {/* Selection box */}
       <div
         ref={selectionRef}
-        className="absolute border-2 border-green-500 bg-green-500/10 hidden z-50 pointer-events-none"
+        className="absolute border-2 border-blue-500 bg-blue-500/10 hidden z-50 pointer-events-none"
       />
-      <div className="fixed top-2.5 left-2.5 text-white bg-black/70 p-2.5 rounded z-50 pointer-events-none text-sm">
-        Click and drag to select an area
-        <br />
-        Release mouse or press Enter to capture
-        <br />
-        Press ESC to cancel
-      </div>
     </div>
   )
 }
