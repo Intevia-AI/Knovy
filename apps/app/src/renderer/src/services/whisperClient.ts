@@ -260,8 +260,12 @@ export class WhisperClient {
    * Add callback for download progress updates
    */
   onDownloadProgress(callback: (progress: ModelDownloadProgress) => void): () => void {
+    console.log('[WhisperClient] Registering download progress callback. Total callbacks:', this.downloadProgressCallbacks.size + 1)
     this.downloadProgressCallbacks.add(callback)
-    return () => this.downloadProgressCallbacks.delete(callback)
+    return () => {
+      console.log('[WhisperClient] Unregistering download progress callback. Total callbacks:', this.downloadProgressCallbacks.size - 1)
+      this.downloadProgressCallbacks.delete(callback)
+    }
   }
 
   /**

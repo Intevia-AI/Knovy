@@ -29,13 +29,20 @@ function AppContent() {
   const isPopover = hash.length > 1
 
   // Debounced window resize function to prevent rapid window size changes
-  const debouncedWindowResize = (width: number, height: number, position: 'center' | 'bottom-left', alwaysOnTop: boolean) => {
+  const debouncedWindowResize = (
+    width: number,
+    height: number,
+    position: 'center' | 'bottom-left',
+    alwaysOnTop: boolean
+  ) => {
     if (windowResizeDebounce) {
       clearTimeout(windowResizeDebounce)
     }
 
     const timeout = setTimeout(() => {
-      console.log(`[App] Applying window changes: ${width}x${height} at ${position}, alwaysOnTop: ${alwaysOnTop}`)
+      console.log(
+        `[App] Applying window changes: ${width}x${height} at ${position}, alwaysOnTop: ${alwaysOnTop}`
+      )
       window.electronAPI.send('app:set-always-on-top', { alwaysOnTop })
       window.electronAPI.send('app:resize-window', { width, height })
       window.electronAPI.send('window:set-position', { position })
@@ -125,7 +132,7 @@ function AppContent() {
   const createLoadingPhases = () => [
     {
       name: 'model-check',
-      message: 'Preparing transcription models...',
+      message: 'Preparing models...',
       weight: 0.6, // 60% of total progress
       executor: async () => {
         try {
@@ -142,6 +149,10 @@ function AppContent() {
           const isAvailable = await whisperClient.isAvailable()
           if (!isAvailable) {
             console.log('[App] Models not available, downloading...')
+
+            // NOTE: Progress tracking is handled by LoadingPage component
+            // which subscribes to whisperClient.onDownloadProgress() before
+            // calling the phase executor
             const ensured = await whisperClient.ensureModelAvailable()
             if (!ensured) {
               console.error('[App] Failed to ensure models are available')
@@ -167,7 +178,7 @@ function AppContent() {
 
           // Wait for auth to complete if still loading
           while (isLoading) {
-            await new Promise(resolve => setTimeout(resolve, 100))
+            await new Promise((resolve) => setTimeout(resolve, 100))
           }
 
           // If we have a user, wait for session profile to load
@@ -177,7 +188,7 @@ function AppContent() {
             const maxAttempts = 50 // 5 seconds max wait
 
             while (!sessionProfile && attempts < maxAttempts) {
-              await new Promise(resolve => setTimeout(resolve, 100))
+              await new Promise((resolve) => setTimeout(resolve, 100))
               attempts++
             }
 
@@ -211,7 +222,10 @@ function AppContent() {
   // Set up global error listener for model failures
   useEffect(() => {
     if (window.electronAPI && window.electronAPI.on) {
-      const unsubscribeModelError = window.electronAPI.on('transcription:model-error', handleModelError)
+      const unsubscribeModelError = window.electronAPI.on(
+        'transcription:model-error',
+        handleModelError
+      )
 
       return () => {
         if (unsubscribeModelError) {

@@ -35,64 +35,72 @@ export function LoadingPage({
   const [errorMessage, setErrorMessage] = useState<string>('')
   const [currentPhase, setCurrentPhase] = useState<number>(0)
   const [currentPhaseProgress, setCurrentPhaseProgress] = useState<number>(0)
+  const [downloadProgress, setDownloadProgress] = useState<DownloadProgress | null>(null)
 
   useEffect(() => {
     let mounted = true
     let progressInterval: NodeJS.Timeout | null = null
+    let unsubscribe: (() => void) | null = null
 
     // Legacy single-phase model loading (fallback)
     const prepareModel = async () => {
       try {
         console.log('[LoadingPage] Starting model preparation...')
 
-        // Start smooth progress animation
-        let currentProgress = 0
-        progressInterval = setInterval(() => {
+        // Get whisper client FIRST
+        const whisperClient = getWhisperClient()
+
+        // Subscribe to download progress events BEFORE starting download
+        console.log('[LoadingPage] Subscribing to download progress events...')
+        unsubscribe = whisperClient.onDownloadProgress((downloadProgress) => {
           if (!mounted) return
 
-          currentProgress += 1
-          setProgress(currentProgress)
+          console.log('[LoadingPage] Download progress update:', downloadProgress)
+          setDownloadProgress(downloadProgress)
+          setProgress(downloadProgress.percentage)
+        })
 
-          // Complete at 100%
-          if (currentProgress >= 100) {
-            if (progressInterval) {
-              clearInterval(progressInterval)
-              progressInterval = null
+        // Add a small delay to ensure subscription is fully registered
+        await new Promise((resolve) => setTimeout(resolve, 50))
+        console.log('[LoadingPage] Subscription registered, starting download...')
+
+        try {
+          // Do the actual work - this will trigger download progress events
+          const success = await whisperClient.ensureModelAvailable()
+
+          // Ensure progress reaches 100%
+          if (mounted) {
+            setProgress(100)
+          }
+
+          // Wait a moment to show 100%
+          await new Promise((resolve) => setTimeout(resolve, 500))
+
+          if (mounted) {
+            if (success) {
+              console.log('[LoadingPage] Model preparation completed successfully')
+              setStatus('complete')
+              setTimeout(() => {
+                if (mounted) {
+                  onComplete(true)
+                }
+              }, 800)
+            } else {
+              setStatus('error')
+              setErrorMessage(
+                'Failed to prepare models. Please check your internet connection and try again.'
+              )
+              setTimeout(() => {
+                if (mounted) {
+                  onComplete(false)
+                }
+              }, 3000)
             }
           }
-        }, 30) // 3 seconds total (100 steps * 30ms)
-
-        // Do the actual work while progress animates
-        const whisperClient = getWhisperClient()
-        const success = await whisperClient.ensureModelAvailable()
-
-        // Ensure progress reaches 100%
-        if (mounted && currentProgress < 100) {
-          setProgress(100)
-        }
-
-        // Wait a moment to show 100%
-        await new Promise((resolve) => setTimeout(resolve, 500))
-
-        if (mounted) {
-          if (success) {
-            console.log('[LoadingPage] Model preparation completed successfully')
-            setStatus('complete')
-            setTimeout(() => {
-              if (mounted) {
-                onComplete(true)
-              }
-            }, 800)
-          } else {
-            setStatus('error')
-            setErrorMessage(
-              'Failed to prepare transcription models. Please check your internet connection and try again.'
-            )
-            setTimeout(() => {
-              if (mounted) {
-                onComplete(false)
-              }
-            }, 3000)
+        } finally {
+          // Clean up subscription
+          if (unsubscribe) {
+            unsubscribe()
           }
         }
       } catch (error) {
@@ -118,6 +126,21 @@ export function LoadingPage({
 
       try {
         console.log(`[LoadingPage] Starting multi-phase loading with ${phases.length} phases`)
+
+        // Subscribe to download progress for all phases BEFORE starting
+        const whisperClient = getWhisperClient()
+        console.log('[LoadingPage] Subscribing to download progress for multi-phase loading...')
+        unsubscribe = whisperClient.onDownloadProgress((downloadProgressUpdate) => {
+          if (!mounted) return
+          console.log('[LoadingPage] Multi-phase download progress update:', downloadProgressUpdate)
+          setDownloadProgress(downloadProgressUpdate)
+
+          // Update progress directly from download percentage (not weighted)
+          // Each phase shows its own 0-100% progress
+          setProgress(downloadProgressUpdate.percentage)
+          setCurrentPhaseProgress(downloadProgressUpdate.percentage)
+        })
+
         let totalProgress = 0
 
         for (let i = 0; i < phases.length; i++) {
@@ -129,35 +152,38 @@ export function LoadingPage({
 
           console.log(`[LoadingPage] Starting phase ${i + 1}/${phases.length}: ${phase.name}`)
 
-          // Animate phase progress
-          const phaseSteps = 100
-          const stepDelay = 20
-          let phaseProgress = 0
+          // For model-check phase, use real download progress; for others, use animation
+          const isModelPhase = phase.name === 'model-check'
+          let phaseInterval: NodeJS.Timeout | null = null
 
-          const phaseInterval = setInterval(() => {
-            if (!mounted) return
+          if (!isModelPhase) {
+            // Animate phase progress for non-model phases (each phase is 0-100%)
+            const phaseSteps = 100
+            const stepDelay = 20
+            let phaseProgress = 0
 
-            phaseProgress += 1
-            setCurrentPhaseProgress(phaseProgress)
+            phaseInterval = setInterval(() => {
+              if (!mounted) return
 
-            // Calculate total progress
-            const completedPhasesProgress = phases.slice(0, i).reduce((sum, p) => sum + p.weight, 0)
-            const currentPhaseContribution = (phaseProgress / 100) * phase.weight
-            const newTotalProgress = Math.min(
-              100,
-              (completedPhasesProgress + currentPhaseContribution) * 100
-            )
-            setProgress(newTotalProgress)
+              phaseProgress += 1
+              setCurrentPhaseProgress(phaseProgress)
+              setProgress(phaseProgress)
 
-            if (phaseProgress >= 100) {
-              clearInterval(phaseInterval)
-            }
-          }, stepDelay)
+              if (phaseProgress >= 100) {
+                clearInterval(phaseInterval!)
+              }
+            }, stepDelay)
+          } else {
+            // For model phase, progress is driven by download events
+            console.log('[LoadingPage] Using real download progress for model phase')
+          }
 
           // Execute phase if it has an executor
           let phaseSuccess = true
           if (phase.executor) {
             try {
+              // For model phase, progress is updated via download callback
+              // For other phases, progress is updated via interval above
               phaseSuccess = await phase.executor()
             } catch (error) {
               console.error(`[LoadingPage] Error in phase ${phase.name}:`, error)
@@ -169,11 +195,12 @@ export function LoadingPage({
           }
 
           // Ensure phase progress completes
-          clearInterval(phaseInterval)
+          if (phaseInterval) {
+            clearInterval(phaseInterval)
+          }
           if (mounted) {
             setCurrentPhaseProgress(100)
-            totalProgress += phase.weight
-            setProgress(Math.min(100, totalProgress * 100))
+            setProgress(100)
           }
 
           if (!phaseSuccess) {
@@ -212,6 +239,11 @@ export function LoadingPage({
             }
           }, 3000)
         }
+      } finally {
+        // Clean up subscription
+        if (unsubscribe) {
+          unsubscribe()
+        }
       }
     }
 
@@ -221,6 +253,9 @@ export function LoadingPage({
       mounted = false
       if (progressInterval) {
         clearInterval(progressInterval)
+      }
+      if (unsubscribe) {
+        unsubscribe()
       }
     }
   }, [onComplete, phases])
@@ -235,7 +270,8 @@ export function LoadingPage({
   const getStatusIcon = () => {
     switch (status) {
       case 'loading':
-        return progress > 0 ? null : <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+        // Don't show spinner during loading - progress bar will be shown instead
+        return null
       case 'complete':
         return <CheckCircle className="h-8 w-8 text-green-500" />
       case 'error':
@@ -260,10 +296,16 @@ export function LoadingPage({
   const getDetailMessage = () => {
     switch (status) {
       case 'loading':
-        if (phases && phases.length > 0 && currentPhase < phases.length) {
-          return `${Math.round(progress)}% complete (${currentPhase + 1}/${phases.length})`
+        // Show download details if available (prioritize this over generic progress)
+        if (downloadProgress) {
+          return `Downloading model... ${Math.round(downloadProgress.percentage)}%`
         }
-        return progress > 0 ? `${Math.round(progress)}% complete` : 'This will only take a moment'
+        // Show phase-specific progress
+        if (progress > 0) {
+          return `${Math.round(progress)}%`
+        }
+        // Initial state
+        return 'This will only take a moment'
       case 'complete':
         return 'All set!'
       case 'error':
@@ -317,23 +359,16 @@ export function LoadingPage({
         <h1 className="text-2xl font-bold mb-2">{getStatusMessage()}</h1>
         <p className="text-muted-foreground mb-6">{getDetailMessage()}</p>
 
-        {/* Progress Bar (positioned like button in LoginPage) */}
-        {status === 'loading' && progress > 0 && (
-          <motion.div
-            initial={{ opacity: 0, scaleX: 0 }}
-            animate={{ opacity: 1, scaleX: 1 }}
-            transition={{ delay: 0.3 }}
-            className="w-full max-w-xs"
-          >
+        {/* Progress Bar (always shown during loading) */}
+        {status === 'loading' && (
+          <div className="w-full max-w-xs">
             <div className="w-full bg-gray-200 rounded-full h-2 dark:bg-gray-700">
-              <motion.div
-                className="bg-blue-500 h-2 rounded-full transition-all duration-100 ease-out"
-                style={{ width: `${progress}%` }}
-                initial={{ width: 0 }}
-                animate={{ width: `${progress}%` }}
+              <div
+                className="bg-blue-500 h-2 rounded-full transition-all duration-150 ease-linear"
+                style={{ width: `${Math.max(1, progress)}%` }}
               />
             </div>
-          </motion.div>
+          </div>
         )}
 
         {/* Action buttons (positioned like button in LoginPage) */}

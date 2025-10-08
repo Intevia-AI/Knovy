@@ -65,7 +65,7 @@ class ServiceTester {
       const modelSizes = {
         tiny: 75 * 1024 * 1024,
         base: 142 * 1024 * 1024,
-        small: 466 * 1024 * 1024,
+        small: 488 * 1024 * 1024,
         medium: 1.5 * 1024 * 1024 * 1024
       }
 

@@ -105,9 +105,17 @@ export class TranscriptionFactory {
   /**
    * Setup transcription enhancement service
    */
-  async setupEnhancement(supabaseUrl: string, supabaseAnonKey: string, userToken?: string): Promise<boolean> {
+  async setupEnhancement(
+    supabaseUrl: string,
+    supabaseAnonKey: string,
+    userToken?: string
+  ): Promise<boolean> {
     try {
-      const result = await window.electronAPI.transcriptionSetupEnhancement(supabaseUrl, supabaseAnonKey, userToken)
+      const result = await window.electronAPI.transcriptionSetupEnhancement(
+        supabaseUrl,
+        supabaseAnonKey,
+        userToken
+      )
       return result.success
     } catch (error) {
       console.error('[TranscriptionFactory] Failed to setup enhancement:', error)
@@ -147,11 +155,17 @@ export class TranscriptionFactory {
    */
   async createTranscriptionProcessor(
     sourceType: 'microphone' | 'system',
-    onTextResponse: (text: string, turnComplete: boolean, sourceType: 'microphone' | 'system') => void,
+    onTextResponse: (
+      text: string,
+      turnComplete: boolean,
+      sourceType: 'microphone' | 'system'
+    ) => void,
     onSetupComplete?: () => void,
     language?: string
   ): Promise<TranscriptionProcessor> {
-    console.log(`[TranscriptionFactory] Creating whisper transcription processor for ${sourceType} with language: ${language}`)
+    console.log(
+      `[TranscriptionFactory] Creating whisper transcription processor for ${sourceType} with language: ${language}`
+    )
 
     return new WhisperTranscriptionProcessor(
       this.whisperClient,
@@ -159,7 +173,7 @@ export class TranscriptionFactory {
       onTextResponse,
       onSetupComplete,
       {
-        modelSize: this.config.modelSize || 'base', // Use base model by default for better quality
+        modelSize: this.config.modelSize || 'small', // Use small model by default for better quality
         language, // Keep for potential fallback scenarios
         autoDetectLanguage: true, // Enable auto-detection by default
         userLanguage: language, // Pass user language for two-stage detection
@@ -197,14 +211,12 @@ export class TranscriptionFactory {
     }
   }
 
-
   /**
    * Get whisper client for direct access (e.g., model management)
    */
   getWhisperClient(): WhisperClient {
     return this.whisperClient
   }
-
 
   // Private methods - simplified for local-only operation
 }
@@ -214,12 +226,20 @@ export class TranscriptionFactory {
  */
 export abstract class TranscriptionProcessor {
   protected sourceType: 'microphone' | 'system'
-  protected onTextResponse: (text: string, turnComplete: boolean, sourceType: 'microphone' | 'system') => void
+  protected onTextResponse: (
+    text: string,
+    turnComplete: boolean,
+    sourceType: 'microphone' | 'system'
+  ) => void
   protected onSetupComplete?: () => void
 
   constructor(
     sourceType: 'microphone' | 'system',
-    onTextResponse: (text: string, turnComplete: boolean, sourceType: 'microphone' | 'system') => void,
+    onTextResponse: (
+      text: string,
+      turnComplete: boolean,
+      sourceType: 'microphone' | 'system'
+    ) => void,
     onSetupComplete?: () => void
   ) {
     this.sourceType = sourceType
@@ -253,7 +273,11 @@ export class WhisperTranscriptionProcessor extends TranscriptionProcessor {
   constructor(
     whisperClient: WhisperClient,
     sourceType: 'microphone' | 'system',
-    onTextResponse: (text: string, turnComplete: boolean, sourceType: 'microphone' | 'system') => void,
+    onTextResponse: (
+      text: string,
+      turnComplete: boolean,
+      sourceType: 'microphone' | 'system'
+    ) => void,
     onSetupComplete?: () => void,
     options: Omit<WhisperOptions, 'sourceType'> = {}
   ) {
@@ -273,7 +297,9 @@ export class WhisperTranscriptionProcessor extends TranscriptionProcessor {
 
     this.vadEventListener = (event: CustomEvent) => {
       if (event.detail?.vadTriggered && this.audioBuffers.length > 0) {
-        console.log(`[WhisperTranscriptionProcessor] VAD triggered for ${this.sourceType}, processing ${this.audioBuffers.length} buffered chunks`)
+        console.log(
+          `[WhisperTranscriptionProcessor] VAD triggered for ${this.sourceType}, processing ${this.audioBuffers.length} buffered chunks`
+        )
         this.processBufferedAudio()
       }
     }
@@ -294,9 +320,14 @@ export class WhisperTranscriptionProcessor extends TranscriptionProcessor {
       this.connected = true
       this.onSetupComplete?.()
 
-      console.log(`[WhisperTranscriptionProcessor] ${this.sourceType} processor connected successfully`)
+      console.log(
+        `[WhisperTranscriptionProcessor] ${this.sourceType} processor connected successfully`
+      )
     } catch (error) {
-      console.error(`[WhisperTranscriptionProcessor] Failed to connect ${this.sourceType} processor:`, error)
+      console.error(
+        `[WhisperTranscriptionProcessor] Failed to connect ${this.sourceType} processor:`,
+        error
+      )
       throw error
     }
   }
@@ -318,7 +349,9 @@ export class WhisperTranscriptionProcessor extends TranscriptionProcessor {
 
   sendAudioChunk(chunk: string, mimeType: string): void {
     if (!this.connected) {
-      console.warn(`[WhisperTranscriptionProcessor] Cannot send audio chunk - ${this.sourceType} processor not connected`)
+      console.warn(
+        `[WhisperTranscriptionProcessor] Cannot send audio chunk - ${this.sourceType} processor not connected`
+      )
       return
     }
 
@@ -346,11 +379,16 @@ export class WhisperTranscriptionProcessor extends TranscriptionProcessor {
       })
 
       if (shouldProcessBySize && this.audioBuffers.length > 0) {
-        console.log(`[WhisperTranscriptionProcessor] Buffer size limit reached for ${this.sourceType}, processing immediately`)
+        console.log(
+          `[WhisperTranscriptionProcessor] Buffer size limit reached for ${this.sourceType}, processing immediately`
+        )
         this.processBufferedAudio()
       }
     } catch (error) {
-      console.error(`[WhisperTranscriptionProcessor] Error processing audio chunk for ${this.sourceType}:`, error)
+      console.error(
+        `[WhisperTranscriptionProcessor] Error processing audio chunk for ${this.sourceType}:`,
+        error
+      )
     }
   }
 
@@ -363,16 +401,19 @@ export class WhisperTranscriptionProcessor extends TranscriptionProcessor {
       ...this.processingStats,
       sourceType: this.sourceType,
       modelSize: this.options.modelSize,
-      averageProcessingTime: this.processingStats.transcriptionsCompleted > 0
-        ? this.processingStats.totalProcessingTime / this.processingStats.transcriptionsCompleted
-        : 0
+      averageProcessingTime:
+        this.processingStats.transcriptionsCompleted > 0
+          ? this.processingStats.totalProcessingTime / this.processingStats.transcriptionsCompleted
+          : 0
     }
   }
 
   private processBufferedAudio(): void {
     if (this.audioBuffers.length === 0) return
 
-    console.log(`[WhisperTranscriptionProcessor] Processing ${this.audioBuffers.length} buffered chunks for ${this.sourceType}`)
+    console.log(
+      `[WhisperTranscriptionProcessor] Processing ${this.audioBuffers.length} buffered chunks for ${this.sourceType}`
+    )
 
     // Combine all buffered audio chunks into one ArrayBuffer
     const combinedBuffer = this.combineAudioBuffers(this.audioBuffers)
@@ -409,7 +450,9 @@ export class WhisperTranscriptionProcessor extends TranscriptionProcessor {
       this.processingStats.totalProcessingTime += result.processingTime
 
       if (result.text && result.text.trim()) {
-        console.log(`[WhisperTranscriptionProcessor] Got transcription for ${this.sourceType}: "${result.text}"`)
+        console.log(
+          `[WhisperTranscriptionProcessor] Got transcription for ${this.sourceType}: "${result.text}"`
+        )
 
         // Extract keywords from the transcription for highlighting
         const keywords = this.extractKeywords(result.text.trim())
@@ -418,21 +461,30 @@ export class WhisperTranscriptionProcessor extends TranscriptionProcessor {
         // The UI parser expects "TRANSCRIPTION:" prefix and optionally "KEYWORDS:"
         const formattedResponse = `TRANSCRIPTION: ${result.text.trim()}\nKEYWORDS: ${keywords.join(', ')}`
 
-        console.log(`[WhisperTranscriptionProcessor] Sending formatted response with ${keywords.length} keywords: "${formattedResponse}"`)
+        console.log(
+          `[WhisperTranscriptionProcessor] Sending formatted response with ${keywords.length} keywords: "${formattedResponse}"`
+        )
         this.onTextResponse(formattedResponse, true, this.sourceType)
       } else {
-        console.log(`[WhisperTranscriptionProcessor] Empty transcription result for ${this.sourceType} (${audioBuffer.byteLength} bytes, ${result.processingTime}ms)`)
+        console.log(
+          `[WhisperTranscriptionProcessor] Empty transcription result for ${this.sourceType} (${audioBuffer.byteLength} bytes, ${result.processingTime}ms)`
+        )
       }
     } catch (error) {
-      console.error(`[WhisperTranscriptionProcessor] Transcription failed for ${this.sourceType}:`, error)
+      console.error(
+        `[WhisperTranscriptionProcessor] Transcription failed for ${this.sourceType}:`,
+        error
+      )
 
       // Handle model missing error specifically
       if (error instanceof Error && error.message.includes('No whisper models available')) {
-        console.error(`[WhisperTranscriptionProcessor] Models were deleted during session - attempting recovery`)
+        console.error(
+          `[WhisperTranscriptionProcessor] Models were deleted during session - attempting recovery`
+        )
 
         // Notify the main app about the model error
         if ((window as any).electronAPI?.send) {
-          (window as any).electronAPI.send('transcription:model-error', {
+          ;(window as any).electronAPI.send('transcription:model-error', {
             sourceType: this.sourceType,
             error: error.message
           })
@@ -461,25 +513,36 @@ export class WhisperTranscriptionProcessor extends TranscriptionProcessor {
       if (initialized) {
         const ensured = await this.whisperClient.ensureModelAvailable()
         if (ensured) {
-          console.log(`[WhisperTranscriptionProcessor] Successfully recovered models for ${this.sourceType}`)
+          console.log(
+            `[WhisperTranscriptionProcessor] Successfully recovered models for ${this.sourceType}`
+          )
           this.notifyUserOfTranscriptionError('Model recovered - transcription resumed', 'info')
           return
         }
       }
 
       // If recovery fails, notify user
-      console.error(`[WhisperTranscriptionProcessor] Failed to recover models for ${this.sourceType}`)
-      this.notifyUserOfTranscriptionError('Local transcription models missing - please restart the app')
+      console.error(
+        `[WhisperTranscriptionProcessor] Failed to recover models for ${this.sourceType}`
+      )
+      this.notifyUserOfTranscriptionError(
+        'Local transcription models missing - please restart the app'
+      )
     } catch (error) {
       console.error(`[WhisperTranscriptionProcessor] Error during model recovery:`, error)
-      this.notifyUserOfTranscriptionError('Unable to recover transcription - please restart the app')
+      this.notifyUserOfTranscriptionError(
+        'Unable to recover transcription - please restart the app'
+      )
     }
   }
 
   /**
    * Notify user of transcription errors through the UI
    */
-  private notifyUserOfTranscriptionError(message: string, type: 'error' | 'warning' | 'info' = 'error'): void {
+  private notifyUserOfTranscriptionError(
+    message: string,
+    type: 'error' | 'warning' | 'info' = 'error'
+  ): void {
     // Send a formatted error message that the UI can display
     const errorResponse = `TRANSCRIPTION: [${type.toUpperCase()}] ${message}\nKEYWORDS: error, ${type}`
 
@@ -509,38 +572,92 @@ export class WhisperTranscriptionProcessor extends TranscriptionProcessor {
     ]
 
     // Words that are typically complex/technical
-    const complexWords = text.toLowerCase().split(/\s+/).filter(word => {
-      // Remove punctuation
-      word = word.replace(/[^\w]/g, '')
+    const complexWords = text
+      .toLowerCase()
+      .split(/\s+/)
+      .filter((word) => {
+        // Remove punctuation
+        word = word.replace(/[^\w]/g, '')
 
-      // Skip common words, short words, and numbers
-      if (word.length < 4 || /^\d+$/.test(word)) return false
+        // Skip common words, short words, and numbers
+        if (word.length < 4 || /^\d+$/.test(word)) return false
 
-      // Common words to exclude
-      const commonWords = new Set([
-        'that', 'this', 'with', 'have', 'will', 'from', 'they', 'been', 'said', 'each', 'which',
-        'their', 'time', 'would', 'there', 'could', 'other', 'after', 'first', 'well', 'also',
-        'some', 'very', 'what', 'know', 'just', 'into', 'over', 'think', 'also', 'back', 'work',
-        'good', 'much', 'before', 'right', 'through', 'still', 'should', 'never', 'here', 'more',
-        'need', 'come', 'take', 'make', 'want', 'about', 'when', 'where', 'being', 'going'
-      ])
+        // Common words to exclude
+        const commonWords = new Set([
+          'that',
+          'this',
+          'with',
+          'have',
+          'will',
+          'from',
+          'they',
+          'been',
+          'said',
+          'each',
+          'which',
+          'their',
+          'time',
+          'would',
+          'there',
+          'could',
+          'other',
+          'after',
+          'first',
+          'well',
+          'also',
+          'some',
+          'very',
+          'what',
+          'know',
+          'just',
+          'into',
+          'over',
+          'think',
+          'also',
+          'back',
+          'work',
+          'good',
+          'much',
+          'before',
+          'right',
+          'through',
+          'still',
+          'should',
+          'never',
+          'here',
+          'more',
+          'need',
+          'come',
+          'take',
+          'make',
+          'want',
+          'about',
+          'when',
+          'where',
+          'being',
+          'going'
+        ])
 
-      if (commonWords.has(word)) return false
+        if (commonWords.has(word)) return false
 
-      // Include words that are likely technical/specialized
-      // Long words (6+ chars) that aren't common
-      // Words with technical suffixes
-      // Words with multiple syllables and technical patterns
-      return word.length >= 6 ||
-             /(?:tion|sion|ment|ness|ship|hood|ward|wise|like|able|ible|ical|ous|ive|ful|less)$/.test(word) ||
-             /^(?:auto|bio|geo|micro|nano|multi|inter|trans|pre|post|anti|pro|meta)/.test(word)
-    })
+        // Include words that are likely technical/specialized
+        // Long words (6+ chars) that aren't common
+        // Words with technical suffixes
+        // Words with multiple syllables and technical patterns
+        return (
+          word.length >= 6 ||
+          /(?:tion|sion|ment|ness|ship|hood|ward|wise|like|able|ible|ical|ous|ive|ful|less)$/.test(
+            word
+          ) ||
+          /^(?:auto|bio|geo|micro|nano|multi|inter|trans|pre|post|anti|pro|meta)/.test(word)
+        )
+      })
 
     // Apply technical patterns
     for (const pattern of technicalPatterns) {
       const matches = text.match(pattern)
       if (matches) {
-        keywords.push(...matches.map(match => match.toLowerCase()))
+        keywords.push(...matches.map((match) => match.toLowerCase()))
       }
     }
 
@@ -549,11 +666,9 @@ export class WhisperTranscriptionProcessor extends TranscriptionProcessor {
 
     // Remove duplicates and return limited set
     const uniqueKeywords = [...new Set(keywords)]
-      .filter(keyword => keyword.trim().length > 0)
+      .filter((keyword) => keyword.trim().length > 0)
       .slice(0, 5) // Limit to 5 keywords max for performance
 
     return uniqueKeywords
   }
 }
-
-

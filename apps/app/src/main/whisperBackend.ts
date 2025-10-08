@@ -11,8 +11,8 @@ import {
 import { Converter, ConverterFactory, Locale } from 'opencc-js'
 
 // Configuration: Change this to set the default model size
-// Options: 'tiny' (75MB, fastest), 'base' (142MB, better), 'small' (466MB, good+), 'medium' (1.5GB, best)
-const DEFAULT_MODEL_SIZE: 'tiny' | 'base' | 'small' | 'medium' = 'base'
+// Options: 'tiny' (75MB, fastest), 'base' (142MB, better), 'small' (488MB, good+), 'medium' (1.5GB, best)
+const DEFAULT_MODEL_SIZE: 'tiny' | 'base' | 'small' | 'medium' = 'small'
 
 // Domain-specific prompts for better transcription context
 const DOMAIN_PROMPTS = {
@@ -387,7 +387,7 @@ export class WhisperBackend {
     const models: ModelInfo[] = [
       { name: 'tiny', size: '75MB', downloaded: false },
       { name: 'base', size: '142MB', downloaded: false },
-      { name: 'small', size: '466MB', downloaded: false },
+      { name: 'small', size: '488MB', downloaded: false },
       { name: 'medium', size: '1.5GB', downloaded: false }
     ]
 

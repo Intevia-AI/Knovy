@@ -12,7 +12,7 @@ import { useTranscriptionEnhancement } from '@/hooks/useTranscriptionEnhancement
 import { useLanguage } from '@/hooks/useLanguage'
 
 // Configuration: Change this to set the real-time transcription model size
-// Options: 'tiny' (75MB, fastest), 'base' (142MB, better), 'small' (466MB, good+), 'medium' (1.5GB, best)
+// Options: 'tiny' (75MB, fastest), 'base' (142MB, better), 'small' (488MB, good+), 'medium' (1.5GB, best)
 // Note: For real-time use, 'tiny' or 'base' are recommended for performance
 const REALTIME_MODEL_SIZE: 'tiny' | 'base' | 'small' | 'medium' = 'base'
 
@@ -567,15 +567,19 @@ export default function RealTimeAnalysis({
 
         // Set up device change listener for automatic reconnection
         deviceChangeHandler = async () => {
-          console.log('[RealTimeAnalysis] Audio device change detected, attempting to reconnect microphone')
+          console.log(
+            '[RealTimeAnalysis] Audio device change detected, attempting to reconnect microphone'
+          )
 
           // Check if the current microphone stream is still active
           if (micMediaStreamRef.current) {
             const tracks = micMediaStreamRef.current.getTracks()
-            const isActive = tracks.some(track => track.readyState === 'live')
+            const isActive = tracks.some((track) => track.readyState === 'live')
 
             if (!isActive) {
-              console.log('[RealTimeAnalysis] Current microphone stream is inactive, reconnecting...')
+              console.log(
+                '[RealTimeAnalysis] Current microphone stream is inactive, reconnecting...'
+              )
               await connectMicrophoneAudio()
             }
           }
