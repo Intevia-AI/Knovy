@@ -1068,7 +1068,7 @@ app.on('ready', async () => {
       }
 
       try {
-        // 1. Create the full transcript object for display (with keywords)
+        // 1. Create the full transcript object for display
         const transcriptId = randomUUID()
         const displayTranscript = {
           id: transcriptId,
@@ -1082,15 +1082,15 @@ app.on('ready', async () => {
         }
 
         // 2. Create enhanced transcript data for database storage
-        const cleanContent = transcriptionData.text.replace(/`([^`]*)`/g, '$1')
+        // Text from whisper.cpp is already clean (no backticks), backend returns keywords separately
         const enhancedDbTranscript = {
           id: transcriptId,
           session_id: currentSessionId,
           timestamp: new Date().toISOString(),
-          content: cleanContent, // Display content (will be updated to enhanced when available)
+          content: transcriptionData.text, // Display content (will be updated to enhanced when available)
           sourceType: transcriptionData.sourceType,
           // Raw whisper.cpp data (Phase 2.1)
-          rawText: cleanContent,
+          rawText: transcriptionData.text,
           detectedLanguage: transcriptionData.detectedLanguage,
           whisperLanguage: transcriptionData.whisperLanguage,
           userLanguage: transcriptionData.userLanguage,
@@ -1179,7 +1179,7 @@ app.on('ready', async () => {
               // Create segment with the SAME transcript ID for proper update matching
               const segment = {
                 id: transcriptId,
-                rawText: cleanContent,
+                rawText: transcriptionData.text,
                 timestamp: Date.now(),
                 sourceType: transcriptionData.sourceType
               }
