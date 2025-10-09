@@ -178,7 +178,12 @@ export function HistoryView() {
 
   const handleExport = useCallback(async (sessionId: string) => {
     try {
-      const data = await window.electronAPI.exportSession(sessionId)
+      // Get user's locale and timezone
+      const locale = sessionProfile?.profile?.language || sessionProfile?.app_settings?.language || 'en-US'
+      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone
+
+      // Export session with locale and timezone for transformation
+      const data = await window.electronAPI.exportSession(sessionId, locale, timezone)
 
       // Create JSON file for download
       const jsonData = JSON.stringify(data, null, 2)
@@ -186,13 +191,22 @@ export function HistoryView() {
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = url
-      link.download = `session-${sessionId}-${new Date().toISOString()}.json`
+
+      // Generate user-friendly filename: knovy-session-2025-10-08-0504.json
+      const now = new Date()
+      const year = now.getFullYear()
+      const month = String(now.getMonth() + 1).padStart(2, '0')
+      const day = String(now.getDate()).padStart(2, '0')
+      const hours = String(now.getHours()).padStart(2, '0')
+      const minutes = String(now.getMinutes()).padStart(2, '0')
+      link.download = `knovy-session-${year}-${month}-${day}-${hours}${minutes}.json`
+
       link.click()
       URL.revokeObjectURL(url)
     } catch (error) {
       console.error('Failed to export session:', error)
     }
-  }, [])
+  }, [sessionProfile])
 
   const handleDelete = useCallback(async (sessionId: string) => {
     // Confirmation dialog is handled by SessionCard component

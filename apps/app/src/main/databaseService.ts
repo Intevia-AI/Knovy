@@ -352,7 +352,11 @@ export async function getAllSessionDates() {
   return results.map(r => r.date)
 }
 
-export async function exportSession(sessionId: string) {
+export async function exportSession(
+  sessionId: string,
+  locale?: string,
+  timezone?: string
+) {
   const db = await dbPromise
 
   // Get session with summary
@@ -376,6 +380,13 @@ export async function exportSession(sessionId: string) {
   `)
   const transcripts = await transcriptsStmt.all(sessionId)
 
+  // Apply transformation if locale and timezone provided
+  if (locale && timezone) {
+    const { transformSessionForExport } = await import('./utils/export-formatter')
+    return transformSessionForExport({ session, transcripts }, locale, timezone)
+  }
+
+  // Fallback to original format if no locale/timezone
   return {
     session,
     transcripts

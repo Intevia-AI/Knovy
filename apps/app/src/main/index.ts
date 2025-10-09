@@ -1427,7 +1427,9 @@ app.on('ready', async () => {
   ipcMain.handle('db:get-total-session-count', (event, userId) =>
     dbService.getTotalSessionCount(userId)
   )
-  ipcMain.handle('db:export-session', (event, sessionId) => dbService.exportSession(sessionId))
+  ipcMain.handle('db:export-session', (event, { sessionId, locale, timezone }) =>
+    dbService.exportSession(sessionId, locale, timezone)
+  )
   ipcMain.handle('db:delete-session', (event, sessionId) => dbService.deleteSession(sessionId))
   ipcMain.handle('db:get-all-session-dates', () => dbService.getAllSessionDates())
 

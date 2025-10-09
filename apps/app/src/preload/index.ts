@@ -68,7 +68,8 @@ const api = {
     ipcRenderer.invoke('db:get-sessions-with-transcripts', { userId, limit, offset }),
   getTotalSessionCount: (userId: string) =>
     ipcRenderer.invoke('db:get-total-session-count', userId),
-  exportSession: (sessionId: string) => ipcRenderer.invoke('db:export-session', sessionId),
+  exportSession: (sessionId: string, locale?: string, timezone?: string) =>
+    ipcRenderer.invoke('db:export-session', { sessionId, locale, timezone }),
   deleteSession: (sessionId: string) => ipcRenderer.invoke('db:delete-session', sessionId),
   getAllSessionDates: () => ipcRenderer.invoke('db:get-all-session-dates'),
 
