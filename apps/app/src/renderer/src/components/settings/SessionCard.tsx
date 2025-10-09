@@ -1,8 +1,14 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'motion'
-import { ChevronDown, ChevronUp, Download, Trash2, AlertTriangle } from 'lucide-react'
+import { ChevronDown, ChevronUp, Download, Trash2, AlertTriangle, Copy, Check } from 'lucide-react'
 import { SessionWithTranscripts } from '@/types/history'
 import { formatTime, formatDate, formatDuration } from '@/lib/date-utils'
+import {
+  copyToClipboard,
+  formatSummaryForCopy,
+  formatTranscriptionsForCopy,
+  formatTranscriptForCopy
+} from '@/lib/copy-utils'
 import {
   Dialog,
   DialogContent,
@@ -13,6 +19,7 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { useTranslation } from '@/context/TranslationContext'
+import { toast } from 'sonner'
 
 interface SessionCardProps {
   session: SessionWithTranscripts
@@ -25,6 +32,9 @@ export function SessionCard({ session, onExport, onDelete }: SessionCardProps) {
   const [isExpanded, setIsExpanded] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [showCopyMenu, setShowCopyMenu] = useState(false)
+  const [hoveredTranscriptId, setHoveredTranscriptId] = useState<string | null>(null)
+  const [copiedTranscriptId, setCopiedTranscriptId] = useState<string | null>(null)
 
   const sessionDate = formatDate(session.started_at)
   const sessionTime = formatTime(session.started_at)
@@ -32,6 +42,40 @@ export function SessionCard({ session, onExport, onDelete }: SessionCardProps) {
 
   const handleDeleteClick = () => {
     setShowDeleteDialog(true)
+  }
+
+  const handleCopySummary = async () => {
+    const text = formatSummaryForCopy(session)
+    const success = await copyToClipboard(text)
+    if (success) {
+      toast.success(t('copiedToClipboard'))
+    } else {
+      toast.error(t('copyFailed'))
+    }
+    setShowCopyMenu(false)
+  }
+
+  const handleCopyTranscriptions = async () => {
+    const text = formatTranscriptionsForCopy(session)
+    const success = await copyToClipboard(text)
+    if (success) {
+      toast.success(t('copiedToClipboard'))
+    } else {
+      toast.error(t('copyFailed'))
+    }
+    setShowCopyMenu(false)
+  }
+
+  const handleCopyTranscript = async (transcript: any) => {
+    const text = formatTranscriptForCopy(transcript)
+    const success = await copyToClipboard(text)
+    if (success) {
+      setCopiedTranscriptId(transcript.id)
+      toast.success(t('copiedToClipboard'))
+      setTimeout(() => setCopiedTranscriptId(null), 2000)
+    } else {
+      toast.error(t('copyFailed'))
+    }
   }
 
   const confirmDelete = async () => {
@@ -89,6 +133,47 @@ export function SessionCard({ session, onExport, onDelete }: SessionCardProps) {
 
             {/* Action Buttons */}
             <div className="flex items-center gap-2 flex-shrink-0 pointer-events-auto">
+              {/* Copy Button with Dropdown */}
+              <div className="relative">
+                <motion.button
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setShowCopyMenu(!showCopyMenu)
+                  }}
+                  className="p-1.5 rounded-md hover:bg-background/60 text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                  title={t('copyTranscript')}
+                  aria-label={t('copyTranscript')}
+                >
+                  <Copy className="w-4 h-4" />
+                </motion.button>
+
+                {/* Copy Menu Dropdown */}
+                {showCopyMenu && (
+                  <div className="absolute right-0 top-full mt-1 bg-background backdrop-blur-xl rounded-md shadow-lg z-10 min-w-[200px]">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleCopySummary()
+                      }}
+                      className="w-full px-3 py-2 text-left text-sm hover:bg-accent/50 transition-colors first:rounded-t-md"
+                    >
+                      {t('copySummary')}
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleCopyTranscriptions()
+                      }}
+                      className="w-full px-3 py-2 text-left text-sm hover:bg-accent/50 transition-colors last:rounded-b-md"
+                    >
+                      {t('copyTranscriptions')}
+                    </button>
+                  </div>
+                )}
+              </div>
+
               <motion.button
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
@@ -153,7 +238,16 @@ export function SessionCard({ session, onExport, onDelete }: SessionCardProps) {
                     </h4>
                     <div className="space-y-2 max-h-[300px] overflow-y-auto settings-scrollbar">
                       {session.transcripts.map((transcript) => (
-                        <div key={transcript.id} className="flex items-start gap-2 text-sm">
+                        <div
+                          key={transcript.id}
+                          className="flex items-start gap-2 text-sm p-2 -mx-2 rounded-md hover:bg-accent/30 transition-colors cursor-pointer group relative"
+                          onMouseEnter={() => setHoveredTranscriptId(transcript.id)}
+                          onMouseLeave={() => setHoveredTranscriptId(null)}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleCopyTranscript(transcript)
+                          }}
+                        >
                           <div className="flex-shrink-0 text-xs text-muted-foreground mt-0.5">
                             {formatTime(transcript.timestamp)}
                           </div>
@@ -169,6 +263,18 @@ export function SessionCard({ session, onExport, onDelete }: SessionCardProps) {
                             )}
                           </div>
                           <p className="flex-1 text-foreground/90">{transcript.text}</p>
+
+                          {/* Copy Icon on Hover */}
+                          {(hoveredTranscriptId === transcript.id ||
+                            copiedTranscriptId === transcript.id) && (
+                            <div className="flex-shrink-0">
+                              {copiedTranscriptId === transcript.id ? (
+                                <Check className="w-3.5 h-3.5 text-green-500" />
+                              ) : (
+                                <Copy className="w-3.5 h-3.5 text-muted-foreground" />
+                              )}
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>

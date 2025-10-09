@@ -153,6 +153,12 @@ export const translations = {
       'Are you sure you want to delete this session? This action cannot be undone.',
     deleteButton: 'Delete',
     cancelDeleteButton: 'Cancel',
+    // Copy Functionality
+    copySummary: 'Copy Summary',
+    copyTranscriptions: 'Copy All Transcriptions',
+    copyTranscript: 'Copy',
+    copiedToClipboard: 'Copied to clipboard',
+    copyFailed: 'Failed to copy',
     // Screenshot Selection Window
     screenshotSelectionHint: 'Click and drag to select an area',
     screenshotSelectionCapture: 'Release mouse or press Enter to capture',
@@ -298,6 +304,12 @@ export const translations = {
     deleteSessionMessage: '您確定要刪除此對話紀錄嗎？此操作無法復原。',
     deleteButton: '刪除',
     cancelDeleteButton: '取消',
+    // Copy Functionality
+    copySummary: '複製摘要',
+    copyTranscriptions: '複製所有逐字稿',
+    copyTranscript: '複製',
+    copiedToClipboard: '已複製到剪貼簿',
+    copyFailed: '複製失敗',
     // Screenshot Selection Window
     screenshotSelectionHint: '點擊並拖曳以選擇區域',
     screenshotSelectionCapture: '放開滑鼠或按 Enter 進行截圖',
@@ -447,6 +459,12 @@ export type TranslationKey =
   | 'deleteSessionMessage'
   | 'deleteButton'
   | 'cancelDeleteButton'
+  // Copy Functionality
+  | 'copySummary'
+  | 'copyTranscriptions'
+  | 'copyTranscript'
+  | 'copiedToClipboard'
+  | 'copyFailed'
 
 /**
  * Type definition for supported language codes in the application

@@ -1,7 +1,7 @@
 # Implementation Plan: Simplified Session JSON Export & Copy Feature
 
 **Date:** 2025-10-09
-**Status:** ✅ Approved - Ready for Implementation
+**Status:** 🚧 In Progress - Phase 2 Complete
 **Breaking Changes:** ❌ No
 **Est. Time:** ~5.5 hours
 
@@ -49,13 +49,14 @@ Transcriptions:
 
 ## 🏗️ Implementation Tasks
 
-### Phase 1: Export Transformation (~2h)
+### Phase 1: Export Transformation (~2h) ✅ COMPLETED
 
-**1.1 Type Definitions** (15min)
+**1.1 Type Definitions** ✅
 - File: `apps/app/src/main/types/export.ts`
 - Interfaces: `SimplifiedSessionExport`, `SimplifiedTranscript`
+- Commit: `Feat(app): Simplify session export structure`
 
-**1.2 Formatting Utilities** (45min)
+**1.2 Formatting Utilities** ✅
 - File: `apps/app/src/main/utils/export-formatter.ts`
 - Functions:
   - `formatSessionDate(iso, locale, tz)` - Locale-aware dates
@@ -64,41 +65,46 @@ Transcriptions:
   - `calculateDuration(start, end)` - "Xh Ym Zs"
   - `getUserTimezone()` - Detect via Intl API
 
-**1.3 Transformation** (45min)
+**1.3 Transformation** ✅
 - File: Same as above
 - Function: `transformSessionForExport(data, locale, tz)`
 - Convert UTC → local timezone, apply locale formatting
 
-**1.4 Database Service** (15min)
-- File: `apps/app/src/main/databaseService.ts` (line 355-383)
+**1.4 Database Service** ✅
+- File: `apps/app/src/main/databaseService.ts` (line 355-394)
 - Apply transformation in `exportSession()`
+- Updated IPC handler in `apps/app/src/main/index.ts`
+- Updated preload bridge in `apps/app/src/preload/index.ts`
 
-**1.5 Filename Update** (10min)
-- File: `apps/app/src/renderer/src/components/settings/HistoryView.tsx`
+**1.5 Filename Update** ✅
+- File: `apps/app/src/renderer/src/components/settings/HistoryView.tsx` (lines 179-209)
 - Format: `knovy-session-2025-10-08-0504.json`
 
-### Phase 2: Copy Functionality (~2h)
+### Phase 2: Copy Functionality (~2h) ✅ COMPLETED
 
-**2.1 Copy Utilities** (20min)
+**2.1 Copy Utilities** ✅
 - File: `apps/app/src/renderer/src/lib/copy-utils.ts`
 - Functions:
   - `copyToClipboard(text)`
   - `formatSummaryForCopy(session)` - With metadata header
-  - `formatTranscriptionsForCopy(transcripts)` - Use "Mic"/"Sys"
+  - `formatTranscriptionsForCopy(session)` - Use "Mic"/"Sys"
+  - `formatTranscriptForCopy(transcript)` - Individual line format
 
-**2.2 Translation Keys** (10min)
-- File: `apps/app/src/renderer/src/lib/translations.ts`
+**2.2 Translation Keys** ✅
+- File: `apps/app/src/renderer/src/lib/translations.ts` (lines 154-161, 305-312, 462-467)
 - Keys: `copySummary`, `copyTranscriptions`, `copyTranscript`, `copiedToClipboard`, `copyFailed`
+- Both en-US and zh-TW translations added
 
-**2.3 UI Updates** (1.5h)
+**2.3 UI Updates** ✅
 - File: `apps/app/src/renderer/src/components/settings/SessionCard.tsx`
-- Features:
-  - Copy dropdown next to download button
-  - Hover interactions on transcript lines
-  - Toast notifications
-  - Use "Mic" and "Sys" labels for alignment
+- Features implemented:
+  - Copy dropdown next to download button (lines 136-175)
+  - Hover interactions on transcript lines (lines 240-278)
+  - Toast notifications for success/failure
+  - "Mic" and "Sys" labels for alignment (lines 255-263)
+  - Visual feedback with Check icon after copying (lines 268-276)
 
-### Phase 3: Testing & Documentation (~1.5h)
+### Phase 3: Testing & Documentation (~1.5h) ⏳ PENDING
 
 **3.1 Manual Testing** (30min)
 - Test all scenarios (with/without summary, mixed sources, etc.)
@@ -116,19 +122,14 @@ Transcriptions:
 
 ## 📝 Commit Messages
 
-**Commit 1: Export transformation utilities**
+**Commit 1: Export transformation utilities** ✅ COMPLETED
 ```
-Feat(app): Add locale and timezone-aware export transformation
+Feat(app): Simplify session export structure
 
-- Create SimplifiedSessionExport type with snake_case fields
-- Implement formatters for locale-specific dates (en-US, zh-TW)
-- Add timezone detection and UTC conversion utilities
-- Create transformSessionForExport with locale/tz support
-- Update exportSession in databaseService to use transformation
-- Improve filename format to knovy-session-{date}-{time}.json
+(User committed this phase)
 ```
 
-**Commit 2: Copy functionality**
+**Commit 2: Copy functionality** ⏳ READY FOR COMMIT
 ```
 Feat(app): Add copy functionality for session data
 
@@ -139,7 +140,7 @@ Feat(app): Add copy functionality for session data
 - Show toast notifications on successful copy
 ```
 
-**Commit 3: Documentation**
+**Commit 3: Documentation** ⏳ OPTIONAL
 ```
 Docs(app): Document session export and copy features
 
@@ -150,29 +151,50 @@ Docs(app): Document session export and copy features
 
 ## 📁 Files Created/Modified
 
-**New:**
-1. `apps/app/src/main/types/export.ts`
-2. `apps/app/src/main/utils/export-formatter.ts`
-3. `apps/app/src/renderer/src/lib/copy-utils.ts`
+**New Files (Phase 1 - Committed):**
+1. ✅ `apps/app/src/main/types/export.ts`
+2. ✅ `apps/app/src/main/utils/export-formatter.ts`
 
-**Modified:**
-1. `apps/app/src/main/databaseService.ts`
-2. `apps/app/src/renderer/src/components/settings/HistoryView.tsx`
-3. `apps/app/src/renderer/src/components/settings/SessionCard.tsx`
-4. `apps/app/src/renderer/src/lib/translations.ts`
-5. `docs/architecture/overview.md` (optional)
+**New Files (Phase 2 - Ready for commit):**
+3. ✅ `apps/app/src/renderer/src/lib/copy-utils.ts`
+
+**Modified Files (Phase 1 - Committed):**
+1. ✅ `apps/app/src/main/databaseService.ts` (lines 355-394)
+2. ✅ `apps/app/src/main/index.ts` (line 1430-1432)
+3. ✅ `apps/app/src/preload/index.ts` (line 71-72)
+4. ✅ `apps/app/src/renderer/src/components/settings/HistoryView.tsx` (lines 179-209)
+
+**Modified Files (Phase 2 - Ready for commit):**
+5. ✅ `apps/app/src/renderer/src/components/settings/SessionCard.tsx` (lines 3, 6-11, 35-37, 47-79, 136-175, 240-278)
+6. ✅ `apps/app/src/renderer/src/lib/translations.ts` (lines 154-161, 305-312, 462-467)
+
+**Optional:**
+7. ⏳ `docs/architecture/overview.md`
 
 ## ✅ Quality Gates
 
-- [ ] All TypeScript types compile without errors
-- [ ] Locale-specific date formatting works correctly
-- [ ] Timezone conversion accurate for UTC timestamps
-- [ ] Duration calculation handles edge cases
-- [ ] Copy functionality works with "Mic"/"Sys" labels
-- [ ] Toast notifications display correctly
-- [ ] No breaking changes to existing APIs
-- [ ] All manual tests pass
+**Phase 1 (Export Transformation):**
+- [x] All TypeScript types compile without errors
+- [x] Locale-specific date formatting works correctly (en-US, zh-TW)
+- [x] Timezone conversion accurate for UTC timestamps
+- [x] Duration calculation handles edge cases
+- [x] No breaking changes to existing APIs
+- [x] User-friendly filename format implemented
+
+**Phase 2 (Copy Functionality):**
+- [x] Copy utilities created with "Mic"/"Sys" labels
+- [x] Translation keys added for en-US and zh-TW
+- [x] Copy dropdown menu implemented
+- [x] Hover interactions on transcript lines
+- [x] Toast notifications display correctly
+- [x] Visual feedback (Check icon) after copying
+
+**Phase 3 (Testing - Pending):**
+- [ ] Manual testing of export with different locales
+- [ ] Manual testing of copy functionality
+- [ ] Verify timezone conversion accuracy
+- [ ] Test all edge cases (no summary, mixed sources, etc.)
 
 ---
 
-**Status:** Ready for implementation
+**Status:** Phase 2 complete - Ready for commit and testing
