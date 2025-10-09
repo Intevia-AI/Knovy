@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Markdown } from '@/components/MarkdownRenderer'
+import { KeywordHighlighter } from '@/components/KeywordHighlighter'
 import { cn } from '@/lib/utils'
 import { useAIInteraction } from '@/hooks/useAIInteraction'
 import { Button } from '@/components/ui/button'
@@ -146,7 +147,11 @@ export default function ChatPanel({}: ChatPanelProps) {
                             : 'bg-black/5 border border-black/10 mr-auto text-black'
                         )}
                       >
-                        <Markdown onKeywordClick={handleKeywordClick}>{m.content}</Markdown>
+                        <KeywordHighlighter
+                          text={m.content}
+                          keywords={m.keywords}
+                          onKeywordClick={handleKeywordClick}
+                        />
                         <div className="text-xs text-gray-400 mt-1.5">
                           {new Date(m.timestamp).toLocaleTimeString([], {
                             hour: 'numeric',

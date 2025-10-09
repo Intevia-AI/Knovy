@@ -23,6 +23,7 @@ interface TranscriptionMessage extends AIMessage {
   timestamp: number
   type: 'transcription'
   sourceType?: 'microphone' | 'system'
+  keywords?: string[] // Keywords from enhancement metadata
 }
 
 interface AIContextData {
@@ -99,12 +100,39 @@ export function useAIInteraction() {
           id: string
           enhancedText: string
           sourceType?: 'microphone' | 'system'
+          keywords?: string[]
         }) => {
           console.log('[useAIInteraction] Received transcription update:', updateData)
           setTranscriptions((prev) =>
             prev.map((transcript) =>
               transcript.id === updateData.id
-                ? { ...transcript, content: updateData.enhancedText }
+                ? {
+                    ...transcript,
+                    content: updateData.enhancedText,
+                    keywords: updateData.keywords || []
+                  }
+                : transcript
+            )
+          )
+        }
+      )
+
+      // Handle transcription enhancements (includes keywords)
+      const unsubscribeEnhanced = (window as any).electronAPI.on(
+        'transcription:enhanced',
+        (data: {
+          original: { id: string; rawText: string }
+          enhanced: { corrected: string; keywords: string[] }
+        }) => {
+          console.log('[useAIInteraction] Received transcription enhancement:', data)
+          setTranscriptions((prev) =>
+            prev.map((transcript) =>
+              transcript.id === data.original.id
+                ? {
+                    ...transcript,
+                    content: data.enhanced.corrected,
+                    keywords: data.enhanced.keywords || []
+                  }
                 : transcript
             )
           )
@@ -114,6 +142,7 @@ export function useAIInteraction() {
       return () => {
         unsubscribeData()
         unsubscribeUpdate()
+        unsubscribeEnhanced()
       }
     }
     return () => {} // Return empty cleanup function when electronAPI is not available
@@ -137,7 +166,8 @@ export function useAIInteraction() {
                 role: 'assistant',
                 type: 'transcription',
                 timestamp: new Date(t.timestamp).getTime(),
-                sourceType: t.source_type || 'system'
+                sourceType: t.source_type || 'system',
+                keywords: t.enhancement_metadata_parsed?.keywords || []
               }))
               setTranscriptions(formattedTranscripts)
             }
