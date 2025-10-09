@@ -20,7 +20,24 @@ export async function getAllTranscripts(sessionId: string) {
   const stmt = await db.prepare(
     'SELECT * FROM transcripts WHERE session_id = ? ORDER BY timestamp ASC'
   )
-  return stmt.all(sessionId)
+  const transcripts = await stmt.all(sessionId)
+
+  // Parse enhancement_metadata JSON for each transcript
+  return transcripts.map((t: any) => {
+    let parsedMetadata = null
+    if (t.enhancement_metadata) {
+      try {
+        parsedMetadata = JSON.parse(t.enhancement_metadata)
+      } catch (e) {
+        console.warn(`[DB] Failed to parse enhancement_metadata for transcript ${t.id}:`, e)
+      }
+    }
+
+    return {
+      ...t,
+      enhancement_metadata_parsed: parsedMetadata
+    }
+  })
 }
 
 export async function getSummary(sessionId: string) {
