@@ -41,7 +41,7 @@ const handleRequest = async (req: Request, profile: Record<string, any>) => {
 
     // Use shared Gemini client with retry logic
     const geminiClient = getGeminiClient({
-      model: GEMINI_MODELS.FLASH,
+      model: GEMINI_MODELS.FLASH_LITE,
       temperature: 0.3,
       topK: 20,
       topP: 0.8,
