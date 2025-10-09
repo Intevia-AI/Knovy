@@ -45,6 +45,7 @@ let selectionWindow: BrowserWindow | null
 
 let isContentProtectionEnabled = false
 let isScreenshotInProgress = false
+let hiddenWindowsBeforeScreenshot: Set<number> = new Set()
 
 let pendingKeyword: { keyword: string; timestamp: number } | null = null
 
@@ -1253,6 +1254,21 @@ app.on('ready', async () => {
       }
     }
 
+    // Hide all windows except screen-preview to avoid visual distraction during screenshot
+    console.log('[main/index.ts] Hiding all non-preview windows for screenshot')
+    hiddenWindowsBeforeScreenshot.clear()
+    for (const win of BrowserWindow.getAllWindows()) {
+      if (!win.isDestroyed()) {
+        const url = win.webContents.getURL()
+        // Keep only screen-preview windows visible (they show the actual screen content)
+        if (!url.includes('#screen-preview') && win.isVisible()) {
+          console.log('[main/index.ts] Hiding window:', url)
+          hiddenWindowsBeforeScreenshot.add(win.id)
+          win.hide()
+        }
+      }
+    }
+
     createSelectionWindow()
   })
 
@@ -1266,6 +1282,20 @@ app.on('ready', async () => {
       selectionWindow.close()
       selectionWindow = null
     }
+
+    // Restore visibility of windows that were hidden for screenshot
+    console.log('[main/index.ts] Restoring visibility of hidden windows')
+    for (const win of BrowserWindow.getAllWindows()) {
+      if (!win.isDestroyed() && hiddenWindowsBeforeScreenshot.has(win.id)) {
+        console.log('[main/index.ts] Showing window:', win.webContents.getURL())
+        win.show()
+        // Focus the main window if it was hidden
+        if (win === mainWindow) {
+          win.focus()
+        }
+      }
+    }
+    hiddenWindowsBeforeScreenshot.clear()
 
     console.log(
       `[main/index.ts] Restoring content protection to user setting: ${isContentProtectionEnabled}`
