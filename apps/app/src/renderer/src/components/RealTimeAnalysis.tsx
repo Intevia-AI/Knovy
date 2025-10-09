@@ -81,20 +81,11 @@ export default function RealTimeAnalysis({
       const enhancedText = data.enhanced.corrected
       const keywords = data.enhanced.keywords || []
 
-      // Format text with backticks around keywords for MarkdownRenderer
-      let formattedText = enhancedText
-      if (keywords.length > 0) {
-        keywords.forEach((keyword) => {
-          // Use regex to replace keyword with backtick-wrapped version (case-insensitive)
-          const regex = new RegExp(`(${keyword})`, 'gi')
-          formattedText = formattedText.replace(regex, '`$1`')
-        })
-      }
-
+      // No need to wrap keywords with backticks - KeywordHighlighter handles that dynamically
       console.log(`[RealTimeAnalysis] Sending transcription update for ${data.original.id}`)
       ;(window as any).electronAPI.send('transcription:update', {
         id: data.original.id,
-        enhancedText: formattedText,
+        enhancedText: enhancedText, // Use clean enhanced text without backticks
         sourceType: data.original.sourceType,
         keywords: keywords,
         intention: data.enhanced.intention,
