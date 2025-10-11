@@ -310,15 +310,20 @@ export default function ActionsPanel() {
     // Auto-execute pending actions based on per-action approval modes
     pendingActions.forEach((action) => {
       if (action.status === 'pending') {
-        const actionSettings = settings.actions[action.actionType]
-        if (actionSettings && actionSettings.approvalMode === 'automatic') {
+        // IMPORTANT: Check the settingsSnapshot (approval mode when action was created)
+        // not the current settings. We should only auto-execute actions that were
+        // created when the mode was already "automatic", not actions that were
+        // created in "ask" mode and then the user changed settings.
+        const originalApprovalMode = action.settingsSnapshot?.actions[action.actionType]?.approvalMode
+
+        if (originalApprovalMode === 'automatic') {
           // Check if we've already auto-executed this action
           if (autoExecutedActions.current.has(action.id)) {
             console.log('[ActionsPanel] Action already auto-executed, skipping:', action.id)
             return
           }
 
-          console.log('[ActionsPanel] Auto-executing action in automatic mode:', action.id)
+          console.log('[ActionsPanel] Auto-executing action (was created in automatic mode):', action.id)
 
           // Mark this action as auto-executed
           autoExecutedActions.current.add(action.id)
@@ -330,6 +335,8 @@ export default function ActionsPanel() {
           // Approve and execute immediately
           approveAction(action.id)
           setTimeout(() => executeAction(action), 100)
+        } else if (originalApprovalMode === 'ask') {
+          console.log('[ActionsPanel] Action was created in ask mode, not auto-executing even though settings changed:', action.id)
         }
       }
     })
@@ -368,8 +375,9 @@ export default function ActionsPanel() {
   // Render inline action notification (styled as system message - gray, left-aligned)
   const renderActionNotification = (action: PendingAction) => {
     const intentionLabel = INTENTION_LABELS[action.intention.primary][language]
-    const actionSettings = settings?.actions[action.actionType]
-    const approvalMode = actionSettings?.approvalMode || 'ask'
+    // Use the original approval mode from when the action was created
+    // This ensures buttons stay visible even if settings change after action creation
+    const originalApprovalMode = action.settingsSnapshot?.actions[action.actionType]?.approvalMode || 'ask'
     const isExecutingThisAction = executingActionRef.current === action.id
 
     return (
@@ -387,7 +395,7 @@ export default function ActionsPanel() {
             </div>
 
             {/* Action buttons for pending in ask mode */}
-            {action.status === 'pending' && approvalMode === 'ask' && (
+            {action.status === 'pending' && originalApprovalMode === 'ask' && (
               <div className="flex gap-2 pt-1">
                 <Button
                   size="sm"
