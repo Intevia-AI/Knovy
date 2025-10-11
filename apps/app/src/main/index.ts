@@ -33,7 +33,7 @@ import {
   moveSettingsWindowToDisplay,
   syncSettingsWindowAlwaysOnTop
 } from './settingsWindowManager'
-import { DEFAULT_AUTO_TRIGGER_SETTINGS } from './types/settings'
+import { DEFAULT_AUTO_TRIGGER_SETTINGS } from '../renderer/src/types/settings'
 
 console.log('[Debug] Imported dbService module:', dbService)
 

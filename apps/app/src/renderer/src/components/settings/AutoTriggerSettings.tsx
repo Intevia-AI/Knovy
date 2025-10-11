@@ -8,7 +8,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { useTranslation } from '@/context/TranslationContext'
-import type { AutoTriggerSettings as AutoTriggerSettingsType } from '../../../../../../main/types/settings'
+import type { AutoTriggerSettings as AutoTriggerSettingsType } from '@/types/settings'
 
 export function AutoTriggerSettings() {
   const { t } = useTranslation()
