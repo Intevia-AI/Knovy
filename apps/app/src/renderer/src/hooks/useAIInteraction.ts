@@ -83,12 +83,14 @@ export function useAIInteraction() {
         'transcription:data',
         (newTranscription: TranscriptionMessage) => {
           if (!newTranscription || !newTranscription.content) return
+
           // The object from IPC has a string timestamp, which needs to be converted to a number.
           const formattedTranscription = {
             ...newTranscription,
             timestamp: new Date(newTranscription.timestamp as any).getTime(),
             sourceType: newTranscription.sourceType || 'system'
           }
+
           setTranscriptions((prev) => [...prev, formattedTranscription])
         }
       )
@@ -111,17 +113,33 @@ export function useAIInteraction() {
           if (isMainWindow) {
             console.log('[useAIInteraction] Received transcription update:', updateData)
           }
-          setTranscriptions((prev) =>
-            prev.map((transcript) =>
-              transcript.id === updateData.id
-                ? {
-                    ...transcript,
-                    content: updateData.enhancedText,
-                    keywords: updateData.keywords || []
-                  }
-                : transcript
-            )
-          )
+
+          setTranscriptions((prev) => {
+            let foundMatch = false
+            const updated = prev.map((transcript) => {
+              if (transcript.id === updateData.id) {
+                foundMatch = true
+                console.log(`[useAIInteraction] Updating transcript ${transcript.id}:`, {
+                  oldContent: transcript.content,
+                  newContent: updateData.enhancedText,
+                  keywords: updateData.keywords
+                })
+                return {
+                  ...transcript,
+                  content: updateData.enhancedText,
+                  keywords: updateData.keywords || []
+                }
+              }
+              return transcript
+            })
+
+            // Warn if no matching transcript was found
+            if (!foundMatch && isMainWindow) {
+              console.warn(`[useAIInteraction] No transcript found with ID ${updateData.id}. Available IDs:`, prev.map(t => t.id))
+            }
+
+            return updated
+          })
         }
       )
 
@@ -147,7 +165,8 @@ export function useAIInteraction() {
             if (loadedTranscripts && loadedTranscripts.length > 0) {
               const formattedTranscripts = loadedTranscripts.map((t: any) => ({
                 id: t.id,
-                content: t.content,
+                // Use enhanced_text if available, otherwise fall back to raw content
+                content: t.enhanced_text || t.content,
                 role: 'assistant',
                 type: 'transcription',
                 timestamp: new Date(t.timestamp).getTime(),
