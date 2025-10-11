@@ -215,6 +215,17 @@ export function MainController() {
     }
     const unsubscribeKeyword = window.electronAPI.on('keyword:search', handleKeywordSearch)
 
+    // Auto-open ActionsPanel when a new action is triggered
+    const handleActionTriggered = (action: any) => {
+      console.log(
+        `[MainController] Action triggered: ${action.actionType}. Ensuring actions panel is open.`
+      )
+      handleTogglePanel('actions', { ensureOpen: true })
+    }
+    const unsubscribeActionTriggered = window.electronAPI.autoTrigger.onActionTriggered(
+      handleActionTriggered
+    )
+
     const handleSourceChanged = () => restartScreenShare()
     const unsubscribeSourceChanged = window.electronAPI.on(
       'screenshare:source-changed',
@@ -223,6 +234,7 @@ export function MainController() {
 
     return () => {
       unsubscribeKeyword()
+      unsubscribeActionTriggered()
       unsubscribeSourceChanged()
     }
   }, [handleTogglePanel, restartScreenShare])

@@ -186,7 +186,13 @@ export const translations = {
     actionScheduleReminder: 'Schedule Reminder',
     actionScheduleReminderDescription: 'Automatically create reminders from conversation',
     actionSendEmail: 'Send Email',
-    actionSendEmailDescription: 'Draft and send emails based on conversation'
+    actionSendEmailDescription: 'Draft and send emails based on conversation',
+    // Action Queue
+    approve: 'Approve',
+    reject: 'Reject',
+    executingAction: 'Executing',
+    actionQueueTitle: 'Pending Actions',
+    noActionsInQueue: 'No pending actions'
   },
   'zh-TW': {
     // Add Traditional Chinese translations here
@@ -361,7 +367,13 @@ export const translations = {
     actionScheduleReminder: '排程提醒',
     actionScheduleReminderDescription: '自動從對話中建立提醒',
     actionSendEmail: '發送電子郵件',
-    actionSendEmailDescription: '根據對話內容草擬並發送電子郵件'
+    actionSendEmailDescription: '根據對話內容草擬並發送電子郵件',
+    // Action Queue
+    approve: '同意',
+    reject: '拒絕',
+    executingAction: '執行中',
+    actionQueueTitle: '待處理動作',
+    noActionsInQueue: '沒有待處理的動作'
   }
 }
 
@@ -541,6 +553,12 @@ export type TranslationKey =
   | 'actionScheduleReminderDescription'
   | 'actionSendEmail'
   | 'actionSendEmailDescription'
+  // Action Queue
+  | 'approve'
+  | 'reject'
+  | 'executingAction'
+  | 'actionQueueTitle'
+  | 'noActionsInQueue'
 
 /**
  * Type definition for supported language codes in the application

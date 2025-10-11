@@ -14,10 +14,13 @@ import { motion, AnimatePresence } from 'motion'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/hooks/useAuth'
 import { Markdown } from '@/components/MarkdownRenderer'
+import { useActionQueue } from '@/hooks/useActionQueue'
+import { ActionQueue } from '@/components/ActionQueue'
 
 export default function ActionsPanel() {
   const { t } = useI18n()
   const { sendContextToAI, aiMessages, isLoading, setAiMessages } = useAIInteraction()
+  const { pendingActions, settings, approveAction, rejectAction, executeAction } = useActionQueue()
   const [isScreenSharing, setIsScreenSharing] = useState(false)
   const [input, setInput] = useState('')
   const [isConversational, setIsConversational] = useState(false)
@@ -216,6 +219,37 @@ export default function ActionsPanel() {
     }
   }
 
+  // Handle automatic execution of actions in automatic mode
+  useEffect(() => {
+    if (!settings || settings.approvalMode !== 'automatic') return
+
+    // Auto-execute pending actions
+    pendingActions.forEach((action) => {
+      if (action.status === 'pending') {
+        console.log('[ActionsPanel] Auto-executing action in automatic mode:', action.id)
+        // Approve and execute immediately
+        approveAction(action.id)
+        setTimeout(() => executeAction(action), 100)
+      }
+    })
+  }, [pendingActions, settings, approveAction, executeAction])
+
+  // Handle AI action execution with context
+  useEffect(() => {
+    const handleAIAction = (data: any) => {
+      console.log('[ActionsPanel] AI action triggered with context:', data)
+      // Switch to conversational mode and trigger AI response
+      if (!isConversational) {
+        setIsConversational(true)
+      }
+      // Trigger the 'answer' action which generates a recommended response
+      sendContextToAI('answer')
+    }
+
+    const unsubscribe = window.electronAPI.on('ai-action:recommend-response', handleAIAction)
+    return () => unsubscribe()
+  }, [isConversational, sendContextToAI])
+
   return (
     <AnimatePresence onExitComplete={handleAnimationComplete}>
       {isOpen && (
@@ -226,6 +260,19 @@ export default function ActionsPanel() {
           transition={{ duration: 0.2 }}
           className="flex flex-col h-screen w-full glass-popover p-2 space-y-2 overflow-y-auto"
         >
+          {/* Action Queue - Always visible when there are pending actions */}
+          {pendingActions.length > 0 && settings && (
+            <div className="flex-none">
+              <ActionQueue
+                pendingActions={pendingActions}
+                approvalMode={settings.approvalMode}
+                onApprove={approveAction}
+                onReject={rejectAction}
+                onExecute={executeAction}
+              />
+            </div>
+          )}
+
           <AnimatePresence initial={false}>
             {isConversational ? (
               <motion.div
