@@ -37,6 +37,7 @@ export default function ActionsPanel() {
   const [actionResults, setActionResults] = useState<Record<string, string>>({}) // Store AI results per action ID
   const [hiddenMessageIds, setHiddenMessageIds] = useState<Set<string>>(new Set()) // Track hidden messages
   const messageTimestamps = useRef<Map<string, number>>(new Map()) // Stable timestamps for messages
+  const autoExecutedActions = useRef<Set<string>>(new Set()) // Track actions that have been auto-executed
 
   useEffect(() => {
     // Auto-scroll when new messages or actions arrive (unless we're executing an action)
@@ -294,12 +295,34 @@ export default function ActionsPanel() {
   useEffect(() => {
     if (!settings) return
 
+    // Get current action IDs
+    const currentActionIds = new Set(pendingActions.map((a) => a.id))
+
+    // Clean up tracking set - remove actions that no longer exist
+    const toRemove: string[] = []
+    autoExecutedActions.current.forEach((actionId) => {
+      if (!currentActionIds.has(actionId)) {
+        toRemove.push(actionId)
+      }
+    })
+    toRemove.forEach((actionId) => autoExecutedActions.current.delete(actionId))
+
     // Auto-execute pending actions based on per-action approval modes
     pendingActions.forEach((action) => {
       if (action.status === 'pending') {
         const actionSettings = settings.actions[action.actionType]
         if (actionSettings && actionSettings.approvalMode === 'automatic') {
+          // Check if we've already auto-executed this action
+          if (autoExecutedActions.current.has(action.id)) {
+            console.log('[ActionsPanel] Action already auto-executed, skipping:', action.id)
+            return
+          }
+
           console.log('[ActionsPanel] Auto-executing action in automatic mode:', action.id)
+
+          // Mark this action as auto-executed
+          autoExecutedActions.current.add(action.id)
+
           // Switch to conversational mode
           if (!isConversational) {
             setIsConversational(true)
