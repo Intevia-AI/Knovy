@@ -89,6 +89,22 @@ async function initializeDatabase() {
     );
   `)
 
+  // Add structured summary columns (Phase: Structured Summary Response)
+  const summaryColumns = [
+    'short_summary TEXT', // Brief one-line summary for preview
+    'context_data TEXT' // JSON string with participants, topics, keywords, etc.
+  ]
+
+  for (const column of summaryColumns) {
+    try {
+      await db.exec(`ALTER TABLE summaries ADD COLUMN ${column};`)
+      console.log(`[DB] Added summary column: ${column.split(' ')[0]}`)
+    } catch (error) {
+      // Column already exists, ignore error
+      console.log(`[DB] Summary column ${column.split(' ')[0]} already exists`)
+    }
+  }
+
   return db
 }
 
