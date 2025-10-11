@@ -1,5 +1,5 @@
 import { motion } from 'motion'
-import { Settings, History, User, Monitor, Keyboard, Info, Power } from 'lucide-react'
+import { Settings, History, User, Monitor, Keyboard, Info, Power, Zap } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useTranslation } from '@/context/TranslationContext'
 import type { SettingsSection } from '../SettingsPage'
@@ -15,6 +15,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   { id: 'history', labelKey: 'historyTab', icon: History },
   { id: 'general', labelKey: 'generalTab', icon: Settings },
+  { id: 'autoTrigger', labelKey: 'autoTriggerTab', icon: Zap },
   { id: 'shortcuts', labelKey: 'shortcutsTab', icon: Keyboard },
   { id: 'account', labelKey: 'accountTab', icon: User },
   { id: 'about', labelKey: 'aboutTab', icon: Info }

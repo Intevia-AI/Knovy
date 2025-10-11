@@ -162,7 +162,31 @@ export const translations = {
     // Screenshot Selection Window
     screenshotSelectionHint: 'Click and drag to select an area',
     screenshotSelectionCapture: 'Release mouse or press Enter to capture',
-    screenshotSelectionCancel: 'Press ESC to cancel'
+    screenshotSelectionCancel: 'Press ESC to cancel',
+    // Auto-Trigger Settings
+    autoTriggerTab: 'Auto-Trigger',
+    autoTriggerTitle: 'Intention-Based Action Triggering',
+    autoTriggerDescription: 'Automatically detect intentions and trigger relevant actions',
+    enableAutoTrigger: 'Enable Auto-Trigger',
+    approvalMode: 'Approval Mode',
+    approvalModeAsk: 'Ask Before Acting',
+    approvalModeAskDescription: 'Show approval dialog before executing any detected action',
+    approvalModeAutomatic: 'Automatic',
+    approvalModeAutomaticDescription: 'Automatically execute actions when confidence is high',
+    confidenceThreshold: 'Confidence Threshold',
+    confidenceThresholdDescription: 'Minimum confidence level required to trigger actions',
+    thresholdLow: 'Low',
+    thresholdHigh: 'High',
+    thresholdWarningLow: 'Low threshold may trigger actions too frequently',
+    thresholdWarningMedium: 'Balanced threshold for most use cases',
+    thresholdWarningHigh: 'High threshold may miss some opportunities',
+    enabledActions: 'Enabled Actions',
+    actionRecommendResponse: 'Recommend Response',
+    actionRecommendResponseDescription: 'Suggest appropriate responses based on conversation context',
+    actionScheduleReminder: 'Schedule Reminder',
+    actionScheduleReminderDescription: 'Automatically create reminders from conversation',
+    actionSendEmail: 'Send Email',
+    actionSendEmailDescription: 'Draft and send emails based on conversation'
   },
   'zh-TW': {
     // Add Traditional Chinese translations here
@@ -313,7 +337,31 @@ export const translations = {
     // Screenshot Selection Window
     screenshotSelectionHint: '點擊並拖曳以選擇區域',
     screenshotSelectionCapture: '放開滑鼠或按 Enter 進行截圖',
-    screenshotSelectionCancel: '按 ESC 取消'
+    screenshotSelectionCancel: '按 ESC 取消',
+    // Auto-Trigger Settings
+    autoTriggerTab: '自動觸發',
+    autoTriggerTitle: '意圖驅動動作觸發',
+    autoTriggerDescription: '自動偵測意圖並觸發相關動作',
+    enableAutoTrigger: '啟用自動觸發',
+    approvalMode: '批准模式',
+    approvalModeAsk: '執行前詢問',
+    approvalModeAskDescription: '在執行任何偵測到的動作前顯示批准對話框',
+    approvalModeAutomatic: '自動執行',
+    approvalModeAutomaticDescription: '當信心度足夠高時自動執行動作',
+    confidenceThreshold: '信心度閾值',
+    confidenceThresholdDescription: '觸發動作所需的最低信心度',
+    thresholdLow: '低',
+    thresholdHigh: '高',
+    thresholdWarningLow: '低閾值可能會過於頻繁地觸發動作',
+    thresholdWarningMedium: '大多數情況下的平衡閾值',
+    thresholdWarningHigh: '高閾值可能會錯過某些機會',
+    enabledActions: '啟用的動作',
+    actionRecommendResponse: '推薦回應',
+    actionRecommendResponseDescription: '根據對話內容推薦適當的回應',
+    actionScheduleReminder: '排程提醒',
+    actionScheduleReminderDescription: '自動從對話中建立提醒',
+    actionSendEmail: '發送電子郵件',
+    actionSendEmailDescription: '根據對話內容草擬並發送電子郵件'
   }
 }
 
@@ -465,6 +513,34 @@ export type TranslationKey =
   | 'copyTranscript'
   | 'copiedToClipboard'
   | 'copyFailed'
+  // Screenshot Selection Window
+  | 'screenshotSelectionHint'
+  | 'screenshotSelectionCapture'
+  | 'screenshotSelectionCancel'
+  // Auto-Trigger Settings
+  | 'autoTriggerTab'
+  | 'autoTriggerTitle'
+  | 'autoTriggerDescription'
+  | 'enableAutoTrigger'
+  | 'approvalMode'
+  | 'approvalModeAsk'
+  | 'approvalModeAskDescription'
+  | 'approvalModeAutomatic'
+  | 'approvalModeAutomaticDescription'
+  | 'confidenceThreshold'
+  | 'confidenceThresholdDescription'
+  | 'thresholdLow'
+  | 'thresholdHigh'
+  | 'thresholdWarningLow'
+  | 'thresholdWarningMedium'
+  | 'thresholdWarningHigh'
+  | 'enabledActions'
+  | 'actionRecommendResponse'
+  | 'actionRecommendResponseDescription'
+  | 'actionScheduleReminder'
+  | 'actionScheduleReminderDescription'
+  | 'actionSendEmail'
+  | 'actionSendEmailDescription'
 
 /**
  * Type definition for supported language codes in the application
