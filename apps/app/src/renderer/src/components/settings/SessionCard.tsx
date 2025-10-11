@@ -20,6 +20,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { useTranslation } from '@/context/TranslationContext'
 import { toast } from 'sonner'
+import { MarkdownRenderer } from '@/components/MarkdownRenderer'
 
 interface SessionCardProps {
   session: SessionWithTranscripts
@@ -30,6 +31,7 @@ interface SessionCardProps {
 export function SessionCard({ session, onExport, onDelete }: SessionCardProps) {
   const { t } = useTranslation()
   const [isExpanded, setIsExpanded] = useState(false)
+  const [activeTab, setActiveTab] = useState<'summary' | 'transcriptions'>('summary')
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [showCopyMenu, setShowCopyMenu] = useState(false)
@@ -39,6 +41,12 @@ export function SessionCard({ session, onExport, onDelete }: SessionCardProps) {
   const sessionDate = formatDate(session.started_at)
   const sessionTime = formatTime(session.started_at)
   const duration = formatDuration(session.duration)
+
+  // Get display summary for collapsed state
+  const displaySummary = session.short_summary ||
+    (session.summary ? session.summary.slice(0, 100) + '...' : null) ||
+    session.transcripts[0]?.text ||
+    'No content available'
 
   const handleDeleteClick = () => {
     setShowDeleteDialog(true)
@@ -125,9 +133,9 @@ export function SessionCard({ session, onExport, onDelete }: SessionCardProps) {
                 <span>{duration}</span>
               </div>
 
-              {/* Summary or First Transcript */}
-              <div className="text-sm text-foreground/90">
-                {session.summary || session.transcripts[0]?.text || 'No content available'}
+              {/* Short Summary or First Transcript */}
+              <div className="text-sm text-foreground/90 line-clamp-2">
+                {displaySummary}
               </div>
             </div>
 
@@ -211,7 +219,7 @@ export function SessionCard({ session, onExport, onDelete }: SessionCardProps) {
           </div>
         </div>
 
-        {/* Expanded Content */}
+        {/* Expanded Content with Tabs */}
         <AnimatePresence>
           {isExpanded && (
             <motion.div
@@ -219,74 +227,137 @@ export function SessionCard({ session, onExport, onDelete }: SessionCardProps) {
               animate={{ height: 'auto', opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
               transition={{ duration: 0.2, ease: 'easeInOut' }}
-              className="border-t border-secondary p-2 overflow-hidden"
+              className="border-t border-secondary overflow-hidden"
             >
-              <div className="p-4 space-y-3">
-                {/* Summary Section */}
-                {session.summary && (
-                  <div>
-                    <h4 className="text-xs font-medium text-muted-foreground mb-2">Summary</h4>
-                    <p className="text-sm text-foreground/90">{session.summary}</p>
-                  </div>
-                )}
+              {/* Tab Navigation */}
+              <div className="flex border-b border-secondary/50 px-2">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setActiveTab('summary')
+                  }}
+                  className={`px-4 py-2 text-sm font-medium transition-colors relative ${
+                    activeTab === 'summary'
+                      ? 'text-foreground'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  Summary
+                  {activeTab === 'summary' && (
+                    <motion.div
+                      layoutId={`activeTab-${session.id}`}
+                      className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary"
+                      transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                    />
+                  )}
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setActiveTab('transcriptions')
+                  }}
+                  className={`px-4 py-2 text-sm font-medium transition-colors relative ${
+                    activeTab === 'transcriptions'
+                      ? 'text-foreground'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  Transcriptions ({session.transcripts.length})
+                  {activeTab === 'transcriptions' && (
+                    <motion.div
+                      layoutId={`activeTab-${session.id}`}
+                      className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary"
+                      transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                    />
+                  )}
+                </button>
+              </div>
 
-                {/* Transcripts Section */}
-                {session.transcripts.length > 0 && (
-                  <div>
-                    <h4 className="text-xs font-medium text-muted-foreground mb-2">
-                      Transcripts ({session.transcripts.length})
-                    </h4>
-                    <div className="space-y-2 max-h-[300px] overflow-y-auto settings-scrollbar">
-                      {session.transcripts.map((transcript) => (
-                        <div
-                          key={transcript.id}
-                          className="flex items-start gap-2 text-sm p-2 -mx-2 rounded-md hover:bg-accent/30 transition-colors cursor-pointer group relative"
-                          onMouseEnter={() => setHoveredTranscriptId(transcript.id)}
-                          onMouseLeave={() => setHoveredTranscriptId(null)}
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            handleCopyTranscript(transcript)
-                          }}
-                        >
-                          <div className="flex-shrink-0 text-xs text-muted-foreground mt-0.5">
-                            {formatTime(transcript.timestamp)}
-                          </div>
-                          <div className="flex-shrink-0">
-                            {transcript.source_type === 'microphone' ? (
-                              <span className="text-xs px-1.5 py-0.5 rounded bg-primary/20 text-primary">
-                                Mic
-                              </span>
-                            ) : (
-                              <span className="text-xs px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-500">
-                                Sys
-                              </span>
-                            )}
-                          </div>
-                          <p className="flex-1 text-foreground/90">{transcript.text}</p>
+              {/* Tab Content */}
+              <div className="p-4">
+                <AnimatePresence mode="wait">
+                  {activeTab === 'summary' && (
+                    <motion.div
+                      key="summary"
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: 10 }}
+                      transition={{ duration: 0.15 }}
+                      className="space-y-3"
+                    >
+                      {session.summary ? (
+                        <div className="prose prose-sm dark:prose-invert max-w-none overflow-x-hidden break-words">
+                          <MarkdownRenderer>{session.summary}</MarkdownRenderer>
+                        </div>
+                      ) : (
+                        <p className="text-sm text-muted-foreground text-center py-4">
+                          No summary available for this session
+                        </p>
+                      )}
+                    </motion.div>
+                  )}
 
-                          {/* Copy Icon on Hover */}
-                          {(hoveredTranscriptId === transcript.id ||
-                            copiedTranscriptId === transcript.id) && (
-                            <div className="flex-shrink-0">
-                              {copiedTranscriptId === transcript.id ? (
-                                <Check className="w-3.5 h-3.5 text-green-500" />
-                              ) : (
-                                <Copy className="w-3.5 h-3.5 text-muted-foreground" />
+                  {activeTab === 'transcriptions' && (
+                    <motion.div
+                      key="transcriptions"
+                      initial={{ opacity: 0, x: 10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -10 }}
+                      transition={{ duration: 0.15 }}
+                    >
+                      {session.transcripts.length > 0 ? (
+                        <div className="space-y-2 max-h-[400px] overflow-y-auto overflow-x-hidden settings-scrollbar pr-2">
+                          {session.transcripts.map((transcript) => (
+                            <div
+                              key={transcript.id}
+                              className="flex items-start gap-2 text-sm p-2 -ml-2 rounded-md hover:bg-accent/30 transition-colors cursor-pointer group relative"
+                              onMouseEnter={() => setHoveredTranscriptId(transcript.id)}
+                              onMouseLeave={() => setHoveredTranscriptId(null)}
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleCopyTranscript(transcript)
+                              }}
+                            >
+                              <div className="flex-shrink-0 text-xs text-muted-foreground mt-0.5">
+                                {formatTime(transcript.timestamp)}
+                              </div>
+                              <div className="flex-shrink-0">
+                                {transcript.source_type === 'microphone' ? (
+                                  <span className="text-xs px-1.5 py-0.5 rounded bg-primary/20 text-primary">
+                                    User
+                                  </span>
+                                ) : (
+                                  <span className="text-xs px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-500">
+                                    Others
+                                  </span>
+                                )}
+                              </div>
+                              <p className="flex-1 text-foreground/90 break-words overflow-wrap-anywhere">
+                                {transcript.text}
+                              </p>
+
+                              {/* Copy Icon on Hover */}
+                              {(hoveredTranscriptId === transcript.id ||
+                                copiedTranscriptId === transcript.id) && (
+                                <div className="flex-shrink-0">
+                                  {copiedTranscriptId === transcript.id ? (
+                                    <Check className="w-3.5 h-3.5 text-green-500" />
+                                  ) : (
+                                    <Copy className="w-3.5 h-3.5 text-muted-foreground" />
+                                  )}
+                                </div>
                               )}
                             </div>
-                          )}
+                          ))}
                         </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* No content message */}
-                {!session.summary && session.transcripts.length === 0 && (
-                  <p className="text-sm text-muted-foreground text-center py-4">
-                    No content available for this session
-                  </p>
-                )}
+                      ) : (
+                        <p className="text-sm text-muted-foreground text-center py-4">
+                          No transcriptions available for this session
+                        </p>
+                      )}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             </motion.div>
           )}
