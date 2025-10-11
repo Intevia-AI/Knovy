@@ -33,6 +33,7 @@ import {
   moveSettingsWindowToDisplay,
   syncSettingsWindowAlwaysOnTop
 } from './settingsWindowManager'
+import { DEFAULT_AUTO_TRIGGER_SETTINGS } from './types/settings'
 
 console.log('[Debug] Imported dbService module:', dbService)
 
@@ -238,20 +239,56 @@ async function loadSettings() {
     await fs.access(settingsPath)
     const data = await fs.readFile(settingsPath, 'utf-8')
     const parsed = JSON.parse(data)
+
+    // Merge with defaults and validate autoTrigger settings
+    const autoTrigger = {
+      ...DEFAULT_AUTO_TRIGGER_SETTINGS,
+      ...parsed.autoTrigger,
+      // Clamp confidence threshold to valid range [0, 1]
+      confidenceThreshold: Math.max(0, Math.min(1, parsed.autoTrigger?.confidenceThreshold ?? 0.7))
+    }
+
     return {
       language: 'zh-TW',
       customPrompt: '',
       contentProtection: false,
-      ...parsed
+      ...parsed,
+      autoTrigger
     }
   } catch (error) {
     console.log('Settings file not found or error reading, returning defaults.')
-    return { language: 'zh-TW', customPrompt: '', contentProtection: false }
+    return {
+      language: 'zh-TW',
+      customPrompt: '',
+      contentProtection: false,
+      autoTrigger: DEFAULT_AUTO_TRIGGER_SETTINGS
+    }
   }
 }
 
 async function saveSettings(settings: any) {
   try {
+    // Validate autoTrigger settings before saving
+    if (settings.autoTrigger) {
+      // Ensure confidence threshold is in valid range [0, 1]
+      if (typeof settings.autoTrigger.confidenceThreshold === 'number') {
+        settings.autoTrigger.confidenceThreshold = Math.max(
+          0,
+          Math.min(1, settings.autoTrigger.confidenceThreshold)
+        )
+      }
+
+      // Validate per-action thresholds if they exist
+      if (settings.autoTrigger.perActionThresholds) {
+        Object.keys(settings.autoTrigger.perActionThresholds).forEach((key) => {
+          const threshold = settings.autoTrigger.perActionThresholds[key]
+          if (typeof threshold === 'number') {
+            settings.autoTrigger.perActionThresholds[key] = Math.max(0, Math.min(1, threshold))
+          }
+        })
+      }
+    }
+
     await fs.writeFile(settingsPath, JSON.stringify(settings, null, 2))
     console.log('Settings saved to:', settingsPath)
   } catch (error) {
