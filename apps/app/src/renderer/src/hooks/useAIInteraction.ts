@@ -422,7 +422,13 @@ export function useAIInteraction() {
         if (action === 'summary') {
           const sessionId = await (window as any).electronAPI.invoke('session:get-id')
           if (sessionId && content) {
-            await (window as any).electronAPI.invoke('db:save-summary', { sessionId, content })
+            // Save structured summary data
+            await (window as any).electronAPI.invoke('db:save-summary', {
+              sessionId,
+              content,  // long_summary
+              short_summary: data.short_summary,
+              context: data.context
+            })
           }
           setAiMessages((prev) => {
             const existingSummary = prev.find((m) => m.id === 'ai-summary')
