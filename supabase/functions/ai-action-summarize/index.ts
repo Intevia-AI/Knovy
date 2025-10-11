@@ -48,7 +48,48 @@ const handleRequest = async (req: Request, profile: Record<string, any>) => {
       maxOutputTokens: 2048,
     });
 
-    const { text: summary, usage } = await geminiClient.generateText(prompt);
+    const { text: rawResponse, usage } = await geminiClient.generateText(prompt);
+
+    // Parse JSON response
+    let structuredSummary;
+    try {
+      // Clean the response: remove markdown code blocks if present
+      const cleanedResponse = rawResponse.replace(/^```json\n?/gm, '').replace(/\n?```$/gm, '').trim();
+      structuredSummary = JSON.parse(cleanedResponse);
+
+      // Validate structure
+      if (!structuredSummary.short_summary || !structuredSummary.long_summary || !structuredSummary.context) {
+        throw new Error("Missing required fields in structured summary");
+      }
+    } catch (parseError) {
+      console.error("[ai-action-summarize] Failed to parse JSON response:", parseError);
+      console.error("[ai-action-summarize] Raw response:", rawResponse);
+
+      // Fallback: return as plain text summary
+      return new Response(
+        JSON.stringify({
+          summary: rawResponse || "",
+          short_summary: rawResponse?.slice(0, 100) || "",
+          long_summary: rawResponse || "",
+          context: {
+            participants: [],
+            topics: [],
+            keywords: [],
+            time_context: null,
+            scenario: null,
+            key_points: []
+          },
+          usage: {
+            input_tokens: usage.input_tokens,
+            output_tokens: usage.output_tokens,
+          },
+        }),
+        {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
+    }
 
     // Log the action with token usage to action_logs table
     try {
@@ -72,7 +113,17 @@ const handleRequest = async (req: Request, profile: Record<string, any>) => {
 
     return new Response(
       JSON.stringify({
-        summary: summary || "",
+        summary: structuredSummary.long_summary || "",  // Backward compatibility
+        short_summary: structuredSummary.short_summary || "",
+        long_summary: structuredSummary.long_summary || "",
+        context: structuredSummary.context || {
+          participants: [],
+          topics: [],
+          keywords: [],
+          time_context: null,
+          scenario: null,
+          key_points: []
+        },
         usage: {
           input_tokens: usage.input_tokens,
           output_tokens: usage.output_tokens,

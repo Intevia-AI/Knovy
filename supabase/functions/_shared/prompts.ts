@@ -288,31 +288,145 @@ ${recent_transcriptions}
   summarize: {
     en: {
       with_previous: (text_input: string, existing_summary: string) =>
-        `You are given a previous summary and new conversation transcripts. Integrate the new transcripts into the summary, refining and extending it. The goal is to produce a single, coherent, updated summary. Format the output in Markdown without a "Summary" heading and use numbering for key takeaways.
+        `You are given a previous summary and new conversation transcripts. Your task is to produce a structured JSON response with both a comprehensive summary and extracted context.
+
+**IMPORTANT**: You must return ONLY valid JSON. Do not include any explanatory text before or after the JSON.
 
 Previous Summary:
 ${existing_summary}
 
 New Transcripts:
-${text_input}`,
-      without_previous: (text_input: string) =>
-        `Summarize the following text into a concise summary. Format the output in Markdown without a "Summary" heading and use numbering for key takeaways. The text to summarize is:
+${text_input}
 
-${text_input}`,
+Analyze the transcripts and return a JSON object with this EXACT structure:
+{
+  "short_summary": "A one-line summary (80-100 characters) capturing the main theme",
+  "long_summary": "A detailed Markdown-formatted summary with embedded context at the beginning. Start with a brief paragraph mentioning the scenario, participants, and topics (if identifiable), then provide numbered key points. Do NOT use a 'Summary' heading.",
+  "context": {
+    "participants": ["Name1", "Name2"],
+    "topics": ["Topic1", "Topic2"],
+    "keywords": ["technical_term1", "technical_term2"],
+    "time_context": "e.g., 'Q4 planning', 'morning standup', or null if not mentioned",
+    "scenario": "e.g., 'meeting', 'lecture', 'interview', 'casual conversation', or null",
+    "key_points": ["Main takeaway 1", "Main takeaway 2"]
+  }
+}
+
+Guidelines:
+- **short_summary**: Keep it concise, 80-100 characters, one complete sentence
+- **long_summary**: Begin with context paragraph (e.g., "This was a team meeting with John and Sarah discussing product launch..."), then use markdown headings and numbered lists for key points
+- **participants**: Extract names if mentioned, otherwise empty array
+- **topics**: Main themes discussed (3-5 items max)
+- **keywords**: Technical terms, specialized vocabulary, acronyms (5-10 items max, high-signal only)
+- **time_context**: Temporal references like "Q4", "morning", "next week"
+- **scenario**: Type of conversation
+- **key_points**: Main outcomes, decisions, or takeaways (3-7 items)
+
+Return ONLY the JSON object, nothing else.`,
+      without_previous: (text_input: string) =>
+        `You are tasked with creating a structured summary of a conversation. Your task is to produce a JSON response with both a comprehensive summary and extracted context.
+
+**IMPORTANT**: You must return ONLY valid JSON. Do not include any explanatory text before or after the JSON.
+
+Transcripts to Summarize:
+${text_input}
+
+Analyze the transcripts and return a JSON object with this EXACT structure:
+{
+  "short_summary": "A one-line summary (80-100 characters) capturing the main theme",
+  "long_summary": "A detailed Markdown-formatted summary with embedded context at the beginning. Start with a brief paragraph mentioning the scenario, participants, and topics (if identifiable), then provide numbered key points. Do NOT use a 'Summary' heading.",
+  "context": {
+    "participants": ["Name1", "Name2"],
+    "topics": ["Topic1", "Topic2"],
+    "keywords": ["technical_term1", "technical_term2"],
+    "time_context": "e.g., 'Q4 planning', 'morning standup', or null if not mentioned",
+    "scenario": "e.g., 'meeting', 'lecture', 'interview', 'casual conversation', or null",
+    "key_points": ["Main takeaway 1", "Main takeaway 2"]
+  }
+}
+
+Guidelines:
+- **short_summary**: Keep it concise, 80-100 characters, one complete sentence
+- **long_summary**: Begin with context paragraph (e.g., "This was a team meeting with John and Sarah discussing product launch..."), then use markdown headings and numbered lists for key points
+- **participants**: Extract names if mentioned, otherwise empty array
+- **topics**: Main themes discussed (3-5 items max)
+- **keywords**: Technical terms, specialized vocabulary, acronyms (5-10 items max, high-signal only)
+- **time_context**: Temporal references like "Q4", "morning", "next week"
+- **scenario**: Type of conversation
+- **key_points**: Main outcomes, decisions, or takeaways (3-7 items)
+
+Return ONLY the JSON object, nothing else.`,
     },
     "zh-TW": {
       with_previous: (text_input: string, existing_summary: string) =>
-        `你正在處理一份先前的摘要和新的對話記錄。請將新的對話記錄整合到摘要中，加以完善和擴充。目標是產生一份連貫、更新的摘要。請以 Markdown 格式輸出，不要加上「摘要」標題，並為重點加上編號。
+        `你正在處理一份先前的摘要和新的對話記錄。你的任務是產生一個結構化的 JSON 回應，包含完整摘要和提取的前後文資訊。
+
+**重要**：你必須只回傳有效的 JSON。不要在 JSON 前後加上任何說明文字。
 
 先前的摘要：
 ${existing_summary}
 
 新的對話記錄：
-${text_input}`,
-      without_previous: (text_input: string) =>
-        `將以下文字摘要成一份簡潔的摘要。請以 Markdown 格式輸出，不要加上「摘要」標題，並為重點加上編號。要摘要的文字如下：
+${text_input}
 
-${text_input}`,
+分析對話記錄並回傳符合以下確切結構的 JSON 物件：
+{
+  "short_summary": "一句話摘要（80-100字元）概括主要主題",
+  "long_summary": "詳細的 Markdown 格式摘要，開頭嵌入前後文。從簡短段落開始，提及情境、參與者和主題（如果可識別），然後提供編號的重點。不要使用「摘要」標題。",
+  "context": {
+    "participants": ["姓名1", "姓名2"],
+    "topics": ["主題1", "主題2"],
+    "keywords": ["技術術語1", "技術術語2"],
+    "time_context": "例如：「第四季規劃」、「晨間站會」，或如果未提及則為 null",
+    "scenario": "例如：「會議」、「演講」、「訪談」、「閒聊」，或 null",
+    "key_points": ["主要收穫 1", "主要收穫 2"]
+  }
+}
+
+指引：
+- **short_summary**：保持簡潔，80-100字元，一個完整句子
+- **long_summary**：以前後文段落開始（例如：「這是一場團隊會議，參與者包括 John 和 Sarah，討論產品發布...」），然後使用 markdown 標題和編號列表列出重點
+- **participants**：提取提及的姓名，否則為空陣列
+- **topics**：討論的主要主題（最多 3-5 項）
+- **keywords**：技術術語、專業詞彙、縮寫（最多 5-10 項，只包含高價值詞彙）
+- **time_context**：時間參考，如「第四季」、「早上」、「下週」
+- **scenario**：對話類型
+- **key_points**：主要成果、決策或收穫（3-7 項）
+
+只回傳 JSON 物件，不要加上其他內容。`,
+      without_previous: (text_input: string) =>
+        `你的任務是為對話創建結構化摘要。你需要產生一個 JSON 回應，包含完整摘要和提取的前後文資訊。
+
+**重要**：你必須只回傳有效的 JSON。不要在 JSON 前後加上任何說明文字。
+
+要摘要的對話記錄：
+${text_input}
+
+分析對話記錄並回傳符合以下確切結構的 JSON 物件：
+{
+  "short_summary": "一句話摘要（80-100字元）概括主要主題",
+  "long_summary": "詳細的 Markdown 格式摘要，開頭嵌入前後文。從簡短段落開始，提及情境、參與者和主題（如果可識別），然後提供編號的重點。不要使用「摘要」標題。",
+  "context": {
+    "participants": ["姓名1", "姓名2"],
+    "topics": ["主題1", "主題2"],
+    "keywords": ["技術術語1", "技術術語2"],
+    "time_context": "例如：「第四季規劃」、「晨間站會」，或如果未提及則為 null",
+    "scenario": "例如：「會議」、「演講」、「訪談」、「閒聊」，或 null",
+    "key_points": ["主要收穫 1", "主要收穫 2"]
+  }
+}
+
+指引：
+- **short_summary**：保持簡潔，80-100字元，一個完整句子
+- **long_summary**：以前後文段落開始（例如：「這是一場團隊會議，參與者包括 John 和 Sarah，討論產品發布...」），然後使用 markdown 標題和編號列表列出重點
+- **participants**：提取提及的姓名，否則為空陣列
+- **topics**：討論的主要主題（最多 3-5 項）
+- **keywords**：技術術語、專業詞彙、縮寫（最多 5-10 項，只包含高價值詞彙）
+- **time_context**：時間參考，如「第四季」、「早上」、「下週」
+- **scenario**：對話類型
+- **key_points**：主要成果、決策或收穫（3-7 項）
+
+只回傳 JSON 物件，不要加上其他內容。`,
     },
   },
   transcriptionEnhancement: {
