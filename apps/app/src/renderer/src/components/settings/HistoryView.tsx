@@ -56,6 +56,21 @@ export function HistoryView() {
     }
   }, [sessionProfile?.id])
 
+  // Periodic refresh: Reload sessions every 15 seconds to fetch latest data
+  useEffect(() => {
+    console.log('[HistoryView] Starting periodic refresh (15s interval)')
+    const refreshIntervalId = setInterval(() => {
+      console.log('[HistoryView] Periodic refresh tick - reloading sessions')
+      loadSessions(0, true) // Reload from beginning to get latest sessions
+    }, 15000) // 15 seconds
+
+    return () => {
+      console.log('[HistoryView] Stopping periodic refresh')
+      clearInterval(refreshIntervalId)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   // Apply search filter, date filter, and grouping
   useEffect(() => {
     console.log(
