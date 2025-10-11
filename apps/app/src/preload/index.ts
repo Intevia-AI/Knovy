@@ -41,6 +41,17 @@ const api = {
 
   setSettings: (settings) => ipcRenderer.invoke('electronAPI:setSettings', settings),
 
+  // Auto-trigger settings methods
+  autoTrigger: {
+    getSettings: () => ipcRenderer.invoke('auto-trigger:get-settings'),
+    updateSettings: (settings) => ipcRenderer.invoke('auto-trigger:update-settings', settings),
+    onSettingsChanged: (callback) => {
+      const subscription = (event, settings) => callback(settings)
+      ipcRenderer.on('auto-trigger:settings-changed', subscription)
+      return () => ipcRenderer.removeListener('auto-trigger:settings-changed', subscription)
+    }
+  },
+
   // Local transcription methods
   transcriptionInitialize: () => ipcRenderer.invoke('transcription:initialize'),
   transcriptionProcessAudio: (audioBuffer: ArrayBuffer, options: any) =>
@@ -138,7 +149,9 @@ const api = {
       'shortcut:ai-action-recommend-response',
       'shortcut:ai-action-screenshot-analysis',
       // AI action triggers
-      'ai-action:recommend-response'
+      'ai-action:recommend-response',
+      // Auto-trigger events
+      'auto-trigger:settings-changed'
     ]
     if (validChannels.includes(channel)) {
       const subscription = (event, ...args) => callback(...args)
@@ -229,7 +242,10 @@ const api = {
       'transcription:setup-enhancement',
       'transcription:set-enhancement-token',
       'settings:open',
-      'settings:navigate'
+      'settings:navigate',
+      // Auto-trigger invoke channels
+      'auto-trigger:get-settings',
+      'auto-trigger:update-settings'
     ]
     if (!validChannels.includes(channel)) {
       return Promise.reject(new Error(`Invalid invoke channel: ${channel}`))

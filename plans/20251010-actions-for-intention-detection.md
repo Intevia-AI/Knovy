@@ -147,9 +147,9 @@ Feat(app): Add auto-trigger settings data model
 
 ---
 
-### Task 1.2: Settings Persistence Layer
+### Task 1.2: Settings Persistence Layer ✅
 
-**Status:** Pending
+**Status:** ✅ Complete (2025-10-10)
 **Description:** Implement load/save functions for auto-trigger settings in main process
 
 **Files:**
@@ -1421,7 +1421,7 @@ Docs(app): Add auto-trigger feature documentation
 ### Phase 1: Foundation & Settings (Week 1)
 
 - [x] Task 1.1: Define Settings Data Model ✅
-- [ ] Task 1.2: Settings Persistence Layer
+- [x] Task 1.2: Settings Persistence Layer ✅
 - [ ] Task 1.3: IPC Channels for Settings
 - [ ] Task 1.4: AutoTriggerSettings UI Component
 - [ ] Task 1.5: i18n Translations

@@ -766,6 +766,28 @@ app.on('ready', async () => {
     }
   })
 
+  // Auto-trigger settings IPC handlers
+  ipcMain.handle('auto-trigger:get-settings', async () => {
+    const settings = await loadSettings()
+    return settings.autoTrigger
+  })
+
+  ipcMain.handle('auto-trigger:update-settings', async (event, updates) => {
+    const currentSettings = await loadSettings()
+    const newAutoTrigger = { ...currentSettings.autoTrigger, ...updates }
+    await saveSettings({ ...currentSettings, autoTrigger: newAutoTrigger })
+
+    // Broadcast change to all windows
+    for (const win of BrowserWindow.getAllWindows()) {
+      if (!win.isDestroyed()) {
+        win.webContents.send('auto-trigger:settings-changed', newAutoTrigger)
+      }
+    }
+
+    console.log('[main/index.ts] Auto-trigger settings updated:', newAutoTrigger)
+    return newAutoTrigger
+  })
+
   session.defaultSession.setDisplayMediaRequestHandler((request, callback) => {
     desktopCapturer
       .getSources({ types: ['screen'] })
