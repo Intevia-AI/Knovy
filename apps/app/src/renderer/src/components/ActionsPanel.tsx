@@ -39,11 +39,11 @@ export default function ActionsPanel() {
   const messageTimestamps = useRef<Map<string, number>>(new Map()) // Stable timestamps for messages
 
   useEffect(() => {
-    // Only auto-scroll when new messages arrive and we're not executing an action
+    // Auto-scroll when new messages or actions arrive (unless we're executing an action)
     if (messagesEndRef.current && !executingActionRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' })
     }
-  }, [aiMessages])
+  }, [aiMessages, pendingActions])
 
   useEffect(() => {
     const unsubscribe = window.electronAPI.on('popover:prepare-to-close', (id) => {
