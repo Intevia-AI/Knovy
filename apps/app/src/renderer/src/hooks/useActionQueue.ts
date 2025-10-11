@@ -83,8 +83,14 @@ export function useActionQueue() {
     )
 
     const unsubscribeCompleted = window.electronAPI.autoTrigger.onActionCompleted(
-      ({ actionId }: { actionId: string }) => {
-        setPendingActions((prev) => prev.filter((action) => action.id !== actionId))
+      ({ actionId, result }: { actionId: string; result?: string }) => {
+        setPendingActions((prev) =>
+          prev.map((action) =>
+            action.id === actionId
+              ? { ...action, status: 'completed' as const, result }
+              : action
+          )
+        )
       }
     )
 

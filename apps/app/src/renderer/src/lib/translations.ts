@@ -190,7 +190,9 @@ export const translations = {
     // Action Queue
     approve: 'Approve',
     reject: 'Reject',
+    retry: 'Retry',
     executingAction: 'Executing',
+    actionFailed: 'Action failed',
     actionQueueTitle: 'Pending Actions',
     noActionsInQueue: 'No pending actions'
   },
@@ -371,7 +373,9 @@ export const translations = {
     // Action Queue
     approve: '同意',
     reject: '拒絕',
+    retry: '重試',
     executingAction: '執行中',
+    actionFailed: '動作失敗',
     actionQueueTitle: '待處理動作',
     noActionsInQueue: '沒有待處理的動作'
   }
@@ -556,7 +560,9 @@ export type TranslationKey =
   // Action Queue
   | 'approve'
   | 'reject'
+  | 'retry'
   | 'executingAction'
+  | 'actionFailed'
   | 'actionQueueTitle'
   | 'noActionsInQueue'
 

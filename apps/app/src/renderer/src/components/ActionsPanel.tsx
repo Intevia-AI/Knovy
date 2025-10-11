@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react'
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -6,7 +6,12 @@ import {
   ListCollapseIcon,
   CameraIcon,
   MessageSquareQuote,
-  FileIcon
+  FileIcon,
+  Check,
+  X,
+  Loader2,
+  AlertCircle,
+  RefreshCw
 } from 'lucide-react'
 import { useI18n } from '@/hooks/useI18n'
 import { useAIInteraction } from '@/hooks/useAIInteraction'
@@ -14,10 +19,11 @@ import { motion, AnimatePresence } from 'motion'
 import { cn } from '@/lib/utils'
 import { Markdown } from '@/components/MarkdownRenderer'
 import { useActionQueue } from '@/hooks/useActionQueue'
-import { ActionQueue } from '@/components/ActionQueue'
+import type { PendingAction } from '@/types/settings'
+import { ACTION_TYPE_LABELS, INTENTION_LABELS } from '@/types/settings'
 
 export default function ActionsPanel() {
-  const { t } = useI18n()
+  const { t, language } = useI18n()
   const { sendContextToAI, aiMessages, isLoading, setAiMessages } = useAIInteraction()
   const { pendingActions, settings, approveAction, rejectAction, executeAction } = useActionQueue()
   const [isScreenSharing, setIsScreenSharing] = useState(false)
@@ -27,6 +33,11 @@ export default function ActionsPanel() {
   const popoverId = 'actions'
   const lastProcessedKeyword = useRef<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const executingActionRef = useRef<string | null>(null) // Track which action is currently being executed
+  const [actionResults, setActionResults] = useState<Record<string, string>>({}) // Store AI results per action ID
+  const [hiddenMessageIds, setHiddenMessageIds] = useState<Set<string>>(new Set()) // Track hidden messages
+  const messageTimestamps = useRef<Map<string, number>>(new Map()) // Stable timestamps for messages
+  const timestampCounter = useRef<number>(Date.now()) // Counter for sequential timestamps
 
   useEffect(() => {
     if (messagesEndRef.current) {
@@ -108,10 +119,18 @@ export default function ActionsPanel() {
   }, [handleKeywordSearch])
 
   // Listen for AI action shortcuts via IPC
-  // Note: This handles keyboard shortcuts for recommend response
+  // Note: This handles keyboard shortcuts AND auto-triggered actions
   useEffect(() => {
-    const handleRecommendResponse = () => {
-      console.log('[ActionsPanel] Shortcut: Recommend response triggered')
+    const handleRecommendResponse = (data?: { actionId?: string; context?: any }) => {
+      console.log('[ActionsPanel] Recommend response triggered', data)
+
+      // If this is triggered by an action approval, track it
+      if (data?.actionId) {
+        executingActionRef.current = data.actionId
+        console.log('[ActionsPanel] Tracking action:', data.actionId)
+      }
+
+      // Trigger the AI interaction
       handleActionClick('answer')
     }
 
@@ -219,6 +238,42 @@ export default function ActionsPanel() {
     }
   }
 
+  // Merge AI messages and pending actions into a unified timeline with proper chronological sorting
+  const conversationTimeline = useMemo(() => {
+    const timeline: Array<{ type: 'message' | 'action'; data: any; timestamp: number }> = []
+
+    // Assign stable timestamps to new messages
+    aiMessages.forEach((msg) => {
+      if (!messageTimestamps.current.has(msg.id)) {
+        messageTimestamps.current.set(msg.id, timestampCounter.current++)
+      }
+    })
+
+    // Add all AI messages with stable timestamps
+    // Filter out hidden messages
+    aiMessages.forEach((msg) => {
+      if (!hiddenMessageIds.has(msg.id)) {
+        timeline.push({
+          type: 'message',
+          data: msg,
+          timestamp: messageTimestamps.current.get(msg.id)!
+        })
+      }
+    })
+
+    // Add pending actions with their creation timestamps
+    pendingActions.forEach((action) => {
+      timeline.push({
+        type: 'action',
+        data: action,
+        timestamp: action.createdAt || action.timestamp || Date.now()
+      })
+    })
+
+    // Sort by timestamp (chronological order)
+    return timeline.sort((a, b) => a.timestamp - b.timestamp)
+  }, [aiMessages, pendingActions, hiddenMessageIds])
+
   // Auto-switch to conversational mode when there are pending actions
   useEffect(() => {
     if (pendingActions.length > 0 && !isConversational) {
@@ -227,24 +282,141 @@ export default function ActionsPanel() {
     }
   }, [pendingActions.length, isConversational])
 
-  // Handle automatic execution of actions in automatic mode
+  // Handle automatic execution of actions in automatic mode (per-action)
   useEffect(() => {
-    if (!settings || settings.approvalMode !== 'automatic') return
+    if (!settings) return
 
-    // Auto-execute pending actions
+    // Auto-execute pending actions based on per-action approval modes
     pendingActions.forEach((action) => {
       if (action.status === 'pending') {
-        console.log('[ActionsPanel] Auto-executing action in automatic mode:', action.id)
-        // Switch to conversational mode
-        if (!isConversational) {
-          setIsConversational(true)
+        const actionSettings = settings.actions[action.actionType]
+        if (actionSettings && actionSettings.approvalMode === 'automatic') {
+          console.log('[ActionsPanel] Auto-executing action in automatic mode:', action.id)
+          // Switch to conversational mode
+          if (!isConversational) {
+            setIsConversational(true)
+          }
+          // Approve and execute immediately
+          approveAction(action.id)
+          setTimeout(() => executeAction(action), 100)
         }
-        // Approve and execute immediately
-        approveAction(action.id)
-        setTimeout(() => executeAction(action), 100)
       }
     })
   }, [pendingActions, settings, approveAction, executeAction, isConversational])
+
+  // Intercept AI responses for executing actions
+  useEffect(() => {
+    if (!executingActionRef.current) return
+
+    // Check if a new AI message (assistant response) was added
+    const lastMessage = aiMessages[aiMessages.length - 1]
+    if (lastMessage && lastMessage.role === 'assistant') {
+      const actionId = executingActionRef.current
+      console.log('[ActionsPanel] Capturing AI response for action:', actionId)
+
+      // Store the result for this action
+      setActionResults((prev) => ({
+        ...prev,
+        [actionId]: lastMessage.content
+      }))
+
+      // Hide the AI message from the timeline (it will be shown inline with the action)
+      setHiddenMessageIds((prev) => new Set(prev).add(lastMessage.id))
+
+      // Also hide the user prompt message if it exists (the "請根據前後文推薦適合的回應")
+      const lastUserMsg = aiMessages[aiMessages.length - 2] // The user message is before the AI response
+      if (lastUserMsg && lastUserMsg.role === 'user') {
+        setHiddenMessageIds((prev) => new Set(prev).add(lastUserMsg.id))
+      }
+
+      // Clear the executing action reference
+      executingActionRef.current = null
+    }
+  }, [aiMessages])
+
+  // Render inline action notification (styled as system message - gray, left-aligned)
+  const renderActionNotification = (action: PendingAction) => {
+    const intentionLabel = INTENTION_LABELS[action.intention.primary][language]
+    const actionSettings = settings?.actions[action.actionType]
+    const approvalMode = actionSettings?.approvalMode || 'ask'
+
+    return (
+      <div className="space-y-2 w-full">
+        {/* Approval message - styled as system message (gray, left-aligned) */}
+        <div className="p-2 rounded-md text-sm w-fit max-w-[95%] bg-black/5 border-black/10 mr-auto text-left">
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <span className="text-xs px-2 py-0.5 rounded-full bg-black/10 text-gray-700">
+                {intentionLabel}
+              </span>
+            </div>
+            <div className="text-xs text-gray-700">
+              "{action.context.transcriptionText}"
+            </div>
+
+            {/* Action buttons for pending in ask mode */}
+            {action.status === 'pending' && approvalMode === 'ask' && (
+              <div className="flex gap-2 pt-1">
+                <Button
+                  size="sm"
+                  onClick={() => rejectAction(action.id)}
+                  variant="ghost"
+                  className="h-7 px-3 text-xs hover:bg-red-500/20 text-gray-700"
+                >
+                  <X className="h-3 w-3 mr-1" />
+                  {t('reject')}
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    approveAction(action.id)
+                    setTimeout(() => executeAction(action), 100)
+                  }}
+                  className="h-7 px-3 text-xs bg-blue-500 hover:bg-blue-600 text-white"
+                >
+                  <Check className="h-3 w-3 mr-1" />
+                  {t('approve')}
+                </Button>
+              </div>
+            )}
+
+            {/* Executing state */}
+            {action.status === 'executing' && (
+              <div className="flex items-center gap-2 text-xs text-blue-700 pt-1">
+                <Loader2 className="h-3 w-3 animate-spin" />
+                <span>{t('executingAction')}...</span>
+              </div>
+            )}
+
+            {/* Failed state with retry */}
+            {action.status === 'failed' && (
+              <div className="space-y-2 pt-1">
+                <div className="flex items-center gap-2 text-xs text-red-700">
+                  <AlertCircle className="h-3 w-3" />
+                  <span>{action.error || t('actionFailed')}</span>
+                </div>
+                <Button
+                  size="sm"
+                  onClick={() => executeAction(action)}
+                  className="h-7 px-3 text-xs bg-blue-500 hover:bg-blue-600 text-white"
+                >
+                  <RefreshCw className="h-3 w-3 mr-1" />
+                  {t('retry')}
+                </Button>
+              </div>
+            )}
+
+            {/* Completed state with inline AI result */}
+            {action.status === 'completed' && actionResults[action.id] && (
+              <div className="pt-2 mt-2 border-t border-gray-300">
+                <Markdown>{actionResults[action.id]}</Markdown>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <AnimatePresence onExitComplete={handleAnimationComplete}>
@@ -256,19 +428,6 @@ export default function ActionsPanel() {
           transition={{ duration: 0.2 }}
           className="flex flex-col h-screen w-full glass-popover p-2 space-y-2 overflow-y-auto"
         >
-          {/* Action Queue - Always visible when there are pending actions */}
-          {pendingActions.length > 0 && settings && (
-            <div className="flex-none">
-              <ActionQueue
-                pendingActions={pendingActions}
-                approvalMode={settings.approvalMode}
-                onApprove={approveAction}
-                onReject={rejectAction}
-                onExecute={executeAction}
-              />
-            </div>
-          )}
-
           <AnimatePresence initial={false}>
             {isConversational ? (
               <motion.div
@@ -278,41 +437,51 @@ export default function ActionsPanel() {
                 exit={{ opacity: 0, y: -20 }}
                 className="flex flex-col flex-grow space-y-2 overflow-hidden"
               >
-                {/* Conversational View */}
+                {/* Conversational View with Integrated Actions */}
                 <motion.div
                   variants={messageContainerVariants}
                   initial="hidden"
                   animate="visible"
                   className="flex-grow overflow-y-auto p-2 space-y-4 [mask-image:linear-gradient(to_bottom,black_95%,transparent_100%)]"
                 >
-                  {aiMessages.map((m) => (
-                    <motion.div
-                      key={m.id}
-                      variants={messageItemVariants}
-                      className={cn(
-                        'p-2 rounded-md text-sm w-fit max-w-[95%] whitespace-pre-wrap break-words text-pretty',
-                        m.role === 'user'
-                          ? 'bg-blue-500/10 border-blue-500/20 ml-auto text-right'
-                          : 'bg-black/5 border-black/10 mr-auto text-left'
-                      )}
-                    >
-                      {m.role === 'assistant' ? (
-                        <Markdown>{m.content}</Markdown>
-                      ) : (
-                        <div className="space-y-2">
-                          {m.content}
-                          {/* Show screenshot if this user message contains one */}
-                          {(m as any).screenshot && (
-                            <img
-                              src={(m as any).screenshot}
-                              alt="Screenshot"
-                              className="max-w-full max-h-48 object-contain rounded border mt-2"
-                            />
-                          )}
-                        </div>
-                      )}
-                    </motion.div>
-                  ))}
+                  {conversationTimeline.map((item) =>
+                    item.type === 'message' ? (
+                      <motion.div
+                        key={item.data.id}
+                        variants={messageItemVariants}
+                        className={cn(
+                          'p-2 rounded-md text-sm w-fit max-w-[95%] whitespace-pre-wrap break-words text-pretty',
+                          item.data.role === 'user'
+                            ? 'bg-blue-500/10 border-blue-500/20 ml-auto text-right'
+                            : 'bg-black/5 border-black/10 mr-auto text-left'
+                        )}
+                      >
+                        {item.data.role === 'assistant' ? (
+                          <Markdown>{item.data.content}</Markdown>
+                        ) : (
+                          <div className="space-y-2">
+                            {item.data.content}
+                            {/* Show screenshot if this user message contains one */}
+                            {(item.data as any).screenshot && (
+                              <img
+                                src={(item.data as any).screenshot}
+                                alt="Screenshot"
+                                className="max-w-full max-h-48 object-contain rounded border mt-2"
+                              />
+                            )}
+                          </div>
+                        )}
+                      </motion.div>
+                    ) : (
+                      <motion.div
+                        key={`action-${item.data.id}`}
+                        variants={messageItemVariants}
+                        className="w-full"
+                      >
+                        {renderActionNotification(item.data)}
+                      </motion.div>
+                    )
+                  )}
                   {isLoading && (
                     <motion.div variants={messageItemVariants} className="text-sm text-black">
                       Loading...

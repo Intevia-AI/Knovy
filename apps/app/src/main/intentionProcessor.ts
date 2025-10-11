@@ -152,9 +152,9 @@ export class IntentionProcessor extends EventEmitter {
   ): ActionType[] {
     const eligibleActions: ActionType[] = []
 
-    // Check each enabled action
-    const enabledActions = Object.entries(this.settings.enabledActions)
-      .filter(([_, enabled]) => enabled)
+    // Check each enabled action (using new per-action settings structure)
+    const enabledActions = Object.entries(this.settings.actions)
+      .filter(([_, actionSettings]) => actionSettings.enabled)
       .map(([actionType, _]) => actionType as ActionType)
 
     console.log('[IntentionProcessor] Checking enabled actions:', enabledActions)

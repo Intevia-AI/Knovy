@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react'
-import { Zap, AlertCircle, Info } from 'lucide-react'
+import { Zap, AlertCircle } from 'lucide-react'
 import { Card, CardHeader, CardContent } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
-import { Slider } from '@/components/ui/slider'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -56,41 +55,37 @@ export function AutoTriggerSettings() {
     }
   }
 
-  const handleApprovalModeChange = (value: string) => {
-    if (settings) {
-      updateSettings({ approvalMode: value as 'ask' | 'automatic' })
-    }
-  }
-
-  const handleThresholdChange = (value: number[]) => {
-    if (settings) {
-      updateSettings({ confidenceThreshold: value[0] })
-    }
-  }
-
-  const handleActionToggle = (actionKey: keyof AutoTriggerSettingsType['enabledActions']) => {
+  const handleActionToggle = (actionKey: keyof AutoTriggerSettingsType['actions']) => {
     if (settings) {
       updateSettings({
-        enabledActions: {
-          ...settings.enabledActions,
-          [actionKey]: !settings.enabledActions[actionKey]
+        actions: {
+          ...settings.actions,
+          [actionKey]: {
+            ...settings.actions[actionKey],
+            enabled: !settings.actions[actionKey].enabled
+          }
         }
       })
     }
   }
 
-  const getThresholdWarning = () => {
-    if (!settings) return null
-    const threshold = settings.confidenceThreshold
-
-    if (threshold < 0.5) {
-      return { type: 'warning' as const, message: t('thresholdWarningLow') }
-    } else if (threshold >= 0.5 && threshold <= 0.8) {
-      return { type: 'info' as const, message: t('thresholdWarningMedium') }
-    } else {
-      return { type: 'warning' as const, message: t('thresholdWarningHigh') }
+  const handleActionApprovalModeChange = (
+    actionKey: keyof AutoTriggerSettingsType['actions'],
+    value: 'ask' | 'automatic'
+  ) => {
+    if (settings) {
+      updateSettings({
+        actions: {
+          ...settings.actions,
+          [actionKey]: {
+            ...settings.actions[actionKey],
+            approvalMode: value
+          }
+        }
+      })
     }
   }
+
 
   if (isLoading) {
     return (
@@ -144,8 +139,6 @@ export function AutoTriggerSettings() {
     )
   }
 
-  const thresholdWarning = getThresholdWarning()
-
   return (
     <div className="space-y-6">
       <div>
@@ -174,134 +167,87 @@ export function AutoTriggerSettings() {
         </CardContent>
       </Card>
 
-      {/* Approval Mode Card */}
-      {settings.enabled && (
-        <Card>
-          <CardHeader>
-            <h3 className="text-lg font-medium">{t('approvalMode')}</h3>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <RadioGroup value={settings.approvalMode} onValueChange={handleApprovalModeChange}>
-              <div className="flex items-start space-x-3 rounded-lg border border-border bg-background/50 p-4 hover:bg-accent/50 transition-colors">
-                <RadioGroupItem value="ask" id="ask" className="mt-0.5" />
-                <div className="flex-1 space-y-1">
-                  <Label
-                    htmlFor="ask"
-                    className="text-sm font-medium leading-none cursor-pointer"
-                  >
-                    {t('approvalModeAsk')}
-                  </Label>
-                  <p className="text-xs text-muted-foreground">
-                    {t('approvalModeAskDescription')}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-start space-x-3 rounded-lg border border-border bg-background/50 p-4 hover:bg-accent/50 transition-colors">
-                <RadioGroupItem value="automatic" id="automatic" className="mt-0.5" />
-                <div className="flex-1 space-y-1">
-                  <Label
-                    htmlFor="automatic"
-                    className="text-sm font-medium leading-none cursor-pointer"
-                  >
-                    {t('approvalModeAutomatic')}
-                  </Label>
-                  <p className="text-xs text-muted-foreground">
-                    {t('approvalModeAutomaticDescription')}
-                  </p>
-                </div>
-              </div>
-            </RadioGroup>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Confidence Threshold Card */}
-      {settings.enabled && (
-        <Card>
-          <CardHeader>
-            <h3 className="text-lg font-medium">{t('confidenceThreshold')}</h3>
-            <p className="text-sm text-muted-foreground">{t('confidenceThresholdDescription')}</p>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">{t('thresholdLow')}</span>
-                <span className="text-2xl font-semibold text-primary">
-                  {Math.round(settings.confidenceThreshold * 100)}%
-                </span>
-                <span className="text-sm text-muted-foreground">{t('thresholdHigh')}</span>
-              </div>
-
-              <Slider
-                value={[settings.confidenceThreshold]}
-                onValueChange={handleThresholdChange}
-                min={0}
-                max={1}
-                step={0.05}
-                className="w-full"
-              />
-
-              {thresholdWarning && (
-                <Alert variant={thresholdWarning.type === 'warning' ? 'default' : 'default'}>
-                  <Info className="h-4 w-4" />
-                  <AlertDescription className="text-sm">
-                    {thresholdWarning.message}
-                  </AlertDescription>
-                </Alert>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Enabled Actions Card */}
+      {/* Actions Card with per-action settings */}
       {settings.enabled && (
         <Card>
           <CardHeader>
             <h3 className="text-lg font-medium">{t('enabledActions')}</h3>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-6">
             {/* Recommend Response */}
-            <div className="flex items-center justify-between rounded-lg border border-border bg-background/50 p-4">
-              <div className="flex-1">
-                <Label className="text-sm font-medium">{t('actionRecommendResponse')}</Label>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {t('actionRecommendResponseDescription')}
-                </p>
+            <div className="space-y-3 rounded-lg border border-border bg-background/50 p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <Label className="text-sm font-medium">{t('actionRecommendResponse')}</Label>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {t('actionRecommendResponseDescription')}
+                  </p>
+                </div>
+                <Switch
+                  checked={settings.actions.recommendResponse.enabled}
+                  onCheckedChange={() => handleActionToggle('recommendResponse')}
+                />
               </div>
-              <Switch
-                checked={settings.enabledActions.recommendResponse}
-                onCheckedChange={() => handleActionToggle('recommendResponse')}
-              />
+
+              {/* Per-action approval mode */}
+              {settings.actions.recommendResponse.enabled && (
+                <div className="pl-4 border-l-2 border-border space-y-2">
+                  <Label className="text-xs font-medium text-muted-foreground">
+                    {t('approvalMode')}
+                  </Label>
+                  <RadioGroup
+                    value={settings.actions.recommendResponse.approvalMode}
+                    onValueChange={(value) =>
+                      handleActionApprovalModeChange('recommendResponse', value as 'ask' | 'automatic')
+                    }
+                  >
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="ask" id="recommend-ask" />
+                      <Label htmlFor="recommend-ask" className="text-xs cursor-pointer">
+                        {t('approvalModeAsk')}
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="automatic" id="recommend-auto" />
+                      <Label htmlFor="recommend-auto" className="text-xs cursor-pointer">
+                        {t('approvalModeAutomatic')}
+                      </Label>
+                    </div>
+                  </RadioGroup>
+                </div>
+              )}
             </div>
 
             {/* Schedule Reminder (Future) */}
-            <div className="flex items-center justify-between rounded-lg border border-dashed border-muted bg-muted/30 p-4 opacity-60">
-              <div className="flex-1">
-                <Label className="text-sm font-medium text-muted-foreground">
-                  {t('actionScheduleReminder')}
-                </Label>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {t('actionScheduleReminderDescription')}
-                </p>
-                <p className="text-xs text-primary mt-1 font-medium">Coming Soon</p>
+            <div className="space-y-3 rounded-lg border border-dashed border-muted bg-muted/30 p-4 opacity-60">
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <Label className="text-sm font-medium text-muted-foreground">
+                    {t('actionScheduleReminder')}
+                  </Label>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {t('actionScheduleReminderDescription')}
+                  </p>
+                  <p className="text-xs text-primary mt-1 font-medium">Coming Soon</p>
+                </div>
+                <Switch disabled checked={false} />
               </div>
-              <Switch disabled checked={false} />
             </div>
 
             {/* Send Email (Future) */}
-            <div className="flex items-center justify-between rounded-lg border border-dashed border-muted bg-muted/30 p-4 opacity-60">
-              <div className="flex-1">
-                <Label className="text-sm font-medium text-muted-foreground">
-                  {t('actionSendEmail')}
-                </Label>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {t('actionSendEmailDescription')}
-                </p>
-                <p className="text-xs text-primary mt-1 font-medium">Coming Soon</p>
+            <div className="space-y-3 rounded-lg border border-dashed border-muted bg-muted/30 p-4 opacity-60">
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <Label className="text-sm font-medium text-muted-foreground">
+                    {t('actionSendEmail')}
+                  </Label>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {t('actionSendEmailDescription')}
+                  </p>
+                  <p className="text-xs text-primary mt-1 font-medium">Coming Soon</p>
+                </div>
+                <Switch disabled checked={false} />
               </div>
-              <Switch disabled checked={false} />
             </div>
           </CardContent>
         </Card>

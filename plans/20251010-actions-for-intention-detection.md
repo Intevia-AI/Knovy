@@ -10,13 +10,14 @@
 
 ## Progress Summary (As of 2025-10-11)
 
-**Overall Completion: 80%** (16/20 tasks complete)
+**Overall Completion: 85%** (17/20 tasks complete)
 
 ### ✅ Completed Phases:
 - **Phase 1: Foundation & Settings** - 100% complete (5/5 tasks)
 - **Phase 2: Intention Processing Logic** - 100% complete (3/3 tasks)
 - **Phase 3: Approval UI & Queue Management** - 100% complete (3/3 tasks)
 - **Phase 4: Action Execution & Integration** - 67% complete (2/3 tasks)
+- **Phase 6: UI/UX Improvements** - 100% complete (4/4 tasks) ✅ NEW
 
 ### 🚧 Remaining Work:
 - **Phase 4:** Action History & Analytics (1 task)
@@ -33,6 +34,10 @@
 - ✅ Automatic mode execution implemented
 - ✅ Queue management with edge case handling
 - ✅ Bug fixes for enhancement ID matching
+- ✅ **NEW:** Per-action approval modes implemented
+- ✅ **NEW:** Conversation flow integration with inline results
+- ✅ **NEW:** Single source of truth for AI responses (no duplicates)
+- ✅ **NEW:** Chronological timeline sorting
 
 ### 🎯 Next Steps:
 1. Implement action history tracking (Task 4.3)
@@ -1273,6 +1278,236 @@ Feat(app): Add action history tracking and analytics
 - Store approval, rejection, execution, and error events
 - Limit history to last 100 actions
 - Add IPC handler to retrieve action history
+```
+
+---
+
+## Phase 6: UI/UX Improvements (2025-10-11)
+
+### Task 6.1: Per-Action Approval Modes ✅
+
+**Status:** ✅ Complete (2025-10-11)
+**Description:** Change from global approval mode to per-action approval modes
+
+**Problem:** Original design had a single global approval mode setting affecting all actions. This was inflexible - users might want to auto-execute simple actions like "recommend response" but require approval for more sensitive actions like "send email".
+
+**Solution:** Restructured settings to have per-action control:
+
+**Files Modified:**
+- `apps/app/src/renderer/src/types/settings.ts` - Restructured data model
+- `apps/app/src/renderer/src/components/settings/AutoTriggerSettings.tsx` - Updated UI
+- `apps/app/src/renderer/src/components/ActionsPanel.tsx` - Uses per-action settings
+- `apps/app/src/renderer/src/components/ActionQueue.tsx` - Reads per-action approvalMode
+- `apps/app/src/main/intentionProcessor.ts` - Updated to read new structure
+
+**New Settings Structure:**
+```typescript
+export interface ActionSettings {
+  enabled: boolean
+  approvalMode: 'ask' | 'automatic'
+}
+
+export interface AutoTriggerSettings {
+  enabled: boolean
+  confidenceThreshold: number  // Hidden from UI
+  actions: {
+    recommendResponse: ActionSettings
+    scheduleReminder: ActionSettings
+    sendEmail: ActionSettings
+  }
+}
+```
+
+**Git Commit:**
+```
+Feat(app): Implement per-action approval modes for auto-trigger
+
+- Restructure settings to have per-action enabled and approvalMode
+- Update AutoTriggerSettings UI with inline radio buttons per action
+- Remove global approval mode and confidence threshold from UI
+- Update IntentionProcessor to use new settings structure
+- Keep confidence threshold at 0.7 (hidden from UI)
+```
+
+---
+
+### Task 6.2: Conversation Flow Integration ✅
+
+**Status:** ✅ Complete (2025-10-11)
+**Description:** Integrate action notifications into conversation flow instead of floating over content
+
+**Problem:**
+1. Approval messages were blue and right-aligned (like user messages) instead of gray/left-aligned (like system messages)
+2. Actions appeared at bottom of panel instead of chronologically interleaved with conversation
+3. No timestamps for proper sorting
+
+**Solution:**
+1. **Timeline Merging** - Created unified timeline that merges aiMessages and pendingActions
+2. **Chronological Sorting** - Sort by timestamp to show actions in conversation flow
+3. **System Message Styling** - Changed approval messages to gray, left-aligned system style
+4. **Timestamps** - Added timestamps to enable chronological sorting
+
+**Files Modified:**
+- `apps/app/src/renderer/src/components/ActionsPanel.tsx`
+
+**Key Changes:**
+```typescript
+// Unified timeline with chronological sorting
+const conversationTimeline = useMemo(() => {
+  const timeline: Array<{ type: 'message' | 'action'; data: any; timestamp: number }> = []
+
+  aiMessages.forEach((msg, index) => {
+    timeline.push({
+      type: 'message',
+      data: msg,
+      timestamp: (msg as any).timestamp || Date.now() - (aiMessages.length - index) * 1000
+    })
+  })
+
+  pendingActions.forEach((action) => {
+    timeline.push({
+      type: 'action',
+      data: action,
+      timestamp: action.createdAt || action.timestamp || Date.now()
+    })
+  })
+
+  return timeline.sort((a, b) => a.timestamp - b.timestamp)
+}, [aiMessages, pendingActions])
+
+// System message styling (gray, left-aligned)
+<div className="p-2 rounded-md text-sm w-fit max-w-[95%] bg-black/5 border-black/10 mr-auto text-left">
+  {/* Approval message content */}
+</div>
+```
+
+**Git Commit:**
+```
+Feat(app): Integrate actions into conversation flow
+
+- Create unified timeline merging aiMessages and pendingActions
+- Sort chronologically by timestamp
+- Change approval messages to gray, left-aligned system style
+- Remove floating notification cards
+- Auto-scroll on new actions
+```
+
+---
+
+### Task 6.3: Single Source of Truth for AI Responses ✅
+
+**Status:** ✅ Complete (2025-10-11)
+**Description:** Prevent duplicate messages by showing AI results inline with approval messages
+
+**Problem:**
+When user clicked "approve" on an action:
+1. The approval message would disappear
+2. A user prompt message "請根據前後文推薦適合的回應" would appear separately
+3. The AI response would appear as another separate message
+4. Result: 3 separate messages cluttering the conversation
+
+**Expected Behavior:**
+The approval message should remain visible and the AI result should be appended inline to it (single source of truth).
+
+**Solution:**
+1. **Track Executing Action** - Use ref to track which action is currently executing
+2. **Intercept AI Response** - When AI responds, capture it and associate with action ID
+3. **Remove Duplicate Messages** - Remove both user prompt and AI response from aiMessages
+4. **Store Result** - Store AI result in actionResults state keyed by action ID
+5. **Render Inline** - Display result inline within the approval message
+
+**Files Modified:**
+- `apps/app/src/renderer/src/components/ActionsPanel.tsx`
+- `apps/app/src/renderer/src/hooks/useActionQueue.ts`
+
+**Key Implementation:**
+```typescript
+// Track which action is executing
+const executingActionRef = useRef<string | null>(null)
+const [actionResults, setActionResults] = useState<Record<string, string>>({})
+
+// Capture actionId when action is triggered
+const handleRecommendResponse = (data?: { actionId?: string; context?: any }) => {
+  if (data?.actionId) {
+    executingActionRef.current = data.actionId
+  }
+  handleActionClick('answer')
+}
+
+// Intercept AI response
+useEffect(() => {
+  if (!executingActionRef.current) return
+
+  const lastMessage = aiMessages[aiMessages.length - 1]
+  if (lastMessage && lastMessage.role === 'assistant') {
+    const actionId = executingActionRef.current
+
+    // Store result
+    setActionResults((prev) => ({ ...prev, [actionId]: lastMessage.content }))
+
+    // Remove AI message from timeline
+    setAiMessages((prev) => prev.slice(0, -1))
+
+    // Remove user prompt message
+    setAiMessages((prev) => {
+      const lastUserMsg = prev[prev.length - 1]
+      if (lastUserMsg && lastUserMsg.role === 'user') {
+        return prev.slice(0, -1)
+      }
+      return prev
+    })
+
+    executingActionRef.current = null
+  }
+}, [aiMessages, setAiMessages])
+
+// Render result inline
+{action.status === 'completed' && actionResults[action.id] && (
+  <div className="pt-2 mt-2 border-t border-gray-300">
+    <Markdown>{actionResults[action.id]}</Markdown>
+  </div>
+)}
+```
+
+**Git Commit:**
+```
+Feat(app): Implement single source of truth for action results
+
+- Track executing action ID with ref
+- Intercept AI responses and associate with action
+- Remove duplicate user prompt and AI response messages
+- Store results in actionResults state
+- Render AI result inline within approval message
+- Prevent message duplication and clutter
+```
+
+---
+
+### Task 6.4: Translation Keys for New UI Elements ✅
+
+**Status:** ✅ Complete (2025-10-11)
+**Description:** Add missing translation keys for action queue UI
+
+**Files Modified:**
+- `apps/app/src/renderer/src/lib/translations.ts`
+
+**New Keys Added:**
+- `retry` - "Retry" / "重試"
+- `actionFailed` - "Action failed" / "動作失敗"
+
+**Existing Keys Used:**
+- `approve` - "Approve" / "同意"
+- `reject` - "Reject" / "拒絕"
+- `executingAction` - "Executing" / "執行中"
+
+**Git Commit:**
+```
+Feat(app): Add translation keys for action queue UI
+
+- Add 'retry' key for failed action retry button
+- Add 'actionFailed' key for error messages
+- Update TranslationKey type with new keys
+- Add translations for both en-US and zh-TW
 ```
 
 ---

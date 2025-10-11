@@ -4,33 +4,33 @@
  */
 
 /**
+ * Per-action settings for auto-trigger
+ */
+export interface ActionSettings {
+  /** Whether this action is enabled */
+  enabled: boolean
+  /** Approval mode: ask for user confirmation or execute automatically */
+  approvalMode: 'ask' | 'automatic'
+}
+
+/**
  * Auto-trigger settings for intention-based action execution
  */
 export interface AutoTriggerSettings {
   /** Whether auto-trigger is enabled */
   enabled: boolean
 
-  /** Approval mode: ask for user confirmation or execute automatically */
-  approvalMode: 'ask' | 'automatic'
-
-  /** Minimum confidence threshold (0.0 to 1.0) for triggering actions */
+  /** Hidden confidence threshold (0.0 to 1.0) - kept for future use but not exposed in UI */
   confidenceThreshold: number
 
-  /** Which actions are enabled for auto-triggering */
-  enabledActions: {
+  /** Per-action settings with individual approval modes */
+  actions: {
     /** Recommend response to questions, requests, or concerns */
-    recommendResponse: boolean
+    recommendResponse: ActionSettings
     /** Schedule reminders based on time-related statements (future feature) */
-    scheduleReminder: boolean
+    scheduleReminder: ActionSettings
     /** Draft and send emails based on email-related requests (future feature) */
-    sendEmail: boolean
-  }
-
-  /** Optional per-action confidence thresholds (overrides global threshold) */
-  perActionThresholds?: {
-    recommendResponse?: number
-    scheduleReminder?: number
-    sendEmail?: number
+    sendEmail: ActionSettings
   }
 }
 
@@ -136,12 +136,20 @@ export interface PendingAction {
  */
 export const DEFAULT_AUTO_TRIGGER_SETTINGS: AutoTriggerSettings = {
   enabled: false,
-  approvalMode: 'ask',
-  confidenceThreshold: 0.7,
-  enabledActions: {
-    recommendResponse: true,
-    scheduleReminder: false,
-    sendEmail: false
+  confidenceThreshold: 0.7, // Hidden from UI
+  actions: {
+    recommendResponse: {
+      enabled: true,
+      approvalMode: 'ask'
+    },
+    scheduleReminder: {
+      enabled: false,
+      approvalMode: 'ask'
+    },
+    sendEmail: {
+      enabled: false,
+      approvalMode: 'ask'
+    }
   }
 }
 

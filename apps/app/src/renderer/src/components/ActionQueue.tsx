@@ -8,13 +8,13 @@ import { motion, AnimatePresence } from 'motion'
 import { Button } from '@/components/ui/button'
 import { Check, X, Loader2, MessageSquareQuote, Calendar, Mail } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import type { PendingAction } from '@/types/settings'
+import type { PendingAction, AutoTriggerSettings } from '@/types/settings'
 import { useI18n } from '@/hooks/useI18n'
 import { ACTION_TYPE_LABELS, INTENTION_LABELS } from '@/types/settings'
 
 interface ActionQueueProps {
   pendingActions: PendingAction[]
-  approvalMode: 'ask' | 'automatic'
+  settings: AutoTriggerSettings
   onApprove: (actionId: string) => void
   onReject: (actionId: string) => void
   onExecute: (action: PendingAction) => void
@@ -35,7 +35,7 @@ const getActionIcon = (actionType: string) => {
 
 export function ActionQueue({
   pendingActions,
-  approvalMode,
+  settings,
   onApprove,
   onReject,
   onExecute
@@ -58,6 +58,9 @@ export function ActionQueue({
           const Icon = getActionIcon(action.actionType)
           const actionLabel = ACTION_TYPE_LABELS[action.actionType][language]
           const intentionLabel = INTENTION_LABELS[action.intention.primary][language]
+          // Get per-action approval mode
+          const actionSettings = settings.actions[action.actionType]
+          const approvalMode = actionSettings?.approvalMode || 'ask'
 
           return (
             <motion.div
