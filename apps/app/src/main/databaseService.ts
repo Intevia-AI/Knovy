@@ -45,26 +45,58 @@ export async function getSummary(sessionId: string) {
   const stmt = await db.prepare(
     'SELECT * FROM summaries WHERE session_id = ? ORDER BY updated_at DESC LIMIT 1'
   )
-  return stmt.get(sessionId)
+  const summary = await stmt.get(sessionId)
+
+  if (!summary) return null
+
+  // Parse context_data if it exists
+  let context = null
+  if (summary.context_data) {
+    try {
+      context = JSON.parse(summary.context_data)
+    } catch (e) {
+      console.warn(`[DB] Failed to parse context_data for session ${sessionId}:`, e)
+    }
+  }
+
+  return {
+    ...summary,
+    context
+  }
 }
 
-export async function saveSummary(summary: { sessionId: string; content: string }) {
+export async function saveSummary(summary: {
+  sessionId: string
+  content: string
+  short_summary?: string
+  context?: {
+    participants?: string[]
+    topics?: string[]
+    keywords?: string[]
+    time_context?: string | null
+    scenario?: string | null
+    key_points?: string[]
+  }
+}) {
   const db = await dbPromise
-  const { sessionId, content } = summary
+  const { sessionId, content, short_summary, context } = summary
   const updatedAt = new Date().toISOString()
 
   const existingSummary = await getSummary(sessionId)
 
+  // Serialize context to JSON string
+  const contextData = context ? JSON.stringify(context) : null
+
   if (existingSummary) {
     const stmt = await db.prepare(
-      'UPDATE summaries SET content = ?, updated_at = ? WHERE session_id = ?'
+      'UPDATE summaries SET content = ?, short_summary = ?, context_data = ?, updated_at = ? WHERE session_id = ?'
     )
-    await stmt.run(content, updatedAt, sessionId)
+    await stmt.run(content, short_summary || null, contextData, updatedAt, sessionId)
   } else {
     const stmt = await db.prepare(
-      'INSERT INTO summaries (session_id, content, updated_at) VALUES (?, ?, ?)'
+      'INSERT INTO summaries (session_id, content, short_summary, context_data, updated_at) VALUES (?, ?, ?, ?, ?)'
     )
-    await stmt.run(sessionId, content, updatedAt)
+    await stmt.run(sessionId, content, short_summary || null, contextData, updatedAt)
   }
   return getSummary(sessionId)
 }
@@ -297,6 +329,8 @@ export async function getSessionsWithTranscripts(
     SELECT
       s.*,
       sm.content as summary,
+      sm.short_summary,
+      sm.context_data,
       CAST((julianday(s.ended_at) - julianday(s.started_at)) * 86400 AS INTEGER) as duration
     FROM sessions s
     LEFT JOIN summaries sm ON s.id = sm.session_id
@@ -363,7 +397,9 @@ export async function exportSession(
   const sessionStmt = await db.prepare(`
     SELECT
       s.*,
-      sm.content as summary
+      sm.content as summary,
+      sm.short_summary,
+      sm.context_data
     FROM sessions s
     LEFT JOIN summaries sm ON s.id = sm.session_id
     WHERE s.id = ?
