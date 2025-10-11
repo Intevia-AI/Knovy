@@ -49,6 +49,42 @@ const api = {
       const subscription = (event, settings) => callback(settings)
       ipcRenderer.on('auto-trigger:settings-changed', subscription)
       return () => ipcRenderer.removeListener('auto-trigger:settings-changed', subscription)
+    },
+    // Action management
+    approveAction: (actionId: string) => ipcRenderer.invoke('auto-trigger:approve-action', actionId),
+    rejectAction: (actionId: string) => ipcRenderer.invoke('auto-trigger:reject-action', actionId),
+    executeAction: (actionId: string, actionType: string, context: any) =>
+      ipcRenderer.invoke('auto-trigger:execute-action', { actionId, actionType, context }),
+    // Action event listeners
+    onActionTriggered: (callback) => {
+      const subscription = (event, action) => callback(action)
+      ipcRenderer.on('auto-trigger:action-triggered', subscription)
+      return () => ipcRenderer.removeListener('auto-trigger:action-triggered', subscription)
+    },
+    onActionApproved: (callback) => {
+      const subscription = (event, actionId) => callback(actionId)
+      ipcRenderer.on('auto-trigger:action-approved', subscription)
+      return () => ipcRenderer.removeListener('auto-trigger:action-approved', subscription)
+    },
+    onActionRejected: (callback) => {
+      const subscription = (event, actionId) => callback(actionId)
+      ipcRenderer.on('auto-trigger:action-rejected', subscription)
+      return () => ipcRenderer.removeListener('auto-trigger:action-rejected', subscription)
+    },
+    onActionExecuting: (callback) => {
+      const subscription = (event, actionId) => callback(actionId)
+      ipcRenderer.on('auto-trigger:action-executing', subscription)
+      return () => ipcRenderer.removeListener('auto-trigger:action-executing', subscription)
+    },
+    onActionCompleted: (callback) => {
+      const subscription = (event, data) => callback(data)
+      ipcRenderer.on('auto-trigger:action-completed', subscription)
+      return () => ipcRenderer.removeListener('auto-trigger:action-completed', subscription)
+    },
+    onActionFailed: (callback) => {
+      const subscription = (event, data) => callback(data)
+      ipcRenderer.on('auto-trigger:action-failed', subscription)
+      return () => ipcRenderer.removeListener('auto-trigger:action-failed', subscription)
     }
   },
 
@@ -151,7 +187,13 @@ const api = {
       // AI action triggers
       'ai-action:recommend-response',
       // Auto-trigger events
-      'auto-trigger:settings-changed'
+      'auto-trigger:settings-changed',
+      'auto-trigger:action-triggered',
+      'auto-trigger:action-approved',
+      'auto-trigger:action-rejected',
+      'auto-trigger:action-executing',
+      'auto-trigger:action-completed',
+      'auto-trigger:action-failed'
     ]
     if (validChannels.includes(channel)) {
       const subscription = (event, ...args) => callback(...args)
@@ -245,7 +287,10 @@ const api = {
       'settings:navigate',
       // Auto-trigger invoke channels
       'auto-trigger:get-settings',
-      'auto-trigger:update-settings'
+      'auto-trigger:update-settings',
+      'auto-trigger:approve-action',
+      'auto-trigger:reject-action',
+      'auto-trigger:execute-action'
     ]
     if (!validChannels.includes(channel)) {
       return Promise.reject(new Error(`Invalid invoke channel: ${channel}`))

@@ -805,6 +805,109 @@ app.on('ready', async () => {
     return newAutoTrigger
   })
 
+  // Auto-trigger action IPC handlers
+  ipcMain.handle('auto-trigger:approve-action', async (event, actionId: string) => {
+    try {
+      console.log(`[main/index.ts] Approving action: ${actionId}`)
+
+      // Broadcast approval to all windows
+      for (const win of BrowserWindow.getAllWindows()) {
+        if (!win.isDestroyed()) {
+          win.webContents.send('auto-trigger:action-approved', actionId)
+        }
+      }
+
+      return { success: true, actionId }
+    } catch (error) {
+      console.error(`[main/index.ts] Failed to approve action ${actionId}:`, error)
+      return { success: false, error: error.message }
+    }
+  })
+
+  ipcMain.handle('auto-trigger:reject-action', async (event, actionId: string) => {
+    try {
+      console.log(`[main/index.ts] Rejecting action: ${actionId}`)
+
+      // Broadcast rejection to all windows
+      for (const win of BrowserWindow.getAllWindows()) {
+        if (!win.isDestroyed()) {
+          win.webContents.send('auto-trigger:action-rejected', actionId)
+        }
+      }
+
+      return { success: true, actionId }
+    } catch (error) {
+      console.error(`[main/index.ts] Failed to reject action ${actionId}:`, error)
+      return { success: false, error: error.message }
+    }
+  })
+
+  ipcMain.handle('auto-trigger:execute-action', async (event, { actionId, actionType, context }) => {
+    try {
+      console.log(`[main/index.ts] Executing action ${actionId} of type ${actionType}`)
+
+      // Broadcast execution start to all windows
+      for (const win of BrowserWindow.getAllWindows()) {
+        if (!win.isDestroyed()) {
+          win.webContents.send('auto-trigger:action-executing', actionId)
+        }
+      }
+
+      // Execute the action based on type
+      let result
+      switch (actionType) {
+        case 'recommendResponse':
+          // Trigger the recommend response AI action
+          // The actual AI processing will be handled by the renderer
+          for (const win of BrowserWindow.getAllWindows()) {
+            if (!win.isDestroyed()) {
+              win.webContents.send('ai-action:recommend-response', { actionId, context })
+            }
+          }
+          result = { success: true, message: 'Recommend response action triggered' }
+          break
+
+        case 'scheduleReminder':
+          // Future implementation
+          result = { success: false, error: 'Schedule reminder not yet implemented' }
+          break
+
+        case 'sendEmail':
+          // Future implementation
+          result = { success: false, error: 'Send email not yet implemented' }
+          break
+
+        default:
+          result = { success: false, error: `Unknown action type: ${actionType}` }
+      }
+
+      // Broadcast execution result to all windows
+      for (const win of BrowserWindow.getAllWindows()) {
+        if (!win.isDestroyed()) {
+          if (result.success) {
+            win.webContents.send('auto-trigger:action-completed', { actionId, result })
+          } else {
+            win.webContents.send('auto-trigger:action-failed', { actionId, error: result.error })
+          }
+        }
+      }
+
+      console.log(`[main/index.ts] Action ${actionId} execution result:`, result)
+      return result
+    } catch (error) {
+      console.error(`[main/index.ts] Failed to execute action ${actionId}:`, error)
+
+      // Broadcast failure to all windows
+      for (const win of BrowserWindow.getAllWindows()) {
+        if (!win.isDestroyed()) {
+          win.webContents.send('auto-trigger:action-failed', { actionId, error: error.message })
+        }
+      }
+
+      return { success: false, error: error.message }
+    }
+  })
+
   session.defaultSession.setDisplayMediaRequestHandler((request, callback) => {
     desktopCapturer
       .getSources({ types: ['screen'] })
