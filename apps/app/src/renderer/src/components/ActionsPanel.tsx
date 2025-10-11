@@ -37,13 +37,13 @@ export default function ActionsPanel() {
   const [actionResults, setActionResults] = useState<Record<string, string>>({}) // Store AI results per action ID
   const [hiddenMessageIds, setHiddenMessageIds] = useState<Set<string>>(new Set()) // Track hidden messages
   const messageTimestamps = useRef<Map<string, number>>(new Map()) // Stable timestamps for messages
-  const timestampCounter = useRef<number>(Date.now()) // Counter for sequential timestamps
 
   useEffect(() => {
-    if (messagesEndRef.current) {
+    // Only auto-scroll when new messages arrive and we're not executing an action
+    if (messagesEndRef.current && !executingActionRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' })
     }
-  }, [aiMessages, isLoading])
+  }, [aiMessages])
 
   useEffect(() => {
     const unsubscribe = window.electronAPI.on('popover:prepare-to-close', (id) => {
@@ -242,10 +242,12 @@ export default function ActionsPanel() {
   const conversationTimeline = useMemo(() => {
     const timeline: Array<{ type: 'message' | 'action'; data: any; timestamp: number }> = []
 
-    // Assign stable timestamps to new messages
+    // Assign stable timestamps to new messages using real time
     aiMessages.forEach((msg) => {
       if (!messageTimestamps.current.has(msg.id)) {
-        messageTimestamps.current.set(msg.id, timestampCounter.current++)
+        // Use Date.now() for each new message to get real timestamps
+        // This ensures messages and actions can properly interleave
+        messageTimestamps.current.set(msg.id, Date.now())
       }
     })
 
@@ -261,7 +263,7 @@ export default function ActionsPanel() {
       }
     })
 
-    // Add pending actions with their creation timestamps
+    // Add pending actions with their actual creation timestamps
     pendingActions.forEach((action) => {
       timeline.push({
         type: 'action',
@@ -339,6 +341,7 @@ export default function ActionsPanel() {
     const intentionLabel = INTENTION_LABELS[action.intention.primary][language]
     const actionSettings = settings?.actions[action.actionType]
     const approvalMode = actionSettings?.approvalMode || 'ask'
+    const isExecutingThisAction = executingActionRef.current === action.id
 
     return (
       <div className="space-y-2 w-full">
@@ -380,11 +383,27 @@ export default function ActionsPanel() {
               </div>
             )}
 
-            {/* Executing state */}
-            {action.status === 'executing' && (
-              <div className="flex items-center gap-2 text-xs text-blue-700 pt-1">
-                <Loader2 className="h-3 w-3 animate-spin" />
-                <span>{t('executingAction')}...</span>
+            {/* Executing state with audio wave animation */}
+            {(action.status === 'executing' || isExecutingThisAction) && (
+              <div className="pt-2 mt-2 border-t border-gray-300">
+                <div className="flex items-center justify-center gap-0.5 h-6">
+                  {/* Audio wave animation */}
+                  {[0, 1, 2, 3, 4].map((i) => (
+                    <motion.div
+                      key={i}
+                      className="w-0.5 bg-black/40 rounded-full"
+                      animate={{
+                        height: ['8px', '16px', '8px'],
+                      }}
+                      transition={{
+                        duration: 0.8,
+                        repeat: Infinity,
+                        delay: i * 0.1,
+                        ease: 'easeInOut',
+                      }}
+                    />
+                  ))}
+                </div>
               </div>
             )}
 
@@ -482,7 +501,7 @@ export default function ActionsPanel() {
                       </motion.div>
                     )
                   )}
-                  {isLoading && (
+                  {isLoading && !executingActionRef.current && (
                     <motion.div variants={messageItemVariants} className="text-sm text-black">
                       Loading...
                     </motion.div>

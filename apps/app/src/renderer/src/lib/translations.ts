@@ -194,7 +194,8 @@ export const translations = {
     executingAction: 'Executing',
     actionFailed: 'Action failed',
     actionQueueTitle: 'Pending Actions',
-    noActionsInQueue: 'No pending actions'
+    noActionsInQueue: 'No pending actions',
+    generatingResponse: 'Generating response...'
   },
   'zh-TW': {
     // Add Traditional Chinese translations here
@@ -377,7 +378,8 @@ export const translations = {
     executingAction: '執行中',
     actionFailed: '動作失敗',
     actionQueueTitle: '待處理動作',
-    noActionsInQueue: '沒有待處理的動作'
+    noActionsInQueue: '沒有待處理的動作',
+    generatingResponse: '正在產生回應...'
   }
 }
 
@@ -565,6 +567,7 @@ export type TranslationKey =
   | 'actionFailed'
   | 'actionQueueTitle'
   | 'noActionsInQueue'
+  | 'generatingResponse'
 
 /**
  * Type definition for supported language codes in the application
