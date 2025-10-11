@@ -22,6 +22,9 @@ import type { EnhancedSegment } from './transcriptionEnhancementService'
 export class IntentionProcessor extends EventEmitter {
   private settings: AutoTriggerSettings
   private sessionId: string | null = null
+  // Deduplication: Track recently processed transcripts to avoid duplicate actions
+  private recentTranscripts: Map<string, { timestamp: number; actions: Set<ActionType> }> = new Map()
+  private readonly DEDUP_WINDOW_MS = 5000 // 5 second deduplication window
 
   constructor(settings: AutoTriggerSettings) {
     super()
@@ -90,8 +93,26 @@ export class IntentionProcessor extends EventEmitter {
 
     console.log('[IntentionProcessor] Eligible actions:', eligibleActions)
 
+    // Deduplication: Create a content-based key for this transcript
+    const transcriptKey = this.createTranscriptKey(enhanced.corrected || original.rawText, original.sourceType)
+
+    // Clean up old entries from deduplication cache
+    this.cleanupDedupCache()
+
+    // Check if we've recently processed this transcript
+    const recentEntry = this.recentTranscripts.get(transcriptKey)
+
     // Create pending actions for each eligible action
     eligibleActions.forEach((actionType) => {
+      // Deduplication: Skip if we've already triggered this action for this transcript recently
+      if (recentEntry && recentEntry.actions.has(actionType)) {
+        const timeSinceLastTrigger = Date.now() - recentEntry.timestamp
+        console.log(
+          `[IntentionProcessor] Skipping duplicate action ${actionType} for transcript (triggered ${timeSinceLastTrigger}ms ago)`
+        )
+        return
+      }
+
       const pendingAction = this.createPendingAction(
         actionType,
         original,
@@ -99,12 +120,24 @@ export class IntentionProcessor extends EventEmitter {
         enhanced
       )
 
+      // Track this action in deduplication cache
+      if (!recentEntry) {
+        this.recentTranscripts.set(transcriptKey, {
+          timestamp: Date.now(),
+          actions: new Set([actionType])
+        })
+      } else {
+        recentEntry.actions.add(actionType)
+        recentEntry.timestamp = Date.now()
+      }
+
       // Emit action for approval/execution
       this.emit('actionTriggered', pendingAction)
       console.log('[IntentionProcessor] Action triggered:', {
         actionType,
         transcriptId: original.id,
-        confidence: intention.confidence
+        confidence: intention.confidence,
+        transcriptKey
       })
     })
   }
@@ -231,10 +264,42 @@ export class IntentionProcessor extends EventEmitter {
   }
 
   /**
+   * Create a content-based key for transcript deduplication
+   * Normalizes text and includes source type
+   */
+  private createTranscriptKey(text: string, sourceType: 'microphone' | 'system'): string {
+    // Normalize: lowercase, trim, remove extra whitespace
+    const normalized = text.toLowerCase().trim().replace(/\s+/g, ' ')
+    // Include source type in key to allow same text from different sources
+    return `${sourceType}:${normalized}`
+  }
+
+  /**
+   * Clean up old entries from deduplication cache
+   */
+  private cleanupDedupCache(): void {
+    const now = Date.now()
+    const keysToDelete: string[] = []
+
+    for (const [key, entry] of this.recentTranscripts.entries()) {
+      if (now - entry.timestamp > this.DEDUP_WINDOW_MS) {
+        keysToDelete.push(key)
+      }
+    }
+
+    keysToDelete.forEach((key) => this.recentTranscripts.delete(key))
+
+    if (keysToDelete.length > 0) {
+      console.log(`[IntentionProcessor] Cleaned up ${keysToDelete.length} old dedup entries`)
+    }
+  }
+
+  /**
    * Clear processor state
    */
   clear(): void {
     this.sessionId = null
+    this.recentTranscripts.clear()
     this.removeAllListeners()
     console.log('[IntentionProcessor] Cleared')
   }

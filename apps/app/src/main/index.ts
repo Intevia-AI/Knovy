@@ -21,7 +21,8 @@ import {
   closePopover,
   closeAllPopovers,
   forceClosePopover,
-  resizePopover
+  resizePopover,
+  getPopover
 } from './popoverManager'
 import { positionWindow, type PositionOptions } from './windowManager'
 import electronUpdater, { type AppUpdater } from 'electron-updater'
@@ -50,6 +51,9 @@ let isScreenshotInProgress = false
 let hiddenWindowsBeforeScreenshot: Set<number> = new Set()
 
 let pendingKeyword: { keyword: string; timestamp: number } | null = null
+
+// Store pending actions that were triggered before popover opened (for race condition fix)
+let recentPendingActions: any[] = []
 
 // Store enhancement event cleanup functions to prevent duplicate listeners
 let enhancementEventCleanups: Array<() => void> = []
@@ -858,13 +862,15 @@ app.on('ready', async () => {
       switch (actionType) {
         case 'recommendResponse':
           // Trigger the recommend response AI action
-          // The actual AI processing will be handled by the renderer
-          for (const win of BrowserWindow.getAllWindows()) {
-            if (!win.isDestroyed()) {
-              win.webContents.send('ai-action:recommend-response', { actionId, context })
-            }
+          // Send ONLY to the actions popover (not all windows)
+          const actionsPopover = getPopover('actions')
+          if (actionsPopover && !actionsPopover.isDestroyed()) {
+            actionsPopover.webContents.send('ai-action:recommend-response', { actionId, context })
+            result = { success: true, message: 'Recommend response action triggered' }
+          } else {
+            console.warn('[main/index.ts] Actions popover not found or destroyed')
+            result = { success: false, error: 'Actions popover not available' }
           }
-          result = { success: true, message: 'Recommend response action triggered' }
           break
 
         case 'scheduleReminder':
@@ -1345,36 +1351,11 @@ app.on('ready', async () => {
             totalWindows: validWindows.length
           })
 
-          // Queue segment for enhancement via unified AI action
-          setTimeout(() => {
-            const transcriptionService = getWhisperBackend()
-            const enhancementService = transcriptionService.getEnhancementService()
-            if (enhancementService) {
-              // Get user language from cached session profile
-              const userLanguage =
-                cachedSessionProfile?.profile?.language ||
-                cachedSessionProfile?.app_settings?.language ||
-                'auto'
-
-              // Create segment with the SAME transcript ID for proper update matching
-              const segment = {
-                id: transcriptId,
-                rawText: transcriptionData.text,
-                timestamp: Date.now(),
-                sourceType: transcriptionData.sourceType
-              }
-
-              // Queue in enhancement service (batching preserved)
-              const sessionContext = {
-                sessionId: currentSessionId,
-                conversationHistory: [],
-                userLanguage: userLanguage
-              }
-
-              enhancementService.enhanceSegment(segment, sessionContext, false)
-              console.log(`[main/index.ts] Queued transcript ${transcriptId} for enhancement`)
-            }
-          }, 100) // Small delay to ensure database save completes
+          // NOTE: Enhancement is already queued by whisperBackend.transcribeAudio()
+          // We don't need to queue it again here to avoid duplicate processing
+          console.log(
+            `[main/index.ts] Transcript ${transcriptId} broadcast complete (enhancement handled by WhisperBackend)`
+          )
         } catch (broadcastError) {
           console.error(
             `[main/index.ts] Broadcast errors for transcript ${transcriptId}:`,
@@ -1676,7 +1657,13 @@ app.on('ready', async () => {
   ipcMain.handle('transcription:process-audio', async (event, { audioBuffer, options }) => {
     try {
       const transcriptionService = getWhisperBackend()
-      const result = await transcriptionService.transcribeAudio(audioBuffer, options)
+      // Pass sessionId and timestamp for enhancement triggering
+      const result = await transcriptionService.transcribeAudio(
+        audioBuffer,
+        options,
+        currentSessionId,
+        Date.now()
+      )
 
       console.log(
         `[main/index.ts] Local transcription completed: "${result.text}" (${result.processingTime}ms)`
@@ -1837,9 +1824,21 @@ app.on('ready', async () => {
           const intentionProcessor = getIntentionProcessor(settings.autoTrigger)
           intentionProcessor.setSessionId(currentSessionId)
 
+          // IMPORTANT: Clear ALL existing listeners first to prevent duplicates
+          // IntentionProcessor is a singleton, so we must ensure only ONE listener exists
+          intentionProcessor.removeAllListeners('actionTriggered')
+          console.log('[main/index.ts] Cleared all existing IntentionProcessor listeners')
+
           // Listen for triggered actions from IntentionProcessor
           const actionTriggeredHandler = (pendingAction) => {
             console.log('[main/index.ts] Action triggered by IntentionProcessor:', pendingAction.actionType)
+
+            // Cache the action for popovers that open later (race condition fix)
+            recentPendingActions.push({...pendingAction, timestamp: Date.now()})
+            // Keep only actions from the last 2 seconds
+            const twoSecondsAgo = Date.now() - 2000
+            recentPendingActions = recentPendingActions.filter(a => a.timestamp > twoSecondsAgo)
+
             // Broadcast to all windows for approval/execution
             for (const win of BrowserWindow.getAllWindows()) {
               if (!win.isDestroyed()) {
@@ -1849,11 +1848,12 @@ app.on('ready', async () => {
           }
 
           intentionProcessor.on('actionTriggered', actionTriggeredHandler)
+          console.log('[main/index.ts] Added IntentionProcessor actionTriggered listener')
 
           // Store cleanup function for IntentionProcessor
           enhancementEventCleanups.push(() => {
             intentionProcessor.off('actionTriggered', actionTriggeredHandler)
-            intentionProcessor.clear()
+            console.log('[main/index.ts] Removed IntentionProcessor actionTriggered listener')
           })
 
           const segmentEnhancedHandler = async (data) => {
@@ -1970,6 +1970,17 @@ app.on('ready', async () => {
       return keywordToReturn
     }
     return null
+  })
+
+  // Retrieve pending actions for newly opened popovers (race condition fix)
+  ipcMain.handle('popover:consume-pending-actions', () => {
+    // Return recent actions (within last 2 seconds) and clear the cache
+    const now = Date.now()
+    const recentActions = recentPendingActions.filter(a => (now - a.timestamp) < 2000)
+    console.log(`[main/index.ts] Popover requested pending actions, returning ${recentActions.length} actions`)
+    // Clear the cache after consuming
+    recentPendingActions = []
+    return recentActions
   })
 
   ipcMain.on('audio:level-update', (event, levels) => {

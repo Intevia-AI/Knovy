@@ -94,6 +94,8 @@ export function useAIInteraction() {
       )
 
       // Handle transcription updates (for enhancement replacements)
+      // Note: RealTimeAnalysis handles 'transcription:enhanced' and sends 'transcription:update'
+      // so we only need to listen to 'transcription:update' here to avoid duplicates
       const unsubscribeUpdate = (window as any).electronAPI.on(
         'transcription:update',
         (updateData: {
@@ -101,8 +103,14 @@ export function useAIInteraction() {
           enhancedText: string
           sourceType?: 'microphone' | 'system'
           keywords?: string[]
+          intention?: any
+          confidence?: number
         }) => {
-          console.log('[useAIInteraction] Received transcription update:', updateData)
+          // Only log in main window to reduce console noise (avoid 4x duplicate logs)
+          const isMainWindow = !window.location.hash || window.location.hash === '#/'
+          if (isMainWindow) {
+            console.log('[useAIInteraction] Received transcription update:', updateData)
+          }
           setTranscriptions((prev) =>
             prev.map((transcript) =>
               transcript.id === updateData.id
@@ -117,32 +125,9 @@ export function useAIInteraction() {
         }
       )
 
-      // Handle transcription enhancements (includes keywords)
-      const unsubscribeEnhanced = (window as any).electronAPI.on(
-        'transcription:enhanced',
-        (data: {
-          original: { id: string; rawText: string }
-          enhanced: { corrected: string; keywords: string[] }
-        }) => {
-          console.log('[useAIInteraction] Received transcription enhancement:', data)
-          setTranscriptions((prev) =>
-            prev.map((transcript) =>
-              transcript.id === data.original.id
-                ? {
-                    ...transcript,
-                    content: data.enhanced.corrected,
-                    keywords: data.enhanced.keywords || []
-                  }
-                : transcript
-            )
-          )
-        }
-      )
-
       return () => {
         unsubscribeData()
         unsubscribeUpdate()
-        unsubscribeEnhanced()
       }
     }
     return () => {} // Return empty cleanup function when electronAPI is not available

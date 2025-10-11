@@ -274,6 +274,7 @@ const api = {
       'popover:consume-pending-keyword',
       'electronAPI:getActiveScreenSourceId',
       'electronAPI:getDisplays',
+      'popover:consume-pending-actions',
       'transcription:initialize',
       'transcription:process-audio',
       'transcription:get-models',

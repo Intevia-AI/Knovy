@@ -10,7 +10,7 @@ export function useActionQueue() {
   const [pendingActions, setPendingActions] = useState<PendingAction[]>([])
   const [settings, setSettings] = useState<any>(null)
 
-  // Load auto-trigger settings
+  // Load auto-trigger settings AND consume any pending actions from before popover opened
   useEffect(() => {
     const loadSettings = async () => {
       try {
@@ -21,6 +21,20 @@ export function useActionQueue() {
       }
     }
     loadSettings()
+
+    // Consume any pending actions that were triggered before this popover opened (race condition fix)
+    const consumePendingActions = async () => {
+      try {
+        const cachedActions = await window.electronAPI.invoke('popover:consume-pending-actions')
+        if (cachedActions && cachedActions.length > 0) {
+          console.log(`[useActionQueue] Consumed ${cachedActions.length} pending actions from cache`)
+          setPendingActions(cachedActions.map(a => ({...a, timestamp: a.timestamp || Date.now()})))
+        }
+      } catch (error) {
+        console.error('[useActionQueue] Error consuming pending actions:', error)
+      }
+    }
+    consumePendingActions()
 
     // Listen for settings changes
     const unsubscribe = window.electronAPI.autoTrigger.onSettingsChanged((newSettings) => {
