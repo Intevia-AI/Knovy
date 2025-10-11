@@ -1327,6 +1327,7 @@ app.on('ready', async () => {
                 clearTimeout(timeout)
                 resolve()
               } catch (sendError) {
+                console.error(`[main/index.ts] Error sending to window ${index}:`, sendError)
                 clearTimeout(timeout)
                 reject(sendError)
               }
@@ -1351,10 +1352,41 @@ app.on('ready', async () => {
             totalWindows: validWindows.length
           })
 
-          // NOTE: Enhancement is already queued by whisperBackend.transcribeAudio()
-          // We don't need to queue it again here to avoid duplicate processing
+          // Trigger transcription enhancement with the correct transcript ID
+          const transcriptionService = getWhisperBackend()
+          const enhancementService = transcriptionService.getEnhancementService()
+          if (enhancementService) {
+            // Get user language from cached session profile
+            const userLanguage = cachedSessionProfile?.profile?.language ||
+                               cachedSessionProfile?.app_settings?.language ||
+                               'auto'
+
+            // Create segment with the SAME transcript ID for proper update matching
+            const segment = {
+              id: transcriptId, // Use the same ID that was broadcasted to UI
+              rawText: transcriptionData.text,
+              timestamp: Date.now(),
+              sourceType: transcriptionData.sourceType
+            }
+
+            // Get session context
+            const sessionContext = {
+              sessionId: currentSessionId,
+              conversationHistory: [], // TODO: Get from session history if needed
+              userLanguage: userLanguage
+            }
+
+            // Trigger enhancement (async, non-blocking) with small delay to ensure DB save completes
+            setTimeout(() => {
+              enhancementService.enhanceSegment(segment, sessionContext, false)
+              console.log(
+                `[main/index.ts] Triggered enhancement for transcript ${transcriptId} with user language: ${userLanguage}`
+              )
+            }, 100) // 100ms delay to allow transcript to be saved to database first
+          }
+
           console.log(
-            `[main/index.ts] Transcript ${transcriptId} broadcast complete (enhancement handled by WhisperBackend)`
+            `[main/index.ts] Transcript ${transcriptId} broadcast and enhancement queued successfully`
           )
         } catch (broadcastError) {
           console.error(
