@@ -182,6 +182,12 @@ async function startSession() {
   try {
     const { id } = await dbService.createSession(newSession)
     currentSessionId = id
+
+    // Update IntentionProcessor with new session ID
+    const settings = await loadSettings()
+    const intentionProcessor = getIntentionProcessor(settings.autoTrigger)
+    intentionProcessor.setSessionId(id)
+
     console.log(`[main/index.ts] Started and set new session ID: ${id}`)
     return id
   } catch (error) {
@@ -197,6 +203,12 @@ async function endCurrentSession() {
   }
   const sessionIdToEnd = currentSessionId
   currentSessionId = null // Clear session ID immediately
+
+  // Clear IntentionProcessor session ID
+  const settings = await loadSettings()
+  const intentionProcessor = getIntentionProcessor(settings.autoTrigger)
+  intentionProcessor.setSessionId(null)
+
   try {
     const result = await dbService.endSession(sessionIdToEnd)
     console.log(`[main/index.ts] Ended session: ${sessionIdToEnd}`)
@@ -777,6 +789,10 @@ app.on('ready', async () => {
     const currentSettings = await loadSettings()
     const newAutoTrigger = { ...currentSettings.autoTrigger, ...updates }
     await saveSettings({ ...currentSettings, autoTrigger: newAutoTrigger })
+
+    // Update IntentionProcessor settings
+    const intentionProcessor = getIntentionProcessor(newAutoTrigger)
+    intentionProcessor.updateSettings(newAutoTrigger)
 
     // Broadcast change to all windows
     for (const win of BrowserWindow.getAllWindows()) {
@@ -1713,6 +1729,30 @@ app.on('ready', async () => {
         // Set up event forwarding from enhancement service to renderer
         const enhancementService = transcriptionService.getEnhancementService()
         if (enhancementService) {
+          // Initialize IntentionProcessor with current settings
+          const settings = await loadSettings()
+          const intentionProcessor = getIntentionProcessor(settings.autoTrigger)
+          intentionProcessor.setSessionId(currentSessionId)
+
+          // Listen for triggered actions from IntentionProcessor
+          const actionTriggeredHandler = (pendingAction) => {
+            console.log('[main/index.ts] Action triggered by IntentionProcessor:', pendingAction.actionType)
+            // Broadcast to all windows for approval/execution
+            for (const win of BrowserWindow.getAllWindows()) {
+              if (!win.isDestroyed()) {
+                win.webContents.send('auto-trigger:action-triggered', pendingAction)
+              }
+            }
+          }
+
+          intentionProcessor.on('actionTriggered', actionTriggeredHandler)
+
+          // Store cleanup function for IntentionProcessor
+          enhancementEventCleanups.push(() => {
+            intentionProcessor.off('actionTriggered', actionTriggeredHandler)
+            intentionProcessor.clear()
+          })
+
           const segmentEnhancedHandler = async (data) => {
             try {
               // Update database with enhanced transcription
@@ -1730,6 +1770,9 @@ app.on('ready', async () => {
               console.log(
                 `[main/index.ts] Updated transcript ${data.original.id} with enhancement in database`
               )
+
+              // Process enhanced segment through IntentionProcessor for auto-trigger
+              intentionProcessor.processEnhancedSegment(data)
 
               // Forward to renderer
               event.sender.send('transcription:enhanced', data)
