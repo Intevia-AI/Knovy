@@ -56,6 +56,10 @@ export interface AppSettings {
 
 /**
  * Type of action that can be triggered automatically
+ *
+ * NOTE: recommendResponse should ONLY be triggered by system audio (others speaking),
+ * not by microphone audio (user speaking). Users don't need response suggestions
+ * for what they themselves say.
  */
 export type ActionType = 'recommendResponse' | 'scheduleReminder' | 'sendEmail'
 
@@ -191,4 +195,31 @@ export const INTENTION_LABELS: Record<DetectedIntention['primary'], { en: string
     en: 'Request',
     'zh-TW': '請求'
   }
+}
+
+/**
+ * Checks if an action type is valid for the given audio source
+ *
+ * Rules:
+ * - recommendResponse: ONLY system audio (others speaking) ✓
+ * - scheduleReminder: Both microphone and system audio ✓
+ * - sendEmail: Both microphone and system audio ✓
+ *
+ * @param actionType - The type of action to check
+ * @param sourceType - The source of the audio (microphone or system)
+ * @returns true if the action is valid for the source type
+ */
+export function isActionValidForSource(
+  actionType: ActionType,
+  sourceType: 'microphone' | 'system'
+): boolean {
+  // recommendResponse should ONLY be triggered by system audio (others speaking)
+  // Users don't need response suggestions for what they themselves say
+  if (actionType === 'recommendResponse') {
+    return sourceType === 'system'
+  }
+
+  // scheduleReminder and sendEmail can be triggered by both sources
+  // (user might dictate a reminder/email to themselves, or hear one from others)
+  return true
 }
