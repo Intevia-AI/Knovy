@@ -1296,7 +1296,133 @@ export class WhisperBackend {
 
     const originalText = text.trim()
 
-    // Pattern detection for common Whisper hallucinations
+    // ============================================================================
+    // Layer 2: Exact Pattern Matching - Known Hallucinations
+    // ============================================================================
+    // These are exact phrases that Whisper commonly outputs when processing noise
+    // or when it's trained on specific video content (e.g., YouTube video endings)
+    const HALLUCINATION_EXACT_MATCHES = [
+      // Chinese video/streaming service promotions
+      '請不吝點贊訂閱轉發打賞支持明鏡與點點欄目',
+      '请不吝点赞 订阅 转发 打赏支持明镜与点点栏目',
+      '請不吝點贊 訂閱 轉發 打賞支持明鏡與點點欄目',
+
+      // Generic conversation templates (often from training data)
+      'Clear conversation with proper punctuation and grammar',
+      'Client conversation with proper punctuation and grammar',
+      'clear conversation with proper punctuation and grammar',
+      'client conversation with proper punctuation and grammar',
+
+      // Generic thank you messages (video endings)
+      'Thank you for watching',
+      'Thank you',
+      'Thanks for watching',
+      'thank you for watching',
+      'thank you',
+      'thanks for watching',
+
+      // Call-to-action phrases (YouTube-style content)
+      'Click on the link in the description to watch the full video',
+      'click on the link in the description to watch the full video',
+
+      // Korean news/broadcast phrases (MBC News, weather reports)
+      'MBC 뉴스 이준범입니다',
+      '날씨였습니다',
+      '감사합니다',
+      '끝이 안 돼',
+
+      // French video endings
+      "Merci d'avoir regardé la vidéo",
+      "Merci d'avoir regardé",
+      "merci d'avoir regardé la vidéo",
+      "merci d'avoir regardé"
+    ]
+
+    // Check for exact hallucination matches (case-insensitive substring matching)
+    const lowerText = originalText.toLowerCase()
+    for (const pattern of HALLUCINATION_EXACT_MATCHES) {
+      if (lowerText.includes(pattern.toLowerCase())) {
+        console.log(
+          `[WhisperService] Filtered exact hallucination: "${originalText}" (matched: "${pattern}")`
+        )
+        return ''
+      }
+    }
+
+    // ============================================================================
+    // Layer 3: Language Detection - Unsupported Languages
+    // ============================================================================
+    // Filter out transcriptions in unsupported languages (Korean, Japanese, etc.)
+    // We only support English and Traditional Chinese (zh-TW)
+
+    // Helper: Detect Korean Hangul characters
+    const containsKorean = (text: string): boolean => {
+      const koreanRegex = /[\uAC00-\uD7AF]/g // Korean Hangul Syllables
+      const matches = text.match(koreanRegex)
+      const koreanRatio = matches ? matches.length / text.length : 0
+      return koreanRatio > 0.7 // >70% Korean chars
+    }
+
+    // Helper: Detect Japanese characters (Hiragana + Katakana)
+    const containsJapanese = (text: string): boolean => {
+      const hiraganaRegex = /[\u3040-\u309F]/g // Hiragana
+      const katakanaRegex = /[\u30A0-\u30FF]/g // Katakana
+      const hiraganaMatches = text.match(hiraganaRegex) || []
+      const katakanaMatches = text.match(katakanaRegex) || []
+      const japaneseRatio = (hiraganaMatches.length + katakanaMatches.length) / text.length
+      return japaneseRatio > 0.7 // >70% Japanese chars
+    }
+
+    // Helper: Detect French/European accented characters
+    const containsFrenchAccents = (text: string): boolean => {
+      const frenchAccentRegex = /[àâäéèêëïîôùûüÿæœç]/gi
+      const matches = text.match(frenchAccentRegex)
+      const accentRatio = matches ? matches.length / text.length : 0
+      // More permissive threshold for French since accents are less frequent
+      return accentRatio > 0.15 && text.length < 50 // >15% accented chars in short text
+    }
+
+    // Helper: Detect Simplified Chinese hints (for zh-TW users)
+    const containsSimplifiedChinese = (text: string): boolean => {
+      // Common Simplified-only characters that don't exist in Traditional Chinese
+      // These are characters that were simplified during Chinese language reform
+      const simplifiedOnlyChars =
+        /[万与丰东丝丽严两个临为主义乐了于亏云五井互产交享京亩亮亲亿什今仓从份仓代仪优众会伞伪传位住优儿兄关兴农军写决冈决击凡凤减准净凯出刊划刚创办务动励劝医华卖压发叶号叹听启响周命国图圣场坏块补觉认论设访证译试话语诚负财货贵贷质资赏赤车转轮软选运过达违郑鄕镇际队险阳阶隐雄雨雾预页顶顺须颜类飞饮饼香马驱驻骄骗骚骨高鱼鸟麦麦龙]/g
+      const matches = text.match(simplifiedOnlyChars)
+      const simplifiedRatio = matches ? matches.length / text.length : 0
+      // Conservative threshold: >30% simplified-only chars suggests Simplified Chinese
+      return simplifiedRatio > 0.3
+    }
+
+    // Check for unsupported languages
+    if (containsKorean(originalText)) {
+      console.log(`[WhisperService] Filtered Korean text: "${originalText}" (unsupported language)`)
+      return ''
+    }
+
+    if (containsJapanese(originalText)) {
+      console.log(
+        `[WhisperService] Filtered Japanese text: "${originalText}" (unsupported language)`
+      )
+      return ''
+    }
+
+    if (containsFrenchAccents(originalText)) {
+      console.log(`[WhisperService] Filtered French text: "${originalText}" (unsupported language)`)
+      return ''
+    }
+
+    // For Traditional Chinese users, filter Simplified Chinese transcriptions
+    if (options.userLanguage === 'zh-TW' && containsSimplifiedChinese(originalText)) {
+      console.log(
+        `[WhisperService] Filtered Simplified Chinese text for zh-TW user: "${originalText}"`
+      )
+      return ''
+    }
+
+    // ============================================================================
+    // Layer 4: Regex Pattern Detection - Generic Hallucinations
+    // ============================================================================
     const hallucination_patterns = [
       // Single or few Chinese/Japanese/Korean characters (common noise hallucination)
       /^[\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff\uac00-\ud7af]{1,3}$/,
@@ -1314,7 +1440,7 @@ export class WhisperBackend {
       /^[\s\p{P}]+$/u
     ]
 
-    // Check for hallucination patterns
+    // Check for regex hallucination patterns
     for (const pattern of hallucination_patterns) {
       if (pattern.test(originalText)) {
         console.log(
