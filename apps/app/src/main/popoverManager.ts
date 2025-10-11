@@ -112,3 +112,11 @@ export function closeAllPopovers(): void {
     closePopover(id)
   }
 }
+
+export function getPopover(id: string): BrowserWindow | undefined {
+  const popover = openPopovers.get(id)
+  if (popover && !popover.isDestroyed()) {
+    return popover
+  }
+  return undefined
+}

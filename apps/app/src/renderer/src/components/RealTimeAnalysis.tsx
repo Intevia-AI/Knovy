@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import {
   TranscriptionFactory,
   TranscriptionProcessor,
@@ -56,8 +56,8 @@ export default function RealTimeAnalysis({
     Map<string, 'pending' | 'processing' | 'completed' | 'failed'>
   >(new Map())
 
-  // Enhancement event handlers
-  const handleSegmentEnhanced = (data: SegmentEnhancedEvent) => {
+  // Enhancement event handlers - wrapped in useCallback to prevent recreation on every render
+  const handleSegmentEnhanced = useCallback((data: SegmentEnhancedEvent) => {
     console.log('[RealTimeAnalysis] Segment enhanced:', {
       sessionId: data.sessionId,
       transcriptId: data.original.id,
@@ -92,9 +92,9 @@ export default function RealTimeAnalysis({
         confidence: data.enhanced.confidence
       })
     }
-  }
+  }, []) // Empty deps - this function has no external dependencies
 
-  const handleEnhancementError = (error: EnhancementErrorEvent) => {
+  const handleEnhancementError = useCallback((error: EnhancementErrorEvent) => {
     console.error('[RealTimeAnalysis] Enhancement error:', {
       sessionId: error.sessionId,
       segmentId: error.segmentId,
@@ -108,7 +108,7 @@ export default function RealTimeAnalysis({
     console.warn(
       `[RealTimeAnalysis] Enhancement failed for segment ${error.segmentId}: ${error.error}`
     )
-  }
+  }, []) // Empty deps - this function has no external dependencies
 
   // Initialize transcription enhancement
   const { isEnhancementReady } = useTranscriptionEnhancement({

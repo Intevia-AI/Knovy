@@ -12,7 +12,6 @@ import { useI18n } from '@/hooks/useI18n'
 import { useAIInteraction } from '@/hooks/useAIInteraction'
 import { motion, AnimatePresence } from 'motion'
 import { cn } from '@/lib/utils'
-import { useAuth } from '@/hooks/useAuth'
 import { Markdown } from '@/components/MarkdownRenderer'
 import { useActionQueue } from '@/hooks/useActionQueue'
 import { ActionQueue } from '@/components/ActionQueue'
@@ -109,6 +108,7 @@ export default function ActionsPanel() {
   }, [handleKeywordSearch])
 
   // Listen for AI action shortcuts via IPC
+  // Note: This handles keyboard shortcuts for recommend response
   useEffect(() => {
     const handleRecommendResponse = () => {
       console.log('[ActionsPanel] Shortcut: Recommend response triggered')
@@ -219,6 +219,14 @@ export default function ActionsPanel() {
     }
   }
 
+  // Auto-switch to conversational mode when there are pending actions
+  useEffect(() => {
+    if (pendingActions.length > 0 && !isConversational) {
+      console.log('[ActionsPanel] Pending actions detected, switching to conversational mode')
+      setIsConversational(true)
+    }
+  }, [pendingActions.length, isConversational])
+
   // Handle automatic execution of actions in automatic mode
   useEffect(() => {
     if (!settings || settings.approvalMode !== 'automatic') return
@@ -227,28 +235,16 @@ export default function ActionsPanel() {
     pendingActions.forEach((action) => {
       if (action.status === 'pending') {
         console.log('[ActionsPanel] Auto-executing action in automatic mode:', action.id)
+        // Switch to conversational mode
+        if (!isConversational) {
+          setIsConversational(true)
+        }
         // Approve and execute immediately
         approveAction(action.id)
         setTimeout(() => executeAction(action), 100)
       }
     })
-  }, [pendingActions, settings, approveAction, executeAction])
-
-  // Handle AI action execution with context
-  useEffect(() => {
-    const handleAIAction = (data: any) => {
-      console.log('[ActionsPanel] AI action triggered with context:', data)
-      // Switch to conversational mode and trigger AI response
-      if (!isConversational) {
-        setIsConversational(true)
-      }
-      // Trigger the 'answer' action which generates a recommended response
-      sendContextToAI('answer')
-    }
-
-    const unsubscribe = window.electronAPI.on('ai-action:recommend-response', handleAIAction)
-    return () => unsubscribe()
-  }, [isConversational, sendContextToAI])
+  }, [pendingActions, settings, approveAction, executeAction, isConversational])
 
   return (
     <AnimatePresence onExitComplete={handleAnimationComplete}>
