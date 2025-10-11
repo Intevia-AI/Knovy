@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Logo } from '@/components/Logo'
-import { Sparkles, ExternalLink, Download } from 'lucide-react'
+import { Sparkles, ExternalLink, Download, Loader2 } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -11,6 +11,7 @@ export function AboutView() {
   const { t } = useTranslation()
   const [appVersion, setAppVersion] = useState<string>('Loading...')
   const [isLoading, setIsLoading] = useState(true)
+  const [isCheckingForUpdates, setIsCheckingForUpdates] = useState(false)
 
   useEffect(() => {
     // Fetch app version from Electron
@@ -18,11 +19,30 @@ export function AboutView() {
       setAppVersion(version)
       setIsLoading(false)
     })
+
+    // Listen for update check completion or errors
+    const unsubscribeUpdateDownloaded = window.electronAPI.on('updater:update-downloaded', () => {
+      setIsCheckingForUpdates(false)
+      console.log('[AboutView] Update downloaded notification received')
+    })
+
+    const unsubscribeCheckError = window.electronAPI.on('updater:check-error', (error: string) => {
+      setIsCheckingForUpdates(false)
+      console.error('[AboutView] Update check failed:', error)
+      // You could show a toast notification here
+    })
+
+    return () => {
+      unsubscribeUpdateDownloaded()
+      unsubscribeCheckError()
+    }
   }, [])
 
   const checkForUpdates = () => {
     // Trigger update check via Electron IPC
-    window.electronAPI.send('check-for-updates')
+    setIsCheckingForUpdates(true)
+    window.electronAPI.send('updater:check-for-updates')
+    console.log('[AboutView] Manual update check triggered')
   }
 
   if (isLoading) {
@@ -112,9 +132,18 @@ export function AboutView() {
                 {t('visitWebsite')}
               </a>
             </Button>
-            <Button variant="ghost" className="w-full justify-start" onClick={checkForUpdates}>
-              <Download className="w-4 h-4 mr-2" />
-              {t('checkForUpdates')}
+            <Button
+              variant="ghost"
+              className="w-full justify-start"
+              onClick={checkForUpdates}
+              disabled={isCheckingForUpdates}
+            >
+              {isCheckingForUpdates ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Download className="w-4 h-4 mr-2" />
+              )}
+              {isCheckingForUpdates ? t('checkingForUpdates') : t('checkForUpdates')}
             </Button>
           </CardContent>
         </Card>

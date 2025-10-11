@@ -141,6 +141,7 @@ export const translations = {
     aiPoweredTranscription: 'Your All-in-One AI working assistant',
     visitWebsite: 'Visit Website',
     checkForUpdates: 'Check for Updates',
+    checkingForUpdates: 'Checking for updates...',
     generalSettingsDescription: 'Manage your general application settings',
     languageChangeWarning: 'Changing language will restart your current recording session',
     displaySettingsDescription: 'Configure display and screen settings',
@@ -326,6 +327,7 @@ export const translations = {
     aiPoweredTranscription: 'Your All-in-One AI working assistant',
     visitWebsite: '來去官網',
     checkForUpdates: '檢查更新',
+    checkingForUpdates: '正在檢查更新...',
     generalSettingsDescription: '管理您的一般設定',
     languageChangeWarning: '變更語言將會重新開始您目前的錄製對話紀錄',
     displaySettingsDescription: '設定 Knovy 所處的螢幕',
@@ -514,6 +516,7 @@ export type TranslationKey =
   | 'aiPoweredTranscription'
   | 'visitWebsite'
   | 'checkForUpdates'
+  | 'checkingForUpdates'
   | 'generalSettingsDescription'
   | 'languageChangeWarning'
   | 'displaySettingsDescription'

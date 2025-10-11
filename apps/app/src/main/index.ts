@@ -121,6 +121,36 @@ ipcMain.on('updater:quit-and-install', () => {
   getAutoUpdater().quitAndInstall()
 })
 
+// Manual update check from settings
+ipcMain.on('updater:check-for-updates', async (event) => {
+  console.log('[AutoUpdater] Manual update check requested from settings')
+  try {
+    const autoUpdater = getAutoUpdater()
+    const checkResult = await autoUpdater.checkForUpdates()
+
+    if (checkResult) {
+      console.log('[AutoUpdater] Manual check completed:', {
+        currentVersion: checkResult.currentVersion,
+        updateVersion: checkResult.updateInfo?.version,
+        hasDownloadedUpdate: !!checkResult.downloadedFile
+      })
+
+      // If update is already downloaded, notify immediately
+      if (checkResult.downloadedFile || (checkResult.updateInfo && checkResult.updateInfo.version !== checkResult.currentVersion)) {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('updater:update-downloaded', checkResult.updateInfo)
+        }
+      }
+    }
+  } catch (error) {
+    console.error('[AutoUpdater] Error during manual update check:', error)
+    // Send error notification to renderer
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('updater:check-error', error.message)
+    }
+  }
+})
+
 // The popover:create IPC handler now emits an internal event
 // instead of directly calling the popover manager.
 ipcMain.handle('popover:create', (event, options) => {
@@ -682,15 +712,40 @@ app.on('ready', async () => {
 
     // Check if there's an update already downloaded and ready to install
     const autoUpdater = getAutoUpdater()
-    const checkResult = await autoUpdater.checkForUpdates()
 
-    // If there's a downloaded update ready, notify the user immediately
-    if (checkResult && checkResult.downloadedFile) {
-      console.log('[AutoUpdater] Previously downloaded update found, notifying user')
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send('updater:update-downloaded', checkResult.updateInfo)
+    // Small delay to ensure mainWindow is fully loaded before checking for updates
+    setTimeout(async () => {
+      try {
+        // Check for updates (this will also detect previously downloaded updates)
+        const checkResult = await autoUpdater.checkForUpdates()
+
+        if (checkResult) {
+          console.log('[AutoUpdater] Update check completed on startup:', {
+            currentVersion: checkResult.currentVersion,
+            updateVersion: checkResult.updateInfo?.version,
+            hasDownloadedUpdate: !!checkResult.downloadedFile
+          })
+
+          // If there's a downloaded update ready to install, notify immediately
+          // This handles the case where update was downloaded in previous session
+          if (checkResult.downloadedFile || checkResult.updateInfo) {
+            // Double-check if update is actually ready to install
+            const isUpdateDownloaded = await new Promise<boolean>((resolve) => {
+              // electron-updater maintains state of downloaded updates
+              // If checkForUpdates returns an updateInfo, we should notify the user
+              if (mainWindow && !mainWindow.isDestroyed()) {
+                // Send notification to renderer
+                mainWindow.webContents.send('updater:update-downloaded', checkResult.updateInfo)
+                console.log('[AutoUpdater] Notified user of previously downloaded update')
+              }
+              resolve(true)
+            })
+          }
+        }
+      } catch (error) {
+        console.error('[AutoUpdater] Error checking for updates on startup:', error)
       }
-    }
+    }, 2000) // 2 second delay to ensure window is ready to receive events
   }
 
   // Global shortcuts - All using Alt modifier to avoid conflicts with other apps
