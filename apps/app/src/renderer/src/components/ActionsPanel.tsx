@@ -314,7 +314,8 @@ export default function ActionsPanel() {
         // not the current settings. We should only auto-execute actions that were
         // created when the mode was already "automatic", not actions that were
         // created in "ask" mode and then the user changed settings.
-        const originalApprovalMode = action.settingsSnapshot?.actions[action.actionType]?.approvalMode
+        const originalApprovalMode =
+          action.settingsSnapshot?.actions[action.actionType]?.approvalMode
 
         if (originalApprovalMode === 'automatic') {
           // Check if we've already auto-executed this action
@@ -323,7 +324,10 @@ export default function ActionsPanel() {
             return
           }
 
-          console.log('[ActionsPanel] Auto-executing action (was created in automatic mode):', action.id)
+          console.log(
+            '[ActionsPanel] Auto-executing action (was created in automatic mode):',
+            action.id
+          )
 
           // Mark this action as auto-executed
           autoExecutedActions.current.add(action.id)
@@ -336,7 +340,10 @@ export default function ActionsPanel() {
           approveAction(action.id)
           setTimeout(() => executeAction(action), 100)
         } else if (originalApprovalMode === 'ask') {
-          console.log('[ActionsPanel] Action was created in ask mode, not auto-executing even though settings changed:', action.id)
+          console.log(
+            '[ActionsPanel] Action was created in ask mode, not auto-executing even though settings changed:',
+            action.id
+          )
         }
       }
     })
@@ -377,7 +384,8 @@ export default function ActionsPanel() {
     const intentionLabel = INTENTION_LABELS[action.intention.primary][language]
     // Use the original approval mode from when the action was created
     // This ensures buttons stay visible even if settings change after action creation
-    const originalApprovalMode = action.settingsSnapshot?.actions[action.actionType]?.approvalMode || 'ask'
+    const originalApprovalMode =
+      action.settingsSnapshot?.actions[action.actionType]?.approvalMode || 'ask'
     const isExecutingThisAction = executingActionRef.current === action.id
 
     return (
@@ -390,9 +398,7 @@ export default function ActionsPanel() {
                 {intentionLabel}
               </span>
             </div>
-            <div className="text-xs text-gray-700">
-              "{action.context.transcriptionText}"
-            </div>
+            <div className="text-xs text-gray-700">"{action.context.transcriptionText}"</div>
 
             {/* Action buttons for pending in ask mode */}
             {action.status === 'pending' && originalApprovalMode === 'ask' && (
@@ -430,13 +436,13 @@ export default function ActionsPanel() {
                       key={i}
                       className="w-0.5 bg-black/40 rounded-full"
                       animate={{
-                        height: ['8px', '16px', '8px'],
+                        height: ['8px', '16px', '8px']
                       }}
                       transition={{
                         duration: 0.8,
                         repeat: Infinity,
                         delay: i * 0.1,
-                        ease: 'easeInOut',
+                        ease: 'easeInOut'
                       }}
                     />
                   ))}
@@ -594,7 +600,7 @@ export default function ActionsPanel() {
                 placeholder={
                   isScreenSharing ? t('chatPlaceholderSharing') : t('chatPlaceholderNotSharing')
                 }
-                className="flex-grow h-8 text-sm bg-black/5 border-black/20 placeholder:text-gray-500 text-black"
+                className="flex-grow h-8 text-sm bg-black/5 border-none placeholder:text-gray-500 text-black"
                 disabled={isLoading || !isScreenSharing}
                 aria-label="Custom prompt input"
               />

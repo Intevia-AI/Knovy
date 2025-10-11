@@ -43,7 +43,7 @@ body {
 }
 
 .glass-popover {
-  @apply bg-muted/80 backdrop-blur-md border border-black/10 rounded-3xl;
+  @apply bg-muted/80 backdrop-blur-md border border-black/5 rounded-3xl;
 }
 
 @keyframes breathing {

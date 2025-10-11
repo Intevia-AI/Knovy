@@ -143,8 +143,8 @@ export default function ChatPanel({}: ChatPanelProps) {
                         className={cn(
                           'p-2 rounded-md text-sm w-fit max-w-[95%] whitespace-pre-wrap break-words text-pretty',
                           isUserMessage
-                            ? 'bg-blue-500/10 border border-blue-500/20 ml-auto text-black'
-                            : 'bg-black/5 border border-black/10 mr-auto text-black'
+                            ? 'bg-blue-500/10 ml-auto text-black'
+                            : 'bg-black/5 mr-auto text-black'
                         )}
                       >
                         <KeywordHighlighter
