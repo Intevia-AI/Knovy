@@ -20,7 +20,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { useTranslation } from '@/context/TranslationContext'
 import { toast } from 'sonner'
-import { MarkdownRenderer } from '@/components/MarkdownRenderer'
+import { Markdown } from '@/components/MarkdownRenderer'
 
 interface SessionCardProps {
   session: SessionWithTranscripts
@@ -287,7 +287,7 @@ export function SessionCard({ session, onExport, onDelete }: SessionCardProps) {
                     >
                       {session.summary ? (
                         <div className="prose prose-sm dark:prose-invert max-w-none overflow-x-hidden break-words">
-                          <MarkdownRenderer>{session.summary}</MarkdownRenderer>
+                          <Markdown>{session.summary}</Markdown>
                         </div>
                       ) : (
                         <p className="text-sm text-muted-foreground text-center py-4">
