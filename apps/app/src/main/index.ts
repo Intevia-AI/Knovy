@@ -34,6 +34,7 @@ import {
   syncSettingsWindowAlwaysOnTop
 } from './settingsWindowManager'
 import { DEFAULT_AUTO_TRIGGER_SETTINGS } from '../renderer/src/types/settings'
+import { getIntentionProcessor } from './intentionProcessor'
 
 console.log('[Debug] Imported dbService module:', dbService)
 
