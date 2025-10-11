@@ -1652,7 +1652,21 @@ app.on('ready', async () => {
   ipcMain.handle('db:export-session', (event, { sessionId, locale, timezone }) =>
     dbService.exportSession(sessionId, locale, timezone)
   )
-  ipcMain.handle('db:delete-session', (event, sessionId) => dbService.deleteSession(sessionId))
+  ipcMain.handle('db:delete-session', async (event, sessionId) => {
+    const result = await dbService.deleteSession(sessionId)
+
+    if (result.success) {
+      // Broadcast session deletion to all windows so they can refresh their history views
+      for (const win of BrowserWindow.getAllWindows()) {
+        if (!win.isDestroyed()) {
+          win.webContents.send('session:deleted', sessionId)
+        }
+      }
+      console.log(`[main/index.ts] Broadcasted session deletion: ${sessionId}`)
+    }
+
+    return result
+  })
   ipcMain.handle('db:get-all-session-dates', () => dbService.getAllSessionDates())
 
   // Local transcription IPC handlers

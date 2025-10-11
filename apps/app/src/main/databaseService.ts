@@ -112,7 +112,9 @@ export async function deleteSession(sessionId: string) {
     await deleteTranscriptsStmt.run(sessionId)
     const deleteSessionStmt = await db.prepare('DELETE FROM sessions WHERE id = ?')
     await deleteSessionStmt.run(sessionId)
-    return { success: true }
+
+    console.log(`[DB] Successfully deleted session ${sessionId}`)
+    return { success: true, deletedSessionId: sessionId }
   } catch (error) {
     console.error(`[DB] Error deleting session ${sessionId}:`, error)
     throw new Error(`Failed to delete session ${sessionId}`)
@@ -169,6 +171,24 @@ export interface EnhancedTranscriptData {
 export async function addEnhancedTranscript(transcript: EnhancedTranscriptData) {
   console.log('[DB] Adding enhanced transcript for session:', transcript.session_id)
   const db = await dbPromise
+
+  // Validate that session exists, recreate if missing (handles case where session was deleted during recording)
+  const sessionCheckStmt = await db.prepare('SELECT id FROM sessions WHERE id = ?')
+  const sessionExists = await sessionCheckStmt.get(transcript.session_id)
+
+  if (!sessionExists) {
+    console.warn(`[DB] Session ${transcript.session_id} not found, recreating it for orphaned transcript`)
+    // Recreate the session with current timestamp and active status
+    const recreateStmt = await db.prepare(
+      'INSERT INTO sessions (id, started_at, status) VALUES (?, ?, ?)'
+    )
+    await recreateStmt.run(
+      transcript.session_id,
+      new Date().toISOString(),
+      'active'
+    )
+    console.log(`[DB] Recreated session ${transcript.session_id}`)
+  }
 
   const {
     id, session_id, timestamp, content, sourceType = 'system',
