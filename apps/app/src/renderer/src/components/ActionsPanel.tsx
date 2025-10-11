@@ -130,8 +130,14 @@ export default function ActionsPanel() {
         console.log('[ActionsPanel] Tracking action:', data.actionId)
       }
 
-      // Trigger the AI interaction
-      handleActionClick('answer')
+      // Trigger the AI interaction with specific transcription if available
+      if (data?.context?.transcriptionText) {
+        // Pass the specific transcription from the action context
+        sendContextToAI('answer', data.context.transcriptionText)
+      } else {
+        // Fallback to general context gathering (keyboard shortcut case)
+        handleActionClick('answer')
+      }
     }
 
     const unsubscribe = window.electronAPI.on(

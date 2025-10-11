@@ -307,11 +307,18 @@ export function useAIInteraction() {
           }
           case 'answer': {
             functionName = 'ai-action-recommend-response'
-            const context = await gatherContext(action)
-            if (!context?.text?.trim()) {
-              throw new Error('There is no transcription history to recommend a response.')
+
+            // If query is provided, use it as the specific question/transcription
+            // Otherwise, gather context from recent transcriptions (keyboard shortcut case)
+            if (query) {
+              functionPayload.text_input = query
+            } else {
+              const context = await gatherContext(action)
+              if (!context?.text?.trim()) {
+                throw new Error('There is no transcription history to recommend a response.')
+              }
+              functionPayload.text_input = context.text
             }
-            functionPayload.text_input = context.text
             break
           }
           case 'keyword_search': {
