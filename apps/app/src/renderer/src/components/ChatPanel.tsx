@@ -19,6 +19,12 @@ export default function ChatPanel({}: ChatPanelProps) {
   const [isOpen, setIsOpen] = useState(true)
   const popoverId = 'transcriptions'
 
+  // Store latest sendContextToAI in a ref to avoid stale closure in interval
+  const sendContextToAIRef = useRef(sendContextToAI)
+  useEffect(() => {
+    sendContextToAIRef.current = sendContextToAI
+  }, [sendContextToAI])
+
   const handleKeywordClick = (keyword: string) => {
     if ((window as any).electronAPI) {
       ;(window as any).electronAPI.send('keyword:click', keyword)
@@ -59,16 +65,21 @@ export default function ChatPanel({}: ChatPanelProps) {
     }
   }
 
+  // Background auto-summarization: Runs every 60 seconds when ChatPanel is open
+  // Smart logic in useAIInteraction skips API calls if no new transcripts exist
+  // Uses ref to avoid stale closure problem with sendContextToAI
   useEffect(() => {
-    if (activeTab === 'summary') {
-      const intervalId = setInterval(() => {
-        console.log('[ChatPanel] Periodically updating summary...')
-        sendContextToAI('summary')
-      }, 30000) // 30 seconds
-      return () => clearInterval(intervalId)
+    console.log('[ChatPanel] Starting background auto-summarization (60s interval)')
+    const intervalId = setInterval(() => {
+      console.log('[ChatPanel] Background auto-summarization tick')
+      sendContextToAIRef.current('summary')
+    }, 60000) // 60 seconds
+
+    return () => {
+      console.log('[ChatPanel] Stopping background auto-summarization')
+      clearInterval(intervalId)
     }
-    return undefined
-  }, [activeTab, sendContextToAI])
+  }, [])
 
   const summary = aiMessages.find((m) => m.id === 'ai-summary')?.content || ''
 

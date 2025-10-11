@@ -289,7 +289,7 @@ export function useAIInteraction() {
                 }
                 return [...prev, summaryMessage]
               })
-              setIsLoading(false)
+              setIsSummarizing(false)
               return // Stop execution
             }
 
@@ -297,7 +297,7 @@ export function useAIInteraction() {
             if (newTranscripts.length === 0 && !existingSummary) {
               console.log('[AIInteraction] No content available to create a summary.')
               // Optionally, set a message indicating not enough content
-              setIsLoading(false)
+              setIsSummarizing(false)
               return // Stop execution
             }
 
