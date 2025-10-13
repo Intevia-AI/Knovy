@@ -720,26 +720,25 @@ app.on('ready', async () => {
         const checkResult = await autoUpdater.checkForUpdates()
 
         if (checkResult) {
+          const currentVersion = checkResult.currentVersion
+          const updateVersion = checkResult.updateInfo?.version
+
           console.log('[AutoUpdater] Update check completed on startup:', {
-            currentVersion: checkResult.currentVersion,
-            updateVersion: checkResult.updateInfo?.version,
+            currentVersion,
+            updateVersion,
             hasDownloadedUpdate: !!checkResult.downloadedFile
           })
 
-          // If there's a downloaded update ready to install, notify immediately
-          // This handles the case where update was downloaded in previous session
-          if (checkResult.downloadedFile || checkResult.updateInfo) {
-            // Double-check if update is actually ready to install
-            const isUpdateDownloaded = await new Promise<boolean>((resolve) => {
-              // electron-updater maintains state of downloaded updates
-              // If checkForUpdates returns an updateInfo, we should notify the user
-              if (mainWindow && !mainWindow.isDestroyed()) {
-                // Send notification to renderer
-                mainWindow.webContents.send('updater:update-downloaded', checkResult.updateInfo)
-                console.log('[AutoUpdater] Notified user of previously downloaded update')
-              }
-              resolve(true)
-            })
+          // Only notify if there's actually a NEW version available
+          // Don't notify if current version is the same as or newer than the update version
+          if (checkResult.downloadedFile && updateVersion && currentVersion !== updateVersion) {
+            // There's a downloaded update ready to install AND it's a newer version
+            if (mainWindow && !mainWindow.isDestroyed()) {
+              mainWindow.webContents.send('updater:update-downloaded', checkResult.updateInfo)
+              console.log('[AutoUpdater] Notified user of previously downloaded update:', updateVersion)
+            }
+          } else if (updateVersion === currentVersion) {
+            console.log('[AutoUpdater] Already on the latest version:', currentVersion)
           }
         }
       } catch (error) {
