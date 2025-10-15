@@ -9,6 +9,7 @@ import { Message as AIMessage } from 'ai'
 import { useI18n } from '@/hooks/useI18n'
 import { useScreenShare } from './useScreenShare'
 import { supabase } from '@/services/supabaseClient.js'
+import { invokeAIAction } from '@/services/ai-actions'
 
 export type AIAction =
   | 'chat'
@@ -257,6 +258,7 @@ export function useAIInteraction() {
           message_history: null,
           image_input: null,
           language: currentLanguage
+          // Note: session_id will be automatically added by invokeAIAction wrapper
         }
 
         switch (action) {
@@ -399,10 +401,8 @@ export function useAIInteraction() {
         console.log(`[AIInteraction] Invoking function: ${functionName}`, {
           payload: functionPayload
         })
-        const { data, error } = await supabase.functions.invoke(functionName, {
-          headers: { Authorization: `Bearer ${session.access_token}` },
-          body: functionPayload
-        })
+        // Use AI actions wrapper for automatic session_id injection
+        const { data, error } = await invokeAIAction(functionName, functionPayload)
         console.log('[AIInteraction] Function returned:', { data, error })
 
         if (error) throw error
