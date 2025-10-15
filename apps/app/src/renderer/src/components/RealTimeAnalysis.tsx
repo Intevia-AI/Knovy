@@ -10,6 +10,7 @@ import {
 import { useAuth } from '@/hooks/useAuth'
 import { useTranscriptionEnhancement } from '@/hooks/useTranscriptionEnhancement'
 import { useLanguage } from '@/hooks/useLanguage'
+import { analyticsService } from '@/services/analytics-service'
 
 // Configuration: Change this to set the real-time transcription model size
 // Options: 'tiny' (75MB, fastest), 'base' (142MB, better), 'small' (488MB, good+), 'medium' (1.5GB, best)
@@ -141,6 +142,9 @@ export default function RealTimeAnalysis({
   const transcriptionFactoryRef = useRef<TranscriptionFactory | null>(null)
   const micProcessorRef = useRef<TranscriptionProcessor | null>(null)
   const systemProcessorRef = useRef<TranscriptionProcessor | null>(null)
+
+  // Analytics: Track transcription session
+  const transcriptionStartTimeRef = useRef<number | null>(null)
 
   useEffect(() => {
     if (!isScreenSharing) {
@@ -334,6 +338,9 @@ export default function RealTimeAnalysis({
       console.log(
         '[RealTimeAnalysis] Starting dual audio processing with automatic language detection'
       )
+
+      // Analytics: Track transcription session start
+      transcriptionStartTimeRef.current = Date.now()
 
       // Initialize transcription factory with local transcription only
       transcriptionFactory = new TranscriptionFactory({
@@ -614,6 +621,15 @@ export default function RealTimeAnalysis({
 
     return () => {
       console.log('[RealTimeAnalysis] Stopping dual audio processing...')
+
+      // Analytics: Track transcription session end
+      if (transcriptionStartTimeRef.current) {
+        const durationMs = Date.now() - transcriptionStartTimeRef.current
+        const durationMinutes = durationMs / 1000 / 60
+        console.log(`[Analytics] Transcription session ended: ${durationMinutes.toFixed(2)} minutes`)
+        analyticsService.incrementTranscription(durationMinutes)
+        transcriptionStartTimeRef.current = null
+      }
 
       // Remove device change listener
       if (deviceChangeHandler) {
