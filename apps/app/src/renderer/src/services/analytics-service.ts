@@ -39,7 +39,6 @@ interface FeatureComplete {
   success: boolean
   durationMs: number
   metadata?: Record<string, any>
-  apiCostUsd?: number
 }
 
 interface FeatureError {
@@ -87,7 +86,16 @@ class AnalyticsService {
         .single()
 
       if (error) {
-        console.error('[Analytics] Failed to start session:', error)
+        // Check if error is due to foreign key constraint (user doesn't exist in auth.users)
+        if (error.code === '23503' && error.message?.includes('user_sessions_user_id_fkey')) {
+          console.error(
+            '[Analytics] Failed to start session: User ID not found in database.',
+            'This can happen after database reset. Please sign out and sign back in.',
+            'User ID:', userId
+          )
+        } else {
+          console.error('[Analytics] Failed to start session:', error)
+        }
         return
       }
 
@@ -141,7 +149,10 @@ class AnalyticsService {
           duration_seconds: durationSeconds,
           is_active: false,
           exit_reason: exitReason,
-          ...this.sessionMetrics
+          transcription_count: this.sessionMetrics.transcriptionCount,
+          transcription_minutes: this.sessionMetrics.transcriptionMinutes,
+          ai_actions_count: this.sessionMetrics.aiActionsCount,
+          errors_count: this.sessionMetrics.errorsCount
         })
         .eq('session_id', this.currentSession.sessionId)
 
@@ -191,7 +202,10 @@ class AnalyticsService {
         .from('user_sessions')
         .update({
           last_heartbeat_at: new Date().toISOString(),
-          ...this.sessionMetrics
+          transcription_count: this.sessionMetrics.transcriptionCount,
+          transcription_minutes: this.sessionMetrics.transcriptionMinutes,
+          ai_actions_count: this.sessionMetrics.aiActionsCount,
+          errors_count: this.sessionMetrics.errorsCount
         })
         .eq('session_id', this.currentSession.sessionId)
 
@@ -285,8 +299,7 @@ class AnalyticsService {
           completed_at: new Date().toISOString(),
           duration_ms: completion.durationMs,
           success: completion.success,
-          metadata: completion.metadata || {},
-          api_cost_usd: completion.apiCostUsd
+          metadata: completion.metadata || {}
         })
         .eq('id', usage.id)
 
