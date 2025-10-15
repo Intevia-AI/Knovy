@@ -1,11 +1,14 @@
 /**
  * Analytics Service
  *
- * Lean analytics implementation following startup best practices:
- * - Simple session tracking with 60-second heartbeat
- * - Feature usage logging with metadata
- * - Error tracking linked to sessions
- * - Batch operations to minimize database writes
+ * Client-side analytics service for session management:
+ * - Session lifecycle (start/end) for screen-share sessions
+ * - 60-second heartbeat to track active sessions
+ * - Session metrics (transcription count, AI actions, errors)
+ * - Provides session_id for server-side feature tracking
+ *
+ * Note: Feature usage tracking (AI actions, transcription enhancement)
+ * happens server-side in Edge Functions, not here.
  */
 
 import { supabase } from './supabaseClient'
@@ -28,25 +31,6 @@ interface SessionMetrics {
   errorsCount: number
 }
 
-interface FeatureUsage {
-  featureName: string
-  featureCategory: string
-  startedAt: Date
-  metadata?: Record<string, any>
-}
-
-interface FeatureComplete {
-  success: boolean
-  durationMs: number
-  metadata?: Record<string, any>
-}
-
-interface FeatureError {
-  errorType: string
-  errorMessage: string
-  durationMs: number
-}
-
 class AnalyticsService {
   private currentSession: SessionData | null = null
   private sessionMetrics: SessionMetrics = {
@@ -56,12 +40,12 @@ class AnalyticsService {
     errorsCount: 0
   }
   private heartbeatInterval: NodeJS.Timeout | null = null
-  private featureUsageMap: Map<string, { id: number; startedAt: Date }> = new Map()
 
   /**
    * Start a new analytics session
+   * Returns the session ID
    */
-  async startSession(userId: string): Promise<void> {
+  async startSession(userId: string): Promise<string | null> {
     try {
       // Get platform info
       const platform = 'desktop_app'
@@ -96,7 +80,7 @@ class AnalyticsService {
         } else {
           console.error('[Analytics] Failed to start session:', error)
         }
-        return
+        return null
       }
 
       this.currentSession = {
@@ -121,8 +105,10 @@ class AnalyticsService {
       this.startHeartbeat()
 
       console.log('[Analytics] Session started:', this.currentSession.sessionId)
+      return this.currentSession.sessionId
     } catch (error) {
       console.error('[Analytics] Error starting session:', error)
+      return null
     }
   }
 
@@ -237,113 +223,6 @@ class AnalyticsService {
    */
   incrementError(): void {
     this.sessionMetrics.errorsCount++
-  }
-
-  /**
-   * Start tracking a feature usage
-   * Returns a tracking ID to use when completing the feature
-   */
-  async trackFeatureStart(usage: FeatureUsage): Promise<string | null> {
-    if (!this.currentSession) {
-      console.warn('[Analytics] Cannot track feature: no active session')
-      return null
-    }
-
-    try {
-      const { data, error } = await supabase
-        .from('feature_usage')
-        .insert({
-          user_id: this.currentSession.userId,
-          session_id: this.currentSession.sessionId,
-          feature_name: usage.featureName,
-          feature_category: usage.featureCategory,
-          started_at: usage.startedAt.toISOString(),
-          metadata: usage.metadata || {}
-        })
-        .select('id')
-        .single()
-
-      if (error) {
-        console.error('[Analytics] Failed to track feature start:', error)
-        return null
-      }
-
-      // Store for completion tracking
-      const trackingId = `${usage.featureName}-${Date.now()}`
-      this.featureUsageMap.set(trackingId, {
-        id: data.id,
-        startedAt: usage.startedAt
-      })
-
-      return trackingId
-    } catch (error) {
-      console.error('[Analytics] Error tracking feature start:', error)
-      return null
-    }
-  }
-
-  /**
-   * Complete a feature usage tracking
-   */
-  async trackFeatureComplete(trackingId: string, completion: FeatureComplete): Promise<void> {
-    const usage = this.featureUsageMap.get(trackingId)
-    if (!usage) {
-      console.warn('[Analytics] Cannot complete feature: tracking ID not found')
-      return
-    }
-
-    try {
-      const { error } = await supabase
-        .from('feature_usage')
-        .update({
-          completed_at: new Date().toISOString(),
-          duration_ms: completion.durationMs,
-          success: completion.success,
-          metadata: completion.metadata || {}
-        })
-        .eq('id', usage.id)
-
-      if (error) {
-        console.error('[Analytics] Failed to complete feature tracking:', error)
-      } else {
-        this.featureUsageMap.delete(trackingId)
-      }
-    } catch (error) {
-      console.error('[Analytics] Error completing feature tracking:', error)
-    }
-  }
-
-  /**
-   * Track a feature error
-   */
-  async trackFeatureError(trackingId: string, featureError: FeatureError): Promise<void> {
-    const usage = this.featureUsageMap.get(trackingId)
-    if (!usage) {
-      console.warn('[Analytics] Cannot track error: tracking ID not found')
-      return
-    }
-
-    try {
-      const { error } = await supabase
-        .from('feature_usage')
-        .update({
-          completed_at: new Date().toISOString(),
-          duration_ms: featureError.durationMs,
-          success: false,
-          error_type: featureError.errorType,
-          error_message: featureError.errorMessage
-        })
-        .eq('id', usage.id)
-
-      if (error) {
-        console.error('[Analytics] Failed to track feature error:', error)
-      } else {
-        this.featureUsageMap.delete(trackingId)
-        this.incrementError()
-      }
-    } catch (error) {
-      console.error('[Analytics] Error tracking feature error:', error)
-    }
   }
 
   /**
