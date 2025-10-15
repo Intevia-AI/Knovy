@@ -8,6 +8,7 @@ import { LoginPage, Waitlist } from '../components/LoginPage'
 import { LoadingPage } from '../components/LoadingPage'
 import { motion, AnimatePresence } from 'motion'
 import { getWhisperClient } from '../services/whisperClient'
+import { analyticsService } from '../services/analytics-service'
 
 /**
  * Main page component that serves as the entry point for the application.
@@ -240,6 +241,35 @@ function AppContent() {
     return () => {
       if (windowResizeDebounce) {
         clearTimeout(windowResizeDebounce)
+      }
+    }
+  }, [])
+
+  // Analytics: Start session when user logs in
+  useEffect(() => {
+    if (user && sessionProfile && !isUnifiedLoading) {
+      // Only start session for actual app usage (not waitlisted users)
+      const isWaitlisted =
+        sessionProfile.role === 'free' &&
+        sessionProfile.app_settings.free_tier_experience?.mode === 'non-access'
+
+      if (!isWaitlisted && !analyticsService.isSessionActive()) {
+        console.log('[Analytics] Starting session for user:', user.id)
+        analyticsService.startSession(user.id).catch((error) => {
+          console.error('[Analytics] Failed to start session:', error)
+        })
+      }
+    }
+  }, [user, sessionProfile, isUnifiedLoading])
+
+  // Analytics: End session on unmount (app close)
+  useEffect(() => {
+    return () => {
+      if (analyticsService.isSessionActive()) {
+        console.log('[Analytics] Ending session on app close')
+        analyticsService.endSession('normal').catch((error) => {
+          console.error('[Analytics] Failed to end session:', error)
+        })
       }
     }
   }, [])
