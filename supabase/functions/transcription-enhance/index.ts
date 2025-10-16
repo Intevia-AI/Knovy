@@ -212,26 +212,33 @@ const handleRequest = async (req: Request, profile: Record<string, any>) => {
 
     console.log(`[transcription-enhance] processed ${segments.length} segments in ${processingTime}ms`);
 
-    // Log the action with token usage to action_logs table
+    // Log feature usage to feature_usage table (analytics)
     try {
-      const { error: logError } = await supabaseClient.from("action_logs").insert({
+      const { error: logError } = await supabaseClient.from("feature_usage").insert({
         user_id: user.id,
-        action: "ai_action:transcription-enhance",
+        session_id: sessionContext.sessionId || null,
+        feature_name: "ai-transcription-enhance",
+        feature_category: "ai-action",
+        started_at: new Date(startTime).toISOString(),
+        completed_at: new Date().toISOString(),
+        duration_ms: processingTime,
+        success: errors.length === 0,
         metadata: {
           input_tokens: totalInputTokens,
           output_tokens: totalOutputTokens,
           segment_count: segments.length,
-          processing_time_ms: processingTime,
+          enhanced_count: enhancedSegments.length,
           error_count: errors.length,
+          language: sessionContext.userLanguage,
         },
       });
 
       if (logError) {
-        console.error("[transcription-enhance] Failed to log action:", logError);
+        console.error("[transcription-enhance] Failed to log feature usage:", logError);
         // Don't fail the request if logging fails
       }
     } catch (logException) {
-      console.error("[transcription-enhance] Exception while logging action:", logException);
+      console.error("[transcription-enhance] Exception while logging feature usage:", logException);
       // Don't fail the request if logging fails
     }
 
@@ -243,6 +250,39 @@ const handleRequest = async (req: Request, profile: Record<string, any>) => {
     console.error("[transcription-enhance] error:", error.message);
 
     const processingTime = Date.now() - startTime;
+
+    // Log error to feature_usage table
+    try {
+      const supabaseClient = createClient(
+        Deno.env.get("SUPABASE_URL") ?? "",
+        Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+        { global: { headers: { Authorization: req.headers.get("Authorization")! } } },
+      );
+
+      const {
+        data: { user },
+      } = await supabaseClient.auth.getUser();
+
+      if (user) {
+        const { sessionContext } = await req.json().catch(() => ({ sessionContext: { sessionId: null } }));
+
+        await supabaseClient.from("feature_usage").insert({
+          user_id: user.id,
+          session_id: sessionContext?.sessionId || null,
+          feature_name: "ai-transcription-enhance",
+          feature_category: "ai-action",
+          started_at: new Date(startTime).toISOString(),
+          completed_at: new Date().toISOString(),
+          duration_ms: processingTime,
+          success: false,
+          error_type: error.name || "UnknownError",
+          error_message: error.message || "Internal Server Error",
+          metadata: {},
+        });
+      }
+    } catch (logException) {
+      console.error("[transcription-enhance] Failed to log error:", logException);
+    }
 
     return new Response(JSON.stringify({
       error: "Internal Server Error",

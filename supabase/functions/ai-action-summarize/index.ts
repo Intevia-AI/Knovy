@@ -96,11 +96,6 @@ const handleRequest = async (req: Request, profile: Record<string, any>) => {
     // Log feature usage to feature_usage table (analytics)
     const durationMs = Date.now() - startTime;
     try {
-      // Estimate API cost (rough approximation: $0.075 per 1M input tokens, $0.30 per 1M output tokens for Flash)
-      const inputCost = (usage.input_tokens / 1_000_000) * 0.075;
-      const outputCost = (usage.output_tokens / 1_000_000) * 0.30;
-      const apiCostUsd = inputCost + outputCost;
-
       const { error: logError } = await supabaseClient.from("feature_usage").insert({
         user_id: user.id,
         session_id: session_id || null,
@@ -118,7 +113,6 @@ const handleRequest = async (req: Request, profile: Record<string, any>) => {
           language: lang,
           model: GEMINI_MODELS.FLASH_LITE,
         },
-        api_cost_usd: apiCostUsd,
       });
 
       if (logError) {

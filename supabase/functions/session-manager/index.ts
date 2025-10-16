@@ -27,40 +27,23 @@ serve(async (req: Request) => {
 
     switch (log_type) {
       case "action": {
-        const { action_name, metadata } = payload;
-        if (!action_name) {
-          throw new Error("`action_name` is required for log_type 'action'");
-        }
-        const { error } = await supabaseClient.from("action_logs").insert({
-          user_id: user.id,
-          action: action_name,
-          metadata: metadata || {},
-        });
-        if (error) throw error;
-        return new Response(JSON.stringify({ success: true, message: "Action logged" }), {
+        // DEPRECATED: action_logs table no longer exists
+        // This is kept for backward compatibility but does nothing
+        console.warn("session-manager: 'action' log_type is deprecated. Use feature_usage table instead.");
+        return new Response(JSON.stringify({ success: true, message: "Action logging deprecated" }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 201,
+          status: 200,
         });
       }
 
       case "duration": {
-        const { session_id, duration_seconds } = payload;
-        if (!session_id || duration_seconds === undefined) {
-          throw new Error("`session_id` and `duration_seconds` are required for log_type 'duration'");
-        }
-        const { error } = await supabaseClient.from("transcription_ledger").upsert(
-          {
-            session_id, // The column with the UNIQUE constraint
-            user_id: user.id,
-            duration_seconds,
-          },
-          { onConflict: 'session_id' } // Specify the conflict target
-        );
-
-        if (error) throw error;
-        return new Response(JSON.stringify({ success: true, message: "Duration upserted" }), {
+        // DEPRECATED: transcription_ledger table no longer exists
+        // This is kept for backward compatibility but does nothing
+        // Duration tracking is now handled by analytics service via user_sessions table
+        console.warn("session-manager: 'duration' log_type is deprecated. Use analytics service instead.");
+        return new Response(JSON.stringify({ success: true, message: "Duration logging deprecated" }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 200, // 200 OK for upsert, 201 is for creation
+          status: 200,
         });
       }
 

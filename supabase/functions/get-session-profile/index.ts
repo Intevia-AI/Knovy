@@ -73,25 +73,32 @@ async function getSessionProfile(req: Request) {
     for (const quota of quotasRes.data || []) {
       let currentUsage = 0;
       if (quota.metric.startsWith("daily_ai_action:")) {
-        const actionName = quota.metric.replace("_calls", "").replace("daily_", "");
+        // Extract feature name from metric (e.g., "daily_ai_action:summarize_calls" -> "ai-summarize")
+        const actionName = quota.metric
+          .replace("daily_ai_action:", "")
+          .replace("_calls", "")
+          .replace(/_/g, "-");
+        const featureName = `ai-${actionName}`;
+
         const { count, error } = await supabaseClient
-          .from("action_logs")
+          .from("feature_usage")
           .select("*", { count: "exact", head: true })
           .eq("user_id", user.id)
-          .eq("action", actionName)
-          .gte("timestamp", today.toISOString())
-          .lt("timestamp", tomorrow.toISOString());
-        if (error) console.error(`Error counting action logs for ${actionName}:`, error);
-        currentUsage = count ?? 0;
-      } else if (quota.metric === "daily_transcription_minutes") {
-        const { data: ledger, error } = await supabaseClient
-          .from("transcription_ledger")
-          .select("duration_seconds")
-          .eq("user_id", user.id)
+          .eq("feature_name", featureName)
           .gte("created_at", today.toISOString())
           .lt("created_at", tomorrow.toISOString());
-        if (error) console.error("Error fetching transcription ledger:", error);
-        currentUsage = (ledger ?? []).reduce((acc, item) => acc + item.duration_seconds, 0) / 60;
+        if (error) console.error(`Error counting feature usage for ${featureName}:`, error);
+        currentUsage = count ?? 0;
+      } else if (quota.metric === "daily_transcription_minutes") {
+        // Sum transcription_minutes from all sessions today
+        const { data: sessions, error } = await supabaseClient
+          .from("user_sessions")
+          .select("transcription_minutes")
+          .eq("user_id", user.id)
+          .gte("started_at", today.toISOString())
+          .lt("started_at", tomorrow.toISOString());
+        if (error) console.error("Error fetching user sessions:", error);
+        currentUsage = (sessions ?? []).reduce((acc, session) => acc + (parseFloat(session.transcription_minutes) || 0), 0);
       }
 
       usage[quota.metric] = {

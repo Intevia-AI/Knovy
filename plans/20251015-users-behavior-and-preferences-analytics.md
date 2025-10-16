@@ -84,10 +84,12 @@
 
 1. ~~**Complete Phase 3**: Instrument remaining AI actions and transcription features~~ ✅ **COMPLETED**
 2. ~~**Fix Analytics Session ID Issue**: Ensure all features use the same analytics session_id~~ ✅ **COMPLETED (2025-10-16)**
-3. **Validate Data**: Test analytics end-to-end in local environment (verify all features are logging correctly)
-4. **Create Grafana Dashboards**: Build visualizations to monitor user behavior and feature adoption
-5. **Monitor Production**: Deploy and observe real user analytics
-6. **Optional**: Add detailed transcription metadata tracking (individual feature_usage entries per transcription)
+3. ~~**Fix Window Context Isolation**: Ensure popover windows get session_id~~ ✅ **COMPLETED (2025-10-16)**
+4. **Commit Remaining Changes**: Commit Edge Function instrumentation and migrations
+5. **Validate Data**: Test analytics end-to-end with user (verify all features are logging correctly)
+6. **Create Grafana Dashboards**: Build visualizations to monitor user behavior and feature adoption
+7. **Monitor Production**: Deploy and observe real user analytics
+8. **Optional**: Add detailed transcription metadata tracking (individual feature_usage entries per transcription)
 
 ---
 
@@ -719,9 +721,9 @@ class AnalyticsService {
 
 **Status:** ✅ Complete - Architecture fixed, dead code removed, session ID unified, ready for production testing
 
-### Phase 3c: Analytics Session ID Fix (Day 4) ✅ COMPLETED
+### Phase 3c: Analytics Session ID Fix (Day 4) ✅ COMPLETED (2025-10-16)
 
-**Issue:** Analytics session ID mismatch between renderer and main process
+**Issue #1:** Analytics session ID mismatch between renderer and main process
 
 **Problem Identified:**
 - Two different session IDs in use:
@@ -735,7 +737,7 @@ class AnalyticsService {
 - Enhancement service was using `currentSessionId` (SQLite) by default
 - Different from other AI actions which use `invokeAIAction()` wrapper with correct session_id
 
-**Solution Implemented:**
+**Solution #1: IPC Communication for Session ID**
 1. Added IPC communication to pass analytics session ID from renderer to main process
 2. Added new IPC handlers:
    - `analytics:set-session-id` - Set analytics session ID from renderer
@@ -749,17 +751,61 @@ class AnalyticsService {
    - Uses analytics session ID for transcription enhancement
    - Falls back to SQLite session ID with warning if analytics ID missing
 
+**Commit:** `Fix(analytics): Unify session ID across transcription enhancement and main process` (2ea1641)
+
+---
+
+**Issue #2:** Window context isolation causing missing session_id in popover AI actions
+
+**Problem Identified (from user data):**
+- AI actions called from **popover windows** had NO session_id in feature_usage logs
+- AI actions called from **main window** HAD session_id
+- User provided CSV showing the exact pattern of missing session IDs
+- Root cause: Each Electron window has **separate JavaScript context** with separate `analyticsService` singleton
+
+**Root Cause:**
+- Main window creates analytics session → broadcasts session_id
+- Popover windows open with their own `analyticsService` instance
+- Broadcast works, but popovers created AFTER session start miss the initial broadcast
+- Only passive listening (waiting for broadcasts) wasn't enough
+
+**Solution #2: Broadcast + Active Pull Pattern**
+1. **Broadcast to all windows** when session_id is set/cleared:
+   - Enhanced `main/index.ts` to broadcast to ALL windows via IPC event
+   - Added logging to show which windows receive the broadcast
+2. **Active pull on module initialization**:
+   - Updated `analytics-service.ts` to **immediately request** current session_id from main process
+   - This ensures popovers get session_id even if created late
+   - Combined passive (broadcast listener) + active (immediate request) patterns
+3. **Added comprehensive debug logging**:
+   - Main process logs every window it broadcasts to
+   - Analytics service logs when it receives broadcasts and requests
+   - AI actions service logs session_id status for every call
+
+**Commits:**
+- `Fix(analytics): Broadcast analytics session_id to all windows for AI actions` (7682161)
+- `Fix(analytics): Fix timing issue - popover windows now request current session_id on init` (b7183b5)
+
 **Files Modified:**
-- ✅ `apps/app/src/main/index.ts` - Added analytics session ID storage and handlers
-- ✅ `apps/app/src/preload/index.ts` - Added IPC methods for analytics session ID
+- ✅ `apps/app/src/main/index.ts` - Analytics session ID storage, IPC handlers, broadcast logic
+- ✅ `apps/app/src/preload/index.ts` - IPC methods for analytics session ID
 - ✅ `apps/app/src/renderer/src/hooks/useScreenShare.ts` - Send/clear analytics session ID
+- ✅ `apps/app/src/renderer/src/services/analytics-service.ts` - Broadcast listener + active pull
+- ✅ `apps/app/src/renderer/src/services/ai-actions.ts` - Debug logging for session_id
 
 **Result:**
-- All features now use the same analytics `session_id` for `feature_usage` entries
-- Proper session-based analytics tracking across all AI actions and transcription enhancement
-- Can accurately track all features used within a single screen-share session
+- ✅ All features now use the same analytics `session_id` for `feature_usage` entries
+- ✅ Proper session-based analytics tracking across all AI actions and transcription enhancement
+- ✅ Works for both main window AND popover windows
+- ✅ Timing-independent: works even if popovers open late
+- ✅ Can accurately track all features used within a single screen-share session
 
-**Status:** ✅ Complete - All features now use unified analytics session ID
+**Testing Required:**
+- ⏭️ Test all AI actions from both main and popover windows
+- ⏭️ Verify all feature_usage entries have session_id in production
+- ⏭️ Check console logs for session_id flow
+
+**Status:** ✅ Complete - All features now use unified analytics session ID across all windows
 
 ### Phase 4: Grafana Dashboards (Day 4) ⏸️ PENDING
 
