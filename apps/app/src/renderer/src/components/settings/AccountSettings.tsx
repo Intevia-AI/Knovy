@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -32,6 +32,16 @@ export function AccountSettings({ sessionProfile }: AccountSettingsProps) {
       setIsRefreshing(false)
     }
   }
+
+  // Auto-refresh session profile every 60 seconds to keep quota usage up-to-date
+  useEffect(() => {
+    const interval = setInterval(() => {
+      // Silently refresh without showing the loading spinner
+      refreshSessionProfile()
+    }, 60000) // 60 seconds
+
+    return () => clearInterval(interval)
+  }, [refreshSessionProfile])
 
   const handleSignOut = async () => {
     await signOut()

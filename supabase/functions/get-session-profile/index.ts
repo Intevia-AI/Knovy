@@ -90,15 +90,40 @@ async function getSessionProfile(req: Request) {
         if (error) console.error(`Error counting feature usage for ${featureName}:`, error);
         currentUsage = count ?? 0;
       } else if (quota.metric === "daily_transcription_minutes") {
-        // Sum transcription_minutes from all sessions today
+        // Calculate total session duration from timestamps (much more reliable than tracking manually)
         const { data: sessions, error } = await supabaseClient
           .from("user_sessions")
-          .select("transcription_minutes")
+          .select("started_at, ended_at, last_heartbeat_at, is_active")
           .eq("user_id", user.id)
           .gte("started_at", today.toISOString())
           .lt("started_at", tomorrow.toISOString());
-        if (error) console.error("Error fetching user sessions:", error);
-        currentUsage = (sessions ?? []).reduce((acc, session) => acc + (parseFloat(session.transcription_minutes) || 0), 0);
+
+        if (error) {
+          console.error("Error fetching user sessions:", error);
+        } else {
+          // Calculate duration for each session
+          const totalMinutes = (sessions ?? []).reduce((acc, session) => {
+            const startTime = new Date(session.started_at).getTime();
+            let endTime: number;
+
+            // Use ended_at if session is completed, otherwise use last_heartbeat_at for active sessions
+            if (session.ended_at) {
+              endTime = new Date(session.ended_at).getTime();
+            } else if (session.last_heartbeat_at) {
+              endTime = new Date(session.last_heartbeat_at).getTime();
+            } else {
+              // Fallback to current time if no end time available
+              endTime = Date.now();
+            }
+
+            const durationMs = endTime - startTime;
+            const durationMinutes = durationMs / (1000 * 60); // Convert ms to minutes
+
+            return acc + durationMinutes;
+          }, 0);
+
+          currentUsage = Math.round(totalMinutes); // Round to nearest minute
+        }
       }
 
       usage[quota.metric] = {
