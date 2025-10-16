@@ -1,6 +1,6 @@
 # User Behavior and Preferences Analytics - Lean Implementation Plan
 
-## 📊 Current Implementation Status (Updated: 2025-10-15)
+## 📊 Current Implementation Status (Updated: 2025-10-16)
 
 ### Implementation Progress
 
@@ -9,7 +9,8 @@
 | **Phase 1: Database Migration** | ✅ Complete | 100% |
 | **Phase 2: Session Tracking** | ✅ Complete | 100% |
 | **Phase 3: Feature Instrumentation** | ✅ Complete | 100% |
-| **Phase 4: Grafana Dashboards** | ⏸️ Pending | 0% |
+| **Phase 3d: Transcription Metadata Tracking** | ❌ Cancelled | N/A |
+| **Phase 4: Grafana Dashboards** | ✅ Complete | 100% |
 | **Phase 5: User Profile Collection** | 🔮 Future | 0% |
 
 ### Features Currently Tracked
@@ -21,10 +22,10 @@
 - Session metrics: transcription count, transcription minutes, AI actions count, errors count
 - Exit reasons: normal, crash, timeout
 
-✅ **Transcription Sessions** (Basic Tracking)
+✅ **Transcription Sessions** (Session-Level Tracking)
 - Duration tracking via `analyticsService.incrementTranscription(durationMinutes)`
-- Aggregated session metrics only
-- **Missing:** Detailed per-transcription metadata (language, source type)
+- Aggregated session metrics (transcription_count, transcription_minutes)
+- Tracked in `user_sessions` table per screen-share session
 
 ✅ **AI Summarize** (Fully Instrumented)
 - Feature usage tracking with start/complete/error states
@@ -71,25 +72,20 @@
 - Input/output token counts
 - API cost tracking (Gemini Flash pricing)
 - Execution time (duration_ms)
-- Metadata: segment_count, enhanced_count, error_count, language
+- Metadata: segment_count, enhanced_count, error_count, language, microphone_segments, system_segments
 - Success/failure rates with error details
-
-### Features NOT Yet Tracked
-
-❌ **Detailed Transcription Metadata**
-- Need to add individual `feature_usage` entries per transcription
-- Should track: language, source_type (mic/system), segment count, detected language
+- **Source type tracking**: Mic vs system audio preference via segment counts
 
 ### Next Steps
 
 1. ~~**Complete Phase 3**: Instrument remaining AI actions and transcription features~~ ✅ **COMPLETED**
 2. ~~**Fix Analytics Session ID Issue**: Ensure all features use the same analytics session_id~~ ✅ **COMPLETED (2025-10-16)**
 3. ~~**Fix Window Context Isolation**: Ensure popover windows get session_id~~ ✅ **COMPLETED (2025-10-16)**
-4. **Commit Remaining Changes**: Commit Edge Function instrumentation and migrations
-5. **Validate Data**: Test analytics end-to-end with user (verify all features are logging correctly)
-6. **Create Grafana Dashboards**: Build visualizations to monitor user behavior and feature adoption
-7. **Monitor Production**: Deploy and observe real user analytics
-8. **Optional**: Add detailed transcription metadata tracking (individual feature_usage entries per transcription)
+4. ~~**Add Detailed Transcription Metadata Tracking**: Individual feature_usage entries per transcription~~ ❌ **CANCELLED (2025-10-16)** - Request overhead not justified, session aggregates sufficient
+5. ~~**Create Grafana Dashboards**: Build visualizations to monitor user behavior and feature adoption~~ ✅ **COMPLETED (2025-10-16)**
+6. **Test Analytics End-to-End**: Validate all features are logging correctly with real usage
+7. **Set Up Grafana**: Import dashboards and configure data source
+8. **Monitor Production**: Deploy and observe real user analytics
 
 ---
 
@@ -807,36 +803,101 @@ class AnalyticsService {
 
 **Status:** ✅ Complete - All features now use unified analytics session ID across all windows
 
-### Phase 4: Grafana Dashboards (Day 4) ⏸️ PENDING
+### Phase 3d: Transcription Metadata Tracking ❌ CANCELLED (2025-10-16)
+
+**Original Proposal:**
+- Add detailed per-transcription logging to `feature_usage` table
+- Track language, source type (mic/system), duration, segment counts
+- Separate `feature_usage` entries for each transcription session
+
+**Decision: CANCELLED**
+
+**Rationale:**
+- **Request overhead concern**: Each transcription session would generate 1-2 additional database inserts
+- **Sufficient existing data**:
+  - Session-level aggregates in `user_sessions` (transcription_count, transcription_minutes)
+  - AI enhancement tracking captures language and segment metadata for power users
+- **Diminishing returns**: The granular data (mic vs system preference, per-session language breakdown) doesn't justify the overhead
+- **Alternative approach**: If detailed transcription analytics become critical, can piggyback metadata onto existing AI enhancement tracking
+
+**What We Keep:**
+- ✅ Session aggregates: `transcriptionCount` and `transcriptionMinutes` in `user_sessions`
+- ✅ AI enhancement tracking: Language, segment counts, **source type breakdown** in `transcription-enhance` feature usage
+- ✅ Can still answer: "How many transcription sessions per user?", "Total transcription minutes?"
+- ✅ **NEW: Mic vs system preference** tracked via `microphone_segments` and `system_segments` in enhancement metadata
+
+**What We Don't Track:**
+- ❌ Per-transcription language breakdown (unless enhanced)
+- ❌ Source type preference for users who never enhance (acceptable trade-off)
+- ❌ Segment count patterns for non-enhanced transcriptions
+
+**Smart Compromise (2025-10-16):**
+- Added `microphone_segments` and `system_segments` to transcription-enhance metadata
+- Zero additional requests - piggybacked on existing analytics logging
+- Captures mic vs system preference for power users who enhance transcriptions
+- Files: `supabase/functions/transcription-enhance/index.ts:238-239`
+
+**Status:** ❌ Cancelled - Session aggregates + AI enhancement tracking deemed sufficient
+
+### Phase 4: Grafana Dashboards (Day 5) ✅ COMPLETED (2025-10-16)
 
 **Tasks:**
 
-1. ⏸️ **Create dashboard definitions**
-   - DAU/WAU/MAU dashboard
-   - Feature adoption dashboard
-   - User engagement dashboard
-   - Error monitoring dashboard
+1. ✅ **Create dashboard definitions**
+   - User Activity dashboard (DAU/WAU/MAU)
+   - Feature Adoption dashboard
+   - User Engagement dashboard
+   - Error Monitoring dashboard
 
-2. ⏸️ **Set up Grafana data source**
-   - Configure PostgreSQL connection
-   - Test queries
-   - Optimize for performance
-
-3. ⏸️ **Import dashboards**
-   - Create JSON dashboard definitions
-   - Import to Grafana
-   - Configure refresh rates
-   - Set up alerts
+2. ✅ **Create comprehensive setup documentation**
+   - Step-by-step Grafana configuration guide
+   - Dashboard import instructions
+   - Common troubleshooting scenarios
+   - Sample SQL queries for custom analysis
 
 **Deliverables:**
-- ⏸️ `docs/grafana/dashboards/user-activity.json`
-- ⏸️ `docs/grafana/dashboards/feature-adoption.json`
-- ⏸️ `docs/grafana/dashboards/user-engagement.json`
-- ⏸️ `docs/grafana/dashboards/error-monitoring.json`
+- ✅ `docs/setup/grafana/dashboards/user-activity.json` - 4 panels tracking DAU/WAU/MAU trends
+- ✅ `docs/setup/grafana/dashboards/feature-adoption.json` - 6 panels analyzing feature usage patterns
+- ✅ `docs/setup/grafana/dashboards/user-engagement.json` - 6 panels showing user behavior and engagement
+- ✅ `docs/setup/grafana/dashboards/error-monitoring.json` - 7 panels monitoring system health
+- ✅ `docs/setup/grafana/README.md` - Complete setup and troubleshooting guide
 
-**Status:** ⏸️ Pending - Will implement after Phase 3 is complete
+**Dashboard Highlights:**
 
-**Note:** All analytics queries are ready in the plan (lines 213-372). Can use these directly in Grafana once we have sufficient data from instrumented features.
+**User Activity (4 panels):**
+- Daily Active Users (DAU) trend
+- Weekly Active Users (WAU) trend
+- Monthly Active Users (MAU) trend
+- Current DAU/WAU/MAU summary stats
+
+**Feature Adoption (6 panels):**
+- Feature adoption rate table with success rates
+- Feature usage trends over time
+- Feature category distribution
+- Transcription source type breakdown (mic vs system)
+- Top languages used in transcriptions
+- Average transcription duration by source
+
+**User Engagement (6 panels):**
+- Top engaged users with engagement scores (0-100)
+- Session duration distribution
+- Sessions per user
+- Transcription activity trends
+- AI actions activity trends
+- Engagement score histogram
+
+**Error Monitoring (7 panels):**
+- Error rate by feature
+- Error trends with >10% alert
+- Errors by feature (stacked)
+- Success rate by feature
+- Recent error messages (last 24h)
+- Session errors trend
+- Exit reasons distribution
+
+**Note:** All dashboards use SQL queries from the plan and are ready to import into Grafana. Setup guide in `docs/setup/grafana/README.md` provides detailed instructions.
+
+**Status:** ✅ Complete - All 4 dashboards created with 23 visualization panels, ready for Grafana import
 
 ### Phase 5: User Profile Collection (Future)
 

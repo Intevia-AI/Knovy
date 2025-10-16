@@ -198,6 +198,10 @@ const handleRequest = async (req: Request, profile: Record<string, any>) => {
       }
     });
 
+    // Count source type distribution for analytics
+    const microphoneCount = segments.filter((s: TranscriptionSegment) => s.sourceType === 'microphone').length;
+    const systemCount = segments.filter((s: TranscriptionSegment) => s.sourceType === 'system').length;
+
     const processingTime = Date.now() - startTime;
 
     const response: EnhanceResponse = {
@@ -230,6 +234,9 @@ const handleRequest = async (req: Request, profile: Record<string, any>) => {
           enhanced_count: enhancedSegments.length,
           error_count: errors.length,
           language: sessionContext.userLanguage,
+          // Source type distribution for mic vs system preference tracking
+          microphone_segments: microphoneCount,
+          system_segments: systemCount,
         },
       });
 

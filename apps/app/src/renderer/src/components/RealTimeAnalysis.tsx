@@ -441,6 +441,7 @@ export default function RealTimeAnalysis({
             console.log(
               `[RealTimeAnalysis] Microphone speech ended - duration: ${segmentDuration}ms, forced: ${forced || false}`
             )
+
             // Trigger segment processing in the current system
             window.dispatchEvent(
               new CustomEvent('mic_segment', {
@@ -475,6 +476,7 @@ export default function RealTimeAnalysis({
             console.log(
               `[RealTimeAnalysis] System audio speech ended - duration: ${segmentDuration}ms, forced: ${forced || false}`
             )
+
             // Trigger segment processing in the current system
             window.dispatchEvent(
               new CustomEvent('system_segment', {
@@ -626,8 +628,13 @@ export default function RealTimeAnalysis({
       if (transcriptionStartTimeRef.current) {
         const durationMs = Date.now() - transcriptionStartTimeRef.current
         const durationMinutes = durationMs / 1000 / 60
+
         console.log(`[Analytics] Transcription session ended: ${durationMinutes.toFixed(2)} minutes`)
+
+        // Update aggregated session metrics
         analyticsService.incrementTranscription(durationMinutes)
+
+        // Reset tracking ref
         transcriptionStartTimeRef.current = null
       }
 

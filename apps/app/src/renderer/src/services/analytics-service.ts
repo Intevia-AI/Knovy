@@ -204,7 +204,7 @@ class AnalyticsService {
   }
 
   /**
-   * Track transcription activity
+   * Track transcription activity (aggregated metrics)
    */
   incrementTranscription(durationMinutes: number): void {
     this.sessionMetrics.transcriptionCount++
