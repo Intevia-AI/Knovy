@@ -82,10 +82,14 @@
 2. ~~**Fix Analytics Session ID Issue**: Ensure all features use the same analytics session_id~~ ✅ **COMPLETED (2025-10-16)**
 3. ~~**Fix Window Context Isolation**: Ensure popover windows get session_id~~ ✅ **COMPLETED (2025-10-16)**
 4. ~~**Add Detailed Transcription Metadata Tracking**: Individual feature_usage entries per transcription~~ ❌ **CANCELLED (2025-10-16)** - Request overhead not justified, session aggregates sufficient
-5. ~~**Create Grafana Dashboards**: Build visualizations to monitor user behavior and feature adoption~~ ✅ **COMPLETED (2025-10-16)**
-6. **Test Analytics End-to-End**: Validate all features are logging correctly with real usage
-7. **Set Up Grafana**: Import dashboards and configure data source
-8. **Monitor Production**: Deploy and observe real user analytics
+5. ~~**Create Grafana Dashboards**: Build visualizations to monitor user behavior and feature adoption~~ ❌ **DEPRECATED (2025-10-16)** - See new approach below
+6. **Implement Admin Dashboard Analytics**: Build integrated analytics directly into admin-dashboard app
+   - See [Admin Dashboard Analytics Plan](./20251016-admin-monitor.md) for full implementation details
+   - Use Tremor for charting
+   - Port all SQL queries to TypeScript
+   - Admin-only access with redirect to https://intevia.app
+7. **Test Analytics End-to-End**: Validate all features are logging correctly with real usage
+8. **Monitor Production**: Deploy admin dashboard analytics and observe real user data
 
 ---
 
@@ -839,7 +843,7 @@ class AnalyticsService {
 
 **Status:** ❌ Cancelled - Session aggregates + AI enhancement tracking deemed sufficient
 
-### Phase 4: Grafana Dashboards (Day 5) ✅ COMPLETED (2025-10-16)
+### Phase 4: Grafana Dashboards (Day 5) ❌ DEPRECATED (2025-10-16)
 
 **Tasks:**
 
@@ -854,6 +858,21 @@ class AnalyticsService {
    - Dashboard import instructions
    - Common troubleshooting scenarios
    - Sample SQL queries for custom analysis
+
+3. ✅ **Updated documentation for existing Grafana integration** (2025-10-16)
+   - **Complete rewrite**: 1,165 lines comprehensive integration guide
+   - Added TL;DR section explaining two-tier monitoring architecture
+   - Clarified separation between infrastructure (Prometheus) and application (PostgreSQL) data sources
+   - Added architecture diagram showing dual data source setup
+   - Included folder organization recommendations
+   - Added integration best practices and troubleshooting for data source confusion
+   - Created "Post-Setup: Next Steps" guide for ongoing monitoring
+   - Improved setup instructions with connection pooler options
+   - **Clarified Supabase connection formats**: `postgres.<project-ref>` vs `postgres`
+   - Added 30+ ready-to-use SQL queries for common analytics
+   - Created 6 detailed troubleshooting scenarios
+   - Added 2 complete analysis workflows (churn investigation, feature validation)
+   - Included daily/weekly/monthly/quarterly maintenance checklists
 
 **Deliverables:**
 - ✅ `docs/setup/grafana/dashboards/user-activity.json` - 4 panels tracking DAU/WAU/MAU trends
@@ -897,7 +916,25 @@ class AnalyticsService {
 
 **Note:** All dashboards use SQL queries from the plan and are ready to import into Grafana. Setup guide in `docs/setup/grafana/README.md` provides detailed instructions.
 
-**Status:** ✅ Complete - All 4 dashboards created with 23 visualization panels, ready for Grafana import
+**Deprecation Reason:**
+- Network connectivity issues with Grafana (IPv6/firewall blocking)
+- Better solution: Build analytics directly into admin-dashboard
+- Same metrics, better integration, no external dependencies
+
+**Replacement:** See [Admin Dashboard Analytics Plan](./20251016-admin-monitor.md)
+
+**What Was Completed:**
+- ✅ 4 dashboard JSON files created
+- ✅ Comprehensive Grafana setup guide written
+- ✅ 30+ SQL queries documented
+- ✅ All queries and metrics are reusable for admin-dashboard implementation
+
+**What's Archived:**
+- 📦 Grafana documentation moved to `docs/archive/grafana-deprecated/`
+- 📦 Dashboard JSON files preserved for reference
+- 📦 SQL queries will be ported to TypeScript in admin-dashboard
+
+**Status:** ❌ Deprecated - Replaced by integrated admin-dashboard analytics (see plan above)
 
 ### Phase 5: User Profile Collection (Future)
 

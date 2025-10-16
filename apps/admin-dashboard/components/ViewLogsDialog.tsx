@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { useAuth } from '@/context/AuthContext';
-import { Button } from '@workspace/ui/components/button';
+import { useEffect, useState } from "react";
+import { useAuth } from "@/context/AuthContext";
+import { Button } from "@workspace/ui/components/button";
 import {
   Dialog,
   DialogContent,
@@ -10,7 +10,7 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
-} from '@workspace/ui/components/dialog';
+} from "@workspace/ui/components/dialog";
 import {
   Table,
   TableHeader,
@@ -18,7 +18,7 @@ import {
   TableHead,
   TableBody,
   TableCell,
-} from '@workspace/ui/components/table';
+} from "@workspace/ui/components/table";
 
 interface User {
   id: string;
@@ -55,7 +55,7 @@ export function ViewLogsDialog({ user, isOpen, onOpenChange }: ViewLogsDialogPro
           setLogs([]);
         }
         if (error) {
-          console.error('Error fetching logs:', error);
+          console.error("Error fetching logs:", error);
         }
         setLoading(false);
       };
@@ -70,9 +70,7 @@ export function ViewLogsDialog({ user, isOpen, onOpenChange }: ViewLogsDialogPro
       <DialogContent className="max-w-3xl">
         <DialogHeader>
           <DialogTitle>Action Logs for {user.email}</DialogTitle>
-          <DialogDescription>
-            Here are the recent actions performed by this user.
-          </DialogDescription>
+          <DialogDescription>Here are the recent actions performed by this user.</DialogDescription>
         </DialogHeader>
         <div className="py-4 max-h-96 overflow-y-auto">
           {loading ? (
@@ -94,7 +92,9 @@ export function ViewLogsDialog({ user, isOpen, onOpenChange }: ViewLogsDialogPro
                     <TableCell>{log.action}</TableCell>
                     <TableCell>{new Date(log.timestamp).toLocaleString()}</TableCell>
                     <TableCell>
-                      <pre className="text-xs bg-muted p-2 rounded-md">{JSON.stringify(log.metadata, null, 2)}</pre>
+                      <pre className="text-xs bg-muted p-2 rounded-md">
+                        {JSON.stringify(log.metadata, null, 2)}
+                      </pre>
                     </TableCell>
                   </TableRow>
                 ))}

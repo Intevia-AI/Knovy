@@ -32,14 +32,32 @@ async function handleGetMyPermissions(req: Request) {
     throw new Error('Could not fetch user profile.');
   }
 
-  // 4. Fetch all permissions for that role
-  const { data: permissions, error: permissionsError } = await serviceClient.from('role_permissions').select('permission_name').eq('role_name', profile.role);
-  if (permissionsError) {
-    console.error('Error fetching permissions for role:', profile.role, permissionsError);
-    throw new Error('Could not fetch permissions for role.');
+  // 4. Build permissions list based on role
+  const permissionList: string[] = [];
+
+  // Admin users get all admin permissions
+  if (profile.role === 'admin') {
+    permissionList.push('admin:read_users', 'admin:update_user_role', 'admin:view_analytics');
   }
 
-  const permissionList = permissions.map(p => p.permission_name);
+  // Fetch entitlements for the role to determine feature permissions
+  const { data: entitlements, error: entitlementsError } = await serviceClient
+    .from('entitlements')
+    .select('config')
+    .eq('role', profile.role)
+    .single();
+
+  if (entitlementsError || !entitlements) {
+    console.error('Error fetching entitlements for role:', profile.role, entitlementsError);
+    throw new Error('Could not fetch entitlements for role.');
+  }
+
+  // Add all enabled entitlements as permissions
+  for (const [key, value] of Object.entries(entitlements.config)) {
+    if (value === true) {
+      permissionList.push(key);
+    }
+  }
 
   return new Response(JSON.stringify({ permissions: permissionList }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 }

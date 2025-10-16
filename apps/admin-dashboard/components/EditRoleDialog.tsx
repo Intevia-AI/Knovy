@@ -18,6 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@workspace/ui/components/select";
+import { toast } from "sonner";
 
 interface User {
   id: string;
@@ -35,9 +36,12 @@ interface EditRoleDialogProps {
 const ROLES = ["free", "pro", "admin", "beta"];
 
 export function EditRoleDialog({ user, isOpen, onOpenChange, onRoleUpdate }: EditRoleDialogProps) {
-  const { supabase } = useAuth();
+  const { supabase, user: currentUser } = useAuth();
   const [selectedRole, setSelectedRole] = useState(user?.role || "");
   const [isSaving, setIsSaving] = useState(false);
+
+  // Check if the user being edited is the current user
+  const isEditingSelf = !!(user && currentUser && user.id === currentUser.id);
 
   useEffect(() => {
     if (user) {
@@ -48,19 +52,38 @@ export function EditRoleDialog({ user, isOpen, onOpenChange, onRoleUpdate }: Edi
   if (!user) return null;
 
   const handleSave = async () => {
-    setIsSaving(true);
-    const { error } = await supabase.functions.invoke(`admin-api/users/${user.id}/role`, {
-      body: { role: selectedRole },
-    });
+    if (isEditingSelf) {
+      toast.error("You cannot change your own role");
+      return;
+    }
 
-    if (error) {
-      console.error("Failed to update role:", error);
-      // Here you would ideally show a toast notification
-    } else {
+    setIsSaving(true);
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/admin-api/users/${user.id}/role`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ role: selectedRole }),
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      toast.success(`Role updated to ${selectedRole} for ${user.email}`);
       onRoleUpdate(user.id, selectedRole);
       onOpenChange(false);
+    } catch (error) {
+      console.error("Failed to update role:", error);
+      toast.error("Failed to update role. Please try again.");
+    } finally {
+      setIsSaving(false);
     }
-    setIsSaving(false);
   };
 
   return (
@@ -69,11 +92,17 @@ export function EditRoleDialog({ user, isOpen, onOpenChange, onRoleUpdate }: Edi
         <DialogHeader>
           <DialogTitle>Edit Role for {user.email}</DialogTitle>
           <DialogDescription>
-            Select a new role for the user. This will immediately change their permissions.
+            {isEditingSelf ? (
+              <span className="text-destructive">
+                You cannot change your own role. Ask another admin to change it for you.
+              </span>
+            ) : (
+              "Select a new role for the user. This will immediately change their permissions."
+            )}
           </DialogDescription>
         </DialogHeader>
         <div className="py-4">
-          <Select value={selectedRole} onValueChange={setSelectedRole}>
+          <Select value={selectedRole} onValueChange={setSelectedRole} disabled={isEditingSelf}>
             <SelectTrigger>
               <SelectValue placeholder="Select a role" />
             </SelectTrigger>
@@ -90,7 +119,7 @@ export function EditRoleDialog({ user, isOpen, onOpenChange, onRoleUpdate }: Edi
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>
             Cancel
           </Button>
-          <Button onClick={handleSave} disabled={isSaving}>
+          <Button onClick={handleSave} disabled={isSaving || isEditingSelf}>
             {isSaving ? "Saving..." : "Save"}
           </Button>
         </DialogFooter>

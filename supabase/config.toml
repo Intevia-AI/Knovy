@@ -46,7 +46,12 @@ enabled = true
 # The base URL of your website.
 site_url = "http://localhost:3000"
 # A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
-additional_redirect_urls = ["http://localhost:3000/auth/callback"]
+additional_redirect_urls = [
+  "http://localhost:3000/auth/callback",
+  "http://localhost:3001/auth/callback",
+  "http://127.0.0.1:3000/auth/callback",
+  "http://127.0.0.1:3001/auth/callback"
+]
 # How long tokens are valid for, in seconds.
 jwt_expiry = 3600
 # If disabled, the refresh token will never expire.
@@ -74,3 +79,8 @@ secret = "env(GOOGLE_CLIENT_SECRET)"
 enabled = true
 verify_jwt = false
 entrypoint = "./functions/add-to-waitlist/index.ts"
+
+[functions.admin-api]
+enabled = true
+verify_jwt = true
+entrypoint = "./functions/admin-api/index.ts"

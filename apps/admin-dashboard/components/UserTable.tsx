@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useEffect, useState, useCallback } from 'react';
-import { useAuth } from '@/context/AuthContext';
+import { useEffect, useState, useCallback } from "react";
+import { useAuth } from "@/context/AuthContext";
 import {
   Table,
   TableHeader,
@@ -9,10 +9,10 @@ import {
   TableHead,
   TableBody,
   TableCell,
-} from '@workspace/ui/components/table';
-import { Button } from '@workspace/ui/components/button';
-import { EditRoleDialog } from './EditRoleDialog';
-import { ViewLogsDialog } from './ViewLogsDialog';
+} from "@workspace/ui/components/table";
+import { Button } from "@workspace/ui/components/button";
+import { EditRoleDialog } from "./EditRoleDialog";
+import { ViewLogsDialog } from "./ViewLogsDialog";
 
 interface User {
   id: string;
@@ -30,14 +30,33 @@ export function UserTable() {
   const fetchUsers = useCallback(async () => {
     if (!supabase) return;
     setLoading(true);
-    const { data, error } = await supabase.functions.invoke('admin-api/users', { method: 'GET' });
-    if (data?.users) {
-      setUsers(data.users);
+    try {
+      // Note: Supabase functions.invoke() sends requests to /functions/v1/{function-name}
+      // The admin-api function then routes based on the remaining path
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/admin-api/users`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+            "Content-Type": "application/json",
+          },
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      if (data?.users) {
+        setUsers(data.users);
+      }
+    } catch (error) {
+      console.error("Error fetching users:", error);
+    } finally {
+      setLoading(false);
     }
-    if (error) {
-      console.error('Error fetching users:', error);
-    }
-    setLoading(false);
   }, [supabase]);
 
   useEffect(() => {
@@ -45,7 +64,7 @@ export function UserTable() {
   }, [fetchUsers]);
 
   const handleRoleUpdate = (userId: string, newRole: string) => {
-    setUsers(users.map(u => u.id === userId ? { ...u, role: newRole } : u));
+    setUsers(users.map((u) => (u.id === userId ? { ...u, role: newRole } : u)));
   };
 
   if (loading) {
