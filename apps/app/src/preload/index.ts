@@ -154,6 +154,7 @@ const api = {
       'transcription:data',
       'transcription:update',
       'screenshare:state-changed',
+      'analytics:session-id-changed',
       'popover:prepare-to-close',
       'popover:was-closed',
       'auth:execute-sign-out',

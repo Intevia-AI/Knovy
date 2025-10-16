@@ -279,17 +279,46 @@ ipcMain.handle('session:clear-profile', () => {
 // Analytics session ID handlers (separate from SQLite session ID)
 ipcMain.handle('analytics:set-session-id', (event, sessionId: string) => {
   analyticsSessionId = sessionId
-  console.log('[main/index.ts] Analytics session ID set:', sessionId)
+  console.log('[main/index.ts] ✓ Analytics session ID set:', sessionId)
+
+  // Get all windows for broadcasting
+  const allWindows = BrowserWindow.getAllWindows()
+  const validWindows = allWindows.filter((win) => !win.isDestroyed())
+
+  console.log(`[main/index.ts] Broadcasting analytics session ID to ${validWindows.length} windows`)
+
+  // Broadcast to ALL windows (including popovers) so they can use the same session_id
+  validWindows.forEach((win, index) => {
+    try {
+      const url = win.webContents.getURL()
+      console.log(`[main/index.ts]   → Window ${index + 1}: Sending to ${url.substring(0, 50)}...`)
+      win.webContents.send('analytics:session-id-changed', sessionId)
+    } catch (error) {
+      console.error(`[main/index.ts]   ✗ Window ${index + 1}: Failed to send:`, error.message)
+    }
+  })
+
+  console.log('[main/index.ts] ✓ Broadcast completed')
   return { success: true }
 })
 
 ipcMain.handle('analytics:get-session-id', () => {
+  console.log('[main/index.ts] Analytics session ID requested, returning:', analyticsSessionId)
   return analyticsSessionId
 })
 
 ipcMain.handle('analytics:clear-session-id', () => {
   analyticsSessionId = null
   console.log('[main/index.ts] Analytics session ID cleared')
+
+  // Broadcast to ALL windows
+  console.log('[main/index.ts] Broadcasting analytics session ID cleared to all windows')
+  for (const win of BrowserWindow.getAllWindows()) {
+    if (!win.isDestroyed()) {
+      win.webContents.send('analytics:session-id-changed', null)
+    }
+  }
+
   return { success: true }
 })
 

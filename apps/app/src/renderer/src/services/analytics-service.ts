@@ -233,6 +233,32 @@ class AnalyticsService {
   }
 
   /**
+   * Set session ID from broadcast (for popover windows)
+   * This allows popover windows to use the same session_id as the main window
+   */
+  setSessionIdFromBroadcast(sessionId: string | null): void {
+    if (sessionId) {
+      // If we don't have a session, create a minimal session object with just the ID
+      if (!this.currentSession) {
+        console.log('[Analytics] Received session ID from broadcast:', sessionId)
+        this.currentSession = {
+          sessionId,
+          userId: '', // Not needed for getting session_id
+          startedAt: new Date(),
+          platform: 'desktop_app',
+          appVersion: '',
+          osName: '',
+          osVersion: ''
+        }
+      }
+    } else {
+      // Clear session if null is broadcast
+      console.log('[Analytics] Received session clear from broadcast')
+      this.currentSession = null
+    }
+  }
+
+  /**
    * Check if session is active
    */
   isSessionActive(): boolean {
@@ -242,3 +268,31 @@ class AnalyticsService {
 
 // Export singleton instance
 export const analyticsService = new AnalyticsService()
+
+// Listen for session ID broadcasts from main process (for popover windows)
+if ((window as any).electronAPI) {
+  console.log('[Analytics] Registering session ID broadcast listener...')
+
+  // Register broadcast listener
+  ;(window as any).electronAPI.on('analytics:session-id-changed', (sessionId: string | null) => {
+    console.log('[Analytics] Session ID broadcast received:', sessionId)
+    analyticsService.setSessionIdFromBroadcast(sessionId)
+  })
+
+  // IMPORTANT: Request current session ID from main process
+  // This handles the case where a popover window is created AFTER the session started
+  // Without this, the popover would miss the initial broadcast
+  console.log('[Analytics] Requesting current session ID from main process...')
+  ;(window as any).electronAPI.invoke('analytics:get-session-id')
+    .then((sessionId: string | null) => {
+      if (sessionId) {
+        console.log('[Analytics] Current session ID retrieved:', sessionId)
+        analyticsService.setSessionIdFromBroadcast(sessionId)
+      } else {
+        console.log('[Analytics] No active session in main process')
+      }
+    })
+    .catch((error: any) => {
+      console.error('[Analytics] Error requesting current session ID:', error)
+    })
+}

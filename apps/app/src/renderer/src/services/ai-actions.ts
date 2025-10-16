@@ -42,8 +42,15 @@ export async function invokeAIAction<TRequest extends Record<string, any>, TResp
   // Get current session ID from analytics service
   const sessionId = analyticsService.getSessionId()
 
+  // Debug logging
+  console.log(`[AI Actions] Session check for ${functionName}:`, {
+    sessionId,
+    isSessionActive: analyticsService.isSessionActive(),
+    hasSessionId: !!sessionId
+  })
+
   if (!sessionId) {
-    console.warn(`[AI Actions] No active session when calling ${functionName}`)
+    console.warn(`[AI Actions] ⚠️ No active session when calling ${functionName}`)
   }
 
   // Inject session_id into request body
@@ -52,7 +59,11 @@ export async function invokeAIAction<TRequest extends Record<string, any>, TResp
     session_id: sessionId
   }
 
-  console.log(`[AI Actions] Invoking ${functionName} with session_id: ${sessionId}`)
+  console.log(`[AI Actions] Invoking ${functionName} with payload:`, {
+    functionName,
+    session_id: sessionId,
+    bodyKeys: Object.keys(bodyWithSession)
+  })
 
   // Call Edge Function
   const { data, error } = await supabase.functions.invoke<TResponse>(functionName, {
@@ -61,6 +72,8 @@ export async function invokeAIAction<TRequest extends Record<string, any>, TResp
 
   if (error) {
     console.error(`[AI Actions] Error calling ${functionName}:`, error)
+  } else {
+    console.log(`[AI Actions] ✓ ${functionName} completed successfully with session_id: ${sessionId}`)
   }
 
   return { data, error }
