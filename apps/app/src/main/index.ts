@@ -41,7 +41,8 @@ console.log('[Debug] Imported dbService module:', dbService)
 
 let isScreenSharing = false
 let cachedSessionProfile: any | null = null
-let currentSessionId: string | null = null
+let currentSessionId: string | null = null // SQLite session ID
+let analyticsSessionId: string | null = null // Analytics session ID from renderer
 let activeScreenSourceId: string | null = null
 let mainWindow: BrowserWindow | null
 let selectionWindow: BrowserWindow | null
@@ -273,6 +274,23 @@ ipcMain.handle('session:set-profile', (event, profile) => {
 ipcMain.handle('session:clear-profile', () => {
   cachedSessionProfile = null
   console.log('[main/index.ts] Session profile cache cleared.')
+})
+
+// Analytics session ID handlers (separate from SQLite session ID)
+ipcMain.handle('analytics:set-session-id', (event, sessionId: string) => {
+  analyticsSessionId = sessionId
+  console.log('[main/index.ts] Analytics session ID set:', sessionId)
+  return { success: true }
+})
+
+ipcMain.handle('analytics:get-session-id', () => {
+  return analyticsSessionId
+})
+
+ipcMain.handle('analytics:clear-session-id', () => {
+  analyticsSessionId = null
+  console.log('[main/index.ts] Analytics session ID cleared')
+  return { success: true }
 })
 
 ipcMain.handle('electronAPI:getActiveScreenSourceId', () => {
@@ -1423,11 +1441,16 @@ app.on('ready', async () => {
               sourceType: transcriptionData.sourceType
             }
 
-            // Get session context
+            // Get session context - use analytics session ID, not SQLite session ID
             const sessionContext = {
-              sessionId: currentSessionId,
+              sessionId: analyticsSessionId || currentSessionId, // Prefer analytics ID
               conversationHistory: [], // TODO: Get from session history if needed
               userLanguage: userLanguage
+            }
+
+            // Warn if analytics session ID is missing
+            if (!analyticsSessionId) {
+              console.warn('[main/index.ts] Analytics session ID not set, using SQLite session ID as fallback')
             }
 
             // Trigger enhancement (async, non-blocking) with small delay to ensure DB save completes

@@ -120,6 +120,12 @@ export function useScreenShare() {
       console.log('[ScreenShare] Ending analytics session')
       await analyticsService.endSession('normal')
       console.log('[ScreenShare] Analytics session ended')
+
+      // Clear analytics session ID in main process
+      if ((window as any).electronAPI) {
+        await (window as any).electronAPI.invoke('analytics:clear-session-id')
+        console.log('[ScreenShare] Cleared analytics session ID in main process')
+      }
     }
 
     // Cleanup screen stream
@@ -329,6 +335,12 @@ export function useScreenShare() {
       console.log('[ScreenShare] Starting analytics session for user:', user.id)
       const sessionId = await analyticsService.startSession(user.id)
       console.log('[ScreenShare] Analytics session started:', sessionId)
+
+      // Send analytics session ID to main process for transcription enhancement
+      if ((window as any).electronAPI) {
+        await (window as any).electronAPI.invoke('analytics:set-session-id', sessionId)
+        console.log('[ScreenShare] Sent analytics session ID to main process:', sessionId)
+      }
 
       // --- Mic Recording ---
       await startMicRecording()

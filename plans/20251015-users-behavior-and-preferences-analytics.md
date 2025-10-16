@@ -83,10 +83,11 @@
 ### Next Steps
 
 1. ~~**Complete Phase 3**: Instrument remaining AI actions and transcription features~~ ✅ **COMPLETED**
-2. **Validate Data**: Test analytics end-to-end in local environment (verify all features are logging correctly)
-3. **Create Grafana Dashboards**: Build visualizations to monitor user behavior and feature adoption
-4. **Monitor Production**: Deploy and observe real user analytics
-5. **Optional**: Add detailed transcription metadata tracking (individual feature_usage entries per transcription)
+2. ~~**Fix Analytics Session ID Issue**: Ensure all features use the same analytics session_id~~ ✅ **COMPLETED (2025-10-16)**
+3. **Validate Data**: Test analytics end-to-end in local environment (verify all features are logging correctly)
+4. **Create Grafana Dashboards**: Build visualizations to monitor user behavior and feature adoption
+5. **Monitor Production**: Deploy and observe real user analytics
+6. **Optional**: Add detailed transcription metadata tracking (individual feature_usage entries per transcription)
 
 ---
 
@@ -203,10 +204,11 @@ CREATE TRIGGER trigger_update_last_active
 ```
 
 **Tracking Strategy:**
-- Session starts when app opens or user logs in
+- Session starts when user begins screen-share/transcription
 - Heartbeat every 60 seconds updates `last_heartbeat_at` and metrics
-- Session ends when app closes or after 30 minutes of inactivity
-- Metrics (`transcription_count`, `ai_actions_count`) increment as features are used
+- Session ends when user stops screen-share
+- Metrics (`transcription_count`, `ai_actions_count`) increment as features are used during the session
+- **Implementation:** Session tracking in `useScreenShare.ts` (not App.tsx)
 
 ### 3. Feature Usage Table
 
@@ -509,34 +511,39 @@ ORDER BY cohort_week DESC;
    - Session metrics: `transcriptionCount`, `transcriptionMinutes`, `aiActionsCount`, `errorsCount`
 
 2. ✅ **Integrate with desktop app**
-   - Integrated in `apps/app/src/renderer/src/app/App.tsx`
-   - Auto-starts session when user logs in (line 248-263)
-   - Auto-ends session on app unmount (line 265-275)
+   - ~~Integrated in `apps/app/src/renderer/src/app/App.tsx`~~ (LATER REFACTORED - see Phase 3b)
+   - ~~Auto-starts session when user logs in~~ (CHANGED: now on screen-share start)
+   - ~~Auto-ends session on app unmount~~ (CHANGED: now on screen-share stop)
+   - **Final Implementation:** Session tracking moved to `useScreenShare.ts` in Phase 3b
    - Excludes waitlisted users from session tracking
    - Direct database access (no IPC needed, using Supabase client)
 
 **Deliverables:**
-- ✅ `apps/app/src/renderer/src/services/analytics-service.ts` (353 lines)
-- ✅ Updated `apps/app/src/renderer/src/app/App.tsx` with session lifecycle
+- ✅ `apps/app/src/renderer/src/services/analytics-service.ts` (simplified in Phase 3b)
+- ✅ Updated `apps/app/src/renderer/src/hooks/useScreenShare.ts` with session lifecycle (Phase 3b)
 - ✅ Helper methods: `incrementTranscription()`, `incrementAiAction()`, `incrementError()`
-- ✅ Feature tracking: `trackFeatureStart()`, `trackFeatureComplete()`, `trackFeatureError()`
+- ~~Feature tracking: `trackFeatureStart()`, `trackFeatureComplete()`, `trackFeatureError()`~~ (REMOVED in Phase 3b)
 
-**Implementation Details:**
+**Implementation Details (Simplified in Phase 3b):**
 ```typescript
 class AnalyticsService {
   private currentSession: SessionData | null = null
   private sessionMetrics: SessionMetrics = {...}
   private heartbeatInterval: NodeJS.Timeout | null = null
-  private featureUsageMap: Map<string, { id: number; startedAt: Date }> = new Map()
 
-  async startSession(userId: string): Promise<void>
+  async startSession(userId: string): Promise<string | null> // Returns session_id
   async endSession(exitReason: 'normal' | 'crash' | 'timeout'): Promise<void>
   incrementTranscription(durationMinutes: number): void
   incrementAiAction(): void
   incrementError(): void
-  async trackFeatureStart(usage: FeatureUsage): Promise<string | null>
-  async trackFeatureComplete(trackingId: string, completion: FeatureComplete): Promise<void>
-  async trackFeatureError(trackingId: string, featureError: FeatureError): Promise<void>
+  getSessionId(): string | null
+  isSessionActive(): boolean
+
+  // Removed in Phase 3b (dead code):
+  // - trackFeatureStart()
+  // - trackFeatureComplete()
+  // - trackFeatureError()
+  // - featureUsageMap property
 }
 ```
 
@@ -638,28 +645,121 @@ class AnalyticsService {
    - Confirmed: Only useAIInteraction uses AI actions
    - All future AI actions will automatically get `session_id`
 
+5. ✅ **Fix session tracking architecture**
+   - **Issue Identified:** Sessions were tracking app-level (login to logout) instead of screen-share sessions
+   - **Root Cause:** Misunderstood what "session" means in analytics context
+   - **Fix:** Moved session tracking from App.tsx to useScreenShare.ts
+   - **Result:** Each screen-share = one user_sessions row with correct duration
+   - **Commits:**
+     - `Fix(app): Track screen-share sessions instead of app sessions` (commit 238e9a2)
+     - Removed app-level session tracking (71 lines removed from App.tsx)
+     - Added screen-share session tracking to useScreenShare.ts
+
+6. ✅ **Remove redundant feature tracking**
+   - **Issue Identified:** Screen-share was being tracked in BOTH user_sessions and feature_usage
+   - **Design Error:** Screen-share is the SESSION, not a feature
+   - **Fix:** Removed trackFeatureStart/Complete for screen-share
+   - **Result:** Clean separation - user_sessions tracks sessions, feature_usage tracks AI actions
+   - **Commit:** `Refactor(app): Remove redundant screen-share feature tracking` (commit 5f4135e)
+
+7. ✅ **Remove dead code from analytics service**
+   - **Issue Identified:** trackFeatureStart/Complete/Error methods are dead code
+   - **Rationale:** All feature_usage tracking happens server-side in Edge Functions
+   - **Removed:** 134 lines of dead code (methods, interfaces, state)
+   - **Simplified:** Analytics service now only manages sessions and provides session_id
+   - **Commit:** `Refactor(app): Remove client-side feature tracking from analytics service` (commit df95d9a)
+
 **Deliverables:**
 - ✅ Migration: `supabase/migrations/20251015200000_remove_api_cost_usd.sql`
 - ✅ Service: `apps/app/src/renderer/src/services/ai-actions.ts` (180 lines)
 - ✅ Updated: `apps/app/src/renderer/src/hooks/useAIInteraction.ts`
-- ✅ Updated: `apps/app/src/renderer/src/services/analytics-service.ts`
+- ✅ Updated: `apps/app/src/renderer/src/services/analytics-service.ts` (simplified, 134 lines removed)
+- ✅ Updated: `apps/app/src/renderer/src/app/App.tsx` (removed session tracking)
+- ✅ Updated: `apps/app/src/renderer/src/hooks/useScreenShare.ts` (added session tracking)
 
-**Issues Identified & Status:**
+**Issues Identified & Resolved:**
 - ✅ **Issue #1 (AI actions missing session_id):** RESOLVED with wrapper pattern
-- ⚠️ **Issue #2 (user_sessions not logging):** DEBUGGING IN PROGRESS
-  - **Root Cause:** After database reset, `auth.users` table is wiped but renderer has cached auth session
-  - **Error:** Foreign key constraint violation when inserting into `user_sessions`
-  - **Analytics Service** already handles this error (lines 91-96)
-  - **Solution for User:** Sign out and sign back in after database reset
-  - **TODO:** Test session logging with fresh authentication
+- ✅ **Issue #2 (user_sessions not logging):** RESOLVED - wrong session tracking location
+- ✅ **Issue #3 (session tracking architecture):** RESOLVED - moved from app-level to screen-share sessions
+- ✅ **Issue #4 (redundant feature tracking):** RESOLVED - removed screen-share from feature_usage
+- ✅ **Issue #5 (dead code in analytics service):** RESOLVED - removed 134 lines of unused code
+
+**Architecture Clarifications:**
+
+**Session Tracking (user_sessions table):**
+- ❌ OLD: One session per app runtime (login to logout)
+- ✅ NEW: One session per screen-share (start to stop)
+- Location: `useScreenShare.ts` (not App.tsx)
+- Creates row when screen-share starts, updates when it ends
+
+**Feature Tracking (feature_usage table):**
+- Tracked server-side in Edge Functions only
+- Tracks AI actions DURING a session:
+  - ai-action-chat
+  - ai-action-summarize
+  - ai-action-keyword-search
+  - ai-action-screenshot-analysis
+  - ai-action-recommend-response
+  - ai-transcription-enhance
+- Does NOT track screen-share (that's the session itself)
+
+**Client-Side Analytics Service Responsibilities:**
+- ✅ Session lifecycle (start/end)
+- ✅ Heartbeat (60s interval)
+- ✅ Session metrics (transcription_count, ai_actions_count, errors_count)
+- ✅ Provide session_id for Edge Function injection
+- ❌ Feature usage tracking (handled server-side)
 
 **Next Steps:**
-1. Test analytics end-to-end with fresh login
-2. Update useScreenShare with analytics tracking (pending Issue #2 resolution)
-3. Verify all feature tracking is working correctly
-4. Create Grafana dashboards
+1. ✅ Test analytics end-to-end with fresh login
+2. ✅ Update useScreenShare with analytics tracking
+3. ✅ Fix analytics session ID mismatch for transcription-enhance
+4. ⏭️ Verify all feature tracking is working correctly in production
+5. ⏭️ Create Grafana dashboards
 
-**Status:** ✅ Complete - Refactoring done, ready for end-to-end testing
+**Status:** ✅ Complete - Architecture fixed, dead code removed, session ID unified, ready for production testing
+
+### Phase 3c: Analytics Session ID Fix (Day 4) ✅ COMPLETED
+
+**Issue:** Analytics session ID mismatch between renderer and main process
+
+**Problem Identified:**
+- Two different session IDs in use:
+  - **SQLite Session ID** (`currentSessionId`) - Created by main process for local database
+  - **Analytics Session ID** - Created by `analyticsService.startSession()` in renderer process
+- `transcription-enhance` was receiving SQLite session ID instead of analytics session ID
+- This broke the ability to correlate all features within a single analytics session
+
+**Root Cause:**
+- Main process had no access to analytics session ID (created in renderer)
+- Enhancement service was using `currentSessionId` (SQLite) by default
+- Different from other AI actions which use `invokeAIAction()` wrapper with correct session_id
+
+**Solution Implemented:**
+1. Added IPC communication to pass analytics session ID from renderer to main process
+2. Added new IPC handlers:
+   - `analytics:set-session-id` - Set analytics session ID from renderer
+   - `analytics:get-session-id` - Get analytics session ID
+   - `analytics:clear-session-id` - Clear analytics session ID
+3. Updated `useScreenShare.ts`:
+   - Sends analytics session ID to main process after `analyticsService.startSession()`
+   - Clears analytics session ID in main process on session end
+4. Updated `main/index.ts`:
+   - Stores `analyticsSessionId` separately from `currentSessionId`
+   - Uses analytics session ID for transcription enhancement
+   - Falls back to SQLite session ID with warning if analytics ID missing
+
+**Files Modified:**
+- ✅ `apps/app/src/main/index.ts` - Added analytics session ID storage and handlers
+- ✅ `apps/app/src/preload/index.ts` - Added IPC methods for analytics session ID
+- ✅ `apps/app/src/renderer/src/hooks/useScreenShare.ts` - Send/clear analytics session ID
+
+**Result:**
+- All features now use the same analytics `session_id` for `feature_usage` entries
+- Proper session-based analytics tracking across all AI actions and transcription enhancement
+- Can accurately track all features used within a single screen-share session
+
+**Status:** ✅ Complete - All features now use unified analytics session ID
 
 ### Phase 4: Grafana Dashboards (Day 4) ⏸️ PENDING
 
