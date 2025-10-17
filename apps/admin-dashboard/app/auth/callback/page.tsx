@@ -1,11 +1,24 @@
 // This file is required for Supabase OAuth flow
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 
-export default function AuthCallback() {
+// Loading component
+function LoadingSpinner() {
+  return (
+    <div className="flex h-screen w-full items-center justify-center">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+        <p className="text-muted-foreground">Signing you in...</p>
+      </div>
+    </div>
+  );
+}
+
+// Inner component that uses useSearchParams
+function AuthCallbackContent() {
   const { supabase } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -62,7 +75,7 @@ export default function AuthCallback() {
     };
 
     handleCallback();
-  }, [router, searchParams]);
+  }, [router, searchParams, supabase.auth]);
 
   if (error) {
     return (
@@ -76,12 +89,14 @@ export default function AuthCallback() {
     );
   }
 
+  return <LoadingSpinner />;
+}
+
+// Export with Suspense wrapper to satisfy Next.js 15 requirements
+export default function AuthCallback() {
   return (
-    <div className="flex h-screen w-full items-center justify-center">
-      <div className="text-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-        <p className="text-muted-foreground">Signing you in...</p>
-      </div>
-    </div>
+    <Suspense fallback={<LoadingSpinner />}>
+      <AuthCallbackContent />
+    </Suspense>
   );
 }
