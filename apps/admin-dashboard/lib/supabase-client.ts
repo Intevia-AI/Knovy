@@ -16,6 +16,8 @@ if (!url || !anonKey) {
 }
 
 // Browser client that properly handles cookies for SSR with PKCE flow
+// Note: createBrowserClient automatically handles cookies in the browser,
+// so we don't need custom cookie handlers
 export const supabase = createBrowserClient(url, anonKey, {
   auth: {
     flowType: 'pkce',
@@ -23,46 +25,4 @@ export const supabase = createBrowserClient(url, anonKey, {
     persistSession: true,
     detectSessionInUrl: true,
   },
-  cookies: {
-    getAll() {
-      // Only access document in browser environment
-      if (typeof document === 'undefined') {
-        return [];
-      }
-      return document.cookie.split(';').map(cookie => {
-        const [name, ...rest] = cookie.split('=');
-        return {
-          name: (name || '').trim(),
-          value: rest.join('=').trim()
-        };
-      });
-    },
-    setAll(cookiesToSet) {
-      // Only access document in browser environment
-      if (typeof document === 'undefined') {
-        return;
-      }
-      cookiesToSet.forEach(({ name, value, options }) => {
-        let cookie = `${name}=${value}`;
-
-        if (options?.maxAge) {
-          cookie += `; max-age=${options.maxAge}`;
-        }
-        if (options?.path) {
-          cookie += `; path=${options.path}`;
-        }
-        if (options?.domain) {
-          cookie += `; domain=${options.domain}`;
-        }
-        if (options?.sameSite) {
-          cookie += `; samesite=${options.sameSite}`;
-        }
-        if (options?.secure) {
-          cookie += '; secure';
-        }
-
-        document.cookie = cookie;
-      });
-    }
-  }
 });
