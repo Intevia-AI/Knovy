@@ -1,11 +1,11 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { withRBAC } from '../_shared/rbac.ts';
-import { corsHeaders } from '../_shared/cors.ts';
+import { getCorsHeaders } from '../_shared/cors.ts';
 
 // --- Route Handlers ---
 
-async function handleGetMyPermissions(req: Request) {
+async function handleGetMyPermissions(req: Request, corsHeaders: Record<string, string>) {
   console.log('Handling GET /me/permissions');
   // 1. Create a client with the user's auth context to securely get the user ID
   const userClient = createClient(
@@ -62,17 +62,17 @@ async function handleGetMyPermissions(req: Request) {
   return new Response(JSON.stringify({ permissions: permissionList }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 }
 
-async function handleGetUsers(req: Request) {
+async function handleGetUsers(req: Request, corsHeaders: Record<string, string>) {
   console.log('Handling GET /users');
   const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
   const { data, error } = await supabase.rpc('get_users_with_roles');
-  
+
   if (error) throw error;
 
   return new Response(JSON.stringify({ users: data }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 }
 
-async function handleUpdateUserRole(req: Request, params: { id: string }) {
+async function handleUpdateUserRole(req: Request, params: { id: string }, corsHeaders: Record<string, string>) {
   console.log(`Handling POST /users/${params.id}/role`);
   const { role } = await req.json();
   if (!role) {
@@ -81,17 +81,17 @@ async function handleUpdateUserRole(req: Request, params: { id: string }) {
 
   const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
   const { data, error } = await supabase.from('profiles').update({ role }).eq('id', params.id).select().single();
-  
+
   if (error) throw error;
 
   return new Response(JSON.stringify({ success: true, user: data }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 }
 
-async function handleGetUserUsage(req: Request, params: { id: string }) {
+async function handleGetUserUsage(req: Request, params: { id: string }, corsHeaders: Record<string, string>) {
   console.log(`Handling GET /users/${params.id}/usage`);
   const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
   const { data, error } = await supabase.from('action_logs').select('*').eq('user_id', params.id).order('timestamp', { ascending: false });
-  
+
   if (error) throw error;
 
   return new Response(JSON.stringify({ logs: data }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
@@ -100,6 +100,10 @@ async function handleGetUserUsage(req: Request, params: { id: string }) {
 // --- Main Router ---
 
 serve(async (req) => {
+  // Get dynamic CORS headers based on request origin
+  const origin = req.headers.get("origin") ?? undefined;
+  const corsHeaders = getCorsHeaders(origin);
+
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
@@ -110,26 +114,26 @@ serve(async (req) => {
   try {
     // GET /me/permissions
     if (path === '/me/permissions' && req.method === 'GET') {
-      return await handleGetMyPermissions(req);
+      return await handleGetMyPermissions(req, corsHeaders);
     }
 
     // GET /users
     if (path === '/users' && req.method === 'GET') {
-      return await withRBAC('admin:read_users', handleGetUsers)(req);
+      return await withRBAC('admin:read_users', (r) => handleGetUsers(r, corsHeaders))(req);
     }
 
     // POST /users/:id/role
     const roleMatch = path.match(/^\/users\/([0-9a-fA-F-]+)\/role$/);
     if (roleMatch && req.method === 'POST') {
       const [_, id] = roleMatch;
-      return await withRBAC('admin:update_user_role', (r) => handleUpdateUserRole(r, { id }))(req);
+      return await withRBAC('admin:update_user_role', (r) => handleUpdateUserRole(r, { id }, corsHeaders))(req);
     }
 
     // GET /users/:id/usage
     const usageMatch = path.match(/^\/users\/([0-9a-fA-F-]+)\/usage$/);
     if (usageMatch && req.method === 'GET') {
       const [_, id] = usageMatch;
-      return await withRBAC('admin:read_users', (r) => handleGetUserUsage(r, { id }))(req);
+      return await withRBAC('admin:read_users', (r) => handleGetUserUsage(r, { id }, corsHeaders))(req);
     }
 
     return new Response(JSON.stringify({ error: 'Not Found' }), {
