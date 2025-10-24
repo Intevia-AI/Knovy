@@ -1297,11 +1297,75 @@ export class WhisperBackend {
     const originalText = text.trim()
 
     // ============================================================================
+    // Layer 1: Speaker Labels & Content Markers (High Priority)
+    // ============================================================================
+    // Remove hallucinated speaker labels and content markers before other processing
+    // These are common Whisper artifacts from subtitle training data
+
+    // Chinese speaker labels (姓氏 + colon pattern)
+    const SPEAKER_LABEL_PATTERN = /^[姜王張李陳劉楊黃趙吳周徐孫馬朱胡郭林何高梁鄭羅宋謝唐韓曹許鄧蕭馮曾程蔡彭潘袁於董余蘇葉魏呂丁任沈姚盧姜崔鍾譚陸汪范金石廖賈夏韋付方白鄒孟熊秦邱江尹薛閻段雷黎史龍陶賀顧毛郝龔邵萬錢嚴覃武戴莫孔向湯][:：]/
+
+    // Content markers (Traditional & Simplified Chinese)
+    const CONTENT_MARKERS = [
+      '歌詞:', '歌词:',
+      '字幕:', '字幕:',
+      '旁白:', '旁白:',
+      '音樂:', '音乐:',
+      '掌聲:', '掌声:',
+      '笑聲:', '笑声:',
+      '背景音:', '背景音:',
+      '音效:', '音效:',
+      '說:', '说:',
+      '講:', '讲:',
+      '談:', '谈:'
+    ]
+
+    // Check for speaker labels at the beginning
+    if (SPEAKER_LABEL_PATTERN.test(originalText)) {
+      console.log(`[WhisperService] Filtered speaker label: "${originalText}"`)
+      return ''
+    }
+
+    // Check for content markers
+    for (const marker of CONTENT_MARKERS) {
+      if (originalText.startsWith(marker)) {
+        console.log(`[WhisperService] Filtered content marker: "${originalText}" (marker: "${marker}")`)
+        return ''
+      }
+    }
+
+    // Timestamp patterns [00:00], (00:00), 00:00:00
+    const TIMESTAMP_PATTERNS = [
+      /^\[\d{1,2}:\d{2}\]/, // [00:00] or [0:00]
+      /^\(\d{1,2}:\d{2}\)/, // (00:00) or (0:00)
+      /^\d{1,2}:\d{2}:\d{2}$/, // 00:00:00 or 0:00:00
+      /^\d{1,2}:\d{2}$/ // 00:00 or 0:00 (standalone)
+    ]
+
+    for (const pattern of TIMESTAMP_PATTERNS) {
+      if (pattern.test(originalText)) {
+        console.log(`[WhisperService] Filtered timestamp: "${originalText}"`)
+        return ''
+      }
+    }
+
+    // ============================================================================
     // Layer 2: Exact Pattern Matching - Known Hallucinations
     // ============================================================================
     // These are exact phrases that Whisper commonly outputs when processing noise
     // or when it's trained on specific video content (e.g., YouTube video endings)
     const HALLUCINATION_EXACT_MATCHES = [
+      // Subtitle/copyright markers (English & German)
+      'Subtitle by',
+      'Subtitles by',
+      'Copyright',
+      'Untertitel',
+      'WDR 2021',
+      'ZDF',
+      'subtitle by',
+      'subtitles by',
+      'copyright',
+
       // Chinese video/streaming service promotions
       '請不吝點贊訂閱轉發打賞支持明鏡與點點欄目',
       '请不吝点赞 订阅 转发 打赏支持明镜与点点栏目',
