@@ -24,32 +24,34 @@ export const PROMPTS = {
         recent_transcriptions?: string;
         text_input: string;
       }) => {
-        let prompt = `You are a helpful AI assistant. Your goal is to answer the user's question based on the context provided. The context includes a summary of the entire conversation and the most recent transcriptions.
+        let prompt = `You are a helpful AI chat assistant. **Prioritize conversation context** when answering questions.
 
-Please provide a concise, accurate, and helpful response in English.`;
+**CONTEXT PRIORITY**:
+1. If user's question mentions topics/keywords from the conversation → Use conversation context as PRIMARY source
+2. If no relevant context is found → Use general knowledge but still provide complete answer
+3. Never refuse to answer due to lack of context
+
+`;
 
         if (existing_summary) {
-          prompt += `
-
-Here is the summary of the conversation so far:
----
-${existing_summary}
----`;
+          prompt += `\n**CONVERSATION SUMMARY**:\n${existing_summary}\n`;
         }
 
         if (recent_transcriptions) {
-          prompt += `
-
-Here are the most recent transcriptions from the conversation:
----
-${recent_transcriptions}
----`;
+          prompt += `\n**RECENT TRANSCRIPTIONS**:\n${recent_transcriptions}\n`;
         }
 
-        prompt += `
+        prompt += `\n**USER QUESTION**: "${text_input}"
 
-Based on the available context, please answer the following user question:
-User Question: "${text_input}"`;
+**RESPONSE GUIDELINES**:
+- **Context Match**: If question relates to conversation topics/keywords, answer primarily from context
+- **Conflict Resolution**: If context conflicts, use most recent information and explain briefly
+- **No Context**: If no relevant context, provide complete answer from general knowledge
+- **Format**: Lead with direct answer, then key points
+- **Tone**: Conversational and helpful
+- **Language**: Respond in English
+
+Provide your answer now:`;
         return prompt;
       },
     },
@@ -63,32 +65,34 @@ User Question: "${text_input}"`;
         recent_transcriptions?: string;
         text_input: string;
       }) => {
-        let prompt = `你是一個協助使用者解決問題的助理，目標是根據前後文回答使用者的問題。前後文包括整個對話的摘要和最近的逐字稿。
+        let prompt = `你是服務台灣使用者的 AI 助理，熟悉台灣的文化、用語、時事和在地知識。**優先使用對話前後文**來回答問題。
 
-請以繁體中文提供簡潔有力的回應。`;
+**前後文優先順序**：
+1. 如果使用者問題提及對話中的主題/關鍵字 → 以對話前後文為主要資訊來源
+2. 如果找不到相關前後文 → 使用一般知識但仍提供完整回答
+3. 絕不因缺乏前後文而拒絕回答
+
+`;
 
         if (existing_summary) {
-          prompt += `
-
-這是目前為止的對話摘要：
----
-${existing_summary}
----`;
+          prompt += `\n**對話摘要**：\n${existing_summary}\n`;
         }
 
         if (recent_transcriptions) {
-          prompt += `
-
-這是對話中最近的逐字稿：
----
-${recent_transcriptions}
----`;
+          prompt += `\n**最近的逐字稿**：\n${recent_transcriptions}\n`;
         }
 
-        prompt += `
+        prompt += `\n**使用者問題**：「${text_input}」
 
-根據現有前後文，請回答以下使用者問題：
-使用者問題：「${text_input}」`;
+**回應指引**：
+- **前後文配對**：如果問題與對話主題/關鍵字相關，主要從前後文回答
+- **衝突處理**：如果前後文有衝突，使用最新資訊並簡短說明
+- **無前後文**：如果無相關前後文，從一般知識提供完整回答
+- **格式**：先給直接答案，再列重點
+- **語氣**：對話式且樂於協助
+- **語言**：以繁體中文回應
+
+請現在提供你的回答：`;
         return prompt;
       },
     },
@@ -104,37 +108,36 @@ ${recent_transcriptions}
         existing_summary?: string;
         recent_transcriptions?: string;
       }) => {
-        let prompt = `Your goal is to provide a precise, informative, and helpful summary for the term: "${text_input}".`;
+        let prompt = `Provide a clear, helpful explanation for: "${text_input}"
+
+`;
 
         // Explicitly handle the no-context scenario
         const hasContext = !!(existing_summary || recent_transcriptions);
 
         if (hasContext) {
-          prompt += `\n\nUse the provided conversation context below to tailor your response to the user's specific situation and interests.`;
+          prompt += `**CONTEXT AVAILABLE** - Tailor your response to the user's specific situation:\n`;
         } else {
-          prompt += `\n\nNo conversation context is available yet. Provide a general, informative explanation of this term based on your knowledge. Focus on practical, useful information that helps users understand the concept.`;
+          prompt += `**NO CONTEXT** - Provide a general, informative explanation based on your knowledge.\n`;
         }
 
-        prompt += `\n\nGuidelines:
-- Provide clear, accurate information about "${text_input}"
-- Use simple language that's easy to understand
-- Include relevant examples or use cases when helpful
-- Keep the response concise but comprehensive (2-4 sentences)
-- If this is a technical term, explain it in accessible terms`;
-
         if (existing_summary) {
-          prompt += `\n\nConversation Summary:\n---\n${existing_summary}\n---`;
+          prompt += `\nConversation Summary:\n${existing_summary}\n`;
         }
 
         if (recent_transcriptions) {
-          prompt += `\n\nRecent Transcriptions:\n---\n${recent_transcriptions}\n---`;
+          prompt += `\nRecent Transcriptions:\n${recent_transcriptions}\n`;
         }
 
-        if (hasContext) {
-          prompt += `\n\nBased on the conversation context and your knowledge, provide a tailored summary for "${text_input}".`;
-        } else {
-          prompt += `\n\nProvide a helpful general summary for "${text_input}".`;
-        }
+        prompt += `\n**RESPONSE GUIDELINES**:
+- **Clarity**: Use simple, accessible language
+- **Accuracy**: Provide factual, reliable information
+- **Relevance**: ${hasContext ? "Connect to conversation context when relevant" : "Focus on practical, useful information"}
+- **Examples**: Include relevant examples or use cases
+- **Length**: Keep concise but comprehensive (2-4 sentences)
+- **Technical Terms**: Explain in accessible terms if needed
+
+Provide your explanation in English:`;
 
         return prompt;
       },
@@ -149,37 +152,36 @@ ${recent_transcriptions}
         existing_summary?: string;
         recent_transcriptions?: string;
       }) => {
-        let prompt = `你的目標是為「${text_input}」這個詞提供一個精確、精簡、實用的摘要，讓使用者能快速理解。`;
+        let prompt = `你是服務台灣使用者的 AI 助理，熟悉台灣的文化、用語、時事和在地知識。請為以下內容提供清晰、有用的解釋：「${text_input}」
+
+`;
 
         // 明確處理無前後文的情況
         const hasContext = !!(existing_summary || recent_transcriptions);
 
         if (hasContext) {
-          prompt += `\n\n請利用下方提供的對話前後文，針對使用者的特定情況和興趣來客製化回應。`;
+          prompt += `**有可用的前後文** - 請根據使用者的具體情況客製化回應：\n`;
         } else {
-          prompt += `\n\n目前尚無對話前後文。請根據你的知識提供一個通用且資訊豐富的解釋。著重於實用的資訊，幫助使用者理解這個概念。`;
+          prompt += `**無前後文** - 請根據你的知識提供通用且資訊豐富的解釋。\n`;
         }
 
-        prompt += `\n\n指引：
-- 提供關於「${text_input}」的清晰、準確資訊
-- 使用簡單易懂的語言
-- 在適當時提供相關範例或使用場景
-- 保持回應精簡但完整（2-4 句話）
-- 如果這是技術術語，請用淺顯易懂的方式解釋`;
-
         if (existing_summary) {
-          prompt += `\n\n對話摘要：\n---\n${existing_summary}\n---`;
+          prompt += `\n對話摘要：\n${existing_summary}\n`;
         }
 
         if (recent_transcriptions) {
-          prompt += `\n\n最近的對話逐字稿：\n---\n${recent_transcriptions}\n---`;
+          prompt += `\n最近的對話逐字稿：\n${recent_transcriptions}\n`;
         }
 
-        if (hasContext) {
-          prompt += `\n\n根據對話前後文和你的知識，請為「${text_input}」提供一個客製化的摘要。`;
-        } else {
-          prompt += `\n\n請為「${text_input}」提供一個實用的通用摘要。`;
-        }
+        prompt += `\n**回應指引**：
+- **清晰度**：使用簡單易懂的語言
+- **準確性**：提供事實可靠的資訊
+- **相關性**：${hasContext ? "在相關時連結對話前後文" : "專注於實用有用的資訊"}
+- **範例**：包含相關範例或使用情境
+- **長度**：保持精簡但完整（2-4 句話）
+- **技術術語**：如需要請用淺顯易懂的方式解釋
+
+請用繁體中文提供你的解釋：`;
 
         return prompt;
       },
@@ -187,20 +189,86 @@ ${recent_transcriptions}
   },
   recommendResponse: {
     en: {
-      base: (text_input: string) =>
-        `Recommend a response to the following text:
+      base: ({
+        text_input,
+        existing_summary,
+        recent_transcriptions,
+      }: {
+        text_input: string;
+        existing_summary?: string;
+        recent_transcriptions?: string;
+      }) => {
+        let prompt = `Generate exactly 3 concise recommended responses to: "${text_input}"
 
-${text_input}
+`;
 
-Please return a short response, no more than 50 words.`,
+        if (existing_summary) {
+          prompt += `CONVERSATION SUMMARY:\n${existing_summary}\n\n`;
+        }
+        if (recent_transcriptions) {
+          prompt += `RECENT TRANSCRIPTIONS:\n${recent_transcriptions}\n\n`;
+        }
+
+        prompt += `**REQUIREMENTS**:
+- Return exactly 3 different response options
+- Each response: 10-20 words maximum
+- Make them diverse in tone/approach:
+  * Option 1: Direct and informative
+  * Option 2: Conversational and friendly
+  * Option 3: Action-oriented or question-based
+- Use conversation context when available
+- Keep language simple and natural
+
+**OUTPUT FORMAT** (plain text, one per line):
+1. [First concise response]
+2. [Second concise response]
+3. [Third concise response]
+
+Generate the 3 responses now:`;
+
+        return prompt;
+      },
     },
     "zh-TW": {
-      base: (text_input: string) =>
-        `針對以下文字推薦一個回覆：
+      base: ({
+        text_input,
+        existing_summary,
+        recent_transcriptions,
+      }: {
+        text_input: string;
+        existing_summary?: string;
+        recent_transcriptions?: string;
+      }) => {
+        let prompt = `你是服務台灣使用者的 AI 助理，熟悉台灣的文化、用語、時事和在地知識。請針對以下內容產生恰好 3 個簡潔的建議回覆：「${text_input}」
 
-${text_input}
+`;
 
-請回覆一個不超過50字的簡短回覆。`,
+        if (existing_summary) {
+          prompt += `對話摘要：\n${existing_summary}\n\n`;
+        }
+        if (recent_transcriptions) {
+          prompt += `最近的逐字稿：\n${recent_transcriptions}\n\n`;
+        }
+
+        prompt += `**要求**：
+- 回傳恰好 3 個不同的回覆選項
+- 每個回覆：10-20 字以內
+- 讓它們在語氣/方式上有所不同：
+  * 選項 1：直接且資訊性
+  * 選項 2：對話式且友善
+  * 選項 3：行動導向或提問式
+- 有對話前後文時請善加利用
+- 保持語言簡單自然
+
+**輸出格式**（純文字，每行一個）：
+1. [第一個簡潔回覆]
+2. [第二個簡潔回覆]
+3. [第三個簡潔回覆]
+
+請現在產生 3 個回覆：`;
+
+        return prompt;
+      },
     },
   },
   screenshotAnalysis: {
@@ -214,33 +282,36 @@ ${text_input}
         existing_summary?: string;
         recent_transcriptions?: string;
       }) => {
-        let prompt = `Analyze the provided screenshot and answer the user's question: "${text_input}".
+        let prompt = `Analyze the provided screenshot and answer: "${text_input}"
 
-Please provide a detailed, accurate analysis based on what you can see in the image. If the user's question is general (like "What do you see?" or "Analyze this"), provide a comprehensive description of the image content.
+**ANALYSIS APPROACH**:
+1. **Understand Context**: Use conversation context to understand what user is looking for
+2. **Detailed Observation**: Analyze image content thoroughly
+3. **Targeted Response**: Answer the specific question or provide comprehensive analysis if question is general
+4. **Structured Output**: Use clear formatting (lists, sections) for readability
 
-Use the conversation context below to better understand what the user might be looking for and tailor your response accordingly. Provide your response in English.`;
+`;
 
         if (existing_summary) {
-          prompt += `
-
-Here is the summary of the conversation so far, which might give you context:
----
-${existing_summary}
----`;
+          prompt += `\n**CONVERSATION SUMMARY**:\n${existing_summary}\n`;
         }
 
         if (recent_transcriptions) {
-          prompt += `
-
-Here are the most recent transcriptions, which might also be relevant:
----
-${recent_transcriptions}
----`;
+          prompt += `\n**RECENT TRANSCRIPTIONS**:\n${recent_transcriptions}\n`;
         }
 
-        prompt += `
+        prompt += `\n**RESPONSE GUIDELINES**:
+- If question is specific: Answer directly with evidence from image
+- If question is general: Provide comprehensive analysis covering:
+  * Main subject/content
+  * Key details or data visible
+  * Relevant context from conversation
+  * Actionable insights if applicable
+- Use conversation context to tailor analysis
+- Be accurate and factual
+- Respond in English
 
-Based on the image and the available context, please provide your analysis.`;
+Provide your analysis now:`;
         return prompt;
       },
     },
@@ -254,33 +325,36 @@ Based on the image and the available context, please provide your analysis.`;
         existing_summary?: string;
         recent_transcriptions?: string;
       }) => {
-        let prompt = `請分析提供的截圖並回答使用者的問題：「${text_input}」。
+        let prompt = `你是服務台灣使用者的 AI 助理，熟悉台灣的文化、用語、時事和在地知識。請分析提供的截圖並回答：「${text_input}」
 
-請根據你在圖片中看到的內容提供精簡、簡短且準確的分析。如果使用者的問題比較籠統（如「你看到什麼？」或「分析這個」），請提供圖片內容的精簡、簡短描述。
+**分析方法**：
+1. **理解前後文**：使用對話前後文來理解使用者在尋找什麼
+2. **詳細觀察**：徹底分析圖片內容
+3. **針對性回應**：回答特定問題，或在問題籠統時提供全面分析
+4. **結構化輸出**：使用清晰格式（列表、區段）以提升可讀性
 
-請利用以下對話前後文來理解使用者可能在尋找什麼，並據此調整你的回應；如果無關，那請針對截圖回應即可。請以繁體中文提供回應。`;
+`;
 
         if (existing_summary) {
-          prompt += `
-
-這是目前為止的對話摘要，可能能提供相關背景資訊：
----
-${existing_summary}
----`;
+          prompt += `\n**對話摘要**：\n${existing_summary}\n`;
         }
 
         if (recent_transcriptions) {
-          prompt += `
-
-這是最近的對話逐字稿，可能也與主題相關：
----
-${recent_transcriptions}
----`;
+          prompt += `\n**最近的逐字稿**：\n${recent_transcriptions}\n`;
         }
 
-        prompt += `
+        prompt += `\n**回應指引**：
+- 如果問題具體：直接回答並提供圖片中的證據
+- 如果問題籠統：提供簡短分析，包含：
+  * 主要主題/內容
+  * 可見的關鍵細節或數據
+  * 來自對話的相關前後文
+  * 適用時提供可行的見解
+- 使用對話前後文調整分析
+- 準確且基於事實
+- 以繁體中文回應
 
-根據圖片和現有的前後文，請提供你的分析。`;
+請現在提供你的分析：`;
         return prompt;
       },
     },
@@ -439,22 +513,38 @@ ${text_input}
         rawText: string;
         conversationHistory: string[];
         userLanguage: string;
-      }) => `You are a transcription enhancement assistant. You will be given a raw transcription generated by an STT model and conversation history for context. The wording might be wrong due to similar pronunciation, so use context to correct words.
+      }) => `You are a critical transcription enhancement assistant. The raw transcription from whisper.cpp STT model often contains ERRORS due to pronunciation similarity, especially for:
+- Chinese homophones (e.g., "有心" vs "有薪", "方家" vs "房價")
+- English mishearings (e.g., "Lady Goode" vs "Let It Go")
+- Proper nouns and brand names
 
-Your task is to enhance the transcription by:
-1. **Correct**: Fix grammar, punctuation, wording, spelling
-2. **Contextualize**: Use conversation history for coherence
-3. **Detect Intent**: Identify primary intention and confidence
-4. **Extract Keywords**: Technical/specialized terms only
-5. **Language Consistency**: Ensure the corrected text matches the user's preferred language (${userLanguage})
+**CRITICAL THINKING REQUIRED**:
+- Be HIGHLY SKEPTICAL of the raw transcription
+- Words may be INCORRECT due to similar pronunciation
+- Use conversation context to VALIDATE and CORRECT misheard words
+- Consider semantic fit over phonetic match
+- Question words that seem out of place given the context
 
-CONVERSATION HISTORY:
-${conversationHistory.length > 0 ? conversationHistory.join("\n") : "No previous context"}
+RECENT CONVERSATION HISTORY:
+${conversationHistory.length > 0 ? conversationHistory.join("\n") : "No previous context available"}
 
 RAW TRANSCRIPTION: "${rawText}"
 USER LANGUAGE: ${userLanguage}
 
-IMPORTANT: If the raw transcription is in Chinese but user language is zh-TW, ensure the corrected text uses Traditional Chinese characters and Taiwan-specific terminology. If user language is zh-CN, use Simplified Chinese.
+Your task:
+1. **Critical Analysis**: Question words that don't fit the context
+2. **Context Validation**: Use conversation history to validate word choices
+3. **Pronunciation Check**: Consider if transcription errors are due to similar sounds (homophones, mishearings)
+4. **Correct with Evidence**: Fix errors based on semantic fit
+5. **Grammar & Punctuation**: Fix grammar, add punctuation
+6. **Language Consistency**: Ensure output matches user's preferred language (${userLanguage})
+7. **Intent Detection**: Identify primary intention
+8. **Keyword Extraction**: Extract ONLY new, contextually-relevant technical/specialized terms
+
+IMPORTANT:
+- If raw transcription is in Chinese and user language is zh-TW, ensure Traditional Chinese characters and Taiwan-specific terminology
+- Mark uncertain corrections with lower confidence
+- Use conversation history to validate corrections
 
 Return ONLY valid JSON with this exact structure:
 {
@@ -465,11 +555,13 @@ Return ONLY valid JSON with this exact structure:
     "confidence": 0.95,
     "suggestedActions": ["ai-action-answer", "ai-action-schedule"]
   },
-  "keywords": ["technical", "terms", "only"],
+  "keywords": ["only", "new", "relevant", "terms"],
   "confidence": 0.95
 }
 
-There are constraints for the keywords: Only include new, relevant, high-signal terms
+Constraints:
+- **keywords**: Only include NEW contextually-relevant terms
+- **confidence**: Lower confidence (0.3-0.7) for uncertain transcriptions
 `,
     },
     "zh-TW": {
@@ -481,24 +573,40 @@ There are constraints for the keywords: Only include new, relevant, high-signal 
         rawText: string;
         conversationHistory: string[];
         userLanguage: string;
-      }) => `你是一個文書處理助理。你會收到語音轉文字模型生成的原始逐字稿和對話紀錄。用字可能因發音相似而錯誤，請利用上下文來修正單詞。
+      }) => `你是服務台灣使用者、具批判性思考的逐字稿增強助理，熟悉台灣的文化、用語、時事和在地知識。whisper.cpp 語音轉文字模型的原始輸出經常因發音相似而產生錯誤，特別是：
+- 中文同音字（例如：「有心」vs「有薪」、「方家」vs「房價」）
+- 英文誤聽（例如：「Lady Goode」vs「Let It Go」）
+- 專有名詞和品牌名稱
 
-處理規則如下：
-1. **修正**: 修正語法、標點符號、用字、拼寫
-2. **語境**: 使用對話歷史來確保連貫性
-3. **偵測意圖**: 辨識主要意圖和信心度
-4. **偵測關鍵字**: 僅限技術/專有名詞/術語/少用詞彙
-5. **翻譯**: 確保修正後的文字符合使用者偏好的語言（${userLanguage}）
+**需要批判性思考**：
+- 對原始逐字稿保持高度懷疑
+- 用字可能因發音相似而錯誤
+- 使用對話前後文來驗證和修正誤聽的詞彙
+- 優先考慮語意適配度而非語音相似度
+- 質疑在前後文中似乎不合理的詞彙
 
-對話紀錄：
+最近對話紀錄：
 ${conversationHistory.length > 0 ? conversationHistory.join("\n") : "無先前對話紀錄"}
 
 原始逐字稿：「${rawText}」
 使用者語言：${userLanguage}
 
-重要：如果原始逐字稿是中文，請強制翻譯為使用者偏好的語言（${userLanguage}），繁體中文需使用繁體中文字元和台灣特定術語。
+你的任務：
+1. **批判性分析**：質疑不符合前後文的詞彙
+2. **前後文驗證**：使用對話紀錄來驗證用字選擇
+3. **發音檢查**：考慮逐字稿錯誤是否因相似發音（同音字、誤聽）
+4. **依據語意修正**：根據語意適配度修正錯誤
+5. **語法與標點**：修正語法、加上標點符號
+6. **語言一致性**：確保輸出符合使用者偏好的語言（${userLanguage}）
+7. **意圖偵測**：辨識主要意圖
+8. **關鍵字萃取**：僅萃取新的、與前後文相關的技術/專業術語
 
-僅回傳有效的JSON，結構如下：
+重要：
+- 如果原始逐字稿是中文且使用者語言為 zh-TW，請確保使用繁體中文字元和台灣特定術語
+- 不確定的修正請標記較低信心度
+- 使用對話紀錄來驗證修正
+
+僅回傳有效的 JSON，結構如下：
 {
   "corrected": "使用者偏好語言的增強和修正後逐字稿文字",
   "translation": "如果與使用者語言不同則翻譯，否則為 null",
@@ -507,11 +615,13 @@ ${conversationHistory.length > 0 ? conversationHistory.join("\n") : "無先前�
     "confidence": 0.95,
     "suggestedActions": ["ai-action-answer", "ai-action-schedule"]
   },
-  "keywords": ["技術", "術語", "專有名詞"],
+  "keywords": ["僅", "新的", "相關", "術語"],
   "confidence": 0.95
 }
 
-關鍵字有以下限制：只包含新的、相關的、重要的術語
+限制條件：
+- **keywords**：只包含新的、與前後文相關的術語
+- **confidence**：不確定的逐字稿使用較低信心度（0.3-0.7）
 `,
     },
   },

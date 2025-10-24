@@ -309,18 +309,28 @@ export function useAIInteraction() {
           }
           case 'answer': {
             functionName = 'ai-action-recommend-response'
+            const sessionId = await (window as any).electronAPI.invoke('session:get-id')
+            if (!sessionId) throw new Error('No active session found.')
+
+            const existingSummary = await (window as any).electronAPI.invoke(
+              'db:get-summary',
+              sessionId
+            )
+            const context = await gatherContext(action)
 
             // If query is provided, use it as the specific question/transcription
             // Otherwise, gather context from recent transcriptions (keyboard shortcut case)
             if (query) {
               functionPayload.text_input = query
             } else {
-              const context = await gatherContext(action)
               if (!context?.text?.trim()) {
                 throw new Error('There is no transcription history to recommend a response.')
               }
               functionPayload.text_input = context.text
             }
+
+            functionPayload.existing_summary = existingSummary?.content
+            functionPayload.recent_transcriptions = context?.text
             break
           }
           case 'keyword_search': {

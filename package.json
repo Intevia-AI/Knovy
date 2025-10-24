@@ -23,5 +23,17 @@
   "dependencies": {
     "@eslint/js": "^9.32.0",
     "typescript-eslint": "^8.24.1"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@tailwindcss/oxide",
+      "@vercel/speed-insights",
+      "core-js-pure",
+      "electron",
+      "electron-winstaller",
+      "esbuild",
+      "sharp",
+      "sqlite3"
+    ]
   }
 }

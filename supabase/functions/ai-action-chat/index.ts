@@ -37,6 +37,7 @@ const handleRequest = async (req: Request, profile: Record<string, any>) => {
     }
 
     const lang = getLanguage(language);
+
     const prompt = PROMPTS.chat[lang].base({
       text_input,
       existing_summary,

@@ -28,7 +28,8 @@ const handleRequest = async (req: Request, profile: Record<string, any>) => {
       });
     }
 
-    const { text_input, language, session_id } = await req.json();
+    const { text_input, language, session_id, existing_summary, recent_transcriptions } =
+      await req.json();
     if (!text_input) {
       return new Response(JSON.stringify({ error: "Text is required" }), {
         status: 400,
@@ -37,15 +38,21 @@ const handleRequest = async (req: Request, profile: Record<string, any>) => {
     }
 
     const lang = getLanguage(language);
-    const prompt = PROMPTS.recommendResponse[lang].base(text_input);
+
+    const prompt = PROMPTS.recommendResponse[lang].base({
+      text_input,
+      existing_summary,
+      recent_transcriptions,
+    });
 
     // Use shared Gemini client with retry logic
+    // Using standard model for adaptive depth analysis (can be deep or quick)
     const geminiClient = getGeminiClient({
-      model: GEMINI_MODELS.FLASH_LITE,
-      temperature: 0.5,
+      model: GEMINI_MODELS.FLASH_LITE, // More capable than FLASH_LITE for adaptive responses
+      temperature: 0.7, // Higher temperature for more natural conversational responses
       topK: 40,
-      topP: 0.9,
-      maxOutputTokens: 1024,
+      topP: 0.95,
+      maxOutputTokens: 1024, // Increased for deep mode responses
     });
 
     const { text: recommendation, usage } = await geminiClient.generateText(prompt);
@@ -77,7 +84,10 @@ const handleRequest = async (req: Request, profile: Record<string, any>) => {
         // Don't fail the request if logging fails
       }
     } catch (logException) {
-      console.error("[ai-action-recommend-response] Exception while logging feature usage:", logException);
+      console.error(
+        "[ai-action-recommend-response] Exception while logging feature usage:",
+        logException,
+      );
       // Don't fail the request if logging fails
     }
 
@@ -111,7 +121,9 @@ const handleRequest = async (req: Request, profile: Record<string, any>) => {
       } = await supabaseClient.auth.getUser();
 
       if (user) {
-        const { text_input, session_id } = await req.json().catch(() => ({ text_input: "", session_id: null }));
+        const { text_input, session_id } = await req
+          .json()
+          .catch(() => ({ text_input: "", session_id: null }));
 
         await supabaseClient.from("feature_usage").insert({
           user_id: user.id,

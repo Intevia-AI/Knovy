@@ -47,13 +47,11 @@ interface EnhanceResponse {
   errors?: Array<{ segmentId: string; error: string }>;
 }
 
-
-
 // Process individual segment
 async function enhanceSegment(
   segment: TranscriptionSegment,
   sessionContext: SessionContext,
-  geminiClient: any
+  geminiClient: any,
 ): Promise<{ segment: EnhancedSegment; usage: { input_tokens: number; output_tokens: number } }> {
   const lang = getLanguage(sessionContext.userLanguage);
   const prompt = PROMPTS.transcriptionEnhancement[lang].base({
@@ -123,10 +121,12 @@ const handleRequest = async (req: Request, profile: Record<string, any>) => {
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_ANON_KEY") ?? "",
-      { global: { headers: { Authorization: req.headers.get("Authorization")! } } }
+      { global: { headers: { Authorization: req.headers.get("Authorization")! } } },
     );
 
-    const { data: { user } } = await supabaseClient.auth.getUser();
+    const {
+      data: { user },
+    } = await supabaseClient.auth.getUser();
     if (!user) {
       return new Response(JSON.stringify({ error: "User not authenticated" }), {
         status: 401,
@@ -139,16 +139,19 @@ const handleRequest = async (req: Request, profile: Record<string, any>) => {
     // Support both unified AI action format and legacy format
     const segments = body.segments || [];
     const sessionContext = body.sessionContext || {
-      sessionId: '',
+      sessionId: "",
       conversationHistory: body.recent_transcriptions ? [body.recent_transcriptions] : [],
-      userLanguage: body.language || 'en-US'
+      userLanguage: body.language || "en-US",
     };
 
     if (!segments || !Array.isArray(segments) || segments.length === 0) {
-      return new Response(JSON.stringify({ error: "Segments array is required and cannot be empty" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return new Response(
+        JSON.stringify({ error: "Segments array is required and cannot be empty" }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
     }
 
     if (!sessionContext || !sessionContext.sessionId) {
@@ -188,10 +191,13 @@ const handleRequest = async (req: Request, profile: Record<string, any>) => {
     let totalOutputTokens = 0;
 
     results.forEach((result) => {
-      if ('error' in result) {
+      if ("error" in result) {
         errors.push(result as { segmentId: string; error: string });
       } else {
-        const enhancementResult = result as { segment: EnhancedSegment; usage: { input_tokens: number; output_tokens: number } };
+        const enhancementResult = result as {
+          segment: EnhancedSegment;
+          usage: { input_tokens: number; output_tokens: number };
+        };
         enhancedSegments.push(enhancementResult.segment);
         totalInputTokens += enhancementResult.usage.input_tokens;
         totalOutputTokens += enhancementResult.usage.output_tokens;
@@ -199,8 +205,12 @@ const handleRequest = async (req: Request, profile: Record<string, any>) => {
     });
 
     // Count source type distribution for analytics
-    const microphoneCount = segments.filter((s: TranscriptionSegment) => s.sourceType === 'microphone').length;
-    const systemCount = segments.filter((s: TranscriptionSegment) => s.sourceType === 'system').length;
+    const microphoneCount = segments.filter(
+      (s: TranscriptionSegment) => s.sourceType === "microphone",
+    ).length;
+    const systemCount = segments.filter(
+      (s: TranscriptionSegment) => s.sourceType === "system",
+    ).length;
 
     const processingTime = Date.now() - startTime;
 
@@ -214,7 +224,9 @@ const handleRequest = async (req: Request, profile: Record<string, any>) => {
       ...(errors.length > 0 && { errors }),
     };
 
-    console.log(`[transcription-enhance] processed ${segments.length} segments in ${processingTime}ms`);
+    console.log(
+      `[transcription-enhance] processed ${segments.length} segments in ${processingTime}ms`,
+    );
 
     // Log feature usage to feature_usage table (analytics)
     try {
@@ -271,7 +283,9 @@ const handleRequest = async (req: Request, profile: Record<string, any>) => {
       } = await supabaseClient.auth.getUser();
 
       if (user) {
-        const { sessionContext } = await req.json().catch(() => ({ sessionContext: { sessionId: null } }));
+        const { sessionContext } = await req
+          .json()
+          .catch(() => ({ sessionContext: { sessionId: null } }));
 
         await supabaseClient.from("feature_usage").insert({
           user_id: user.id,
@@ -291,14 +305,17 @@ const handleRequest = async (req: Request, profile: Record<string, any>) => {
       console.error("[transcription-enhance] Failed to log error:", logException);
     }
 
-    return new Response(JSON.stringify({
-      error: "Internal Server Error",
-      processingTime,
-      details: error.message
-    }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({
+        error: "Internal Server Error",
+        processingTime,
+        details: error.message,
+      }),
+      {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
+    );
   }
 };
 
