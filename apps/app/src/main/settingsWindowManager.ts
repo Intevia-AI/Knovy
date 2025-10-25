@@ -190,7 +190,7 @@ export function createSettingsWindow(mainWindow: BrowserWindow): BrowserWindow {
     backgroundColor: '#00000000',
     titleBarStyle: 'hiddenInset',
     trafficLightPosition: { x: 20, y: 22 },
-    resizable: true,
+    resizable: true, // Allow all users to resize settings window
     minimizable: false,
     maximizable: false,
     closable: true,

@@ -8,7 +8,10 @@ import {
   globalShortcut,
   screen,
   shell,
-  nativeTheme
+  nativeTheme,
+  Menu,
+  dialog,
+  type MenuItemConstructorOptions
 } from 'electron'
 import path from 'path'
 import { randomUUID } from 'crypto'
@@ -22,7 +25,8 @@ import {
   closeAllPopovers,
   forceClosePopover,
   resizePopover,
-  getPopover
+  getPopover,
+  setAdminStatus as setPopoverAdminStatus
 } from './popoverManager'
 import { positionWindow, type PositionOptions } from './windowManager'
 import electronUpdater, { type AppUpdater } from 'electron-updater'
@@ -46,6 +50,77 @@ let analyticsSessionId: string | null = null // Analytics session ID from render
 let activeScreenSourceId: string | null = null
 let mainWindow: BrowserWindow | null
 let selectionWindow: BrowserWindow | null
+
+/**
+ * Check if the current user is an admin
+ * Beta release restrictions (window resizing, cmd+q, DevTools) only apply to non-admin users
+ */
+function isAdminUser(): boolean {
+  const role = cachedSessionProfile?.role
+  const isAdmin = role === 'admin'
+  console.log(`[main/index.ts] Role check: ${role}, isAdmin: ${isAdmin}`)
+  return isAdmin
+}
+
+/**
+ * Update application menu based on user role
+ * Admin users: Standard macOS quit behavior (cmd+q works normally)
+ * Non-admin users: cmd+q shows dialog directing to Settings panel
+ */
+function updateApplicationMenu(isAdmin: boolean): void {
+  console.log(`[main/index.ts] Updating application menu for ${isAdmin ? 'admin' : 'non-admin'} user`)
+
+  const template: MenuItemConstructorOptions[] = [
+    {
+      label: app.name,
+      submenu: [
+        { role: 'about' },
+        { type: 'separator' },
+        { role: 'services' },
+        { type: 'separator' },
+        { role: 'hide' },
+        { role: 'hideOthers' },
+        { role: 'unhide' },
+        { type: 'separator' },
+        isAdmin
+          ? // Admin users: Normal quit behavior
+            {
+              label: 'Quit',
+              accelerator: 'Command+Q',
+              role: 'quit'
+            }
+          : // Non-admin users: Show dialog instead of quitting
+            {
+              label: 'Quit',
+              accelerator: 'Command+Q',
+              click: () => {
+                dialog.showMessageBox({
+                  type: 'info',
+                  title: 'Quit Application',
+                  message: 'Please quit the application through the Settings panel.',
+                  detail: 'You can also right-click the dock icon and select Quit.',
+                  buttons: ['OK']
+                })
+              }
+            }
+      ]
+    },
+    {
+      label: 'Edit',
+      submenu: [
+        { role: 'undo' },
+        { role: 'redo' },
+        { type: 'separator' },
+        { role: 'cut' },
+        { role: 'copy' },
+        { role: 'paste' },
+        { role: 'selectAll' }
+      ]
+    }
+  ]
+
+  Menu.setApplicationMenu(Menu.buildFromTemplate(template))
+}
 
 let isContentProtectionEnabled = false
 let isScreenshotInProgress = false
@@ -264,6 +339,31 @@ ipcMain.handle('session:get-profile', () => {
 ipcMain.handle('session:set-profile', (event, profile) => {
   cachedSessionProfile = profile
   console.log('[main/index.ts] Session profile cached.')
+
+  // Apply role-based restrictions after profile is loaded
+  const isAdmin = isAdminUser()
+  console.log(`[main/index.ts] Applying role-based restrictions. User is admin: ${isAdmin}`)
+
+  // Update main window restrictions based on role
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    // Admin users can resize main window
+    mainWindow.setResizable(isAdmin)
+    console.log(`[main/index.ts] Main window resizable: ${isAdmin}`)
+
+    // Open DevTools for admin users (even in production builds)
+    if (isAdmin && !is.dev) {
+      mainWindow.webContents.openDevTools()
+      console.log('[main/index.ts] DevTools opened for admin user in production')
+    }
+  }
+
+  // Update popover admin status (settings window is resizable for all users)
+  setPopoverAdminStatus(isAdmin)
+
+  // Update application menu based on role
+  if (process.platform === 'darwin') {
+    updateApplicationMenu(isAdmin)
+  }
 })
 
 ipcMain.handle('session:clear-profile', () => {
@@ -536,6 +636,7 @@ const createWindow = async () => {
     frame: false,
     transparent: true,
     hasShadow: false,
+    resizable: false, // Beta release: disable window resizing for non-admin users (will be updated after login)
     alwaysOnTop: false, // Start with false since we'll be doing loading/login first
     visualEffectState: 'active',
     backgroundMaterial: 'acrylic',
@@ -543,7 +644,8 @@ const createWindow = async () => {
       preload: path.join(__dirname, '../preload/index.cjs'),
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: false
+      sandbox: false,
+      devTools: true // Allow DevTools (will be controlled by role after login)
     }
   })
 
@@ -719,9 +821,11 @@ app.on('ready', async () => {
     app.setAsDefaultProtocolClient(PROTOCOL, process.execPath, ['--auth-callback'])
   }
 
-  if (process.platform === 'darwin' && app.dock) {
-    app.dock.hide()
-  }
+  // Show dock icon for all users (beta release requirement)
+  // Dock icon allows right-click → Quit functionality
+  // if (process.platform === 'darwin' && app.dock) {
+  //   app.dock.hide()
+  // }
 
   await createWindow()
 
@@ -862,6 +966,12 @@ app.on('ready', async () => {
       mainWindow.webContents.send('shortcut:ai-action-screenshot-analysis')
     }
   })
+
+  // Set initial application menu for non-admin users (before login)
+  // Will be updated to admin menu when admin user logs in
+  if (process.platform === 'darwin') {
+    updateApplicationMenu(false) // Start with non-admin restrictions
+  }
 
   // Settings window IPC handlers
   ipcMain.handle('settings:open', () => {
