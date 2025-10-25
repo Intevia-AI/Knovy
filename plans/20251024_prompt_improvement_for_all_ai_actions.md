@@ -17,7 +17,8 @@ Improved all AI action prompts in `supabase/functions/_shared/prompts.ts` based 
 | `recommend_response` | ✅ Complete | Changed to return exactly 3 concise responses (10-20 words each) |
 | `keyword_search` | ✅ Complete | Removed summaryContext, added Taiwan cultural awareness for zh-TW |
 | `screenshot` | ✅ Complete | Removed summaryContext, added Taiwan cultural awareness for zh-TW |
-| `transcription_enhance` | ✅ Complete | Added Whisper hallucination filtering, Taiwan cultural awareness, removed summaryContext |
+| `transcription_enhance` | ✅ Complete | Enhanced critical thinking, Taiwan cultural awareness, removed summaryContext |
+| **Backend (whisper.cpp)** | ✅ Complete | **NEW: Added hallucination filtering at source** |
 
 ## Available Context Variables
 
@@ -60,15 +61,16 @@ Improved all AI action prompts in `supabase/functions/_shared/prompts.ts` based 
 - **Ensures** LLM understands Taiwanese context, terminology, and local knowledge
 - **Applies to**: chat, keyword_search, screenshot, transcription_enhance, recommend_response
 
-### 4. Whisper Hallucination Filtering ❌ (Not Implemented in Prompts)
-- **Reason**: Hallucination filtering is handled at the whisper.cpp backend level
-- **Common artifacts filtered by backend**:
-  - Chinese speaker labels: 姜:, 王:, 張:, 李:, 陳:, etc.
-  - Content markers: 歌詞:, 字幕:, 旁白:, 音樂:, etc.
-  - English markers: "Subtitle by", "Copyright", etc.
-  - Timestamp patterns: [00:00], (00:00), etc.
-- **Decision**: More efficient to filter at source (whisper backend) rather than asking LLM to do it
-- **Status**: Removed hallucination filtering instructions from prompts (handled elsewhere)
+### 4. Whisper Hallucination Filtering ✅ (Implemented at Backend Level)
+- **New Enhancement**: Added hallucination filtering at whisper.cpp backend level
+- **Common artifacts now filtered**:
+  - Chinese speaker labels: 姜:, 王:, 張:, 李:, 陳:, 劉:, 楊:, 黃:, 趙:, 吳: (surname + colon)
+  - Content markers: 歌詞:, 字幕:, 旁白:, 音樂:, 掌聲:, 笑聲:, 背景音:, 音效:
+  - English markers: "Subtitle by", "Copyright", "Untertitel", "WDR", "ZDF"
+  - Timestamp patterns: [00:00], (00:00), 00:00:00
+- **Architecture Decision**: Filter at source (whisper backend) rather than in LLM prompts
+- **Benefit**: More efficient, deterministic, and cost-effective than LLM-based filtering
+- **Implementation**: Backend preprocessing before transcription reaches enhancement service
 
 ### 5. Transcription Enhancement Problems (Previously Identified) ✅
 1. **"有薪病假" → "有心病假" → "心臟病"**
@@ -229,7 +231,7 @@ Improved all AI action prompts in `supabase/functions/_shared/prompts.ts` based 
    - Removed `summaryContext` from all prompt functions
    - Added Taiwan cultural awareness to all zh-TW prompts
    - Updated `recommendResponse` to return 3 concise options
-   - Enhanced `transcriptionEnhancement` with critical thinking (hallucination filtering done at backend level)
+   - Enhanced `transcriptionEnhancement` with critical thinking
 
 2. **Edge Functions (summaryContext removal)**
    - `supabase/functions/ai-action-chat/index.ts`
@@ -237,7 +239,13 @@ Improved all AI action prompts in `supabase/functions/_shared/prompts.ts` based 
    - `supabase/functions/ai-action-keyword-search/index.ts`
    - `supabase/functions/ai-action-screenshot-analysis/index.ts`
 
-3. **Plan Documentation**
+3. **Backend (whisper.cpp)** ⭐ NEW
+   - Added hallucination filtering for speaker labels (姜:, 王:, etc.)
+   - Added filtering for content markers (歌詞:, 字幕:, etc.)
+   - Added filtering for English artifacts and timestamps
+   - Preprocessing before transcription reaches enhancement service
+
+4. **Plan Documentation**
    - `plans/20251024_prompt_improvement_for_all_ai_actions.md` (this file)
 
 ### Success Metrics (To Be Validated)
@@ -245,16 +253,23 @@ Improved all AI action prompts in `supabase/functions/_shared/prompts.ts` based 
 - [ ] recommendResponse consistently returns exactly 3 options
 - [ ] Transcription enhancement shows improved accuracy with context validation
 - [ ] No errors from missing summaryContext
-- [ ] Backend whisper hallucination filtering works correctly (validated separately)
+- [ ] ⭐ **Backend whisper hallucination filtering removes all common artifacts** (姜:, 歌詞:, timestamps)
 
 ---
 
 ## Notes
 - ❌ **summaryContext Removed**: Not implemented because user's chat data is NOT saved online in Supabase
 - ✅ **Taiwan Cultural Awareness**: All zh-TW prompts now include local knowledge context
-- ❌ **Whisper Hallucination Filtering**: Handled at whisper.cpp backend level (not in prompts)
+- ⭐ **Whisper Hallucination Filtering**: NEW backend-level filtering at whisper.cpp (not in LLM prompts)
 - ✅ **recommendResponse Format**: Changed to return exactly 3 concise (10-20 word) responses
 - ✅ **Backward Compatible**: No breaking changes to API contracts
+
+## Key Architecture Decision
+**Hallucination Filtering Strategy**: Initially considered adding filtering instructions to LLM prompts, but decided to implement at whisper.cpp backend level instead. This provides:
+- ✅ Better performance (regex vs LLM processing)
+- ✅ Deterministic results (no LLM interpretation)
+- ✅ Lower costs (fewer tokens)
+- ✅ Separation of concerns (mechanical filtering vs semantic understanding)
 
 ## Deferred for Future Consideration
 - **Phase 2**: Update `existing_summary` to use structured `SummarizeResponse` interface
