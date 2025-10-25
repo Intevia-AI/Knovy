@@ -23,7 +23,8 @@ export class IntentionProcessor extends EventEmitter {
   private settings: AutoTriggerSettings
   private sessionId: string | null = null
   // Deduplication: Track recently processed transcripts to avoid duplicate actions
-  private recentTranscripts: Map<string, { timestamp: number; actions: Set<ActionType> }> = new Map()
+  private recentTranscripts: Map<string, { timestamp: number; actions: Set<ActionType> }> =
+    new Map()
   private readonly DEDUP_WINDOW_MS = 5000 // 5 second deduplication window
 
   constructor(settings: AutoTriggerSettings) {
@@ -94,7 +95,10 @@ export class IntentionProcessor extends EventEmitter {
     console.log('[IntentionProcessor] Eligible actions:', eligibleActions)
 
     // Deduplication: Create a content-based key for this transcript
-    const transcriptKey = this.createTranscriptKey(enhanced.corrected || original.rawText, original.sourceType)
+    const transcriptKey = this.createTranscriptKey(
+      enhanced.corrected || original.rawText,
+      original.sourceType
+    )
 
     // Clean up old entries from deduplication cache
     this.cleanupDedupCache()
@@ -113,12 +117,7 @@ export class IntentionProcessor extends EventEmitter {
         return
       }
 
-      const pendingAction = this.createPendingAction(
-        actionType,
-        original,
-        intention,
-        enhanced
-      )
+      const pendingAction = this.createPendingAction(actionType, original, intention, enhanced)
 
       // Track this action in deduplication cache
       if (!recentEntry) {
@@ -201,23 +200,37 @@ export class IntentionProcessor extends EventEmitter {
 
   /**
    * Check if intention matches the action type
+   * Checks BOTH primary intention and suggestedActions for more robust matching
    */
   private intentionMatchesAction(intention: DetectedIntention, actionType: ActionType): boolean {
     switch (actionType) {
       case 'recommendResponse':
-        // Recommend response for questions, concerns, and requests
-        return ['question', 'concern', 'request'].includes(intention.primary)
+        // Match by primary intention OR by suggested actions
+        // This provides fallback if AI misclassifies primary but includes correct suggested action
+        const matchesPrimary = ['question', 'concern', 'request'].includes(intention.primary)
+        const matchesSuggestedActions = intention.suggestedActions?.some(
+          (action) => action.toLowerCase().includes('answer') ||
+                      action.toLowerCase().includes('response')
+        ) || false
+        return matchesPrimary || matchesSuggestedActions
 
       case 'scheduleReminder':
-        // Schedule reminder for schedule and reminder intentions
-        return ['schedule', 'reminder'].includes(intention.primary)
+        // Match by primary intention OR by suggested actions
+        const matchesSchedulePrimary = ['schedule', 'reminder'].includes(intention.primary)
+        const matchesScheduleActions = intention.suggestedActions?.some(
+          (action) => action.toLowerCase().includes('schedule') ||
+                      action.toLowerCase().includes('reminder')
+        ) || false
+        return matchesSchedulePrimary || matchesScheduleActions
 
       case 'sendEmail':
-        // Send email for commands or requests that mention email
-        return (
-          ['command', 'request'].includes(intention.primary) &&
-          intention.suggestedActions?.some((action) => action.toLowerCase().includes('email'))
-        )
+        // Send email requires BOTH matching primary AND suggested action
+        // This prevents false positives for email actions
+        const matchesEmailPrimary = ['command', 'request'].includes(intention.primary)
+        const matchesEmailActions = intention.suggestedActions?.some(
+          (action) => action.toLowerCase().includes('email')
+        ) || false
+        return matchesEmailPrimary && matchesEmailActions
 
       default:
         return false

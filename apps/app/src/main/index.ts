@@ -218,10 +218,8 @@ async function startSession() {
     const { id } = await dbService.createSession(newSession)
     currentSessionId = id
 
-    // Update IntentionProcessor with new session ID
-    const settings = await loadSettings()
-    const intentionProcessor = getIntentionProcessor(settings.autoTrigger)
-    intentionProcessor.setSessionId(id)
+    // Note: IntentionProcessor uses analytics session ID, not SQLite session ID
+    // It will be set by the analytics:set-session-id handler
 
     console.log(`[main/index.ts] Started and set new session ID: ${id}`)
     return id
@@ -239,10 +237,7 @@ async function endCurrentSession() {
   const sessionIdToEnd = currentSessionId
   currentSessionId = null // Clear session ID immediately
 
-  // Clear IntentionProcessor session ID
-  const settings = await loadSettings()
-  const intentionProcessor = getIntentionProcessor(settings.autoTrigger)
-  intentionProcessor.setSessionId(null)
+  // Note: IntentionProcessor session ID is cleared by analytics:clear-session-id handler
 
   try {
     const result = await dbService.endSession(sessionIdToEnd)
@@ -281,6 +276,16 @@ ipcMain.handle('analytics:set-session-id', (event, sessionId: string) => {
   analyticsSessionId = sessionId
   console.log('[main/index.ts] ✓ Analytics session ID set:', sessionId)
 
+  // Update IntentionProcessor with analytics session ID (the one used by enhancement service)
+  const settings = loadSettings()
+  settings.then((s) => {
+    const intentionProcessor = getIntentionProcessor(s.autoTrigger)
+    intentionProcessor.setSessionId(sessionId)
+    console.log('[main/index.ts] Updated IntentionProcessor with analytics session ID:', sessionId)
+  }).catch((err) => {
+    console.error('[main/index.ts] Failed to update IntentionProcessor session ID:', err)
+  })
+
   // Get all windows for broadcasting
   const allWindows = BrowserWindow.getAllWindows()
   const validWindows = allWindows.filter((win) => !win.isDestroyed())
@@ -310,6 +315,16 @@ ipcMain.handle('analytics:get-session-id', () => {
 ipcMain.handle('analytics:clear-session-id', () => {
   analyticsSessionId = null
   console.log('[main/index.ts] Analytics session ID cleared')
+
+  // Clear IntentionProcessor session ID
+  const settings = loadSettings()
+  settings.then((s) => {
+    const intentionProcessor = getIntentionProcessor(s.autoTrigger)
+    intentionProcessor.setSessionId(null)
+    console.log('[main/index.ts] Cleared IntentionProcessor session ID')
+  }).catch((err) => {
+    console.error('[main/index.ts] Failed to clear IntentionProcessor session ID:', err)
+  })
 
   // Broadcast to ALL windows
   console.log('[main/index.ts] Broadcasting analytics session ID cleared to all windows')
@@ -1974,7 +1989,8 @@ app.on('ready', async () => {
           // Initialize IntentionProcessor with current settings
           const settings = await loadSettings()
           const intentionProcessor = getIntentionProcessor(settings.autoTrigger)
-          intentionProcessor.setSessionId(currentSessionId)
+          // Session ID will be set by analytics:set-session-id handler (uses analytics session ID, not SQLite session ID)
+          intentionProcessor.setSessionId(analyticsSessionId)
 
           // IMPORTANT: Clear ALL existing listeners first to prevent duplicates
           // IntentionProcessor is a singleton, so we must ensure only ONE listener exists
