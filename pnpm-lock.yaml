@@ -85,6 +85,9 @@ importers:
         specifier: ^3.24.2
         version: 3.25.76
     devDependencies:
+      '@tailwindcss/postcss':
+        specifier: ^4.1.3
+        version: 4.1.14
       '@types/fluent-ffmpeg':
         specifier: ^2.1.27
         version: 2.1.27
@@ -109,6 +112,9 @@ importers:
       dotenv:
         specifier: ^17.2.3
         version: 17.2.3
+      tailwindcss:
+        specifier: ^4.1.16
+        version: 4.1.16
       ts-node:
         specifier: ^10.9.2
         version: 10.9.2(@types/node@20.19.19)(typescript@5.9.3)
@@ -6394,6 +6400,9 @@ packages:
 
   tailwindcss@4.1.14:
     resolution: {integrity: sha512-b7pCxjGO98LnxVkKjaZSDeNuljC4ueKUddjENJOADtubtdo8llTaJy7HwBMeLNSSo2N5QIAgklslK1+Ir8r6CA==}
+
+  tailwindcss@4.1.16:
+    resolution: {integrity: sha512-pONL5awpaQX4LN5eiv7moSiSPd/DLDzKVRJz8Q9PgzmAdd1R4307GQS2ZpfiN7ZmekdQrfhZZiSE5jkLR4WNaA==}
 
   tapable@2.3.0:
     resolution: {integrity: sha512-g9ljZiwki/LfxmQADO3dEY1CbpmXT5Hm2fJ+QaGKwSXUylMybePR7/67YW7jOrrvjEgL1Fmz5kzyAjWVWLlucg==}
@@ -13983,6 +13992,8 @@ snapshots:
       - yaml
 
   tailwindcss@4.1.14: {}
+
+  tailwindcss@4.1.16: {}
 
   tapable@2.3.0: {}
 
