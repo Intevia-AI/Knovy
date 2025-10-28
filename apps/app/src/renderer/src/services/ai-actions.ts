@@ -139,11 +139,28 @@ export interface KeywordSearchResponse {
 
 export interface RecommendResponseRequest {
   text_input: string
+  existing_summary?: string
+  recent_transcriptions?: string
   language?: string
 }
 
 export interface RecommendResponseResponse {
-  response: string
+  recommendation: string
+  usage: {
+    input_tokens: number
+    output_tokens: number
+  }
+}
+
+export interface DeepResponseRequest {
+  text_input: string
+  existing_summary?: string
+  recent_transcriptions?: string
+  language?: string
+}
+
+export interface DeepResponseResponse {
+  recommendation: string
   usage: {
     input_tokens: number
     output_tokens: number

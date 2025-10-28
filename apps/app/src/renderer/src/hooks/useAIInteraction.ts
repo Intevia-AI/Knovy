@@ -14,6 +14,7 @@ import { invokeAIAction } from '@/services/ai-actions'
 export type AIAction =
   | 'chat'
   | 'answer'
+  | 'deep_response'
   | 'summary'
   | 'keyword_search'
   | 'screenshot'
@@ -333,6 +334,27 @@ export function useAIInteraction() {
             functionPayload.recent_transcriptions = context?.text
             break
           }
+          case 'deep_response': {
+            functionName = 'ai-action-deep-response'
+            const sessionId = await (window as any).electronAPI.invoke('session:get-id')
+            if (!sessionId) throw new Error('No active session found.')
+
+            const existingSummary = await (window as any).electronAPI.invoke(
+              'db:get-summary',
+              sessionId
+            )
+            const context = await gatherContext()
+
+            // Deep response uses the query as input (from Actions Panel)
+            if (!query?.trim()) {
+              throw new Error('Query is required for deep response.')
+            }
+
+            functionPayload.text_input = query
+            functionPayload.existing_summary = existingSummary?.content
+            functionPayload.recent_transcriptions = context?.text
+            break
+          }
           case 'keyword_search': {
             functionName = 'ai-action-keyword-search'
             const sessionId = await (window as any).electronAPI.invoke('session:get-id')
@@ -421,6 +443,7 @@ export function useAIInteraction() {
         const responseMapping = {
           summary: (d: any) => d.summary,
           answer: (d: any) => d.recommendation,
+          deep_response: (d: any) => d.recommendation,
           keyword_search: (d: any) => d.response,
           screenshot: (d: any) => d.analysis,
           chat: (d: any) => d.response
