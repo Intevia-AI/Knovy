@@ -144,6 +144,7 @@ export const translations = {
     visitWebsite: 'Visit Website',
     checkForUpdates: 'Check for Updates',
     checkingForUpdates: 'Checking for updates...',
+    sendFeedback: 'Send Feedback',
     generalSettingsDescription: 'Manage your general application settings',
     languageChangeWarning: 'Changing language will restart your current recording session',
     displaySettingsDescription: 'Configure display and screen settings',
@@ -334,6 +335,7 @@ export const translations = {
     visitWebsite: '來去官網',
     checkForUpdates: '檢查更新',
     checkingForUpdates: '正在檢查更新...',
+    sendFeedback: '提供回饋',
     generalSettingsDescription: '管理您的一般設定',
     languageChangeWarning: '變更語言將會重新開始您目前的錄製對話紀錄',
     displaySettingsDescription: '設定 Knovy 所處的螢幕',
@@ -526,6 +528,7 @@ export type TranslationKey =
   | 'visitWebsite'
   | 'checkForUpdates'
   | 'checkingForUpdates'
+  | 'sendFeedback'
   | 'generalSettingsDescription'
   | 'languageChangeWarning'
   | 'displaySettingsDescription'
