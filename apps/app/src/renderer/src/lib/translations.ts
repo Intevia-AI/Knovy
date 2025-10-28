@@ -32,6 +32,7 @@ export const translations = {
     // ControlPanel AI Actions
     aiActionsTitle: 'AI Actions',
     aiActionAnswer: 'Deep Answer',
+    aiActionDeepResponse: 'Deep Response',
     aiActionSummary: 'Generate Summary',
     shortcutKeyTooltip: 'Shortcut:',
     aiActionScreenshot: 'Screenshot & Ask',
@@ -219,6 +220,7 @@ export const translations = {
     // ControlPanel AI Actions
     aiActionsTitle: 'AI 動作',
     aiActionAnswer: '深度回答',
+    aiActionDeepResponse: '深度回應',
     aiActionSummary: '產生摘要',
     shortcutKeyTooltip: '快捷鍵:',
     aiActionScreenshot: '截圖提問',
@@ -411,6 +413,7 @@ export type TranslationKey =
   // ControlPanel AI Actions
   | 'aiActionsTitle'
   | 'aiActionAnswer'
+  | 'aiActionDeepResponse'
   | 'aiActionSummary'
   | 'shortcutKeyTooltip'
   | 'aiActionScreenshot'

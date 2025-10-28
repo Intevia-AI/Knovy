@@ -192,19 +192,19 @@ export default function ActionsPanel() {
   }, []) // Remove dependencies to prevent constant re-setup
 
   type Action = {
-    readonly action: 'summary' | 'answer' | 'screenshot' | 'file'
+    readonly action: 'summary' | 'deep_response' | 'screenshot' | 'file'
     readonly labelKey: string
     readonly icon: React.ElementType
   }
 
   const baseActions: Action[] = [
-    { action: 'answer', labelKey: 'aiActionAnswer', icon: MessageSquareQuote },
+    { action: 'deep_response', labelKey: 'aiActionDeepResponse', icon: MessageSquareQuote },
     { action: 'screenshot', labelKey: 'aiActionScreenshot', icon: CameraIcon }
   ]
 
   const actions = baseActions
 
-  const handleActionClick = (action: 'summary' | 'answer' | 'screenshot' | 'file') => {
+  const handleActionClick = (action: 'summary' | 'deep_response' | 'screenshot' | 'file') => {
     if (action === 'screenshot') {
       window.electronAPI.startScreenshot()
       return
