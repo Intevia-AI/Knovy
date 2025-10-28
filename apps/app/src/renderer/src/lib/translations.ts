@@ -94,7 +94,8 @@ export const translations = {
 
     // AI Action Display Messages
     aiActionChatDisplay: 'Chat',
-    aiActionAnswerDisplay: 'Answer based on transcription',
+    aiActionAnswerDisplay: 'Recommend response based on question or concern',
+    aiActionDeepResponseDisplay: 'Generate deep response based on context',
     aiActionSummaryDisplay: 'Generate summary from transcription',
     aiActionKeywordSearchDisplay: 'Keyword search',
     aiActionScreenshotDisplay: 'Screenshot analysis',
@@ -184,7 +185,8 @@ export const translations = {
     thresholdWarningHigh: 'High threshold may miss some opportunities',
     enabledActions: 'Enabled Actions',
     actionRecommendResponse: 'Recommend Response',
-    actionRecommendResponseDescription: 'Suggest appropriate responses based on conversation context',
+    actionRecommendResponseDescription:
+      'Suggest appropriate responses based on conversation context',
     actionScheduleReminder: 'Schedule Reminder',
     actionScheduleReminderDescription: 'Automatically create reminders from conversation',
     actionSendEmail: 'Send Email',
@@ -282,6 +284,8 @@ export const translations = {
     // AI Action Display Messages
     aiActionChatDisplay: '聊天', // We don't actually use this translation key, but we need to keep it for compatibility
     aiActionAnswerDisplay: '請根據前後文推薦適合的回應',
+    aiActionDeepResponseDisplay: '請根據前後文回答',
+    aiActionRecommendResponseDisplay: '請根據問題或關注推薦適合的回應',
     aiActionSummaryDisplay: '請根據前後文產生摘要',
     aiActionKeywordSearchDisplay: '關鍵字搜尋',
     aiActionScreenshotDisplay: '請分析這張截圖',
@@ -472,6 +476,8 @@ export type TranslationKey =
   // AI Action Display Messages
   | 'aiActionChatDisplay'
   | 'aiActionAnswerDisplay'
+  | 'aiActionDeepResponseDisplay'
+  | 'aiActionRecommendResponseDisplay'
   | 'aiActionSummaryDisplay'
   | 'aiActionKeywordSearchDisplay'
   | 'aiActionScreenshotDisplay'

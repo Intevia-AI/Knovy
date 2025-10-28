@@ -134,10 +134,10 @@ export default function ActionsPanel() {
       // Trigger the AI interaction with specific transcription if available
       if (data?.context?.transcriptionText) {
         // Pass the specific transcription from the action context
-        sendContextToAI('answer', data.context.transcriptionText)
+        sendContextToAI('recommend_response', data.context.transcriptionText)
       } else {
         // Fallback to general context gathering (keyboard shortcut case)
-        handleActionClick('answer')
+        handleActionClick('recommend_response')
       }
     }
 
@@ -204,7 +204,9 @@ export default function ActionsPanel() {
 
   const actions = baseActions
 
-  const handleActionClick = (action: 'summary' | 'deep_response' | 'screenshot' | 'file') => {
+  const handleActionClick = (
+    action: 'summary' | 'deep_response' | 'screenshot' | 'file'
+  ) => {
     if (action === 'screenshot') {
       window.electronAPI.startScreenshot()
       return

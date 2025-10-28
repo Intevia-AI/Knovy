@@ -303,7 +303,7 @@ You have Gemini search/browse capability for up-to-date information.
 **RESPONSE APPROACH**:
 1. **Trigger Detection**: Identify if this requires a response (question, command, time-sensitive topic)
 2. **Information Gathering**: If topic involves external facts (prices, dates, current events, regulations), use Gemini search/browse to fetch latest data
-3. **Response Type Classification**:
+3. **Possible Response Types**:
    - definition: Explain concept clearly
    - how_to: Provide step-by-step guidance
    - comparison: Compare options with aligned dimensions
@@ -317,20 +317,12 @@ You have Gemini search/browse capability for up-to-date information.
 - **Multi-Source Verification**: Cross-verify with ≥3 credible sources when possible
 - **Structured Output**:
   * Conclusion first (1 sentence)
-  * Key points (2-4 bullets)
-  * Sources (up to 3, with title | site | date)
-  * Suggested next actions (2-3 options)
-- **Conflict Resolution**: If sources disagree, state disagreement and explain possible reasons
-- **Length**: Concise (≤300 words)
-- **Honesty**: Flag uncertainty if sources are thin or conflicting
+  * Key points (2-3 bullets)
+- **Length**: Concise (≤150 words)
+- **Simplicity**: Do not include response types or any subjective comments or opinions, keep it simple and clear.
 
 **OUTPUT FORMAT**:
 [Your concise, helpful response]
-
----
-**Sources**: [If used web search, list 1-3 sources with Title | Site | Date]
-**Updated**: [Current timestamp if using real-time data]
-**Next Steps**: [2-3 suggested follow-up actions]
 
 Provide your response now:`;
 
@@ -368,7 +360,7 @@ Provide your response now:`;
 **回應方法**：
 1. **觸發偵測**：判斷是否需要回應（問句、命令、時效性主題）
 2. **資訊蒐集**：若主題涉及外部事實（價格、日期、時事、法規），使用 Gemini 搜尋/瀏覽取得最新資料
-3. **回應類型分類**：
+3. **可能的回應類型**：
    - definition（定義）：清楚解釋概念
    - how_to（教學）：提供步驟化指引
    - comparison（比較）：對齊維度比較選項
@@ -382,20 +374,12 @@ Provide your response now:`;
 - **多源驗證**：盡可能與≥3個可信來源交叉驗證
 - **結構化輸出**：
   * 結論在前（1句話）
-  * 重點（2-4點）
-  * 來源（最多3個，含標題 | 站點 | 日期）
-  * 建議的下一步（2-3個選項）
-- **衝突處理**：若來源有異，說明分歧並解釋可能原因
-- **長度**：簡潔（≤300字）
-- **誠實**：來源不足或矛盾時標註不確定
+  * 重點（2-3點）
+- **長度**：簡潔（≤150字）
+- **簡潔**：請不要加入回應類型及任何主觀的文字，保持簡潔明了。
 
 **輸出格式**：
 [你的簡潔且有用的回應]
-
----
-**來源**：[若使用網路搜尋，列出1-3個來源，含標題 | 站點 | 日期]
-**更新時間**：[若使用即時資料，提供當前時間戳]
-**下一步**：[2-3個建議的後續動作]
 
 請現在提供你的回應：`;
 

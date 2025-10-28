@@ -13,7 +13,7 @@ import { invokeAIAction } from '@/services/ai-actions'
 
 export type AIAction =
   | 'chat'
-  | 'answer'
+  | 'recommend_response'
   | 'deep_response'
   | 'summary'
   | 'keyword_search'
@@ -137,7 +137,10 @@ export function useAIInteraction() {
 
             // Warn if no matching transcript was found
             if (!foundMatch && isMainWindow) {
-              console.warn(`[useAIInteraction] No transcript found with ID ${updateData.id}. Available IDs:`, prev.map(t => t.id))
+              console.warn(
+                `[useAIInteraction] No transcript found with ID ${updateData.id}. Available IDs:`,
+                prev.map((t) => t.id)
+              )
             }
 
             return updated
@@ -195,7 +198,7 @@ export function useAIInteraction() {
 
       let contextTranscriptions: TranscriptionMessage[]
 
-      if (action === 'answer') {
+      if (action === 'recommend_response' || action === 'deep_response') {
         const fiveMinutesAgo = Date.now() - 5 * 60 * 1000
         contextTranscriptions = transcriptions.filter((t) => t.timestamp > fiveMinutesAgo)
       } else {
@@ -228,7 +231,8 @@ export function useAIInteraction() {
         const getDisplayMessage = (action: AIAction): string => {
           const actionToTranslationKey = {
             chat: 'aiActionChatDisplay',
-            answer: 'aiActionAnswerDisplay',
+            recommend_response: 'aiActionAnswerDisplay',
+            deep_response: 'aiActionDeepResponseDisplay',
             summary: 'aiActionSummaryDisplay',
             keyword_search: 'aiActionKeywordSearchDisplay',
             screenshot: 'aiActionScreenshotDisplay',
@@ -308,7 +312,7 @@ export function useAIInteraction() {
             functionPayload.existing_summary = existingSummary?.content
             break
           }
-          case 'answer': {
+          case 'recommend_response': {
             functionName = 'ai-action-recommend-response'
             const sessionId = await (window as any).electronAPI.invoke('session:get-id')
             if (!sessionId) throw new Error('No active session found.')
@@ -345,12 +349,16 @@ export function useAIInteraction() {
             )
             const context = await gatherContext()
 
-            // Deep response uses the query as input (from Actions Panel)
-            if (!query?.trim()) {
-              throw new Error('Query is required for deep response.')
+            // Deep response uses query if provided, otherwise uses recent context
+            if (query) {
+              functionPayload.text_input = query
+            } else {
+              if (!context?.text?.trim()) {
+                throw new Error('There is no transcription history to generate a deep response.')
+              }
+              functionPayload.text_input = context.text
             }
 
-            functionPayload.text_input = query
             functionPayload.existing_summary = existingSummary?.content
             functionPayload.recent_transcriptions = context?.text
             break
@@ -442,7 +450,7 @@ export function useAIInteraction() {
         console.log('[AIInteraction] Raw data for response mapping:', data)
         const responseMapping = {
           summary: (d: any) => d.summary,
-          answer: (d: any) => d.recommendation,
+          recommend_response: (d: any) => d.recommendation,
           deep_response: (d: any) => d.recommendation,
           keyword_search: (d: any) => d.response,
           screenshot: (d: any) => d.analysis,
@@ -458,7 +466,7 @@ export function useAIInteraction() {
             // Save structured summary data
             await (window as any).electronAPI.invoke('db:save-summary', {
               sessionId,
-              content,  // long_summary
+              content, // long_summary
               short_summary: data.short_summary,
               context: data.context
             })
