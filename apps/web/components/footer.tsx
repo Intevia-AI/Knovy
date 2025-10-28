@@ -48,7 +48,7 @@ export default function FooterSection() {
 
             {/* Instagram */}
             <Link
-              href="https://www.instagram.com/intevia_ai"
+              href="https://www.instagram.com/intevia_ai_knovy"
               target="_blank"
               rel="noopener noreferrer"
               aria-label="Instagram"
@@ -70,7 +70,7 @@ export default function FooterSection() {
 
             {/* Threads */}
             <Link
-              href="https://www.threads.com/@intevia_ai"
+              href="https://www.threads.com/@intevia_ai_knovy"
               target="_blank"
               rel="noopener noreferrer"
               aria-label="Threads"
