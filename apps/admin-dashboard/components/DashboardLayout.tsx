@@ -12,6 +12,7 @@ import {
   AlertCircle,
   BarChart3,
   LogOut,
+  Mail,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@workspace/ui/components/button";
@@ -32,12 +33,20 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     router.push("/logout");
   };
 
-  const navItems: NavItem[] = [
+  const managementNavItems: NavItem[] = [
     {
       label: "User Management",
       href: "/",
       icon: <Users className="w-5 h-5" />,
     },
+    {
+      label: "Waitlist",
+      href: "/waitlist",
+      icon: <Mail className="w-5 h-5" />,
+    },
+  ];
+
+  const analyticsNavItems: NavItem[] = [
     {
       label: "Analytics Overview",
       href: "/analytics/overview",
@@ -84,17 +93,27 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
               Management
             </p>
-            <Link
-              href={navItems[0]!.href}
-              className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all duration-200 ${
-                isActive(navItems[0]!.href)
-                  ? "bg-accent/70 backdrop-blur-sm text-foreground font-medium shadow-sm"
-                  : "hover:bg-accent/50 hover:backdrop-blur-sm text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              {navItems[0]!.icon}
-              <span>{navItems[0]!.label}</span>
-            </Link>
+            <div className="space-y-1">
+              {managementNavItems.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all duration-200 ${
+                    isActive(item.href)
+                      ? "bg-accent/70 backdrop-blur-sm text-foreground font-medium shadow-sm"
+                      : "hover:bg-accent/50 hover:backdrop-blur-sm text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {item.icon}
+                  <span>{item.label}</span>
+                  {item.badge && (
+                    <span className="ml-auto text-xs bg-primary/20 backdrop-blur-sm text-primary-foreground px-2 py-0.5 rounded-full">
+                      {item.badge}
+                    </span>
+                  )}
+                </Link>
+              ))}
+            </div>
           </div>
 
           <div>
@@ -102,7 +121,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
               Analytics
             </p>
             <div className="space-y-1">
-              {navItems.slice(1).map((item) => (
+              {analyticsNavItems.map((item) => (
                 <Link
                   key={item.href}
                   href={item.href}

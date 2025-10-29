@@ -7,17 +7,31 @@ import WaitlistWelcomeEmail from "./emails/waitlist-welcome.tsx";
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
 // Define CORS headers for reuse
+// Allow localhost in development, production domain in production
+const allowedOrigins = [
+  "http://localhost:3000",
+  "http://localhost:3001",
+  "https://intevia.app",
+  "https://www.intevia.app"
+];
+
 const corsHeaders = {
-  // "Access-Control-Allow-Origin": "http://localhost:3000",
-  "Access-Control-Allow-Origin": "https://intevia.app",
+  "Access-Control-Allow-Origin": "*", // Will be set dynamically per request
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
 serve(async (req) => {
+  // Get the origin from the request and validate it
+  const origin = req.headers.get("origin") || "";
+  const responseCorsHeaders = {
+    ...corsHeaders,
+    "Access-Control-Allow-Origin": allowedOrigins.includes(origin) ? origin : allowedOrigins[0],
+  };
+
   // Handle preflight requests
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders, status: 200 });
+    return new Response("ok", { headers: responseCorsHeaders, status: 200 });
   }
 
   try {
@@ -27,7 +41,7 @@ serve(async (req) => {
     // Basic email validation
     if (!email || !email.includes("@")) {
       return new Response(JSON.stringify({ error: "Invalid email address provided." }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...responseCorsHeaders, "Content-Type": "application/json" },
         status: 400,
       });
     }
@@ -50,7 +64,7 @@ serve(async (req) => {
             error: "This email is already on the waitlist.",
           }),
           {
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            headers: { ...responseCorsHeaders, "Content-Type": "application/json" },
             status: 409, // HTTP 409 Conflict
           },
         );
@@ -91,7 +105,7 @@ serve(async (req) => {
           details: resendError,
         }),
         {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          headers: { ...responseCorsHeaders, "Content-Type": "application/json" },
           status: 500,
         },
       );
@@ -105,14 +119,14 @@ serve(async (req) => {
         emailStatus: resendData,
       }),
       {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...responseCorsHeaders, "Content-Type": "application/json" },
         status: 200,
       },
     );
   } catch (err) {
     // Catch any unexpected errors
     return new Response(JSON.stringify({ error: err.message || "An unexpected error occurred." }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...responseCorsHeaders, "Content-Type": "application/json" },
       status: 500,
     });
   }
