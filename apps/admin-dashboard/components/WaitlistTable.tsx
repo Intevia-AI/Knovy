@@ -13,8 +13,9 @@ import {
 import { Button } from "@workspace/ui/components/button";
 import { Badge } from "@workspace/ui/components/badge";
 import { SendInvitationDialog } from "./SendInvitationDialog";
-import { CheckCircle2, XCircle, Mail, Users, Eye } from "lucide-react";
+import { CheckCircle2, XCircle, Mail, Users, Eye, RefreshCw, RotateCcw } from "lucide-react";
 import { EmailPreviewDialog } from "./EmailPreviewDialog";
+import { ResetStatusDialog } from "./ResetStatusDialog";
 
 interface WaitlistUser {
   id: number;
@@ -34,6 +35,9 @@ export function WaitlistTable() {
   const [invitationDialogOpen, setInvitationDialogOpen] = useState(false);
   const [emailsToInvite, setEmailsToInvite] = useState<string[]>([]);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [resetDialogOpen, setResetDialogOpen] = useState(false);
+  const [emailsToReset, setEmailsToReset] = useState<string[]>([]);
+  const [isResend, setIsResend] = useState(false);
 
   const fetchWaitlist = useCallback(async () => {
     if (!supabase) return;
@@ -88,13 +92,24 @@ export function WaitlistTable() {
     }
   };
 
-  const handleSendInvitation = (emails: string[]) => {
+  const handleSendInvitation = (emails: string[], resend = false) => {
     setEmailsToInvite(emails);
+    setIsResend(resend);
     setInvitationDialogOpen(true);
   };
 
   const handleInvitationSent = () => {
     setSelectedEmails([]);
+    setIsResend(false);
+    fetchWaitlist(); // Refresh the list
+  };
+
+  const handleResetStatus = (emails: string[]) => {
+    setEmailsToReset(emails);
+    setResetDialogOpen(true);
+  };
+
+  const handleResetComplete = () => {
     fetchWaitlist(); // Refresh the list
   };
 
@@ -237,17 +252,46 @@ export function WaitlistTable() {
                 {formatDate(user.converted_at)}
               </TableCell>
               <TableCell>
-                {!user.invited_to_beta && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleSendInvitation([user.email])}
-                    className="flex items-center gap-1"
-                  >
-                    <Mail className="h-3 w-3" />
-                    Send
-                  </Button>
-                )}
+                <div className="flex items-center gap-2">
+                  {!user.invited_to_beta && !user.converted_to_beta && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleSendInvitation([user.email], false)}
+                      className="flex items-center gap-1"
+                    >
+                      <Mail className="h-3 w-3" />
+                      Send
+                    </Button>
+                  )}
+                  {user.invited_to_beta && !user.converted_to_beta && (
+                    <>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleSendInvitation([user.email], true)}
+                        className="flex items-center gap-1"
+                      >
+                        <RefreshCw className="h-3 w-3" />
+                        Resend
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleResetStatus([user.email])}
+                        className="flex items-center gap-1"
+                      >
+                        <RotateCcw className="h-3 w-3" />
+                        Reset
+                      </Button>
+                    </>
+                  )}
+                  {user.converted_to_beta && (
+                    <span className="text-xs text-muted-foreground italic">
+                      No actions available
+                    </span>
+                  )}
+                </div>
               </TableCell>
             </TableRow>
           ))}
@@ -259,6 +303,14 @@ export function WaitlistTable() {
         isOpen={invitationDialogOpen}
         onOpenChange={setInvitationDialogOpen}
         onInvitationSent={handleInvitationSent}
+        isResend={isResend}
+      />
+
+      <ResetStatusDialog
+        emails={emailsToReset}
+        isOpen={resetDialogOpen}
+        onOpenChange={setResetDialogOpen}
+        onResetComplete={handleResetComplete}
       />
 
       <EmailPreviewDialog

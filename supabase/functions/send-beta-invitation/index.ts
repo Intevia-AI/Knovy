@@ -16,7 +16,7 @@ async function handleSendInvitation(req: Request, corsHeaders: Record<string, st
 
   try {
     const body = await req.json();
-    const { emails, locale = "en" } = body;
+    const { emails, locale = "en", force = false } = body;
 
     // Validate input
     if (!emails || !Array.isArray(emails) || emails.length === 0) {
@@ -50,7 +50,7 @@ async function handleSendInvitation(req: Request, corsHeaders: Record<string, st
       // Check if email exists in waitlist
       let { data: waitlistRecord, error: waitlistError } = await supabase
         .from("waitlist")
-        .select("id, email, invited_to_beta, invited_at")
+        .select("id, email, invited_to_beta, invited_at, converted_to_beta, converted_at")
         .eq("email", email)
         .single();
 
@@ -77,6 +77,8 @@ async function handleSendInvitation(req: Request, corsHeaders: Record<string, st
           ...fallbackResult.data,
           invited_to_beta: false,
           invited_at: null,
+          converted_to_beta: false,
+          converted_at: null,
         };
         waitlistError = null;
       } else if (waitlistError || !waitlistRecord) {
@@ -88,8 +90,18 @@ async function handleSendInvitation(req: Request, corsHeaders: Record<string, st
         continue;
       }
 
-      // Check if already invited
-      if (waitlistRecord.invited_to_beta) {
+      // Protect converted users - cannot be modified
+      if (waitlistRecord.converted_to_beta && !force) {
+        results.failed.push({
+          email,
+          error: "User has already converted to beta and cannot be modified",
+        });
+        console.log(`Email ${email} has already converted to beta on ${waitlistRecord.converted_at}`);
+        continue;
+      }
+
+      // Check if already invited (skip if force flag is set)
+      if (waitlistRecord.invited_to_beta && !force) {
         results.alreadyInvited.push(email);
         console.log(`Email ${email} was already invited on ${waitlistRecord.invited_at}`);
         continue;
@@ -224,6 +236,119 @@ async function handleSendInvitation(req: Request, corsHeaders: Record<string, st
 }
 
 /**
+ * Reset invitation status for users
+ */
+async function handleResetInvitation(req: Request, corsHeaders: Record<string, string>) {
+  console.log("Handling POST /send-beta-invitation/reset");
+
+  try {
+    const body = await req.json();
+    const { emails } = body;
+
+    // Validate input
+    if (!emails || !Array.isArray(emails) || emails.length === 0) {
+      return new Response(
+        JSON.stringify({ error: "Invalid request: 'emails' must be a non-empty array." }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+    );
+
+    const results = {
+      success: [] as string[],
+      failed: [] as { email: string; error: string }[],
+      protected: [] as string[],
+    };
+
+    // Process each email
+    for (const email of emails) {
+      // Validate email format
+      if (!email || !email.includes("@")) {
+        results.failed.push({ email, error: "Invalid email format" });
+        continue;
+      }
+
+      // Check if email exists in waitlist
+      const { data: waitlistRecord, error: waitlistError } = await supabase
+        .from("waitlist")
+        .select("id, email, invited_to_beta, invited_at, converted_to_beta, converted_at")
+        .eq("email", email)
+        .single();
+
+      if (waitlistError || !waitlistRecord) {
+        results.failed.push({
+          email,
+          error: waitlistError ? `Database error: ${waitlistError.message}` : "Email not found in waitlist",
+        });
+        console.error(`Waitlist lookup error for ${email}:`, waitlistError);
+        continue;
+      }
+
+      // Protect converted users - cannot be reset
+      if (waitlistRecord.converted_to_beta) {
+        results.protected.push(email);
+        console.log(`Email ${email} has already converted to beta and cannot be reset`);
+        continue;
+      }
+
+      // Reset invitation status
+      const { error: updateError } = await supabase
+        .from("waitlist")
+        .update({
+          invited_to_beta: false,
+          invited_at: null,
+        })
+        .eq("id", waitlistRecord.id);
+
+      if (updateError) {
+        console.error(`Error resetting waitlist record for ${email}:`, updateError);
+        results.failed.push({
+          email,
+          error: updateError.message || "Failed to reset invitation status",
+        });
+        continue;
+      }
+
+      results.success.push(email);
+      console.log(`Successfully reset invitation status for ${email}`);
+    }
+
+    // Return comprehensive results
+    return new Response(
+      JSON.stringify({
+        message: "Reset invitation process completed",
+        summary: {
+          total: emails.length,
+          successful: results.success.length,
+          failed: results.failed.length,
+          protected: results.protected.length,
+        },
+        results,
+      }),
+      {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      }
+    );
+  } catch (err) {
+    console.error("Error in reset-invitation:", err);
+    return new Response(
+      JSON.stringify({
+        error: err.message || "An unexpected error occurred.",
+      }),
+      {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 500,
+      }
+    );
+  }
+}
+
+/**
  * Get all waitlist users (for admin dashboard)
  */
 async function handleGetWaitlist(req: Request, corsHeaders: Record<string, string>) {
@@ -309,6 +434,13 @@ serve(async (req) => {
     if ((path === "" || path === "/") && req.method === "POST") {
       return await withRBAC("admin:read_users", (r) =>
         handleSendInvitation(r, corsHeaders)
+      )(req);
+    }
+
+    // POST /reset - Reset invitation status
+    if (path === "/reset" && req.method === "POST") {
+      return await withRBAC("admin:read_users", (r) =>
+        handleResetInvitation(r, corsHeaders)
       )(req);
     }
 

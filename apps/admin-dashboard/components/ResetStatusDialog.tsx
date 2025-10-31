@@ -11,48 +11,34 @@ import {
   DialogTitle,
 } from "@workspace/ui/components/dialog";
 import { Button } from "@workspace/ui/components/button";
-import { Label } from "@workspace/ui/components/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@workspace/ui/components/select";
 import { Alert, AlertDescription } from "@workspace/ui/components/alert";
-import { CheckCircle2, XCircle, Loader2, AlertCircle, Eye } from "lucide-react";
-import { EmailPreviewDialog } from "./EmailPreviewDialog";
+import { AlertTriangle, CheckCircle2, XCircle, Loader2 } from "lucide-react";
 
-interface SendInvitationDialogProps {
+interface ResetStatusDialogProps {
   emails: string[];
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  onInvitationSent: () => void;
-  isResend?: boolean;
+  onResetComplete: () => void;
 }
 
-interface InvitationResult {
+interface ResetResult {
   success: string[];
   failed: { email: string; error: string }[];
-  alreadyInvited: string[];
-  immediatelyUpgraded: string[];
+  protected: string[];
 }
 
-export function SendInvitationDialog({
+export function ResetStatusDialog({
   emails,
   isOpen,
   onOpenChange,
-  onInvitationSent,
-  isResend = false,
-}: SendInvitationDialogProps) {
+  onResetComplete,
+}: ResetStatusDialogProps) {
   const { supabase } = useAuth();
-  const [locale, setLocale] = useState<"en" | "zh-TW">("en");
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<InvitationResult | null>(null);
+  const [result, setResult] = useState<ResetResult | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [previewOpen, setPreviewOpen] = useState(false);
 
-  const handleSendInvitations = async () => {
+  const handleResetStatus = async () => {
     if (!supabase || emails.length === 0) return;
 
     setLoading(true);
@@ -61,7 +47,7 @@ export function SendInvitationDialog({
 
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/send-beta-invitation`,
+        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/send-beta-invitation/reset`,
         {
           method: "POST",
           headers: {
@@ -70,8 +56,6 @@ export function SendInvitationDialog({
           },
           body: JSON.stringify({
             emails,
-            locale,
-            force: isResend, // Pass force flag for resend mode
           }),
         },
       );
@@ -88,19 +72,20 @@ export function SendInvitationDialog({
         // If all succeeded, close dialog after a delay
         if (
           data.results.success.length > 0 &&
-          data.results.failed.length === 0
+          data.results.failed.length === 0 &&
+          data.results.protected.length === 0
         ) {
           setTimeout(() => {
-            onInvitationSent();
+            onResetComplete();
             onOpenChange(false);
             setResult(null);
           }, 2000);
         }
       }
     } catch (err) {
-      console.error("Error sending invitations:", err);
+      console.error("Error resetting invitation status:", err);
       setError(
-        err instanceof Error ? err.message : "Failed to send invitations",
+        err instanceof Error ? err.message : "Failed to reset invitation status",
       );
     } finally {
       setLoading(false);
@@ -119,20 +104,31 @@ export function SendInvitationDialog({
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>
-            {isResend ? "Resend Beta Invitation" : "Send Beta Invitation"}
+          <DialogTitle className="flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5 text-yellow-600" />
+            Reset Invitation Status
           </DialogTitle>
           <DialogDescription>
-            {isResend
-              ? `Resend beta invitation email${emails.length > 1 ? "s" : ""} to ${emails.length} user${emails.length > 1 ? "s" : ""}. This will update the invitation timestamp.`
-              : `Send beta invitation email${emails.length > 1 ? "s" : ""} to ${emails.length} user${emails.length > 1 ? "s" : ""}.`}
+            This will reset the invitation status for {emails.length} user
+            {emails.length > 1 ? "s" : ""} back to "Pending".
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
+          {/* Warning */}
+          <Alert className="border-yellow-200 bg-yellow-50">
+            <AlertTriangle className="h-4 w-4 text-yellow-600" />
+            <AlertDescription className="text-yellow-800">
+              <strong>Warning:</strong> This action will clear the invitation status
+              and timestamp. You will need to send a new invitation to these users.
+            </AlertDescription>
+          </Alert>
+
           {/* Email list */}
           <div className="space-y-2">
-            <Label>Recipients ({emails.length})</Label>
+            <div className="text-sm font-medium">
+              Affected Users ({emails.length})
+            </div>
             <div className="max-h-32 overflow-y-auto border rounded-md p-2 bg-muted/50">
               {emails.map((email, index) => (
                 <div key={index} className="text-sm py-1">
@@ -142,32 +138,6 @@ export function SendInvitationDialog({
             </div>
           </div>
 
-          {/* Language selector */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="locale">Email Language</Label>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => setPreviewOpen(true)}
-                className="flex items-center gap-1 h-8"
-              >
-                <Eye className="h-4 w-4" />
-                Preview Email
-              </Button>
-            </div>
-            <Select value={locale} onValueChange={(value: "en" | "zh-TW") => setLocale(value)}>
-              <SelectTrigger id="locale">
-                <SelectValue placeholder="Select language" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="en">English</SelectItem>
-                <SelectItem value="zh-TW">繁體中文 (Traditional Chinese)</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
           {/* Results */}
           {result && (
             <div className="space-y-2">
@@ -175,31 +145,19 @@ export function SendInvitationDialog({
                 <Alert className="border-green-200 bg-green-50">
                   <CheckCircle2 className="h-4 w-4 text-green-600" />
                   <AlertDescription className="text-green-800">
-                    {isResend
-                      ? `Successfully resent ${result.success.length} invitation${result.success.length > 1 ? "s" : ""}`
-                      : `Successfully sent ${result.success.length} invitation${result.success.length > 1 ? "s" : ""}`}
+                    Successfully reset {result.success.length} user
+                    {result.success.length > 1 ? "s" : ""}
                   </AlertDescription>
                 </Alert>
               )}
 
-              {result.immediatelyUpgraded && result.immediatelyUpgraded.length > 0 && (
+              {result.protected.length > 0 && (
                 <Alert className="border-blue-200 bg-blue-50">
-                  <CheckCircle2 className="h-4 w-4 text-blue-600" />
+                  <AlertTriangle className="h-4 w-4 text-blue-600" />
                   <AlertDescription className="text-blue-800">
-                    🎉 {result.immediatelyUpgraded.length} existing user
-                    {result.immediatelyUpgraded.length > 1 ? "s" : ""} immediately
-                    upgraded to beta!
-                  </AlertDescription>
-                </Alert>
-              )}
-
-              {result.alreadyInvited.length > 0 && (
-                <Alert className="border-yellow-200 bg-yellow-50">
-                  <AlertCircle className="h-4 w-4 text-yellow-600" />
-                  <AlertDescription className="text-yellow-800">
-                    {result.alreadyInvited.length} user
-                    {result.alreadyInvited.length > 1 ? "s" : ""} already
-                    invited
+                    {result.protected.length} user
+                    {result.protected.length > 1 ? "s have" : " has"} already
+                    converted to beta and cannot be reset
                   </AlertDescription>
                 </Alert>
               )}
@@ -208,7 +166,7 @@ export function SendInvitationDialog({
                 <Alert variant="destructive">
                   <XCircle className="h-4 w-4" />
                   <AlertDescription>
-                    Failed to send {result.failed.length} invitation
+                    Failed to reset {result.failed.length} user
                     {result.failed.length > 1 ? "s" : ""}:
                     <ul className="mt-2 list-disc list-inside">
                       {result.failed.map((f, i) => (
@@ -241,26 +199,21 @@ export function SendInvitationDialog({
             Cancel
           </Button>
           <Button
-            onClick={handleSendInvitations}
+            variant="destructive"
+            onClick={handleResetStatus}
             disabled={loading || emails.length === 0}
           >
             {loading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                {isResend ? "Resending..." : "Sending..."}
+                Resetting...
               </>
             ) : (
-              isResend ? "Resend Invitations" : "Send Invitations"
+              "Confirm Reset"
             )}
           </Button>
         </DialogFooter>
       </DialogContent>
-
-      <EmailPreviewDialog
-        isOpen={previewOpen}
-        onOpenChange={setPreviewOpen}
-        sampleEmail={emails[0] || "user@example.com"}
-      />
     </Dialog>
   );
 }
