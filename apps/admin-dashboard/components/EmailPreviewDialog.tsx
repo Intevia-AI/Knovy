@@ -32,55 +32,66 @@ export function EmailPreviewDialog({
 }: EmailPreviewDialogProps) {
   const [locale, setLocale] = useState<"en" | "zh-TW">("en");
 
+  // Use the Supabase URL from environment, or fallback for preview
+  // In local dev, use direct GitHub link for preview; production will use the Edge Function
+  const downloadUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.includes("127.0.0.1")
+    ? "https://github.com/Intevia-AI/Knovy-Release/releases/latest"
+    : process.env.NEXT_PUBLIC_SUPABASE_URL
+      ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/get-latest-release`
+      : "https://github.com/Intevia-AI/Knovy-Release/releases/latest";
+
   // Email content translations
   const translations = {
     en: {
       subject: "You're invited to Knovy Beta!",
       preview: "You're invited to Knovy Beta!",
-      h1: "Welcome to Knovy Beta! 🎉",
+      h1: "Welcome to Knovy Beta! ",
       hi: "Hi",
       congrats: "Congratulations! You've been selected to join the Knovy Beta program.",
       betaAccess: "You now have exclusive early access to all premium features, including:",
       features: [
-        "Unlimited transcription minutes",
+        "Daily recording time limit 120 minutes",
         "AI-powered transcription enhancement",
         "Advanced AI actions (summarize, chat, keyword search)",
         "Screenshot analysis",
         "Smart response recommendations",
-        "Priority support"
+        "Priority support",
       ],
       getStarted: "Getting Started",
       downloadApp: "Download Knovy for macOS and sign in with your email address to get started:",
-      downloadButton: "Download Knovy",
-      note: "Note: Your beta access will be automatically activated when you sign in for the first time.",
-      questions: "If you have any questions or feedback, please don't hesitate to reach out. We're excited to hear from you!",
+      downloadButton: "Download Knovy for macOS",
+      platformNote: "Currently available for macOS only. Windows version coming soon.",
+      questions:
+        "If you have any questions or feedback, please don't hesitate to reach out. We're excited to hear from you!",
       best: "Welcome aboard,",
-      team: "Archi @ INTEVIA",
-      footer: "You're receiving this email because you joined the Knovy waitlist. If you no longer wish to participate in the beta program, please contact us.",
+      team: "Paul @ INTEVIA",
+      footer:
+        "You're receiving this email because you joined the Knovy waitlist. If you no longer wish to participate in the beta program, please contact us.",
     },
     "zh-TW": {
       subject: "您已被邀請加入 Knovy Beta！",
       preview: "您已被邀請加入 Knovy Beta！",
-      h1: "歡迎加入 Knovy Beta！🎉",
+      h1: "歡迎加入 Knovy Beta！",
       hi: "安安",
       congrats: "恭喜！您已被選中加入 Knovy Beta 測試計畫。",
       betaAccess: "您現在可以搶先體驗所有進階功能，包括：",
       features: [
-        "無限轉錄時長",
+        "每日錄製時間上限為 120 分鐘",
         "AI 增強轉錄功能",
         "進階 AI 功能（摘要、對話、關鍵字搜尋）",
         "螢幕截圖分析",
         "智慧回覆建議",
-        "優先技術支援"
+        "優先技術支援",
       ],
       getStarted: "開始使用",
       downloadApp: "下載 Knovy macOS 版本，並使用您的電子郵件地址登入即可開始使用：",
-      downloadButton: "下載 Knovy",
-      note: "注意：當您首次登入時，Beta 權限將自動啟用。",
-      questions: "如果您有任何問題或建議，請隨時與我們聯繫。我們很期待聽到您的反饋！",
+      downloadButton: "下載 macOS 版 Knovy",
+      platformNote: "目前僅提供 macOS 版本。Windows 版本即將推出。",
+      questions: "如果您有任何問題或建議，請隨時與我們聯繫。我們很期待聽到您的回饋！",
       best: "歡迎加入，",
-      team: "Archi @ INTEVIA",
-      footer: "您收到此郵件是因為您加入了 Knovy 等待名單。如果您不再希望參與 Beta 測試計畫，請與我們聯繫。",
+      team: "Paul @ INTEVIA",
+      footer:
+        "您收到此郵件是因為您加入了 Knovy 等待名單。如果您不再希望參與 Beta 測試計畫，請與我們聯繫。",
     },
   };
 
@@ -103,7 +114,9 @@ export function EmailPreviewDialog({
         <div className="space-y-4 py-4">
           {/* Language selector */}
           <div className="flex items-center gap-4">
-            <Label htmlFor="preview-locale" className="whitespace-nowrap">Email Language:</Label>
+            <Label htmlFor="preview-locale" className="whitespace-nowrap">
+              Email Language:
+            </Label>
             <Select value={locale} onValueChange={(value: "en" | "zh-TW") => setLocale(value)}>
               <SelectTrigger id="preview-locale" className="w-[250px]">
                 <SelectValue placeholder="Select language" />
@@ -250,7 +263,7 @@ export function EmailPreviewDialog({
                 {/* Download button */}
                 <div style={{ margin: "24px 0", textAlign: "center" }}>
                   <a
-                    href="https://intevia.app/download"
+                    href={downloadUrl}
                     style={{
                       backgroundColor: "#000",
                       color: "#fff",
@@ -266,25 +279,25 @@ export function EmailPreviewDialog({
                   </a>
                 </div>
 
-                {/* Note */}
+                {/* Platform availability note */}
                 <div
                   style={{
-                    backgroundColor: "#fff9e6",
-                    border: "1px solid #ffe066",
+                    backgroundColor: "#e7f3ff",
+                    border: "1px solid #90c9ff",
                     borderRadius: "4px",
                     padding: "12px 16px",
-                    margin: "24px 0",
+                    margin: "24px 0 16px",
                   }}
                 >
                   <p
                     style={{
-                      color: "#856404",
+                      color: "#0055a5",
                       fontSize: "14px",
                       lineHeight: "20px",
                       margin: "0",
                     }}
                   >
-                    💡 {t.note}
+                    📱 {t.platformNote}
                   </p>
                 </div>
 
@@ -342,7 +355,9 @@ export function EmailPreviewDialog({
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-800">
             <p className="font-medium mb-1">ℹ️ Preview Information</p>
             <p className="text-blue-600">
-              This is a preview of how the email will appear to recipients. The actual email will be sent using professional HTML rendering with proper formatting and compatibility across all email clients.
+              This is a preview of how the email will appear to recipients. The actual email will be
+              sent using professional HTML rendering with proper formatting and compatibility across
+              all email clients.
             </p>
           </div>
         </div>

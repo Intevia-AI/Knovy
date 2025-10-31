@@ -424,7 +424,7 @@ testSuite
   .run()
   .then((success) => {
     if (success) {
-      console.log('\n🎉 All tests passed! System is ready for production.')
+      console.log('\n All tests passed! System is ready for production.')
       process.exit(0)
     } else {
       console.log('\n💥 Some tests failed. Please check the issues above.')

@@ -47,7 +47,9 @@ async function testWhisperBinary() {
   } catch (error) {
     console.error('❌ Test audio file not found:', TEST_AUDIO)
     console.log('💡 Download test audio with:')
-    console.log('   curl -L -o /tmp/test.wav https://cdn.openai.com/whisper/draft-20220913a/micro-machines.wav')
+    console.log(
+      '   curl -L -o /tmp/test.wav https://cdn.openai.com/whisper/draft-20220913a/micro-machines.wav'
+    )
     return false
   }
 
@@ -76,10 +78,12 @@ function runTranscription(audioPath, modelPath) {
   return new Promise((resolve, reject) => {
     const args = [
       audioPath,
-      '--model', modelPath,
+      '--model',
+      modelPath,
       '--no-timestamps',
       '--no-prints',
-      '--threads', '4'
+      '--threads',
+      '4'
     ]
 
     console.log(`🚀 Executing: ${WHISPER_BINARY} ${args.join(' ')}`)
@@ -118,16 +122,16 @@ function runTranscription(audioPath, modelPath) {
 
 // Run the test
 testWhisperBinary()
-  .then(success => {
+  .then((success) => {
     if (success) {
-      console.log('\n🎉 All tests passed! Local transcription is ready.')
+      console.log('\n All tests passed! Local transcription is ready.')
       process.exit(0)
     } else {
       console.log('\n💥 Tests failed. Please check the setup.')
       process.exit(1)
     }
   })
-  .catch(error => {
+  .catch((error) => {
     console.error('\n💥 Test runner error:', error)
     process.exit(1)
   })

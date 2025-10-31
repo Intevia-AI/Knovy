@@ -81,7 +81,8 @@ class PerformanceBenchmark {
       const duration = end - start
       this.results.warmStart.push(duration)
 
-      if (i < 3 || i % 2 === 0) { // Show first 3 and every other
+      if (i < 3 || i % 2 === 0) {
+        // Show first 3 and every other
         console.log(`   Warm start ${i + 1}: ${duration}ms`)
       }
     }
@@ -112,7 +113,9 @@ class PerformanceBenchmark {
         averageTime: totalTime / level
       })
 
-      console.log(`   ${level} concurrent: ${totalTime}ms total, ${(totalTime / level).toFixed(1)}ms average`)
+      console.log(
+        `   ${level} concurrent: ${totalTime}ms total, ${(totalTime / level).toFixed(1)}ms average`
+      )
     }
   }
 
@@ -136,7 +139,7 @@ class PerformanceBenchmark {
       totalCharacters += result.length
 
       if (i % 5 === 0) {
-        console.log(`   Batch ${Math.floor(i/5) + 1}: ${duration}ms`)
+        console.log(`   Batch ${Math.floor(i / 5) + 1}: ${duration}ms`)
       }
     }
 
@@ -187,7 +190,7 @@ class PerformanceBenchmark {
 
     this.results.memory = memoryReadings
 
-    const maxMemory = Math.max(...memoryReadings.map(r => r.memory))
+    const maxMemory = Math.max(...memoryReadings.map((r) => r.memory))
     const memoryIncrease = maxMemory - baseline
 
     console.log(`   Baseline memory: ${baseline.toFixed(1)}MB`)
@@ -199,10 +202,12 @@ class PerformanceBenchmark {
     return new Promise((resolve, reject) => {
       const args = [
         TEST_AUDIO,
-        '--model', MODEL_PATH,
+        '--model',
+        MODEL_PATH,
         '--no-timestamps',
         '--no-prints',
-        '--threads', '4'
+        '--threads',
+        '4'
       ]
 
       const process = spawn(WHISPER_BINARY, args)
@@ -263,7 +268,7 @@ class PerformanceBenchmark {
   }
 
   async sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms))
+    return new Promise((resolve) => setTimeout(resolve, ms))
   }
 
   generateReport() {
@@ -271,7 +276,8 @@ class PerformanceBenchmark {
     console.log('=====================')
 
     // Cold start analysis
-    const avgColdStart = this.results.coldStart.reduce((a, b) => a + b, 0) / this.results.coldStart.length
+    const avgColdStart =
+      this.results.coldStart.reduce((a, b) => a + b, 0) / this.results.coldStart.length
     const minColdStart = Math.min(...this.results.coldStart)
     const maxColdStart = Math.max(...this.results.coldStart)
 
@@ -282,7 +288,8 @@ class PerformanceBenchmark {
     console.log(`   Target: <1000ms - ${avgColdStart < 1000 ? '✅ PASS' : '⚠️ CLOSE'}`)
 
     // Warm start analysis
-    const avgWarmStart = this.results.warmStart.reduce((a, b) => a + b, 0) / this.results.warmStart.length
+    const avgWarmStart =
+      this.results.warmStart.reduce((a, b) => a + b, 0) / this.results.warmStart.length
     const minWarmStart = Math.min(...this.results.warmStart)
     const maxWarmStart = Math.max(...this.results.warmStart)
 
@@ -294,23 +301,27 @@ class PerformanceBenchmark {
 
     // Concurrent processing
     console.log('\n⚡ Concurrent Processing:')
-    this.results.concurrent.forEach(result => {
+    this.results.concurrent.forEach((result) => {
       const efficiency = (result.level * this.results.warmStart[0]) / result.totalTime
-      console.log(`   ${result.level} concurrent: ${result.totalTime}ms (${efficiency.toFixed(2)}x efficiency)`)
+      console.log(
+        `   ${result.level} concurrent: ${result.totalTime}ms (${efficiency.toFixed(2)}x efficiency)`
+      )
     })
 
     // Throughput analysis
     console.log('\n📊 Throughput Analysis:')
     console.log(`   Total iterations: ${this.results.throughput.iterations}`)
     console.log(`   Average time: ${this.results.throughput.avgTime.toFixed(1)}ms`)
-    console.log(`   Throughput: ${this.results.throughput.throughputPerSecond.toFixed(1)} chars/sec`)
+    console.log(
+      `   Throughput: ${this.results.throughput.throughputPerSecond.toFixed(1)} chars/sec`
+    )
 
     const consistencyStdDev = this.calculateStandardDeviation(this.results.throughput.times)
     console.log(`   Consistency (std dev): ${consistencyStdDev.toFixed(1)}ms`)
 
     // Memory usage
-    const memoryBaseline = this.results.memory.find(r => r.stage === 'baseline')?.memory || 0
-    const memoryPeak = Math.max(...this.results.memory.map(r => r.memory))
+    const memoryBaseline = this.results.memory.find((r) => r.stage === 'baseline')?.memory || 0
+    const memoryPeak = Math.max(...this.results.memory.map((r) => r.memory))
     const memoryIncrease = memoryPeak - memoryBaseline
 
     console.log('\n💾 Memory Usage:')
@@ -326,20 +337,25 @@ class PerformanceBenchmark {
       { name: 'Warm Start < 800ms', passed: avgWarmStart < 800 },
       { name: 'Memory Increase < 100MB', passed: memoryIncrease < 100 },
       { name: 'Consistency (low std dev)', passed: consistencyStdDev < 200 },
-      { name: 'Concurrent efficiency > 0.8', passed: this.results.concurrent.some(r => (r.level * avgWarmStart) / r.totalTime > 0.8) }
+      {
+        name: 'Concurrent efficiency > 0.8',
+        passed: this.results.concurrent.some((r) => (r.level * avgWarmStart) / r.totalTime > 0.8)
+      }
     ]
 
-    criteriaChecks.forEach(check => {
+    criteriaChecks.forEach((check) => {
       console.log(`   ${check.passed ? '✅' : '❌'} ${check.name}`)
     })
 
-    const passedCriteria = criteriaChecks.filter(c => c.passed).length
+    const passedCriteria = criteriaChecks.filter((c) => c.passed).length
     const totalCriteria = criteriaChecks.length
 
-    console.log(`\n📊 Performance Score: ${passedCriteria}/${totalCriteria} (${((passedCriteria/totalCriteria)*100).toFixed(1)}%)`)
+    console.log(
+      `\n📊 Performance Score: ${passedCriteria}/${totalCriteria} (${((passedCriteria / totalCriteria) * 100).toFixed(1)}%)`
+    )
 
     if (passedCriteria === totalCriteria) {
-      console.log('🎉 Excellent performance! Ready for production.')
+      console.log(' Excellent performance! Ready for production.')
     } else if (passedCriteria >= totalCriteria * 0.8) {
       console.log('✅ Good performance. Minor optimizations may be beneficial.')
     } else {
@@ -349,7 +365,7 @@ class PerformanceBenchmark {
 
   calculateStandardDeviation(values) {
     const avg = values.reduce((a, b) => a + b, 0) / values.length
-    const squareDiffs = values.map(value => Math.pow(value - avg, 2))
+    const squareDiffs = values.map((value) => Math.pow(value - avg, 2))
     const avgSquareDiff = squareDiffs.reduce((a, b) => a + b, 0) / squareDiffs.length
     return Math.sqrt(avgSquareDiff)
   }
@@ -357,11 +373,12 @@ class PerformanceBenchmark {
 
 // Run the performance benchmark
 const benchmark = new PerformanceBenchmark()
-benchmark.run()
+benchmark
+  .run()
   .then(() => {
     console.log('\n✅ Performance benchmark completed!')
   })
-  .catch(error => {
+  .catch((error) => {
     console.error('\n💥 Benchmark error:', error)
     process.exit(1)
   })

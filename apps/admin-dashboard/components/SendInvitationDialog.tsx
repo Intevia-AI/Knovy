@@ -86,10 +86,7 @@ export function SendInvitationDialog({
         setResult(data.results);
 
         // If all succeeded, close dialog after a delay
-        if (
-          data.results.success.length > 0 &&
-          data.results.failed.length === 0
-        ) {
+        if (data.results.success.length > 0 && data.results.failed.length === 0) {
           setTimeout(() => {
             onInvitationSent();
             onOpenChange(false);
@@ -99,9 +96,7 @@ export function SendInvitationDialog({
       }
     } catch (err) {
       console.error("Error sending invitations:", err);
-      setError(
-        err instanceof Error ? err.message : "Failed to send invitations",
-      );
+      setError(err instanceof Error ? err.message : "Failed to send invitations");
     } finally {
       setLoading(false);
     }
@@ -119,9 +114,7 @@ export function SendInvitationDialog({
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>
-            {isResend ? "Resend Beta Invitation" : "Send Beta Invitation"}
-          </DialogTitle>
+          <DialogTitle>{isResend ? "Resend Beta Invitation" : "Send Beta Invitation"}</DialogTitle>
           <DialogDescription>
             {isResend
               ? `Resend beta invitation email${emails.length > 1 ? "s" : ""} to ${emails.length} user${emails.length > 1 ? "s" : ""}. This will update the invitation timestamp.`
@@ -186,9 +179,8 @@ export function SendInvitationDialog({
                 <Alert className="border-blue-200 bg-blue-50">
                   <CheckCircle2 className="h-4 w-4 text-blue-600" />
                   <AlertDescription className="text-blue-800">
-                    🎉 {result.immediatelyUpgraded.length} existing user
-                    {result.immediatelyUpgraded.length > 1 ? "s" : ""} immediately
-                    upgraded to beta!
+                    {result.immediatelyUpgraded.length} existing user
+                    {result.immediatelyUpgraded.length > 1 ? "s" : ""} immediately upgraded to beta!
                   </AlertDescription>
                 </Alert>
               )}
@@ -198,8 +190,7 @@ export function SendInvitationDialog({
                   <AlertCircle className="h-4 w-4 text-yellow-600" />
                   <AlertDescription className="text-yellow-800">
                     {result.alreadyInvited.length} user
-                    {result.alreadyInvited.length > 1 ? "s" : ""} already
-                    invited
+                    {result.alreadyInvited.length > 1 ? "s" : ""} already invited
                   </AlertDescription>
                 </Alert>
               )}
@@ -233,24 +224,19 @@ export function SendInvitationDialog({
         </div>
 
         <DialogFooter>
-          <Button
-            variant="outline"
-            onClick={handleClose}
-            disabled={loading}
-          >
+          <Button variant="outline" onClick={handleClose} disabled={loading}>
             Cancel
           </Button>
-          <Button
-            onClick={handleSendInvitations}
-            disabled={loading || emails.length === 0}
-          >
+          <Button onClick={handleSendInvitations} disabled={loading || emails.length === 0}>
             {loading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 {isResend ? "Resending..." : "Sending..."}
               </>
+            ) : isResend ? (
+              "Resend Invitations"
             ) : (
-              isResend ? "Resend Invitations" : "Send Invitations"
+              "Send Invitations"
             )}
           </Button>
         </DialogFooter>

@@ -304,7 +304,7 @@ tester
   .runTests()
   .then((success) => {
     if (success) {
-      console.log('\n🎉 All service tests passed!')
+      console.log('\n All service tests passed!')
       process.exit(0)
     } else {
       console.log('\n💥 Some service tests failed.')
