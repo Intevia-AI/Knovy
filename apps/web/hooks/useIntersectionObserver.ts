@@ -9,11 +9,11 @@ interface UseIntersectionObserverOptions {
 
 export function useIntersectionObserver(
   options: UseIntersectionObserverOptions = {}
-): [React.RefObject<HTMLDivElement>, boolean] {
+): [React.RefObject<HTMLDivElement | null>, boolean] {
   const { threshold = 0.5, root = null, rootMargin = '0px', freezeOnceVisible = false } = options
 
   const [isIntersecting, setIsIntersecting] = useState(false)
-  const elementRef = useRef<HTMLDivElement>(null)
+  const elementRef = useRef<HTMLDivElement | null>(null)
   const frozen = useRef(false)
 
   useEffect(() => {
@@ -24,7 +24,10 @@ export function useIntersectionObserver(
     if (frozen.current) return
 
     const observer = new IntersectionObserver(
-      ([entry]) => {
+      (entries) => {
+        const entry = entries[0]
+        if (!entry) return
+
         const isElementIntersecting = entry.isIntersecting
 
         setIsIntersecting(isElementIntersecting)
