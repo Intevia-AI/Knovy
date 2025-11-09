@@ -129,6 +129,8 @@
   "demo.display_prompt.search": "根據語音內容搜尋主題",
   "demo.keyword_explanation.prompt": "請用簡單易懂的方式解釋這個專業術語：{keyword}",
   "demo.keyword_explanation.error_fetch": "無法取得解釋",
+  "videoDemo.title": "看看我們的 Demo！",
+  "videoDemo.description": "觀看我們的 Demo 影片，了解 Knovy 如何幫助您在會議和簡報中保持專注和高效。",
   "cta.title": "訂閱以獲取未來更新！",
   "cta.description": "如果您對我們的產品有興趣，請填入電子信箱，當新版本釋出時會通知您！",
   "cta.placeholder": "填入您的電子信箱以獲取更新",

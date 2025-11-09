@@ -1,6 +1,9 @@
 "use client";
 
 /**
+ * @deprecated This interactive demo component has been replaced with a YouTube video embed (VideoDemo component).
+ * @see components/video-demo.tsx for the new implementation
+ *
  * @fileoverview Demo Component - Main interactive demo interface for the Knovy application
  * @module DemoSection
  * @description This component provides a comprehensive demo interface that allows users to:
@@ -8,6 +11,8 @@
  * - Get real-time AI analysis and transcription
  * - Interact with AI through various actions (answer, summary, search)
  * - View audio visualizations and keyword extraction
+ *
+ * Note: This component is preserved for reference but is no longer used in the landing page.
  */
 
 import { useEffect, useRef, useState, useCallback } from "react";

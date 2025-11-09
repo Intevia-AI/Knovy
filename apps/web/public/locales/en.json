@@ -129,6 +129,8 @@
   "demo.display_prompt.search": "Search for topics based on voice content",
   "demo.keyword_explanation.prompt": "Please explain this technical term in a simple and easy-to-understand way: {keyword}",
   "demo.keyword_explanation.error_fetch": "Failed to get explanation",
+  "videoDemo.title": "Watch our Demo!",
+  "videoDemo.description": "Watch our demo video, see how Knovy helps you stay focused and productive during meetings and presentations.",
   "cta.title": "Subscribe for future updates!",
   "cta.description": "If you are interested in our products, please fill in your email address and we will notify you when a new version is released!",
   "cta.placeholder": "Enter your email to get updates",
