@@ -1,5 +1,10 @@
 import { EventEmitter } from 'events'
-import type { EnhancedSegment, EnhanceResponse, TranscriptionSegment, SessionContext } from './transcriptionEnhancementService'
+import type {
+  EnhancedSegment,
+  EnhanceResponse,
+  TranscriptionSegment,
+  SessionContext
+} from './transcriptionEnhancementService'
 import { getEnhancementPrompt, getEnhancementJsonSchema } from './localLLMPrompts'
 
 export type OllamaStatus = 'disconnected' | 'connected' | 'pulling' | 'ready' | 'error'
@@ -20,7 +25,7 @@ export interface OllamaPullProgress {
 }
 
 const OLLAMA_BASE_URL = 'http://localhost:11434'
-const DEFAULT_MODEL = 'qwen2.5:3b'
+const DEFAULT_MODEL = 'gemma3:1b'
 const INFERENCE_TIMEOUT_MS = 30000
 
 export class OllamaService extends EventEmitter {
@@ -72,14 +77,30 @@ export class OllamaService extends EventEmitter {
       if (response.ok) {
         // Check if the active model is available
         const models = await this.getModels()
-        const hasActiveModel = models.some((m) => m.name === this.activeModel)
-        this.setStatus(hasActiveModel ? 'ready' : 'connected')
+        const hasActiveModel = models.some((m) => {
+          if (m.name === this.activeModel) return true
+          const normalize = (name: string) => name.replace(/:latest$/, '')
+          return normalize(m.name) === normalize(this.activeModel)
+        })
+        const newStatus = hasActiveModel ? 'ready' : 'connected'
+        if (!hasActiveModel) {
+          const availableNames = models.map((m) => m.name).join(', ')
+          console.log(
+            `[OllamaService] Model "${this.activeModel}" not found. Available: [${availableNames}]`
+          )
+        }
+        console.log(
+          `[OllamaService] Connection check: server=OK, model=${this.activeModel}, available=${hasActiveModel}, status=${newStatus}`
+        )
+        this.setStatus(newStatus)
         return true
       }
 
+      console.log('[OllamaService] Connection check: server responded but not OK')
       this.setStatus('disconnected')
       return false
     } catch {
+      console.log('[OllamaService] Connection check: server not reachable')
       this.setStatus('disconnected')
       return false
     }
@@ -89,7 +110,7 @@ export class OllamaService extends EventEmitter {
     this.stopConnectionMonitoring()
     this.checkConnection()
     this.connectionCheckInterval = setInterval(() => {
-      if (this.status === 'disconnected' || this.status === 'error') {
+      if (this.status !== 'ready' && this.status !== 'pulling') {
         this.checkConnection()
       }
     }, intervalMs)
@@ -247,6 +268,9 @@ export class OllamaService extends EventEmitter {
       throw new Error(`Ollama not ready (status: ${this.status})`)
     }
 
+    console.log(
+      `[OllamaService] Running inference: ${segments.length} segment(s), model=${this.activeModel}, lang=${sessionContext.userLanguage}`
+    )
     const startTime = Date.now()
     const enhancedSegments: EnhancedSegment[] = []
     const errors: Array<{ segmentId: string; error: string }> = []
@@ -264,9 +288,13 @@ export class OllamaService extends EventEmitter {
       }
     }
 
+    const elapsed = Date.now() - startTime
+    console.log(
+      `[OllamaService] Inference complete: ${enhancedSegments.length} enhanced, ${errors.length} errors, ${elapsed}ms`
+    )
     return {
       segments: enhancedSegments,
-      processingTime: Date.now() - startTime,
+      processingTime: elapsed,
       errors: errors.length > 0 ? errors : undefined
     }
   }
@@ -319,6 +347,10 @@ export class OllamaService extends EventEmitter {
       }
 
       const parsed = JSON.parse(content)
+
+      console.log(
+        `[OllamaService] Segment ${segment.id}: "${segment.rawText.substring(0, 50)}..." → "${(parsed.corrected || segment.rawText).substring(0, 50)}..." (${parsed.intention?.primary}, conf=${parsed.confidence})`
+      )
 
       return {
         id: segment.id,

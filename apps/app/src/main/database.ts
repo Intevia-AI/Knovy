@@ -58,7 +58,7 @@ async function initializeDatabase() {
   // Add enhanced transcription columns (Phase 2.1 - Enhanced Storage)
   const enhancementColumns = [
     'raw_text TEXT', // Original whisper.cpp output
-    'enhanced_text TEXT', // Gemini-enhanced text
+    'enhanced_text TEXT', // AI-enhanced text
     'detected_language TEXT', // Language detected by whisper.cpp Stage 1
     'whisper_language TEXT', // Language used for whisper.cpp Stage 2
     'user_language TEXT', // User's preferred language

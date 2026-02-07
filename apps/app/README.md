@@ -62,8 +62,6 @@ cp .env.example .env
 
 # Edit the .env file with your configuration
 # Required variables:
-# - NEXT_PUBLIC_GEMINI_WS_URL: WebSocket URL for Gemini proxy
-# - NEXT_PUBLIC_AI_API_URL: API endpoint for AI interactions
 # - NEXT_PUBLIC_SUPABASE_URL: Your Supabase project URL
 # - NEXT_PUBLIC_SUPABASE_ANON_KEY: Supabase anonymous key
 ```

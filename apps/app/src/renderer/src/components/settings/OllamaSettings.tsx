@@ -23,7 +23,7 @@ interface OllamaModel {
 
 type OllamaStatus = 'disconnected' | 'connected' | 'pulling' | 'ready' | 'error'
 
-const RECOMMENDED_MODEL = 'qwen2.5:3b'
+const RECOMMENDED_MODEL = 'gemma3:1b'
 const PULLABLE_MODELS = [
   { name: 'qwen2.5:1.5b', label: 'Qwen 2.5 1.5B', description: 'Lightweight, faster' },
   { name: 'qwen2.5:3b', label: 'Qwen 2.5 3B', description: 'Recommended - best balance' },
