@@ -8,9 +8,10 @@ import { AccountSettings } from './settings/AccountSettings'
 import { ShortcutsView } from './settings/ShortcutsView'
 import { AboutView } from './settings/AboutView'
 import { AutoTriggerSettings } from './settings/AutoTriggerSettings'
+import { OllamaSettings } from './settings/OllamaSettings'
 import { useAuth } from '@/hooks/useAuth'
 
-export type SettingsSection = 'history' | 'general' | 'shortcuts' | 'account' | 'about' | 'autoTrigger'
+export type SettingsSection = 'history' | 'general' | 'aiModels' | 'shortcuts' | 'account' | 'about' | 'autoTrigger'
 
 export function SettingsWindow() {
   const [activeSection, setActiveSection] = useState<SettingsSection>('history')
@@ -31,6 +32,7 @@ export function SettingsWindow() {
     const components = {
       history: <HistoryView />,
       general: <GeneralSettings />,
+      aiModels: <OllamaSettings />,
       shortcuts: <ShortcutsView />,
       account: <AccountSettings sessionProfile={sessionProfile} />,
       about: <AboutView />,

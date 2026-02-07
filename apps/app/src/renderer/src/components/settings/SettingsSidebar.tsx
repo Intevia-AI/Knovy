@@ -8,7 +8,8 @@ import {
   Info,
   Power,
   Zap,
-  MessageSquare
+  MessageSquare,
+  Bot
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useTranslation } from '@/context/TranslationContext'
@@ -25,6 +26,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   { id: 'history', labelKey: 'historyTab', icon: History },
   { id: 'general', labelKey: 'generalTab', icon: Settings },
+  { id: 'aiModels', labelKey: 'aiModelsTab', icon: Bot },
   { id: 'autoTrigger', labelKey: 'autoTriggerTab', icon: Zap },
   { id: 'shortcuts', labelKey: 'shortcutsTab', icon: Keyboard },
   { id: 'account', labelKey: 'accountTab', icon: User },

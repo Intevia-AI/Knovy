@@ -105,6 +105,7 @@ export const translations = {
     // Settings Sidebar
     generalTab: 'General',
     historyTab: 'History',
+    aiModelsTab: 'AI Models',
     accountTab: 'Account',
     displayTab: 'Display',
     shortcutsTab: 'Shortcuts',
@@ -296,6 +297,7 @@ export const translations = {
     // Settings Sidebar
     generalTab: '設定',
     historyTab: '歷史紀錄',
+    aiModelsTab: 'AI 模型',
     accountTab: '帳戶',
     displayTab: '顯示器',
     shortcutsTab: '快捷鍵',
@@ -489,6 +491,7 @@ export type TranslationKey =
   // Settings Sidebar
   | 'generalTab'
   | 'historyTab'
+  | 'aiModelsTab'
   | 'accountTab'
   | 'displayTab'
   | 'shortcutsTab'
