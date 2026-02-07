@@ -100,10 +100,8 @@ const api = {
   transcriptionGetStorageUsage: () => ipcRenderer.invoke('transcription:get-storage-usage'),
   transcriptionEnsureModelAvailable: () => ipcRenderer.invoke('transcription:ensure-model-available'),
   transcriptionGetDiagnostics: () => ipcRenderer.invoke('transcription:get-diagnostics'),
-  transcriptionSetupEnhancement: (supabaseUrl: string, supabaseAnonKey: string, userToken?: string) =>
-    ipcRenderer.invoke('transcription:setup-enhancement', { supabaseUrl, supabaseAnonKey, userToken }),
-  transcriptionSetEnhancementToken: (token: string) =>
-    ipcRenderer.invoke('transcription:set-enhancement-token', token),
+  transcriptionSetupEnhancement: () =>
+    ipcRenderer.invoke('transcription:setup-enhancement'),
 
   createSession: (session) => ipcRenderer.invoke('db:create-session', session),
   addTranscript: (transcript) => ipcRenderer.invoke('db:add-transcript', transcript),
@@ -195,7 +193,10 @@ const api = {
       'auto-trigger:action-rejected',
       'auto-trigger:action-executing',
       'auto-trigger:action-completed',
-      'auto-trigger:action-failed'
+      'auto-trigger:action-failed',
+      // Ollama events
+      'ollama:status-changed',
+      'ollama:pull-progress'
     ]
     if (validChannels.includes(channel)) {
       const subscription = (event, ...args) => callback(...args)
@@ -289,7 +290,6 @@ const api = {
       'transcription:get-storage-usage',
       'transcription:get-diagnostics',
       'transcription:setup-enhancement',
-      'transcription:set-enhancement-token',
       'settings:open',
       'settings:navigate',
       // Auto-trigger invoke channels
@@ -297,7 +297,14 @@ const api = {
       'auto-trigger:update-settings',
       'auto-trigger:approve-action',
       'auto-trigger:reject-action',
-      'auto-trigger:execute-action'
+      'auto-trigger:execute-action',
+      // Ollama invoke channels
+      'ollama:get-status',
+      'ollama:get-models',
+      'ollama:pull-model',
+      'ollama:set-model',
+      'ollama:delete-model',
+      'ollama:check-connection'
     ]
     if (!validChannels.includes(channel)) {
       return Promise.reject(new Error(`Invalid invoke channel: ${channel}`))

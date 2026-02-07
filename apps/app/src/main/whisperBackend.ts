@@ -8,6 +8,7 @@ import {
   TranscriptionEnhancementService,
   type TranscriptionSegment
 } from './transcriptionEnhancementService'
+import type { OllamaService } from './ollamaService'
 import { Converter, ConverterFactory, Locale } from 'opencc-js'
 
 // Configuration: Change this to set the default model size
@@ -125,28 +126,14 @@ export class WhisperBackend {
   }
 
   /**
-   * Set up transcription enhancement service
+   * Set up transcription enhancement service with local Ollama
    */
-  setupEnhancementService(supabaseUrl: string, supabaseAnonKey: string, userToken?: string): void {
+  setupEnhancementService(ollamaService: OllamaService): void {
     try {
-      this.enhancementService = getTranscriptionEnhancementService(supabaseUrl, supabaseAnonKey)
-
-      if (userToken) {
-        this.enhancementService.setUserToken(userToken)
-      }
-
-      console.log('[WhisperService] Transcription enhancement service initialized')
+      this.enhancementService = getTranscriptionEnhancementService(ollamaService)
+      console.log('[WhisperService] Transcription enhancement service initialized with Ollama')
     } catch (error) {
       console.error('[WhisperService] Failed to initialize enhancement service:', error)
-    }
-  }
-
-  /**
-   * Update user token for enhancement service
-   */
-  setEnhancementUserToken(token: string): void {
-    if (this.enhancementService) {
-      this.enhancementService.setUserToken(token)
     }
   }
 

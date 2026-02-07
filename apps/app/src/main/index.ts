@@ -31,6 +31,7 @@ import {
 import { positionWindow, type PositionOptions } from './windowManager'
 import electronUpdater, { type AppUpdater } from 'electron-updater'
 import { getWhisperBackend } from './whisperBackend'
+import { getOllamaService } from './ollamaService'
 import {
   createSettingsWindow,
   closeSettingsWindow,
@@ -2081,7 +2082,7 @@ app.on('ready', async () => {
   // Transcription enhancement IPC handlers
   ipcMain.handle(
     'transcription:setup-enhancement',
-    async (event, { supabaseUrl, supabaseAnonKey, userToken }) => {
+    async (event) => {
       try {
         // Clean up old event listeners to prevent duplicates
         console.log(
@@ -2090,8 +2091,13 @@ app.on('ready', async () => {
         enhancementEventCleanups.forEach((cleanup) => cleanup())
         enhancementEventCleanups = []
 
+        // Initialize Ollama service and check connection
+        const ollamaService = getOllamaService()
+        await ollamaService.checkConnection()
+        ollamaService.startConnectionMonitoring()
+
         const transcriptionService = getWhisperBackend()
-        transcriptionService.setupEnhancementService(supabaseUrl, supabaseAnonKey, userToken)
+        transcriptionService.setupEnhancementService(ollamaService)
 
         // Set up event forwarding from enhancement service to renderer
         const enhancementService = transcriptionService.getEnhancementService()
@@ -2210,14 +2216,67 @@ app.on('ready', async () => {
     }
   )
 
-  ipcMain.handle('transcription:set-enhancement-token', async (event, token) => {
+  // Ollama management IPC handlers
+  ipcMain.handle('ollama:get-status', async () => {
+    const ollamaService = getOllamaService()
+    return {
+      status: ollamaService.getStatus(),
+      activeModel: ollamaService.getActiveModel()
+    }
+  })
+
+  ipcMain.handle('ollama:get-models', async () => {
+    const ollamaService = getOllamaService()
+    return await ollamaService.getModels()
+  })
+
+  ipcMain.handle('ollama:pull-model', async (event, modelName: string) => {
+    const ollamaService = getOllamaService()
+
+    // Forward pull progress to renderer
+    const progressHandler = (data: any) => {
+      for (const win of BrowserWindow.getAllWindows()) {
+        if (!win.isDestroyed()) {
+          win.webContents.send('ollama:pull-progress', data)
+        }
+      }
+    }
+    ollamaService.on('pullProgress', progressHandler)
+
     try {
-      const transcriptionService = getWhisperBackend()
-      transcriptionService.setEnhancementUserToken(token)
-      return { success: true }
-    } catch (error) {
-      console.error('[main/index.ts] Failed to set enhancement token:', error)
-      return { success: false, error: error.message }
+      const success = await ollamaService.pullModel(modelName)
+      return { success }
+    } finally {
+      ollamaService.off('pullProgress', progressHandler)
+    }
+  })
+
+  ipcMain.handle('ollama:set-model', async (event, modelName: string) => {
+    const ollamaService = getOllamaService()
+    ollamaService.setActiveModel(modelName)
+    await ollamaService.checkConnection()
+    return { success: true }
+  })
+
+  ipcMain.handle('ollama:delete-model', async (event, modelName: string) => {
+    const ollamaService = getOllamaService()
+    const success = await ollamaService.deleteModel(modelName)
+    return { success }
+  })
+
+  ipcMain.handle('ollama:check-connection', async () => {
+    const ollamaService = getOllamaService()
+    const connected = await ollamaService.checkConnection()
+    return { connected, status: ollamaService.getStatus() }
+  })
+
+  // Forward Ollama status changes to renderer
+  const ollamaService = getOllamaService()
+  ollamaService.on('statusChanged', (data) => {
+    for (const win of BrowserWindow.getAllWindows()) {
+      if (!win.isDestroyed()) {
+        win.webContents.send('ollama:status-changed', data)
+      }
     }
   })
 

@@ -1,5 +1,5 @@
 import { EventEmitter } from 'events'
-import { randomUUID } from 'crypto'
+import type { OllamaService } from './ollamaService'
 
 // Interface definitions based on plan specifications
 export interface TranscriptionSegment {
@@ -50,7 +50,7 @@ interface PendingSegment {
 
 /**
  * Transcription Enhancement Service
- * Implements smart batching and progressive enhancement with Gemini API
+ * Implements smart batching and progressive enhancement with local Ollama LLM
  */
 export class TranscriptionEnhancementService extends EventEmitter {
   private pendingSegments = new Map<string, PendingSegment[]>() // sessionId -> segments
@@ -58,27 +58,17 @@ export class TranscriptionEnhancementService extends EventEmitter {
   private processingBatches = new Set<string>() // Track sessions currently being processed
 
   private readonly batchConfig: BatchConfig = {
-    maxBatchSize: 5, // Max segments per batch
-    maxWaitTime: 3000, // Max 3 seconds wait
+    maxBatchSize: 3, // Smaller batches for local model (slower per segment)
+    maxWaitTime: 5000, // Longer wait to accumulate more segments
     minBatchSize: 1, // Process immediately if urgent
   }
 
-  private supabaseUrl: string
-  private supabaseAnonKey: string
-  private userToken: string | null = null
+  private ollamaService: OllamaService
 
-  constructor(supabaseUrl: string, supabaseAnonKey: string) {
+  constructor(ollamaService: OllamaService) {
     super()
-    this.supabaseUrl = supabaseUrl
-    this.supabaseAnonKey = supabaseAnonKey
-    console.log('[TranscriptionEnhancementService] Initialized')
-  }
-
-  /**
-   * Set user authentication token
-   */
-  setUserToken(token: string): void {
-    this.userToken = token
+    this.ollamaService = ollamaService
+    console.log('[TranscriptionEnhancementService] Initialized with Ollama')
   }
 
   /**
@@ -89,6 +79,14 @@ export class TranscriptionEnhancementService extends EventEmitter {
     sessionContext: SessionContext,
     isUrgent = false
   ): void {
+    // Skip enhancement if Ollama is not ready
+    if (this.ollamaService.getStatus() !== 'ready') {
+      console.log(
+        `[TranscriptionEnhancementService] Skipping enhancement - Ollama status: ${this.ollamaService.getStatus()}`
+      )
+      return
+    }
+
     const pendingSegment: PendingSegment = {
       segment,
       sessionContext,
@@ -169,6 +167,14 @@ export class TranscriptionEnhancementService extends EventEmitter {
       return
     }
 
+    // Skip if Ollama is not ready
+    if (this.ollamaService.getStatus() !== 'ready') {
+      console.log(
+        `[TranscriptionEnhancementService] Skipping batch - Ollama status: ${this.ollamaService.getStatus()}`
+      )
+      return
+    }
+
     // Mark as processing
     this.processingBatches.add(sessionId)
 
@@ -184,14 +190,11 @@ export class TranscriptionEnhancementService extends EventEmitter {
       // Extract session context from first segment (they should all be the same session)
       const sessionContext = batchSegments[0].sessionContext
 
-      // Prepare request payload
-      const enhanceRequest = {
-        segments: batchSegments.map((ps) => ps.segment),
-        sessionContext,
-      }
-
-      // Call Supabase Edge Function
-      const response = await this.callEnhancementAPI(enhanceRequest)
+      // Call Ollama for enhancement
+      const response = await this.ollamaService.enhance(
+        batchSegments.map((ps) => ps.segment),
+        sessionContext
+      )
 
       if (response) {
         // Emit enhanced segments individually
@@ -232,43 +235,12 @@ export class TranscriptionEnhancementService extends EventEmitter {
         this.emit('enhancementError', {
           sessionId,
           segmentId: ps.segment.id,
-          error: error.message || 'Unknown error',
+          error: error instanceof Error ? error.message : 'Unknown error',
         })
       })
     } finally {
       // Mark as no longer processing
       this.processingBatches.delete(sessionId)
-    }
-  }
-
-  /**
-   * Call the Supabase Edge Function for transcription enhancement
-   */
-  private async callEnhancementAPI(enhanceRequest: any): Promise<EnhanceResponse | null> {
-    if (!this.userToken) {
-      throw new Error('User token not set. Cannot call enhancement API.')
-    }
-
-    try {
-      const response = await fetch(`${this.supabaseUrl}/functions/v1/transcription-enhance`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.userToken}`,
-        },
-        body: JSON.stringify(enhanceRequest),
-      })
-
-      if (!response.ok) {
-        const errorText = await response.text()
-        throw new Error(`Enhancement API failed with status ${response.status}: ${errorText}`)
-      }
-
-      const result: EnhanceResponse = await response.json()
-      return result
-    } catch (error) {
-      console.error('[TranscriptionEnhancementService] API call failed:', error)
-      throw error
     }
   }
 
@@ -318,14 +290,13 @@ export class TranscriptionEnhancementService extends EventEmitter {
 let enhancementServiceInstance: TranscriptionEnhancementService | null = null
 
 export function getTranscriptionEnhancementService(
-  supabaseUrl?: string,
-  supabaseAnonKey?: string
+  ollamaService?: OllamaService
 ): TranscriptionEnhancementService {
   if (!enhancementServiceInstance) {
-    if (!supabaseUrl || !supabaseAnonKey) {
-      throw new Error('Supabase configuration required to initialize TranscriptionEnhancementService')
+    if (!ollamaService) {
+      throw new Error('OllamaService required to initialize TranscriptionEnhancementService')
     }
-    enhancementServiceInstance = new TranscriptionEnhancementService(supabaseUrl, supabaseAnonKey)
+    enhancementServiceInstance = new TranscriptionEnhancementService(ollamaService)
   }
   return enhancementServiceInstance
 }
