@@ -103,35 +103,14 @@ export class TranscriptionFactory {
   }
 
   /**
-   * Setup transcription enhancement service
+   * Setup transcription enhancement service (uses local Ollama)
    */
-  async setupEnhancement(
-    supabaseUrl: string,
-    supabaseAnonKey: string,
-    userToken?: string
-  ): Promise<boolean> {
+  async setupEnhancement(): Promise<boolean> {
     try {
-      const result = await window.electronAPI.transcriptionSetupEnhancement(
-        supabaseUrl,
-        supabaseAnonKey,
-        userToken
-      )
+      const result = await window.electronAPI.transcriptionSetupEnhancement()
       return result.success
     } catch (error) {
       console.error('[TranscriptionFactory] Failed to setup enhancement:', error)
-      return false
-    }
-  }
-
-  /**
-   * Update user token for enhancement service
-   */
-  async setEnhancementToken(token: string): Promise<boolean> {
-    try {
-      const result = await window.electronAPI.transcriptionSetEnhancementToken(token)
-      return result.success
-    } catch (error) {
-      console.error('[TranscriptionFactory] Failed to set enhancement token:', error)
       return false
     }
   }

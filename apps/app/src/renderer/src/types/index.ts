@@ -36,6 +36,10 @@ export interface ElectronAPI {
   supabaseSignInWithOAuth: (data: { urlToOpen: string }) => Promise<void>
   getSettings: () => Promise<any>
   setSettings: (settings: any) => Promise<void>
+  openExternal: (url: string) => void
+  quitApp: () => void
+  toggleContentProtection: () => void
+  transcriptionSetupEnhancement: () => Promise<{ success: boolean }>
 }
 
 declare global {
