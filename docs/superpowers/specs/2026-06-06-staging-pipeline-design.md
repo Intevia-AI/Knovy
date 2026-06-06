@@ -13,6 +13,13 @@ Branch model: `dev` → `stg` → `main`.
 - `main` — when staging looks good, merge and **publish** a live GitHub Release (existing
   tag-triggered workflow).
 
+**Version base convention (post-release bump):** `package.json` on `dev`/`stg` holds the *next*
+version (e.g. `0.3.9`), bumped once right after each release ("open the next version"). Staging
+therefore builds `0.3.9-stg.<run>`, which sorts correctly: `0.3.8 < 0.3.9-stg.N < 0.3.9`. Using the
+*current* production version as the base would be wrong — `0.3.8-stg.N` sorts *below* `0.3.8`. The
+next-version number lives only on the integration branches, so feature worktrees never touch it and
+never collide on it. After this pipeline lands on `main`, bump `dev`/`stg` to `0.3.9`.
+
 Decision (industry-aligned, option 1): staging builds are distributed as **GitHub Actions
 artifacts**, NOT GitHub Releases. This avoids auto-update feed collision (the app's
 `electron-updater` reads `latest-mac.yml` from this repo's releases) and keeps the public

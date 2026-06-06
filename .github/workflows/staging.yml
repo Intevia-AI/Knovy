@@ -1,0 +1,15 @@
+name: Staging Build
+
+on:
+  push:
+    branches:
+      - stg
+
+jobs:
+  staging-build:
+    runs-on: macos-latest # Mirrors the production release runner.
+    environment: Production # Provides the Apple signing secrets for full-signed staging builds.
+
+    steps:
+      - name: Check out Git repository
+        uses: actions/checkout@v3

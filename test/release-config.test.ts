@@ -61,6 +61,22 @@ describe('release workflow', () => {
   })
 })
 
+describe('staging workflow', () => {
+  const stagingPath = '.github/workflows/staging.yml'
+  const readStaging = () => readYaml(stagingPath)
+  const stagingSteps = () => {
+    const wf = readStaging()
+    const job: any = Object.values(wf.jobs)[0]
+    return job.steps as any[]
+  }
+
+  it('triggers on push to the stg branch', () => {
+    const wf = readStaging()
+    const on = wf.on ?? wf[true] // js-yaml may coerce the `on` key
+    expect(on.push.branches).toContain('stg')
+  })
+})
+
 describe('no leftover references to the external release setup', () => {
   const files = ['.github/workflows/release.yml', 'apps/app/electron-builder.yml']
 
