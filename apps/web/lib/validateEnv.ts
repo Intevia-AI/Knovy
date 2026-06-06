@@ -12,11 +12,6 @@
 export function validateEnv(): boolean {
   const requiredVars = [
     {
-      name: "GOOGLE_GENERATIVE_AI_API_KEY",
-      description: "Google Generative AI API Key for Gemini integration",
-      hint: "Obtain from Google AI Studio (https://aistudio.google.com/app/apikey)",
-    },
-    {
       name: "GMAIL_USER",
       description: "Gmail account for sending feedback and notification emails",
       hint: "Use a dedicated service account email",
@@ -25,11 +20,6 @@ export function validateEnv(): boolean {
       name: "GMAIL_PASS",
       description: "Gmail App Password (not your regular Gmail password)",
       hint: "Generate at: Google Account > Security > 2-Step Verification > App passwords",
-    },
-    {
-      name: "NEXT_PUBLIC_PROXY_SERVER_URL",
-      description: "WebSocket proxy server URL for Gemini AI connections",
-      hint: "Default: ws://localhost:4567 (if running proxy locally)",
     },
     {
       name: "NEXT_PUBLIC_SUPABASE_URL",
