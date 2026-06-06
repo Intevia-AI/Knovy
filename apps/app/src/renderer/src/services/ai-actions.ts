@@ -2,78 +2,37 @@
  * AI Actions Service
  *
  * Centralized wrapper for all AI action Edge Functions.
- * Automatically injects session_id from analytics service.
- *
- * Benefits:
- * - DRY: Single place to handle session_id logic
- * - Scalable: All current and future AI actions automatically get session_id
- * - Type-safe: TypeScript ensures all calls are properly typed
- * - Maintainable: Change once, affects all AI actions
  */
 
 import { supabase } from './supabaseClient'
-import { analyticsService } from './analytics-service'
 
 /**
- * Invoke an AI action Edge Function with automatic session_id injection
+ * Invoke an AI action Edge Function
  *
- * @template TRequest - The request body type (excluding session_id)
+ * @template TRequest - The request body type
  * @template TResponse - The response data type
  * @param functionName - Name of the Edge Function (e.g., 'ai-action-summarize')
- * @param body - Request body (session_id will be automatically added)
+ * @param body - Request body
  * @returns Promise with data and error
- *
- * @example
- * ```typescript
- * const { data, error } = await invokeAIAction<SummarizeRequest, SummarizeResponse>(
- *   'ai-action-summarize',
- *   {
- *     text_input: transcription,
- *     existing_summary: summary,
- *     language: 'zh-TW'
- *   }
- * )
- * ```
  */
 export async function invokeAIAction<TRequest extends Record<string, any>, TResponse>(
   functionName: string,
   body: TRequest
 ): Promise<{ data: TResponse | null; error: any }> {
-  // Get current session ID from analytics service
-  const sessionId = analyticsService.getSessionId()
-
-  // Debug logging
-  console.log(`[AI Actions] Session check for ${functionName}:`, {
-    sessionId,
-    isSessionActive: analyticsService.isSessionActive(),
-    hasSessionId: !!sessionId
-  })
-
-  if (!sessionId) {
-    console.warn(`[AI Actions] ⚠️ No active session when calling ${functionName}`)
-  }
-
-  // Inject session_id into request body
-  const bodyWithSession = {
-    ...body,
-    session_id: sessionId
-  }
-
   console.log(`[AI Actions] Invoking ${functionName} with payload:`, {
     functionName,
-    session_id: sessionId,
-    bodyKeys: Object.keys(bodyWithSession)
+    bodyKeys: Object.keys(body)
   })
 
   // Call Edge Function
   const { data, error } = await supabase.functions.invoke<TResponse>(functionName, {
-    body: bodyWithSession
+    body
   })
 
   if (error) {
     console.error(`[AI Actions] Error calling ${functionName}:`, error)
   } else {
-    console.log(`[AI Actions] ✓ ${functionName} completed successfully with session_id: ${sessionId}`)
+    console.log(`[AI Actions] ✓ ${functionName} completed successfully`)
   }
 
   return { data, error }
