@@ -48,6 +48,17 @@ describe('release workflow', () => {
   it('grants the release job contents:write so GITHUB_TOKEN can create releases', () => {
     expect(workflow.jobs.release.permissions.contents).toBe('write')
   })
+
+  it('verifies the pushed tag matches the app version before building', () => {
+    const guard = workflow.jobs.release.steps.find(
+      (step: any) =>
+        typeof step.name === 'string' &&
+        /tag/i.test(step.name) &&
+        /version/i.test(step.name),
+    )
+    expect(guard).toBeDefined()
+    expect(guard.run).toContain('package.json')
+  })
 })
 
 describe('no leftover references to the external release setup', () => {
