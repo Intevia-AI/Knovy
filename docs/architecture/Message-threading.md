@@ -26,34 +26,26 @@ graph TD
     A[Microphone Input] --> B[MicAudioProcessor]
     C[System Audio Input] --> D[SystemAudioProcessor]
 
-    B --> E[MicGeminiClient]
-    D --> F[SystemGeminiClient]
+    B --> E[WhisperTranscriptionProcessor]
+    D --> E
 
-    E --> G[WebSocket Connection 1]
-    F --> H[WebSocket Connection 2]
+    E --> F[IPC Bridge]
+    F --> G[Main Process - WhisperBackend]
+    G --> H[whisper.cpp binary]
+    G --> I[Ollama - local enhancement]
 
-    G --> I[Proxy Server Client 1]
-    H --> J[Proxy Server Client 2]
+    H --> J[Raw Transcription]
+    I --> K[Enhanced Transcription]
 
-    I --> K[Gemini API Instance 1]
-    J --> L[Gemini API Instance 2]
+    J --> L[sourceType: 'microphone' or 'system']
+    K --> L
 
-    K --> M[Transcription Response]
-    L --> N[Transcription Response]
+    L --> M[SQLite Database]
+    L --> N[Broadcast to UI]
 
-    M --> O[sourceType: 'microphone']
-    N --> P[sourceType: 'system']
-
-    O --> Q[IPC Layer]
-    P --> Q
-
-    Q --> R[Main Process]
-    R --> S[Database Storage]
-    R --> T[Broadcast to UI]
-
-    T --> U[Chat Panel]
-    U --> V[Right Side: User Messages]
-    U --> W[Left Side: Others Messages]
+    N --> O[Chat Panel]
+    O --> P[Right Side: User Messages]
+    O --> Q[Left Side: Others Messages]
 ```
 
 ### 3.2 Component Architecture
@@ -65,21 +57,16 @@ graph LR
         A3[System Audio] --> A4[SystemAudioProcessor.js]
     end
 
-    subgraph "Client Layer"
-        A2 --> B1[MicGeminiClient]
-        A4 --> B2[SystemGeminiClient]
+    subgraph "Transcription Layer"
+        A2 --> B1[WhisperTranscriptionProcessor]
+        A4 --> B1
+        B1 --> B2[IPC Bridge]
     end
 
-    subgraph "Network Layer"
-        B1 --> C1[WebSocket 1]
-        B2 --> C2[WebSocket 2]
-        C1 --> C3[Proxy Server]
-        C2 --> C3
-    end
-
-    subgraph "AI Processing"
-        C3 --> D1[Gemini API Instance 1]
-        C3 --> D2[Gemini API Instance 2]
+    subgraph "Main Process"
+        B2 --> C1[WhisperBackend]
+        C1 --> C2[whisper.cpp binary]
+        C1 --> C3[Ollama - local enhancement]
     end
 
     subgraph "Data Layer"
@@ -138,7 +125,7 @@ class SystemAudioProcessor extends AudioWorkletProcessor {
 - **Independent Processing**: Each worklet processes audio separately
 - **Source Tagging**: Every audio chunk tagged with `sourceType`
 - **Silence Detection**: Efficient bandwidth usage by filtering silent periods
-- **PCM Conversion**: Standard 16-bit PCM format for Gemini API compatibility
+- **PCM Conversion**: Standard 16-bit PCM format for whisper.cpp compatibility
 
 ### 4.2 Audio Pipeline Architecture
 
@@ -149,50 +136,45 @@ System Audio → SystemAudioProcessor → Tagged Audio Chunks (sourceType: 'syst
 
 ## 5. Client Communication Layer
 
-### 5.1 Dual Client Architecture
+### 5.1 Transcription Processor Architecture
+
+Both audio streams flow through a shared `WhisperTranscriptionProcessor` that tags each audio chunk with its `sourceType` before sending it over IPC to the main process:
 
 ```typescript
-// RealTimeAnalysis.tsx
-let micGeminiClient: GeminiClient | null = null;
-let systemGeminiClient: GeminiClient | null = null;
-
-// Separate processing pipelines
+// WhisperTranscriptionProcessor processes audio from both worklets.
+// Each chunk carries sourceType: 'microphone' | 'system'.
 const processTranscriptionResponse = (
   text: string,
-  textBufferRef: React.MutableRefObject<string>,
   sourceType: "microphone" | "system",
 ) => {
-  // Process and forward with source attribution
   onTextResponse(transcription, false, sourceType);
 };
 ```
 
-### 5.2 WebSocket Connection Management
+### 5.2 IPC Communication
 
-Each `GeminiClient` establishes independent connections:
+Audio chunks are sent via IPC to the main process where `WhisperBackend` handles transcription:
 
 ```typescript
 // Microphone pipeline
-micGeminiClient = new GeminiClient(
-  (text) => processTranscriptionResponse(text, micTextBufferRef, "microphone"),
-  onSetupComplete,
-  // ... other callbacks
-);
+electronAPI.send("transcription:audio", {
+  pcmData: chunk,
+  sourceType: "microphone",
+});
 
 // System audio pipeline
-systemGeminiClient = new GeminiClient(
-  (text) => processTranscriptionResponse(text, systemTextBufferRef, "system"),
-  onSetupComplete,
-  // ... other callbacks
-);
+electronAPI.send("transcription:audio", {
+  pcmData: chunk,
+  sourceType: "system",
+});
 ```
 
 **Benefits:**
 
 - **Fault Isolation**: Issues with one stream don't affect the other
-- **Independent Reconnection**: Each client can recover separately
-- **Parallel Processing**: Simultaneous transcription of both sources
-- **Natural Load Balancing**: Leverages existing proxy server architecture
+- **Parallel Processing**: Both streams processed simultaneously by whisper.cpp
+- **Source Attribution**: `sourceType` is preserved through the entire pipeline
+- **No Network Dependency**: All processing is local via IPC to the main process
 
 ## 6. IPC Communication Protocol
 
@@ -325,45 +307,16 @@ interface TranscriptRecord {
 - **Responsive Design**: Messages adapt to content length
 - **Smooth Animations**: Framer Motion for natural message appearance
 
-## 9. Proxy Server Integration
+## 9. Local Processing Architecture
 
-### 9.1 Multi-Client Support
-
-The existing proxy server architecture perfectly supports the dual-stream approach:
-
-```javascript
-class GeminiProxyServer {
-  setupServer() {
-    this.wss.on("connection", (ws, req) => {
-      const clientId = this.generateClientId(); // Unique per connection
-
-      const clientConnection = {
-        ws,
-        id: clientId,
-        geminiWs: null, // Independent Gemini connection
-        isSetupComplete: false,
-        language: "zh-TW",
-      };
-
-      this.clients.set(clientId, clientConnection);
-    });
-  }
-}
-```
-
-**Why No Changes Were Needed:**
-
-- **Natural Multi-Tenancy**: Each GeminiClient gets unique clientId
-- **Independent Sessions**: Each client maintains separate Gemini WebSocket
-- **Automatic Load Balancing**: Built-in connection management
-- **Fault Isolation**: Client failures don't affect others
-
-### 9.2 Connection Flow
+Both audio streams are processed locally. There is no proxy server or cloud API:
 
 ```
-MicGeminiClient → ProxyServer.Client[ID_1] → GeminiAPI.Session[1]
-SystemGeminiClient → ProxyServer.Client[ID_2] → GeminiAPI.Session[2]
+MicAudioProcessor → IPC → WhisperBackend → whisper.cpp → sourceType: 'microphone'
+SystemAudioProcessor → IPC → WhisperBackend → whisper.cpp → sourceType: 'system'
 ```
+
+Each stream is tagged with `sourceType` at the worklet level and that tag is preserved throughout the entire pipeline (IPC → WhisperBackend → SQLite → UI).
 
 ## 10. Performance Characteristics
 
@@ -372,24 +325,24 @@ SystemGeminiClient → ProxyServer.Client[ID_2] → GeminiAPI.Session[2]
 | Component             | Before (Mixed) | After (Threaded) | Improvement            |
 | --------------------- | -------------- | ---------------- | ---------------------- |
 | Audio Processing      | 1 worklet      | 2 worklets       | Parallel processing    |
-| WebSocket Connections | 1 connection   | 2 connections    | Fault isolation        |
-| Gemini API Sessions   | 1 session      | 2 sessions       | Independent processing |
+| IPC Channels          | 1 channel      | Tagged channel   | Source attribution     |
+| whisper.cpp Calls     | Mixed input    | Tagged per call  | Independent processing |
 | Database Writes       | Mixed records  | Tagged records   | Clear attribution      |
 | UI Rendering          | Single thread  | Differentiated   | Better UX              |
 
 ### 10.2 Latency Analysis
 
 ```
-Audio Capture → Worklet Processing → WebSocket → Proxy → Gemini → Response
-     ~5ms           ~10ms           ~20ms      ~5ms    ~200ms    ~240ms total
+Audio Capture → Worklet Processing → IPC → WhisperBackend → whisper.cpp → Response
+     ~5ms           ~10ms           ~2ms        ~5ms          ~100-500ms
 ```
 
 **Optimizations:**
 
 - **Parallel Processing**: Both streams processed simultaneously
 - **Efficient Buffering**: 8KB buffers minimize latency while ensuring quality
-- **Silence Detection**: Reduces unnecessary network traffic
-- **Connection Reuse**: WebSocket connections maintained for session duration
+- **Silence Detection**: Reduces unnecessary processing
+- **Local-only**: No network round-trip; all processing on-device
 
 ## 11. Error Handling & Resilience
 
@@ -398,60 +351,46 @@ Audio Capture → Worklet Processing → WebSocket → Proxy → Gemini → Resp
 ```typescript
 // Independent error handling per stream
 try {
-  micGeminiClient.sendMediaChunk(data, "audio/pcm");
+  electronAPI.send("transcription:audio", { pcmData: data, sourceType: "microphone" });
 } catch (error) {
   console.error("Microphone stream error:", error);
   // System audio continues unaffected
 }
 
 try {
-  systemGeminiClient.sendMediaChunk(data, "audio/pcm");
+  electronAPI.send("transcription:audio", { pcmData: data, sourceType: "system" });
 } catch (error) {
   console.error("System audio stream error:", error);
   // Microphone continues unaffected
 }
 ```
 
-### 11.2 Reconnection Strategy
+### 11.2 Resilience Strategy
 
-```typescript
-// Each client has independent reconnection logic
-class GeminiClient {
-  private reconnect() {
-    if (this.reconnectAttempts < this.maxReconnectAttempts) {
-      this.reconnectAttempts++;
-      setTimeout(() => {
-        this.connect(); // Independent reconnection
-      }, this.reconnectTimeout * this.reconnectAttempts);
-    }
-  }
-}
-```
+If whisper.cpp crashes or Ollama is unavailable, the worklets continue collecting audio. The main process logs errors and attempts recovery. Raw transcription is always shown if enhancement fails.
 
 ### 11.3 Graceful Degradation
 
-| Failure Scenario     | System Behavior                | User Experience                 |
-| -------------------- | ------------------------------ | ------------------------------- |
-| Microphone failure   | System audio continues         | Only others' speech transcribed |
-| System audio failure | Microphone continues           | Only user speech transcribed    |
-| One WebSocket fails  | Other stream unaffected        | Partial transcription continues |
-| Proxy server issues  | Both streams attempt reconnect | Temporary transcription pause   |
-| Database failure     | UI continues, data queued      | Real-time display maintained    |
+| Failure Scenario       | System Behavior                | User Experience                 |
+| ---------------------- | ------------------------------ | ------------------------------- |
+| Microphone failure     | System audio continues         | Only others' speech transcribed |
+| System audio failure   | Microphone continues           | Only user speech transcribed    |
+| whisper.cpp crash      | Error logged, session paused   | Transcription stops temporarily |
+| Ollama unavailable     | Raw transcription shown        | No enhancement, no AI actions   |
+| Database failure       | UI continues, data queued      | Real-time display maintained    |
 
-## 12. Security Considerations
+## 12. Security and Privacy Considerations
 
 ### 12.1 Data Isolation
 
 - **Stream Separation**: Audio sources never mixed at processing level
-- **Independent Authentication**: Each WebSocket connection properly authenticated
 - **Source Validation**: `sourceType` validated before database storage
 - **IPC Security**: Structured message validation in main process
 
 ### 12.2 Privacy Protection
 
-- **Local Processing**: Audio processing happens locally before transmission
-- **Encrypted Transmission**: WebSocket connections use secure protocols
-- **Minimal Metadata**: Only essential information transmitted to Gemini
+- **Fully Local**: All audio processing and transcription happens on-device — audio never leaves the machine
+- **No Network Transmission**: whisper.cpp runs as a local binary; Ollama runs at localhost
 - **User Control**: Users can disable either microphone or system audio
 
 ## 13. Future Enhancements
@@ -513,7 +452,7 @@ interface TranscriptionMetrics {
 
 The Transcription Threading architecture successfully transforms a mixed-audio experience into an intuitive, chat-like conversation interface. By separating audio processing at the source level and maintaining isolation throughout the entire pipeline, the system provides clear speaker identification while maintaining high performance and reliability.
 
-The modular design ensures scalability for future enhancements while preserving backward compatibility with existing data and workflows. The implementation leverages existing infrastructure effectively, requiring minimal changes to the proxy server while providing maximum benefit to the user experience.
+The modular design ensures scalability for future enhancements while preserving backward compatibility with existing data and workflows. The implementation leverages the local whisper.cpp + Ollama stack effectively, with all processing happening on-device.
 
 **Key Achievements:**
 

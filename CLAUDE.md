@@ -20,22 +20,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `pnpm --filter app build:local` - Build desktop app locally (unsigned)
 - `pnpm --filter app build` - Build signed macOS app (requires code signing setup)
 
-#### Web Application (`apps/web`)
-
-- `pnpm --filter web dev` - Start web app development server
-- `pnpm --filter web build` - Build web application
-- `pnpm --filter web typecheck` - Run TypeScript type checking
-
 #### History Viewer (`apps/history-viewer`)
 
 - `pnpm --filter history-viewer dev:history` - Start on port 4001
 - `pnpm --filter history-viewer build` - Build static Next.js output
-
-### Supabase Development
-
-- `pnpm dlx supabase start` - Start local Supabase services
-- `pnpm dlx supabase status` - Get local API keys and service URLs
-- `supabase functions serve --env-file .env` - Start Supabase Edge Functions locally
 
 ## Architecture Overview
 
@@ -47,15 +35,11 @@ This is a **monorepo** managed with **pnpm workspaces** and **Turborepo**.
 /
 ├── apps/
 │   ├── app/                   # Electron + Vite desktop application (main app)
-│   ├── app_old/               # Legacy desktop app (deprecated)
-│   ├── history-viewer/        # Next.js app embedded in desktop app
-│   ├── web/                   # Next.js marketing and demo website
-│   └── admin-dashboard/       # Admin management interface
+│   └── history-viewer/        # Next.js app embedded in desktop app
 ├── packages/
 │   ├── ui/                    # Shared React components (Radix + Tailwind)
 │   ├── eslint-config/         # Shared ESLint configurations
 │   └── typescript-config/     # Shared TypeScript configurations
-├── supabase/                  # Backend: Auth, DB, Edge Functions
 └── docs/                      # Architecture documentation
 ```
 
@@ -68,16 +52,17 @@ This is a **monorepo** managed with **pnpm workspaces** and **Turborepo**.
 - **SQLite** for local data storage
 - **Electron-vite** for build system
 
-**Web Applications:**
+**History Viewer:**
 
 - **Next.js 15** + **React 19** + **TypeScript**
-- **Tailwind CSS** + shared UI components
+- Built as a static export and embedded inside the desktop app
 
-**Backend:**
+**Backend: None**
 
-- **Supabase** (PostgreSQL, Auth, Edge Functions)
-- **Deno** for serverless Edge Functions
-- **Node.js** WebSocket proxy server
+- There is NO cloud backend. The app is fully local.
+- **SQLite** for all persistent storage
+- **whisper.cpp** (bundled binary) for local, offline transcription
+- **Ollama** (`http://localhost:11434`) for all AI actions
 
 ### Key Architecture Patterns
 
@@ -87,7 +72,8 @@ The desktop app implements a **dual-stream audio architecture**:
 
 - **Microphone Audio**: Processed by `MicAudioProcessor` worklet → tagged as `sourceType: "microphone"`
 - **System Audio**: Processed by `SystemAudioProcessor` worklet → tagged as `sourceType: "system"`
-- Each stream connects to separate **GeminiClient** instances via **WebSocket**
+- Each stream is processed by local **whisper.cpp** (via IPC to the main process)
+- AI actions (enhancement, chat, summarize, etc.) use local **Ollama** (`http://localhost:11434`)
 - Transcriptions are threaded in chat-like UI (user messages right, others left)
 
 **Key Files:**
@@ -104,40 +90,20 @@ The desktop app implements a **dual-stream audio architecture**:
 - **Preload Scripts**: `apps/app/src/preload/index.ts` - Secure IPC bridge
 - **Database**: SQLite with `apps/app/src/main/database-service.ts`
 
-#### Authentication & RBAC
-
-- **Supabase Auth** with OAuth support
-- **Role-Based Access Control** with entitlements and quotas
-- **Session profiles** fetched via `get-session-profile` Edge Function
-- **Admin dashboard** restricted to users with `admin` role
-
 ### Environment Setup
 
-Each application requires environment configuration:
-
-1. **Copy `.env.example` to `.env`** in each app directory:
-   - `apps/app/.env`
-   - `apps/web/.env`
-
-2. **Start Supabase locally**: `pnpm dlx supabase start`
-
-3. **Get Supabase credentials**: `pnpm dlx supabase status`
-
-4. **Fill in required API keys** (Supabase, etc.)
+The desktop app requires no cloud credentials. If needed, copy `apps/app/.env.example` to `apps/app/.env` — the app runs without any API keys (Ollama is local HTTP, whisper.cpp is bundled).
 
 ### Development Workflow
 
 1. **Setup**: Install dependencies with `pnpm install`
-2. **Supabase**: Start local backend with `pnpm dlx supabase start`
-3. **Environment**: Configure `.env` files with API keys
-4. **Development**: Use `pnpm dev` or app-specific commands
-5. **Quality**: Run `pnpm lint` and `pnpm format` before commits
+2. **Ollama** (optional): Install and start Ollama for AI enhancement (`http://localhost:11434`)
+3. **Development**: Use `pnpm dev` or `pnpm --filter app dev` for the desktop app
+4. **Quality**: Run `pnpm lint` and `pnpm format` before commits
 
 ### Testing
 
-- **Supabase Edge Functions**: Test files in `supabase/functions/*/index.test.ts`
 - **Desktop App**: No formal test setup currently
-- **Web Apps**: Standard Next.js testing patterns
 
 ### Release Process
 
@@ -222,15 +188,14 @@ User Request → Orchestrator → Agent Registry → Workflow Coordinator → Sp
 ## PROJECT-SPECIFIC GUIDELINES
 
 - **Tech Stack**:
-  - **Frontend**: React, TypeScript, Tailwind CSS, shadcn/ui
-  - **Backend**: Supabase (PostgreSQL, Auth, Functions)
+  - **Frontend**: React, TypeScript, Tailwind CSS, shadcn/ui (Electron renderer)
+  - **Backend**: None — fully local (SQLite, whisper.cpp, Ollama)
 - **Development Workflow**:
   1.  Consult the **active plan file** (provided by the user, e.g., from the `plans/` directory) for the current project phase and tasks.
   2.  Select the appropriate agent for the task as specified in the plan.
   3.  Follow a Test-Driven Development (TDD) approach where possible. Write tests before implementation.
   4.  For UI components, use `react-component-architect` and adhere to `shadcn/ui` principles if applicable.
-  5.  For backend logic, especially Supabase functions, use `backend-developer`.
-  6.  All styling changes must be implemented using `tailwind-css-expert`.
+  5.  All styling changes must be implemented using `tailwind-css-expert`.
 - **Code Interpretation**:
   - Do not blindly trust comments in the code. Comments can become outdated.
   - The code itself is the most reliable source of truth. Prioritize understanding the code's logic and structure over comments when they are in conflict.

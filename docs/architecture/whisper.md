@@ -192,7 +192,7 @@ Advanced pattern matching removes common Whisper hallucinations:
 - **Warm Start**: ~800ms (subsequent transcriptions)
 - **Memory Usage**: ~200MB (tiny model)
 - **CPU Usage**: ~50% during active transcription
-- **Success Rate**: 99%+ (vs 85% with Gemini)
+- **Success Rate**: 99%+
 
 #### Optimization Techniques
 
@@ -215,7 +215,7 @@ Advanced pattern matching removes common Whisper hallucinations:
 
 - **IPC Validation**: All renderer→main communication validated
 - **File System**: Restricted to app data directories
-- **Binary Execution**: Code-signed binaries with entitlements
+- **Binary Execution**: Code-signed binaries (macOS entitlements for microphone/audio access)
 - **Network**: Only for initial model downloads
 
 ### Error Handling & Recovery
@@ -623,29 +623,28 @@ setTranscriptions((prev) =>
 
 - Added `transcription_enhance` to AIAction type
 - Implemented enhancement case in `sendContextToAI()` switch
-- Updated Edge Function for backward-compatible unified format
+- Enhancement now uses `ollamaService` directly in the main process (no cloud call)
 - Reuses existing context gathering, session management patterns
 
 **Benefits:**
 
 - Eliminates code duplication
 - Consistent error handling across all AI actions
-- Standard logging and analytics tracking
 - Easier to maintain and extend
 
 **Files updated:**
 
 - `apps/app/src/renderer/src/hooks/useAIInteraction.ts`
-- `supabase/functions/transcription-enhance/index.ts`
+- `apps/app/src/main/transcriptionEnhancementService.ts`
 
 ### 2. Retry Logic Implementation
 
-**Completed:** Exponential backoff retry logic added to enhancement API calls
+**Completed:** Exponential backoff retry logic added to Ollama HTTP calls
 
 **Pattern:**
 
 ```typescript
-// Retry configuration (matches Gemini client)
+// Retry configuration
 - Max retries: 3
 - Backoff delays: 1s, 2s, 5s
 - Retryable errors: 503, 429, 500
@@ -655,35 +654,13 @@ setTranscriptions((prev) =>
 **Impact:**
 
 - Enhancement success rate improved from ~95% to ~99%+
-- Better handling of API rate limits and transient failures
-- Consistent retry pattern across all AI actions
+- Better handling of transient Ollama unavailability
 
 **File updated:**
 
 - `apps/app/src/main/transcriptionEnhancementService.ts`
 
-### 3. Supabase Schema Documentation
-
-**Completed:** Comprehensive migration documentation added
-
-**Strategy:**
-
-- Enhancement available to all user tiers (free, pro, beta, admin)
-- No separate quotas needed (session time limits control usage)
-- Batching reduces API calls by 80%
-- Natural rate limiting via real-time transcription
-
-**Expected volumes:**
-
-- Free users (15 min sessions): ~36 API calls
-- Pro users: Based on session duration
-- Batching efficiency: 5 segments per call
-
-**File updated:**
-
-- `supabase/migrations/20250930200000_add_transcription_enhance_entitlement.sql`
-
-### 4. Architecture Improvements
+### 3. Architecture Improvements
 
 **Preserved:**
 
@@ -696,8 +673,8 @@ setTranscriptions((prev) =>
 
 - Retry logic for reliability
 - Better error logging with attempt counts
-- Documentation of quota strategy
-- Backward-compatible API format
+- Documentation of architecture
+- Backward-compatible data format
 
 ## Future Enhancements
 
@@ -713,7 +690,6 @@ setTranscriptions((prev) =>
 - **Speaker Diarization**: Multi-speaker identification
 - **Language Auto-Detection**: Automatic language switching
 - **Background Processing**: Continuous transcription with minimal UI impact
-- **Cloud Sync**: Optional cloud backup of transcription data
 
 ### Long-Term (Q2+ 2026)
 
