@@ -2,54 +2,32 @@
 
 ## 1. Introduction
 
-Knovy is an AI assistant platform composed of a desktop application, a web-based demo, an admin dashboard, and a robust backend. This document provides a high-level overview of the system architecture, which is designed for security, efficiency, and scalability using a modern, serverless approach.
+Knovy is a fully local AI meeting-assistant desktop application. It runs entirely on the user's machine — no accounts, no cloud backend, no API keys required. Transcription uses a bundled whisper.cpp binary; all AI actions use a locally-running Ollama instance.
 
 ## 2. System Architecture
 
-The project leverages Supabase for its core backend infrastructure, including authentication, database services, and secure serverless functions. A sophisticated Role-Based Access Control (RBAC) and entitlements system is implemented to manage user permissions, features, and usage quotas.
+There is no cloud backend. All components run on the user's machine.
 
 ### System Diagram
 
 ```mermaid
 graph TD
-    subgraph User-Facing Applications
-        DesktopApp[Desktop Application]
-        WebApp[Web Application]
-        AdminDashboard[Admin Dashboard]
+    subgraph "Desktop Application (Electron)"
+        Renderer[Renderer Process <br/> React UI]
+        Main[Main Process <br/> IPC, DB, Services]
     end
 
-    subgraph "Supabase Backend"
-        Auth[Supabase Auth]
-        DB[(Supabase DB <br/> Roles, Entitlements, Quotas, Logs)]
-        subgraph EdgeFunctions [Supabase Edge Functions]
-            CoreServices[Core Services <br/> get-session-profile, session-manager]
-            AIActions[AI Actions <br/> summarize, chat, etc.]
-            AdminAPI[Admin API <br/> /users, /users/id/role]
-        end
+    subgraph "Local Services"
+        WhisperCpp[whisper.cpp binary <br/> Local transcription]
+        Ollama[Ollama <br/> http://localhost:11434 <br/> AI actions & enhancement]
+        SQLite[(SQLite Database <br/> Sessions, Transcripts)]
     end
 
-    subgraph "Other Services"
-        GoogleAI[Google Generative AI]
-        WhisperCpp[Local whisper.cpp <br/> Desktop App Only]
-    end
-
-    User[User] --> WebApp
-    User --> DesktopApp
-    Admin[Admin User] --> AdminDashboard
-
-    WebApp -- "Login" --> Auth
-    DesktopApp -- "Login" --> Auth
-    AdminDashboard -- "Login (Admin Role Required)" --> Auth
-
-    DesktopApp -- "Local Transcription" --> WhisperCpp
-    DesktopApp -- "Enhancement API Calls" --> AIActions
-
-    DesktopApp -- "Authenticated API Calls" --> CoreServices
-    DesktopApp -- "Authenticated API Calls" --> AIActions
-    AdminDashboard -- "Authenticated API Calls" --> AdminAPI
-
-    AIActions -- "Secure API Calls" --> GoogleAI
-    EdgeFunctions -- "DB Operations" --> DB
+    User[User] --> Renderer
+    Renderer -- "IPC" --> Main
+    Main -- "Spawn process" --> WhisperCpp
+    Main -- "HTTP" --> Ollama
+    Main --> SQLite
 ```
 
 ## 3. Application Components
@@ -57,7 +35,7 @@ graph TD
 ### 3.1. Desktop Application (`apps/app`)
 
 - **Framework**: Electron + React (using Vite).
-- **Core Functionality**: Provides the full Knovy experience, including real-time audio capture, local transcription, transcription enhancement, and AI actions.
+- **Core Functionality**: Provides the full Knovy experience, including real-time audio capture, local transcription, transcription enhancement, and AI actions. No account or internet connection required.
 - **Transcription Architecture**:
   - **Local Speech-to-Text**: Uses whisper.cpp binaries running directly on the user's machine for privacy and offline capability.
   - **Model Management**: Automatically downloads and manages whisper models (default: base model, 142MB).
@@ -70,44 +48,16 @@ graph TD
     - Raw transcription is enhanced on-device by a local Ollama model in the main process before being sent to the UI.
     - Enhancement covers grammar correction, Traditional Chinese conversion, and keyword extraction.
     - If the model is unavailable, the raw transcription is shown unchanged (best-effort, never blocking).
-- **Backend Interaction**:
-  - **Authentication**: Uses Supabase for user login (OAuth).
-  - **Session Management**: On startup, it calls the `get-session-profile` Edge Function to fetch the user's role, entitlements, and quotas, which dynamically configures the UI.
-  - **AI Actions**: Connects to secure Supabase Edge Functions (e.g., `ai-action-summarize`, `ai-action-chat`), which are protected by the entitlements middleware.
-  - **Transcription Enhancement**: Runs locally via Ollama in the main process — no network call (see Section 5).
-  - **Local Storage**: SQLite database stores both raw and enhanced transcriptions with metadata.
+- **All AI Actions** (chat, summarize, recommend, deep, keyword search, screenshot analysis) run locally via Ollama at `http://localhost:11434`. No cloud API calls are made.
+- **Local Storage**: SQLite database stores both raw and enhanced transcriptions with metadata.
 
-### 3.2. Web Application (`apps/web`)
+## 4. Local Services
 
-- **Framework**: Next.js.
-- **Core Functionality**: Serves as the project's public-facing website and provides a video demo of the product.
-- **Backend Interaction**:
-  - **Authentication**: Uses Supabase for user login.
+The app depends only on local services:
 
-### 3.3. Admin Dashboard (`apps/admin-dashboard`)
-
-- **Framework**: Next.js.
-- **Purpose**: An internal tool for administrators to manage the Knovy platform. It is deployed to a restricted subdomain for security.
-- **Features**:
-  - **User Management**: List all registered users and view their assigned roles.
-  - **Role Assignment**: Change a user's role (e.g., from `free` to `pro`).
-  - **Usage Auditing**: View the action logs for any specific user.
-- **Authentication and Security**:
-  - Access is strictly limited to users with the `admin` role.
-  - On load, the application fetches the user's session profile. If the user does not have the `admin` role, they are redirected.
-  - All API calls are sent to the `admin-api` Edge Function and are validated on the server.
-
-## 4. Backend Services
-
-Our backend is composed of several key pieces:
-
-- **Supabase**: The serverless core of our backend.
-  - **Auth**: Manages all user authentication (including OAuth) and provides JWTs for secure API access.
-  - **Database**: A PostgreSQL database storing all application data, including the RBAC tables (`roles`, `entitlements`, `quotas`) and usage logs (`action_logs`, `transcription_ledger`).
-  - **Edge Functions**: Secure, serverless Deno functions that host all application logic.
-    - **Core Services**: Functions like `get-session-profile` that provide essential data to clients.
-    - **AI Actions**: A suite of functions that perform specific AI tasks, each protected by the `withEntitlements` middleware to enforce RBAC and quotas.
-    - **Admin API**: A dedicated API for platform management, restricted to admin users.
+- **whisper.cpp**: Bundled binary, spawned as a child process by the main process. Handles all speech-to-text. No network access.
+- **Ollama** (`http://localhost:11434`): Optional local LLM server. Used for transcription enhancement and all AI actions. If unavailable, raw transcriptions are shown and AI actions are disabled.
+- **SQLite**: Embedded database in the app's user-data directory. Stores sessions, transcripts (raw + enhanced), and metadata.
 
 ## 5. Transcription Enhancement Architecture
 
@@ -173,10 +123,10 @@ CREATE TABLE transcripts (
 
 ### User Language Context Flow
 
-The user's preferred language (from session profile) flows through the entire transcription pipeline:
+The user's preferred language (from local app settings) flows through the entire transcription pipeline:
 
-1. **Session Profile** → Contains `profile.language` or `app_settings.language`
-2. **RealTimeAnalysis Component** → Extracts user language from session profile
+1. **App Settings** → Contains `profile.language` or `app_settings.language` (stored locally)
+2. **RealTimeAnalysis Component** → Extracts user language from local settings
 3. **TranscriptionFactory** → Passes `userLanguage` to processor configuration
 4. **WhisperBackend** → Uses `userLanguage` to determine if two-stage detection is needed
 5. **Enhancement Service** → Uses `userLanguage` for Traditional Chinese conversion

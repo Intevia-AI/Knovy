@@ -18,7 +18,7 @@ export interface SessionContext {
 
 export interface Session {
   id: string
-  user_id: string
+  user_id?: string
   started_at: string
   ended_at: string | null
   duration: number | null
@@ -44,5 +44,4 @@ export interface GroupedSessions {
 export interface HistoryPaginationParams {
   limit: number
   offset: number
-  userId: string
 }

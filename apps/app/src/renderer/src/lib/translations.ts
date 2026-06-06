@@ -60,7 +60,6 @@ export const translations = {
     loginToUseAiActionsDescriptionToast: 'Please log in to use AI actions with screen content.',
     statusAuthLoading: 'Authenticating...',
     statusAuthLoadingShort: 'Auth...',
-    signOut: 'Sign Out',
     // Settings Panel
     viewHistory: 'View History',
     languageSettings: 'Language Settings',
@@ -85,7 +84,6 @@ export const translations = {
     // Section Titles
     generalSection: 'General',
     appearanceSection: 'Appearance',
-    accountSection: 'Account',
     aboutSection: 'About',
 
     // About Section
@@ -106,7 +104,6 @@ export const translations = {
     generalTab: 'General',
     historyTab: 'History',
     aiModelsTab: 'AI Models',
-    accountTab: 'Account',
     displayTab: 'Display',
     shortcutsTab: 'Shortcuts',
     aboutTab: 'About',
@@ -151,7 +148,6 @@ export const translations = {
     displaySettingsDescription: 'Configure display and screen settings',
     displayChangeWarning: 'Changing display will restart your current recording session',
     contentProtectionDescription: 'Hide app content from screenshots and screen recordings',
-    accountSettingsDescription: 'Manage your account and subscription',
     // Delete Confirmation Dialog
     deleteSessionTitle: 'Delete Session?',
     deleteSessionMessage:
@@ -252,7 +248,6 @@ export const translations = {
     loginToUseAiActionsDescriptionToast: '請登入以使用螢幕內容相關的 AI 功能。',
     statusAuthLoading: '驗證中...',
     statusAuthLoadingShort: '驗證...',
-    signOut: '登出',
     // Settings Panel
     viewHistory: '查看歷史紀錄',
     languageSettings: '語言設定',
@@ -276,7 +271,6 @@ export const translations = {
     // Section Titles
     generalSection: '一般',
     appearanceSection: '外觀',
-    accountSection: '帳戶',
     aboutSection: '關於',
 
     // About Section
@@ -298,7 +292,6 @@ export const translations = {
     generalTab: '設定',
     historyTab: '歷史紀錄',
     aiModelsTab: 'AI 模型',
-    accountTab: '帳戶',
     displayTab: '顯示器',
     shortcutsTab: '快捷鍵',
     aboutTab: '關於',
@@ -343,7 +336,6 @@ export const translations = {
     displaySettingsDescription: '設定 Knovy 所處的螢幕',
     displayChangeWarning: '變更顯示器將會重新開始您目前的錄製對話紀錄',
     contentProtectionDescription: '隱藏應用程式內容，防止螢幕截圖和錄影',
-    accountSettingsDescription: '管理您的帳戶和訂閱',
     // Delete Confirmation Dialog
     deleteSessionTitle: '刪除紀錄',
     deleteSessionMessage: '您確定要刪除此對話紀錄嗎？此操作無法復原。',
@@ -449,7 +441,6 @@ export type TranslationKey =
   | 'loginToUseAiActionsDescriptionToast'
   | 'statusAuthLoading'
   | 'statusAuthLoadingShort'
-  | 'signOut'
   // Settings Panel
   | 'viewHistory'
   | 'languageSettings'
@@ -473,7 +464,6 @@ export type TranslationKey =
   // Section Titles
   | 'generalSection'
   | 'appearanceSection'
-  | 'accountSection'
   | 'aboutSection'
   | 'versionLabel'
   | 'copyrightLabel'
@@ -492,7 +482,6 @@ export type TranslationKey =
   | 'generalTab'
   | 'historyTab'
   | 'aiModelsTab'
-  | 'accountTab'
   | 'displayTab'
   | 'shortcutsTab'
   | 'aboutTab'
@@ -537,7 +526,6 @@ export type TranslationKey =
   | 'displaySettingsDescription'
   | 'displayChangeWarning'
   | 'contentProtectionDescription'
-  | 'accountSettingsDescription'
   // Delete Confirmation Dialog
   | 'deleteSessionTitle'
   | 'deleteSessionMessage'

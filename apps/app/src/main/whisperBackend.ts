@@ -31,7 +31,7 @@ export interface TranscriptionOptions {
   energyThreshold?: number
   minSpeechConfidence?: number
   autoDetectLanguage?: boolean // Enable automatic language detection (default: true)
-  userLanguage?: string // User's preferred language (from session profile)
+  userLanguage?: string // User's preferred language (from local settings)
   enableTwoStageDetection?: boolean // Enable two-stage detection for better quality (default: true for zh-TW users)
   // VAD (Voice Activity Detection) options
   enableVAD?: boolean // Enable VAD to filter out non-speech audio (default: true)

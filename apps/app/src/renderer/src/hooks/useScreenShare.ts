@@ -8,8 +8,6 @@ import { useState, useRef, useCallback, useEffect } from 'react'
 import { cleanupStream, cleanupRecorder } from '@/lib/utils'
 import { useSegmentRecorder } from '@/hooks/useSegmentRecorder'
 import type { Segment } from '@/types'
-import { analyticsService } from '@/services/analytics-service'
-import { useAuth } from '@/context/AuthContext'
 
 const SYSTEM_AUDIO_CHUNK_MS = 1000
 
@@ -50,7 +48,6 @@ const SYSTEM_AUDIO_CHUNK_MS = 1000
  * ```
  */
 export function useScreenShare() {
-  const { user } = useAuth()
   const [isScreenSharing, setIsScreenSharing] = useState(false)
   const [restartRequested, setRestartRequested] = useState(false)
   const [recordingDuration, setRecordingDuration] = useState(0)
@@ -113,19 +110,6 @@ export function useScreenShare() {
       }
     } else {
       makeSystemAudioBlobAndDispatch() // Dispatch remaining if inactive
-    }
-
-    // End analytics session for this screen-share session
-    if (analyticsService.isSessionActive()) {
-      console.log('[ScreenShare] Ending analytics session')
-      await analyticsService.endSession('normal')
-      console.log('[ScreenShare] Analytics session ended')
-
-      // Clear analytics session ID in main process
-      if ((window as any).electronAPI) {
-        await (window as any).electronAPI.invoke('analytics:clear-session-id')
-        console.log('[ScreenShare] Cleared analytics session ID in main process')
-      }
     }
 
     // Cleanup screen stream
@@ -325,22 +309,6 @@ export function useScreenShare() {
         video: true,
         audio: true
       })
-
-      // Start analytics session for this screen-share session
-      if (!user?.id) {
-        console.error('[ScreenShare] Cannot start analytics session: No user ID')
-        throw new Error('User not authenticated')
-      }
-
-      console.log('[ScreenShare] Starting analytics session for user:', user.id)
-      const sessionId = await analyticsService.startSession(user.id)
-      console.log('[ScreenShare] Analytics session started:', sessionId)
-
-      // Send analytics session ID to main process for transcription enhancement
-      if ((window as any).electronAPI) {
-        await (window as any).electronAPI.invoke('analytics:set-session-id', sessionId)
-        console.log('[ScreenShare] Sent analytics session ID to main process:', sessionId)
-      }
 
       // --- Mic Recording ---
       await startMicRecording()

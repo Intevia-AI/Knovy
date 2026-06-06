@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { motion } from 'motion'
 import { Search, Loader2, Calendar, X } from 'lucide-react'
-import { useAuth } from '@/hooks/useAuth'
 import { useTranslation } from '@/context/TranslationContext'
 import { SessionWithTranscripts, GroupedSessions } from '@/types/history'
 import { groupSessionsByDate, filterSessions } from '@/lib/history-utils'
@@ -14,7 +13,6 @@ const SESSIONS_PER_PAGE = 20
 
 export function HistoryView() {
   const { t } = useTranslation()
-  const { sessionProfile } = useAuth()
   const [sessions, setSessions] = useState<SessionWithTranscripts[]>([])
   const [allSessionDates, setAllSessionDates] = useState<string[]>([])
   const [groupedSessions, setGroupedSessions] = useState<GroupedSessions[]>([])
@@ -44,17 +42,8 @@ export function HistoryView() {
 
   // Load initial sessions
   useEffect(() => {
-    console.log('[HistoryView] sessionProfile:', sessionProfile)
-    console.log('[HistoryView] sessionProfile.id:', sessionProfile?.id)
-
-    if (sessionProfile?.id) {
-      console.log('[HistoryView] Loading sessions for user:', sessionProfile.id)
-      loadSessions(0, true)
-    } else {
-      console.log('[HistoryView] No sessionProfile.id, loading all sessions')
-      loadSessions(0, true)
-    }
-  }, [sessionProfile?.id])
+    loadSessions(0, true)
+  }, [])
 
   // Periodic refresh: Reload sessions every 15 seconds to fetch latest data
   useEffect(() => {
@@ -153,11 +142,9 @@ export function HistoryView() {
 
     setIsLoading(true)
     try {
-      const userId = sessionProfile?.id || 'local-user'
-      console.log('[HistoryView] Calling getSessionsWithTranscripts with userId:', userId)
+      console.log('[HistoryView] Calling getSessionsWithTranscripts')
 
       const result = await window.electronAPI.getSessionsWithTranscripts(
-        userId,
         SESSIONS_PER_PAGE,
         currentOffset
       )
@@ -193,8 +180,8 @@ export function HistoryView() {
 
   const handleExport = useCallback(async (sessionId: string) => {
     try {
-      // Get user's locale and timezone
-      const locale = sessionProfile?.profile?.language || sessionProfile?.app_settings?.language || 'en-US'
+      // Get locale and timezone from system
+      const locale = Intl.DateTimeFormat().resolvedOptions().locale || 'en-US'
       const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone
 
       // Export session with locale and timezone for transformation
@@ -221,7 +208,7 @@ export function HistoryView() {
     } catch (error) {
       console.error('Failed to export session:', error)
     }
-  }, [sessionProfile])
+  }, [])
 
   const handleDelete = useCallback(async (sessionId: string) => {
     // Confirmation dialog is handled by SessionCard component

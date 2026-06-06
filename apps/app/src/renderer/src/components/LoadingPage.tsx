@@ -371,7 +371,7 @@ export function LoadingPage({
           </div>
         )}
 
-        {/* Action buttons (positioned like button in LoginPage) */}
+        {/* Action buttons */}
         {status === 'error' && (
           <div className="space-y-2 w-full max-w-xs">
             <Button

@@ -10,7 +10,6 @@ import {
 } from 'lucide-react'
 import { useI18n } from '@/hooks/useI18n'
 import { formatTime } from '@/lib/utils'
-import { useAuth } from '@/hooks/useAuth'
 
 interface MainControlBarProps {
   isAlwaysOnTop: boolean
@@ -36,14 +35,7 @@ export function MainControlBar({
   isSettingsOpen
 }: MainControlBarProps) {
   const { t } = useI18n()
-  const { sessionProfile } = useAuth()
-
-  // Check if any AI action entitlements are enabled in the session profile
-  const canShowActions =
-    sessionProfile?.entitlements &&
-    Object.keys(sessionProfile.entitlements).some(
-      (key) => key.startsWith('allow_ai_action:') && sessionProfile.entitlements[key] === true
-    )
+  const canShowActions = true
 
   return (
     <header

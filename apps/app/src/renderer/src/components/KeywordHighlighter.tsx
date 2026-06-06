@@ -1,6 +1,5 @@
 import React, { memo } from 'react'
 import { cn } from '@/lib/utils'
-import { useAuth } from '@/hooks/useAuth'
 
 interface KeywordHighlighterProps {
   text: string
@@ -24,8 +23,7 @@ const NonMemoizedKeywordHighlighter: React.FC<KeywordHighlighterProps> = ({
   keywords = [],
   onKeywordClick
 }) => {
-  const { hasEntitlement } = useAuth()
-  const canUseKeywordSearch = hasEntitlement('allow_ai_action:keyword-search')
+  const canUseKeywordSearch = true
 
   // If no keywords, return plain text
   if (!keywords || keywords.length === 0) {
@@ -114,7 +112,7 @@ const NonMemoizedKeywordHighlighter: React.FC<KeywordHighlighterProps> = ({
             className={cn(
               isClickableKeyword
                 ? 'bg-muted rounded-lg px-1 py-0.5 text-sm hover:bg-muted/80 cursor-pointer'
-                : 'bg-muted rounded-lg px-1 py-0.5 text-sm' // Non-clickable styling for free users
+                : 'bg-muted rounded-lg px-1 py-0.5 text-sm' // Non-clickable styling when no click handler
             )}
           >
             {segment.text}

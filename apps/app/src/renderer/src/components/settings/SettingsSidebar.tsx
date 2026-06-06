@@ -2,8 +2,6 @@ import { motion } from 'motion'
 import {
   Settings,
   History,
-  User,
-  Monitor,
   Keyboard,
   Info,
   Power,
@@ -29,7 +27,6 @@ const navItems: NavItem[] = [
   { id: 'aiModels', labelKey: 'aiModelsTab', icon: Bot },
   { id: 'autoTrigger', labelKey: 'autoTriggerTab', icon: Zap },
   { id: 'shortcuts', labelKey: 'shortcutsTab', icon: Keyboard },
-  { id: 'account', labelKey: 'accountTab', icon: User },
   { id: 'about', labelKey: 'aboutTab', icon: Info }
 ]
 
