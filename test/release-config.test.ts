@@ -25,6 +25,10 @@ describe('electron-builder publish target', () => {
   it('publishes to THIS repository (Knovy), not the separate Knovy-Release repo', () => {
     expect(config.publish.repo).toBe('Knovy')
   })
+
+  it('auto-publishes (releaseType: release) so tagged builds go live without a manual draft step', () => {
+    expect(config.publish.releaseType).toBe('release')
+  })
 })
 
 describe('release workflow', () => {
