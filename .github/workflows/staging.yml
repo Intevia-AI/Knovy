@@ -50,3 +50,13 @@ jobs:
         run: |
           BASE=$(node -p "require('./package.json').version")
           npm version "${BASE}-stg.${{ github.run_number }}" --no-git-tag-version --allow-same-version
+
+      - name: Build staging app (signed, not published)
+        env:
+          # Apple code signing / notarization secrets (same as the production release).
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+        run: pnpm --filter Knovy run build:staging

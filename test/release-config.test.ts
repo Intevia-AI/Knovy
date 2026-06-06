@@ -83,6 +83,21 @@ describe('staging workflow', () => {
     expect(step).toBeDefined()
     expect(step.run).toContain('github.run_number')
   })
+
+  it('builds without publishing a release', () => {
+    const step = stagingSteps().find(
+      (s) => typeof s.run === 'string' && s.run.includes('build:staging'),
+    )
+    expect(step).toBeDefined()
+  })
+})
+
+describe('staging build:staging script', () => {
+  const pkg = readYaml('apps/app/package.json')
+
+  it('builds the app without publishing (electron-builder --publish never)', () => {
+    expect(pkg.scripts['build:staging']).toContain('--publish never')
+  })
 })
 
 describe('no leftover references to the external release setup', () => {
