@@ -75,6 +75,14 @@ describe('staging workflow', () => {
     const on = wf.on ?? wf[true] // js-yaml may coerce the `on` key
     expect(on.push.branches).toContain('stg')
   })
+
+  it('stamps the build with a -stg.<run_number> prerelease suffix', () => {
+    const step = stagingSteps().find(
+      (s) => typeof s.run === 'string' && s.run.includes('-stg.'),
+    )
+    expect(step).toBeDefined()
+    expect(step.run).toContain('github.run_number')
+  })
 })
 
 describe('no leftover references to the external release setup', () => {
