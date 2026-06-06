@@ -10,3 +10,10 @@ cache/
 graph.json
 graph.html
 GRAPH_REPORT.md
+
+# Regenerated graph data — rewritten by the post-commit/post-checkout hooks on
+# every commit and branch switch. Kept local-only so the churn never dirties the
+# working tree and blocks pulls/checkouts.
+manifest.json
+cost.json
+.graphify_labels.json
