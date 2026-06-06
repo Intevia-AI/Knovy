@@ -9,6 +9,8 @@ jobs:
   release:
     runs-on: macos-latest # This workflow is configured for macOS releases.
     environment: Production
+    permissions:
+      contents: write # Required for GITHUB_TOKEN to create releases in this repository.
 
     steps:
       - name: Check out Git repository

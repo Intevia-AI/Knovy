@@ -40,4 +40,8 @@ describe('release workflow', () => {
   it('uses the built-in GITHUB_TOKEN, not a personal RELEASE_PAT', () => {
     expect(buildStep.env.GITHUB_TOKEN).toBe('${{ secrets.GITHUB_TOKEN }}')
   })
+
+  it('grants the release job contents:write so GITHUB_TOKEN can create releases', () => {
+    expect(workflow.jobs.release.permissions.contents).toBe('write')
+  })
 })
