@@ -5,7 +5,6 @@ import {
   TranscriptionFactory,
   TranscriptionProcessor
 } from '@/services/transcription'
-import { useAuth } from '@/hooks/useAuth'
 import { useTranscriptionEnhancement } from '@/hooks/useTranscriptionEnhancement'
 import { useLanguage } from '@/hooks/useLanguage'
 import { analyticsService } from '@/services/analytics-service'
@@ -32,8 +31,7 @@ export default function RealTimeAnalysis({
   isScreenSharing,
   customPrompt
 }: RealTimeAnalysisProps) {
-  const { hasEntitlement, sessionProfile } = useAuth()
-  const canUseKeywordSearch = hasEntitlement('allow_ai_action:keyword-search')
+  const canUseKeywordSearch = true
   const { language: userLanguage } = useLanguage()
 
   // Log the user language for debugging

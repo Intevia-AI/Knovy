@@ -106,7 +106,6 @@ export const translations = {
     generalTab: 'General',
     historyTab: 'History',
     aiModelsTab: 'AI Models',
-    accountTab: 'Account',
     displayTab: 'Display',
     shortcutsTab: 'Shortcuts',
     aboutTab: 'About',
@@ -298,7 +297,6 @@ export const translations = {
     generalTab: '設定',
     historyTab: '歷史紀錄',
     aiModelsTab: 'AI 模型',
-    accountTab: '帳戶',
     displayTab: '顯示器',
     shortcutsTab: '快捷鍵',
     aboutTab: '關於',
@@ -492,7 +490,6 @@ export type TranslationKey =
   | 'generalTab'
   | 'historyTab'
   | 'aiModelsTab'
-  | 'accountTab'
   | 'displayTab'
   | 'shortcutsTab'
   | 'aboutTab'

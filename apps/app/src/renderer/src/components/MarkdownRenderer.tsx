@@ -6,7 +6,6 @@ import remarkGfm from 'remark-gfm'
 import remarkBreaks from 'remark-breaks'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
-import { useAuth } from '@/hooks/useAuth'
 
 interface MarkdownProps {
   children: string
@@ -19,8 +18,7 @@ const NonMemoizedMarkdown: React.FC<MarkdownProps> = ({
   pure = false,
   onKeywordClick
 }) => {
-  const { hasEntitlement } = useAuth()
-  const canUseKeywordSearch = hasEntitlement('allow_ai_action:keyword-search')
+  const canUseKeywordSearch = true
   const parsedContent = children.replace(/<br\s*\/?\?>/g, '\n').replace(/~/g, '-')
   const plugins = [remarkGfm, remarkBreaks]
 
