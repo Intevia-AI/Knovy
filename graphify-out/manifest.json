@@ -1,0 +1,2227 @@
+{
+  "/Users/tweizh/DEV/Intevia/Knovy/.eslintrc.js": {
+    "mtime": 1754482602.9354572,
+    "ast_hash": "499a4acb997fd7673a6cba0fb8deefcb",
+    "semantic_hash": "499a4acb997fd7673a6cba0fb8deefcb"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/admin-dashboard/app/analytics/engagement/client-view.tsx": {
+    "mtime": 1760696521.6879454,
+    "ast_hash": "7d0a70f6b458a3baebdae6b50f9c51d4",
+    "semantic_hash": "7d0a70f6b458a3baebdae6b50f9c51d4"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/admin-dashboard/app/analytics/engagement/page.tsx": {
+    "mtime": 1760696521.6881006,
+    "ast_hash": "a6069ac3931a685c0475a03ab6d984ae",
+    "semantic_hash": "a6069ac3931a685c0475a03ab6d984ae"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/admin-dashboard/app/analytics/errors/client-view.tsx": {
+    "mtime": 1760696521.6883297,
+    "ast_hash": "dba01250f78a006726ad542764a91429",
+    "semantic_hash": "dba01250f78a006726ad542764a91429"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/admin-dashboard/app/analytics/errors/page.tsx": {
+    "mtime": 1760696521.68879,
+    "ast_hash": "e00820a469dd098642ab4bcf372e2bd8",
+    "semantic_hash": "e00820a469dd098642ab4bcf372e2bd8"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/admin-dashboard/app/analytics/features/client-view.tsx": {
+    "mtime": 1760696521.6892715,
+    "ast_hash": "10384bace0da0ea5e2663abb7d0926a7",
+    "semantic_hash": "10384bace0da0ea5e2663abb7d0926a7"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/admin-dashboard/app/analytics/features/page.tsx": {
+    "mtime": 1760696521.6894443,
+    "ast_hash": "d11589151862f6e64e0e28f95117b370",
+    "semantic_hash": "d11589151862f6e64e0e28f95117b370"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/admin-dashboard/app/analytics/layout.tsx": {
+    "mtime": 1760696521.6897106,
+    "ast_hash": "c80d4dadfaa34c4ea0bd081a78bb1c34",
+    "semantic_hash": "c80d4dadfaa34c4ea0bd081a78bb1c34"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/admin-dashboard/app/analytics/overview/client-view.tsx": {
+    "mtime": 1760696521.6901417,
+    "ast_hash": "57133eb7e7850bce2f7c9608df7ba10a",
+    "semantic_hash": "57133eb7e7850bce2f7c9608df7ba10a"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/admin-dashboard/app/analytics/overview/page.tsx": {
+    "mtime": 1760696521.6905503,
+    "ast_hash": "c92f24b39c1dac044ad0307ddf5fbb59",
+    "semantic_hash": "c92f24b39c1dac044ad0307ddf5fbb59"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/admin-dashboard/app/analytics/users/client-view.tsx": {
+    "mtime": 1760696521.6909075,
+    "ast_hash": "03dd59ca74d7ca797c2d9946e3256879",
+    "semantic_hash": "03dd59ca74d7ca797c2d9946e3256879"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/admin-dashboard/app/analytics/users/page.tsx": {
+    "mtime": 1760696521.691161,
+    "ast_hash": "491070d15bae4c6f03b1c1c42080af04",
+    "semantic_hash": "491070d15bae4c6f03b1c1c42080af04"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/admin-dashboard/app/auth/callback/layout.tsx": {
+    "mtime": 1760621325.8891156,
+    "ast_hash": "7e34734da47244c804a1c46ca4db7dbc",
+    "semantic_hash": "7e34734da47244c804a1c46ca4db7dbc"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/admin-dashboard/app/auth/callback/page.tsx": {
+    "mtime": 1760698759.688935,
+    "ast_hash": "a920c9be1b0757dbd64d0f08552e332a",
+    "semantic_hash": "a920c9be1b0757dbd64d0f08552e332a"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/admin-dashboard/app/layout.tsx": {
+    "mtime": 1760696521.6919887,
+    "ast_hash": "cbf0ce0d5ab69f75400254d70c4a26e4",
+    "semantic_hash": "cbf0ce0d5ab69f75400254d70c4a26e4"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/admin-dashboard/app/login/page.tsx": {
+    "mtime": 1760696521.69227,
+    "ast_hash": "b0426cf1b68e8a7062de84c0e6fcc31e",
+    "semantic_hash": "b0426cf1b68e8a7062de84c0e6fcc31e"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/admin-dashboard/app/logout/page.tsx": {
+    "mtime": 1760696521.6925542,
+    "ast_hash": "94f6f901a73dfb6cc9e1e279ba1a3c62",
+    "semantic_hash": "94f6f901a73dfb6cc9e1e279ba1a3c62"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/admin-dashboard/app/page.tsx": {
+    "mtime": 1760696521.69276,
+    "ast_hash": "c73db1d23fe14f5ea543caf349e37c23",
+    "semantic_hash": "c73db1d23fe14f5ea543caf349e37c23"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/admin-dashboard/app/test-auth/page.tsx": {
+    "mtime": 1760696521.692974,
+    "ast_hash": "3abd892d1f2859283ea557b657000583",
+    "semantic_hash": "3abd892d1f2859283ea557b657000583"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/admin-dashboard/app/unauthorized/page.tsx": {
+    "mtime": 1760696521.693183,
+    "ast_hash": "06c581fb0c4c3c921250da762c40023c",
+    "semantic_hash": "06c581fb0c4c3c921250da762c40023c"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/admin-dashboard/app/waitlist/page.tsx": {
+    "mtime": 1761748353.1678293,
+    "ast_hash": "9886d3600d8c8245f58db0dc387b5719",
+    "semantic_hash": "9886d3600d8c8245f58db0dc387b5719"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/admin-dashboard/components.json": {
+    "mtime": 1757825615.3388984,
+    "ast_hash": "7495a623b1693e1588cd718f03961093",
+    "semantic_hash": "7495a623b1693e1588cd718f03961093"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/admin-dashboard/components/AuthGuard.tsx": {
+    "mtime": 1760696521.693401,
+    "ast_hash": "4ca33d4c43697a3b9bc0548a8c475964",
+    "semantic_hash": "4ca33d4c43697a3b9bc0548a8c475964"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/admin-dashboard/components/DashboardLayout.tsx": {
+    "mtime": 1761748353.1684778,
+    "ast_hash": "3da501d19fd358f42bb7f67a9c491b2b",
+    "semantic_hash": "3da501d19fd358f42bb7f67a9c491b2b"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/admin-dashboard/components/EditRoleDialog.tsx": {
+    "mtime": 1760696521.694039,
+    "ast_hash": "9e9b26d9a3c9031ee9d0743a7154e75a",
+    "semantic_hash": "9e9b26d9a3c9031ee9d0743a7154e75a"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/admin-dashboard/components/EmailPreviewDialog.tsx": {
+    "mtime": 1762180707.9097602,
+    "ast_hash": "462ad9a737d147d32409e8e1439aa089",
+    "semantic_hash": "462ad9a737d147d32409e8e1439aa089"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/admin-dashboard/components/ResetStatusDialog.tsx": {
+    "mtime": 1761843669.401986,
+    "ast_hash": "7564c79defc58ed784b0dd194686d2d8",
+    "semantic_hash": "7564c79defc58ed784b0dd194686d2d8"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/admin-dashboard/components/SendInvitationDialog.tsx": {
+    "mtime": 1761925251.4148283,
+    "ast_hash": "0276de6ba6a020b83e7649f38c47901c",
+    "semantic_hash": "0276de6ba6a020b83e7649f38c47901c"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/admin-dashboard/components/UserTable.tsx": {
+    "mtime": 1760696521.694213,
+    "ast_hash": "b235bc1d38fc5ca3f4782d983d03b656",
+    "semantic_hash": "b235bc1d38fc5ca3f4782d983d03b656"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/admin-dashboard/components/ViewLogsDialog.tsx": {
+    "mtime": 1760696521.6944132,
+    "ast_hash": "4575f5cd455500d968852b5ef36f681b",
+    "semantic_hash": "4575f5cd455500d968852b5ef36f681b"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/admin-dashboard/components/WaitlistTable.tsx": {
+    "mtime": 1761843717.1838388,
+    "ast_hash": "0e525cfb05ebc55583abc5138c6321e5",
+    "semantic_hash": "0e525cfb05ebc55583abc5138c6321e5"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/admin-dashboard/components/analytics/CostEstimationWidget.tsx": {
+    "mtime": 1760696521.6948297,
+    "ast_hash": "4a4d63eca54c2afc4314c56d13e92bf4",
+    "semantic_hash": "4a4d63eca54c2afc4314c56d13e92bf4"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/admin-dashboard/components/analytics/TokenUsageCard.tsx": {
+    "mtime": 1760696521.695063,
+    "ast_hash": "9e371e09f764c673ae13b85a9449abd8",
+    "semantic_hash": "9e371e09f764c673ae13b85a9449abd8"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/admin-dashboard/components/analytics/date-range-picker.tsx": {
+    "mtime": 1760696521.6952055,
+    "ast_hash": "35a1e7da20b2d7252a08b117af4a4326",
+    "semantic_hash": "35a1e7da20b2d7252a08b117af4a4326"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/admin-dashboard/components/analytics/dau-chart.tsx": {
+    "mtime": 1760696521.6953504,
+    "ast_hash": "1e454c2a882e694d2bc352d76a346d67",
+    "semantic_hash": "1e454c2a882e694d2bc352d76a346d67"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/admin-dashboard/components/analytics/engagement-histogram.tsx": {
+    "mtime": 1760696521.695506,
+    "ast_hash": "67d4137542c00fb8e131eaeb58b8ba30",
+    "semantic_hash": "67d4137542c00fb8e131eaeb58b8ba30"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/admin-dashboard/components/analytics/error-rate-chart.tsx": {
+    "mtime": 1760696521.6956398,
+    "ast_hash": "c09e3674bf23e7c68827e3b9929eb120",
+    "semantic_hash": "c09e3674bf23e7c68827e3b9929eb120"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/admin-dashboard/components/analytics/export-button.tsx": {
+    "mtime": 1760696521.6957827,
+    "ast_hash": "b9c220a0cae3d33b5256c761141e4549",
+    "semantic_hash": "b9c220a0cae3d33b5256c761141e4549"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/admin-dashboard/components/analytics/feature-adoption-chart.tsx": {
+    "mtime": 1760696521.6959262,
+    "ast_hash": "7314394512f108148a33f8116c126cf7",
+    "semantic_hash": "7314394512f108148a33f8116c126cf7"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/admin-dashboard/components/analytics/index.ts": {
+    "mtime": 1760696521.69609,
+    "ast_hash": "2b2fadbeb25f695a16bff855eb961557",
+    "semantic_hash": "2b2fadbeb25f695a16bff855eb961557"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/admin-dashboard/components/analytics/overview-metrics-grid.tsx": {
+    "mtime": 1760696521.696313,
+    "ast_hash": "2af6a2f2f658bc4d37346f1587e0fc26",
+    "semantic_hash": "2af6a2f2f658bc4d37346f1587e0fc26"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/admin-dashboard/components/analytics/session-metrics-card.tsx": {
+    "mtime": 1760696521.6964629,
+    "ast_hash": "e83e3cf3ccd56b835b586036b8fb0d14",
+    "semantic_hash": "e83e3cf3ccd56b835b586036b8fb0d14"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/admin-dashboard/components/analytics/wau-mau-chart.tsx": {
+    "mtime": 1760696521.696629,
+    "ast_hash": "53949b190b40eeb539d360709312567d",
+    "semantic_hash": "53949b190b40eeb539d360709312567d"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/admin-dashboard/components/design-system/colors.ts": {
+    "mtime": 1760696521.6968606,
+    "ast_hash": "4b1355cd05e05bcd0ab8566cfc837ed7",
+    "semantic_hash": "4b1355cd05e05bcd0ab8566cfc837ed7"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/admin-dashboard/components/design-system/index.ts": {
+    "mtime": 1760696521.6969981,
+    "ast_hash": "646475ac04fb259a1d9277f435ac0076",
+    "semantic_hash": "646475ac04fb259a1d9277f435ac0076"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/admin-dashboard/components/design-system/modern-bar-chart.tsx": {
+    "mtime": 1760696521.6972322,
+    "ast_hash": "2ece4d268630cffb2249f1e8cdebabbc",
+    "semantic_hash": "2ece4d268630cffb2249f1e8cdebabbc"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/admin-dashboard/components/design-system/modern-data-table.tsx": {
+    "mtime": 1760696521.6974955,
+    "ast_hash": "ecaa2bf4c27cf07f493bd49f59c24bd9",
+    "semantic_hash": "ecaa2bf4c27cf07f493bd49f59c24bd9"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/admin-dashboard/components/design-system/modern-line-chart.tsx": {
+    "mtime": 1760696521.6978884,
+    "ast_hash": "254fa7cdc269a978f94a4e6e548950ba",
+    "semantic_hash": "254fa7cdc269a978f94a4e6e548950ba"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/admin-dashboard/components/design-system/modern-metric-card.tsx": {
+    "mtime": 1760696521.6981893,
+    "ast_hash": "a082d5399b79b22b3f617f496bb9686b",
+    "semantic_hash": "a082d5399b79b22b3f617f496bb9686b"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/admin-dashboard/components/logo.tsx": {
+    "mtime": 1760621363.684277,
+    "ast_hash": "a80b0f089fce3a90f0533bd33716e42b",
+    "semantic_hash": "a80b0f089fce3a90f0533bd33716e42b"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/admin-dashboard/components/providers.tsx": {
+    "mtime": 1760621363.8447714,
+    "ast_hash": "fd29d949ab99a26acb856dec339c6c47",
+    "semantic_hash": "fd29d949ab99a26acb856dec339c6c47"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/admin-dashboard/context/AuthContext.tsx": {
+    "mtime": 1760696521.698478,
+    "ast_hash": "745c4a11361af099347e36459c96fad3",
+    "semantic_hash": "745c4a11361af099347e36459c96fad3"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/admin-dashboard/eslint.config.js": {
+    "mtime": 1757825615.3425806,
+    "ast_hash": "b1b307ace41d163147d2e6b23fd3d2d6",
+    "semantic_hash": "b1b307ace41d163147d2e6b23fd3d2d6"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/admin-dashboard/lib/analytics/queries.ts": {
+    "mtime": 1760696521.698801,
+    "ast_hash": "a7197145f8f96e5680e46fecfce624be",
+    "semantic_hash": "a7197145f8f96e5680e46fecfce624be"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/admin-dashboard/lib/analytics/types.ts": {
+    "mtime": 1760696521.6992633,
+    "ast_hash": "d72cc53ce8d295f1e8e390abd0486f5a",
+    "semantic_hash": "d72cc53ce8d295f1e8e390abd0486f5a"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/admin-dashboard/lib/analytics/user-activity-queries.ts": {
+    "mtime": 1760696521.699527,
+    "ast_hash": "5be8554c0d5bc0ff2caba5320f108b1b",
+    "semantic_hash": "5be8554c0d5bc0ff2caba5320f108b1b"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/admin-dashboard/lib/supabase-client.ts": {
+    "mtime": 1760704894.99084,
+    "ast_hash": "a16a04d1423c117ebcd897da3b01dd37",
+    "semantic_hash": "a16a04d1423c117ebcd897da3b01dd37"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/admin-dashboard/lib/supabase-server.ts": {
+    "mtime": 1760696521.6999989,
+    "ast_hash": "9b930ddd31bd966eca90cf92150f529d",
+    "semantic_hash": "9b930ddd31bd966eca90cf92150f529d"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/admin-dashboard/middleware.ts": {
+    "mtime": 1760696521.7006679,
+    "ast_hash": "b6c9c775af11287cbc4ee21eb4579c0e",
+    "semantic_hash": "b6c9c775af11287cbc4ee21eb4579c0e"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/admin-dashboard/next-env.d.ts": {
+    "mtime": 1760696521.7010121,
+    "ast_hash": "ba64ff7d54714a8f64db89b1003207d8",
+    "semantic_hash": "ba64ff7d54714a8f64db89b1003207d8"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/admin-dashboard/next.config.mjs": {
+    "mtime": 1757825615.3437886,
+    "ast_hash": "96b5421c5a84d7826cc2a757595ac568",
+    "semantic_hash": "96b5421c5a84d7826cc2a757595ac568"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/admin-dashboard/package.json": {
+    "mtime": 1761823377.015263,
+    "ast_hash": "05aca1504ec9c1511442b71d4014131c",
+    "semantic_hash": "05aca1504ec9c1511442b71d4014131c"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/admin-dashboard/postcss.config.mjs": {
+    "mtime": 1757825615.3442376,
+    "ast_hash": "c2fa9f5bf5678c555f31e75bed0a4fc2",
+    "semantic_hash": "c2fa9f5bf5678c555f31e75bed0a4fc2"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/admin-dashboard/tsconfig.json": {
+    "mtime": 1757825615.3460407,
+    "ast_hash": "ae42a760d61107cbc206566c7b6cce0a",
+    "semantic_hash": "ae42a760d61107cbc206566c7b6cce0a"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/code-signing/build-mac-signed.sh": {
+    "mtime": 1757048552.3840318,
+    "ast_hash": "c84217b819ef7b637a88f5d885a2e5f9",
+    "semantic_hash": "c84217b819ef7b637a88f5d885a2e5f9"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/code-signing/notarize.js": {
+    "mtime": 1757084252.0632145,
+    "ast_hash": "86a67ac84faeebb9a5c5a6a8505b5ab2",
+    "semantic_hash": "86a67ac84faeebb9a5c5a6a8505b5ab2"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/code-signing/sign-dylibs.js": {
+    "mtime": 1759399863.3871868,
+    "ast_hash": "5f15dd763260f2722f03ca5d4cc8e478",
+    "semantic_hash": "5f15dd763260f2722f03ca5d4cc8e478"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/components.json": {
+    "mtime": 1760161026.6662169,
+    "ast_hash": "5aebc81813ce3db3138069cf77e45841",
+    "semantic_hash": "5aebc81813ce3db3138069cf77e45841"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/electron.vite.config.ts": {
+    "mtime": 1759765539.2945335,
+    "ast_hash": "24555b85168619a468e363ad0f3c7036",
+    "semantic_hash": "24555b85168619a468e363ad0f3c7036"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/eslint.config.mjs": {
+    "mtime": 1755360516.1621282,
+    "ast_hash": "3183f21704b2809b64fe177479fb942c",
+    "semantic_hash": "3183f21704b2809b64fe177479fb942c"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/package.json": {
+    "mtime": 1761748353.159904,
+    "ast_hash": "665b3b4b564a1bd85ee8bcd87a3efe12",
+    "semantic_hash": "665b3b4b564a1bd85ee8bcd87a3efe12"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/postcss.config.mjs": {
+    "mtime": 1755360516.1624694,
+    "ast_hash": "c56b5f3c12f777a86e2513f45daab56a",
+    "semantic_hash": "c56b5f3c12f777a86e2513f45daab56a"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/main/database.ts": {
+    "mtime": 1770456619.0279992,
+    "ast_hash": "98bbfa6b6454604731653ab9ba7187fb",
+    "semantic_hash": "98bbfa6b6454604731653ab9ba7187fb"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/main/databaseService.ts": {
+    "mtime": 1760208358.5607288,
+    "ast_hash": "4dbece5fe086d858f72172d7bfa1a918",
+    "semantic_hash": "4dbece5fe086d858f72172d7bfa1a918"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/main/index.ts": {
+    "mtime": 1770460216.1868203,
+    "ast_hash": "306bb8a569db3bb948772c44d24249f5",
+    "semantic_hash": "306bb8a569db3bb948772c44d24249f5"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/main/intentionProcessor.ts": {
+    "mtime": 1761663810.2448616,
+    "ast_hash": "d6c2164a040f5552f922b19d51d3f6d0",
+    "semantic_hash": "d6c2164a040f5552f922b19d51d3f6d0"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/main/localLLMPrompts.ts": {
+    "mtime": 1770460234.3831854,
+    "ast_hash": "ad0fca760e7a8740757c13f92dc60c5e",
+    "semantic_hash": "ad0fca760e7a8740757c13f92dc60c5e"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/main/ollamaService.ts": {
+    "mtime": 1770460184.4369814,
+    "ast_hash": "590a1d5e81dec4f44cab72ae85d39b2d",
+    "semantic_hash": "590a1d5e81dec4f44cab72ae85d39b2d"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/main/popoverManager.ts": {
+    "mtime": 1770455778.896914,
+    "ast_hash": "6b892349e4128d9636e9e4aabd1f7fb7",
+    "semantic_hash": "6b892349e4128d9636e9e4aabd1f7fb7"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/main/settingsWindowManager.ts": {
+    "mtime": 1770455778.897771,
+    "ast_hash": "39e9fedb8109d1f86b11711c8528bbbc",
+    "semantic_hash": "39e9fedb8109d1f86b11711c8528bbbc"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/main/transcriptionEnhancementService.ts": {
+    "mtime": 1770458117.3471425,
+    "ast_hash": "5e74d7a078954a18b5caebe0cc8904b8",
+    "semantic_hash": "5e74d7a078954a18b5caebe0cc8904b8"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/main/types/export.ts": {
+    "mtime": 1760208358.5627742,
+    "ast_hash": "2bae0eb0ca6a55393d8e09cf93730090",
+    "semantic_hash": "2bae0eb0ca6a55393d8e09cf93730090"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/main/utils/export-formatter.ts": {
+    "mtime": 1760208358.5633662,
+    "ast_hash": "4f22bc5157f2ceb77640a2ae7693c0c4",
+    "semantic_hash": "4f22bc5157f2ceb77640a2ae7693c0c4"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/main/whisperBackend.ts": {
+    "mtime": 1770445584.8538663,
+    "ast_hash": "bb2c9913d68602467e9df0f91de4b489",
+    "semantic_hash": "bb2c9913d68602467e9df0f91de4b489"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/main/windowManager.ts": {
+    "mtime": 1759765539.2964847,
+    "ast_hash": "7a88a4c0f94513c26bc3102438958c2a",
+    "semantic_hash": "7a88a4c0f94513c26bc3102438958c2a"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/preload/index.d.ts": {
+    "mtime": 1755784180.5834703,
+    "ast_hash": "49212028271d72b7ff84b2893299c17f",
+    "semantic_hash": "49212028271d72b7ff84b2893299c17f"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/preload/index.ts": {
+    "mtime": 1770457950.3389578,
+    "ast_hash": "549acaf36bb9051660d119d8f5aba874",
+    "semantic_hash": "549acaf36bb9051660d119d8f5aba874"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/renderer/public/worklets/mic-audio-processor.js": {
+    "mtime": 1759386727.0246794,
+    "ast_hash": "4c22205b4698a6005b06d81e0f0570f6",
+    "semantic_hash": "4c22205b4698a6005b06d81e0f0570f6"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/renderer/public/worklets/system-audio-processor.js": {
+    "mtime": 1759386727.0250492,
+    "ast_hash": "5ef2b0a351e8e05cc2a902e880561448",
+    "semantic_hash": "5ef2b0a351e8e05cc2a902e880561448"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/renderer/src/app/App.tsx": {
+    "mtime": 1760595356.5242853,
+    "ast_hash": "bf20b4e417451b8308e9e369850c5039",
+    "semantic_hash": "bf20b4e417451b8308e9e369850c5039"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/renderer/src/app/AppRouter.tsx": {
+    "mtime": 1759765539.2986789,
+    "ast_hash": "373822f84866af2c0615fd91bd4e8205",
+    "semantic_hash": "373822f84866af2c0615fd91bd4e8205"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/renderer/src/app/providers.tsx": {
+    "mtime": 1759143095.427457,
+    "ast_hash": "b4c65ea37a16ea0ccb76cdafc71e3376",
+    "semantic_hash": "b4c65ea37a16ea0ccb76cdafc71e3376"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/renderer/src/components/ActionQueue.tsx": {
+    "mtime": 1760208358.5656755,
+    "ast_hash": "00851618f122801aad19d5429562902e",
+    "semantic_hash": "00851618f122801aad19d5429562902e"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/renderer/src/components/ActionsPanel.tsx": {
+    "mtime": 1761665817.6537151,
+    "ast_hash": "5a8555eecd4c5fc237ca50d1e8b14f71",
+    "semantic_hash": "5a8555eecd4c5fc237ca50d1e8b14f71"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/renderer/src/components/ChatPanel.tsx": {
+    "mtime": 1760208358.5664532,
+    "ast_hash": "010ad48ab20fc5c99a8320479a2529bc",
+    "semantic_hash": "010ad48ab20fc5c99a8320479a2529bc"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/renderer/src/components/KeywordHighlighter.tsx": {
+    "mtime": 1760208358.5667632,
+    "ast_hash": "d34e665b320dc617feabd548452dcdfb",
+    "semantic_hash": "d34e665b320dc617feabd548452dcdfb"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/renderer/src/components/LoadingPage.tsx": {
+    "mtime": 1760208358.567208,
+    "ast_hash": "cc14f742ad8fb6c55da9615099344da8",
+    "semantic_hash": "cc14f742ad8fb6c55da9615099344da8"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/renderer/src/components/LoginPage.tsx": {
+    "mtime": 1759765002.9105046,
+    "ast_hash": "2829bbef59f069ac043a63040e8709c3",
+    "semantic_hash": "2829bbef59f069ac043a63040e8709c3"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/renderer/src/components/MainControlBar.tsx": {
+    "mtime": 1760198233.8703444,
+    "ast_hash": "a2f19850955a17277323df590c68bcfa",
+    "semantic_hash": "a2f19850955a17277323df590c68bcfa"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/renderer/src/components/MainController.tsx": {
+    "mtime": 1761328748.2140505,
+    "ast_hash": "1bd13ac0ab5fb6533f5b806b22b4ab9e",
+    "semantic_hash": "1bd13ac0ab5fb6533f5b806b22b4ab9e"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/renderer/src/components/MarkdownRenderer.tsx": {
+    "mtime": 1759764997.0774946,
+    "ast_hash": "dc90c2958de4ef309179995bafa66558",
+    "semantic_hash": "dc90c2958de4ef309179995bafa66558"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/renderer/src/components/PreviewPanel.tsx": {
+    "mtime": 1759764995.6619473,
+    "ast_hash": "d8a9380244242736e7ef969d9d99ac82",
+    "semantic_hash": "d8a9380244242736e7ef969d9d99ac82"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/renderer/src/components/RealTimeAnalysis.tsx": {
+    "mtime": 1770458170.3431592,
+    "ast_hash": "9443a3fe5acf42363d9e15a80ad08ada",
+    "semantic_hash": "9443a3fe5acf42363d9e15a80ad08ada"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/renderer/src/components/SelectionPage.tsx": {
+    "mtime": 1760208358.5683749,
+    "ast_hash": "cd3d4c219401513f0bad8fc54fae09dc",
+    "semantic_hash": "cd3d4c219401513f0bad8fc54fae09dc"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/renderer/src/components/SettingsPage.tsx": {
+    "mtime": 1770445680.4378579,
+    "ast_hash": "33820258a9b03b360d5b8f8054350c7c",
+    "semantic_hash": "33820258a9b03b360d5b8f8054350c7c"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/renderer/src/components/UpdaterPanel.tsx": {
+    "mtime": 1759765018.511983,
+    "ast_hash": "463374221757f7f44aab11b4b44b2172",
+    "semantic_hash": "463374221757f7f44aab11b4b44b2172"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/renderer/src/components/logo.tsx": {
+    "mtime": 1760693624.199204,
+    "ast_hash": "1441941b00becb8afbe4f772343de1c9",
+    "semantic_hash": "1441941b00becb8afbe4f772343de1c9"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/renderer/src/components/settings/AboutView.tsx": {
+    "mtime": 1761667147.4988008,
+    "ast_hash": "af736c56153453b411ef871342d136db",
+    "semantic_hash": "af736c56153453b411ef871342d136db"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/renderer/src/components/settings/AccountSettings.tsx": {
+    "mtime": 1760693717.51984,
+    "ast_hash": "315a9283555f2222702dd8a7337282cd",
+    "semantic_hash": "315a9283555f2222702dd8a7337282cd"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/renderer/src/components/settings/AutoTriggerSettings.tsx": {
+    "mtime": 1760208358.569326,
+    "ast_hash": "c06e8701cb819b4f28cce9929fef07e9",
+    "semantic_hash": "c06e8701cb819b4f28cce9929fef07e9"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/renderer/src/components/settings/CalendarPicker.tsx": {
+    "mtime": 1759765539.3040874,
+    "ast_hash": "d7949838fbb21ea620b7a51ba9e7d158",
+    "semantic_hash": "d7949838fbb21ea620b7a51ba9e7d158"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/renderer/src/components/settings/GeneralSettings.tsx": {
+    "mtime": 1760208358.5698292,
+    "ast_hash": "0e4b42608725c0c1c03909446a18141e",
+    "semantic_hash": "0e4b42608725c0c1c03909446a18141e"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/renderer/src/components/settings/HistoryView.tsx": {
+    "mtime": 1760208358.5703773,
+    "ast_hash": "0b7205ed828a0344f54cc0aa4e92ad70",
+    "semantic_hash": "0b7205ed828a0344f54cc0aa4e92ad70"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/renderer/src/components/settings/OllamaSettings.tsx": {
+    "mtime": 1770460189.5065556,
+    "ast_hash": "3561979eb991ef3b10c2079d72e40b0f",
+    "semantic_hash": "3561979eb991ef3b10c2079d72e40b0f"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/renderer/src/components/settings/SessionCard.tsx": {
+    "mtime": 1760208358.5708318,
+    "ast_hash": "8f521caec3d36b761ef1c74fe5a7831b",
+    "semantic_hash": "8f521caec3d36b761ef1c74fe5a7831b"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/renderer/src/components/settings/SettingsSidebar.tsx": {
+    "mtime": 1770445723.3739543,
+    "ast_hash": "1eb76245ca766b505925c2bc887b715d",
+    "semantic_hash": "1eb76245ca766b505925c2bc887b715d"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/renderer/src/components/settings/ShortcutsView.tsx": {
+    "mtime": 1759765539.305702,
+    "ast_hash": "10ea051edf55c3e9a537d2914c15e443",
+    "semantic_hash": "10ea051edf55c3e9a537d2914c15e443"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/renderer/src/components/ui/AnimatedText.tsx": {
+    "mtime": 1757698602.8060265,
+    "ast_hash": "d1afb91b6dc5922ca948bd3b6b2ad776",
+    "semantic_hash": "d1afb91b6dc5922ca948bd3b6b2ad776"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/renderer/src/components/ui/alert.tsx": {
+    "mtime": 1759765539.306074,
+    "ast_hash": "6f9cbda26bf358040c66daa18353bd0f",
+    "semantic_hash": "6f9cbda26bf358040c66daa18353bd0f"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/renderer/src/components/ui/avatar.tsx": {
+    "mtime": 1759765539.306661,
+    "ast_hash": "ce4fe60f4c48c01a5a601d9835648b40",
+    "semantic_hash": "ce4fe60f4c48c01a5a601d9835648b40"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/renderer/src/components/ui/badge.tsx": {
+    "mtime": 1759765539.3073633,
+    "ast_hash": "d418e7d17e73d698299284a0e46e3e9f",
+    "semantic_hash": "d418e7d17e73d698299284a0e46e3e9f"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/renderer/src/components/ui/button.tsx": {
+    "mtime": 1757084252.0673637,
+    "ast_hash": "2284d3d313fb837007c45e62f12c1c08",
+    "semantic_hash": "2284d3d313fb837007c45e62f12c1c08"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/renderer/src/components/ui/card.tsx": {
+    "mtime": 1756796812.147516,
+    "ast_hash": "671ed9a92bcfad592a31ddaba6dc007a",
+    "semantic_hash": "671ed9a92bcfad592a31ddaba6dc007a"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/renderer/src/components/ui/dialog.tsx": {
+    "mtime": 1756796812.1477425,
+    "ast_hash": "078f5a8817eb1ab6f4c81a3e2a9b366e",
+    "semantic_hash": "078f5a8817eb1ab6f4c81a3e2a9b366e"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/renderer/src/components/ui/input.tsx": {
+    "mtime": 1756796812.1479352,
+    "ast_hash": "6af718ada2c33bc2c8fca1b02f1ea8ca",
+    "semantic_hash": "6af718ada2c33bc2c8fca1b02f1ea8ca"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/renderer/src/components/ui/label.tsx": {
+    "mtime": 1756796812.148472,
+    "ast_hash": "4d555ac1839d2400109c3e10a91af39d",
+    "semantic_hash": "4d555ac1839d2400109c3e10a91af39d"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/renderer/src/components/ui/popover.tsx": {
+    "mtime": 1756796812.1486135,
+    "ast_hash": "0d3652c78d8b43951911a0bc3aff31d5",
+    "semantic_hash": "0d3652c78d8b43951911a0bc3aff31d5"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/renderer/src/components/ui/progress.tsx": {
+    "mtime": 1759765539.3081353,
+    "ast_hash": "97b0fc2e77eba6412131f9d54dc68a8a",
+    "semantic_hash": "97b0fc2e77eba6412131f9d54dc68a8a"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/renderer/src/components/ui/radio-group.tsx": {
+    "mtime": 1760208358.5715358,
+    "ast_hash": "e9b130a08e4d0126ecb254e46b86661b",
+    "semantic_hash": "e9b130a08e4d0126ecb254e46b86661b"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/renderer/src/components/ui/resizable.tsx": {
+    "mtime": 1756796812.1488342,
+    "ast_hash": "3eb6f0e11517a74c48134bdb49323f29",
+    "semantic_hash": "3eb6f0e11517a74c48134bdb49323f29"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/renderer/src/components/ui/select.tsx": {
+    "mtime": 1756796812.1490593,
+    "ast_hash": "04eb81ab81572e0e79cbfdb8da65a317",
+    "semantic_hash": "04eb81ab81572e0e79cbfdb8da65a317"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/renderer/src/components/ui/skeleton.tsx": {
+    "mtime": 1759765539.310273,
+    "ast_hash": "0501cf882399b1db3a8e2addfe0cfecf",
+    "semantic_hash": "0501cf882399b1db3a8e2addfe0cfecf"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/renderer/src/components/ui/slider.tsx": {
+    "mtime": 1760208358.5718381,
+    "ast_hash": "5fbab7963bd442067af44a2b02d894d1",
+    "semantic_hash": "5fbab7963bd442067af44a2b02d894d1"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/renderer/src/components/ui/sonner.tsx": {
+    "mtime": 1756796812.149366,
+    "ast_hash": "92b245aabc0b2d63281bbc2ece7470eb",
+    "semantic_hash": "92b245aabc0b2d63281bbc2ece7470eb"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/renderer/src/components/ui/switch.tsx": {
+    "mtime": 1756796812.1499202,
+    "ast_hash": "819ac386400bff5a197344b0355099ae",
+    "semantic_hash": "819ac386400bff5a197344b0355099ae"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/renderer/src/components/ui/table.tsx": {
+    "mtime": 1759765539.3124502,
+    "ast_hash": "6c42a48097fd46f40fe776fc1c307d96",
+    "semantic_hash": "6c42a48097fd46f40fe776fc1c307d96"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/renderer/src/components/ui/textarea.tsx": {
+    "mtime": 1756796812.1503456,
+    "ast_hash": "67fa8ed4455be2ce9ea36f854b832205",
+    "semantic_hash": "67fa8ed4455be2ce9ea36f854b832205"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/renderer/src/context/AuthContext.tsx": {
+    "mtime": 1761824751.2206006,
+    "ast_hash": "a428cbc4b6b0dc95daee68269a124d5e",
+    "semantic_hash": "a428cbc4b6b0dc95daee68269a124d5e"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/renderer/src/context/TranslationContext.tsx": {
+    "mtime": 1759765539.3140118,
+    "ast_hash": "dd79a31efcde5222d87abf0c96835213",
+    "semantic_hash": "dd79a31efcde5222d87abf0c96835213"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/renderer/src/env.d.ts": {
+    "mtime": 1758530377.3841248,
+    "ast_hash": "0352474ba2918efe13895edbc3780d94",
+    "semantic_hash": "0352474ba2918efe13895edbc3780d94"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/renderer/src/hooks/useAIInteraction.ts": {
+    "mtime": 1770458201.5691519,
+    "ast_hash": "de477b17a3ea0a51dc904ada8418807b",
+    "semantic_hash": "de477b17a3ea0a51dc904ada8418807b"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/renderer/src/hooks/useActionQueue.ts": {
+    "mtime": 1761328748.2212899,
+    "ast_hash": "dc63f52b500019add1df5e7dc9a17863",
+    "semantic_hash": "dc63f52b500019add1df5e7dc9a17863"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/renderer/src/hooks/useAudioAnalysis.ts": {
+    "mtime": 1758793069.9220114,
+    "ast_hash": "3946a931d956611130b49e582cfc66cd",
+    "semantic_hash": "3946a931d956611130b49e582cfc66cd"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/renderer/src/hooks/useAuth.ts": {
+    "mtime": 1759143095.4306815,
+    "ast_hash": "51df58a93a9f223c11d49d101d408cf7",
+    "semantic_hash": "51df58a93a9f223c11d49d101d408cf7"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/renderer/src/hooks/useElectron.ts": {
+    "mtime": 1757654451.2213733,
+    "ast_hash": "b46b61e28bbdee104a5f98ef2e580f21",
+    "semantic_hash": "b46b61e28bbdee104a5f98ef2e580f21"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/renderer/src/hooks/useI18n.ts": {
+    "mtime": 1759143095.4308586,
+    "ast_hash": "0be70fd5f92f711255161350f3a1dc09",
+    "semantic_hash": "0be70fd5f92f711255161350f3a1dc09"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/renderer/src/hooks/useLanguage.ts": {
+    "mtime": 1759143095.4310026,
+    "ast_hash": "a6993ba04f40872f27dfb1ec74c1e6aa",
+    "semantic_hash": "a6993ba04f40872f27dfb1ec74c1e6aa"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/renderer/src/hooks/useScreenShare.ts": {
+    "mtime": 1760693717.5208366,
+    "ast_hash": "2f5b37537a3ae501f609db1465a9c9ec",
+    "semantic_hash": "2f5b37537a3ae501f609db1465a9c9ec"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/renderer/src/hooks/useSegmentRecorder.ts": {
+    "mtime": 1759386727.0268767,
+    "ast_hash": "6325b70338c0a32d1b3ee97f5fb4073a",
+    "semantic_hash": "6325b70338c0a32d1b3ee97f5fb4073a"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/renderer/src/hooks/useTranscriptionEnhancement.ts": {
+    "mtime": 1770458178.3949068,
+    "ast_hash": "64cdbe1bea33b6b86a344e7bb67f71d3",
+    "semantic_hash": "64cdbe1bea33b6b86a344e7bb67f71d3"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/renderer/src/lib/copy-utils.ts": {
+    "mtime": 1760208358.5733006,
+    "ast_hash": "af663e3bb713fe62ffb107af62ddf25c",
+    "semantic_hash": "af663e3bb713fe62ffb107af62ddf25c"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/renderer/src/lib/date-utils.ts": {
+    "mtime": 1759765539.315686,
+    "ast_hash": "9215a344165c12f9a4e84da3df6e8aec",
+    "semantic_hash": "9215a344165c12f9a4e84da3df6e8aec"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/renderer/src/lib/history-utils.ts": {
+    "mtime": 1759765539.3164809,
+    "ast_hash": "d2d6d7ad597e9167545595cbf16b0c66",
+    "semantic_hash": "d2d6d7ad597e9167545595cbf16b0c66"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/renderer/src/lib/translations.ts": {
+    "mtime": 1770445713.7907605,
+    "ast_hash": "fd48db8860d7f17bc1e6a0ae981a01c6",
+    "semantic_hash": "fd48db8860d7f17bc1e6a0ae981a01c6"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/renderer/src/lib/utils.ts": {
+    "mtime": 1755360516.1730635,
+    "ast_hash": "fb6ca08a007849efb7dd97f5acba344a",
+    "semantic_hash": "fb6ca08a007849efb7dd97f5acba344a"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/renderer/src/main.tsx": {
+    "mtime": 1759143095.4322598,
+    "ast_hash": "476e5c792cba44fa2358adb9957f5e94",
+    "semantic_hash": "476e5c792cba44fa2358adb9957f5e94"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/renderer/src/selection.tsx": {
+    "mtime": 1759765539.3181527,
+    "ast_hash": "fafdbbd0882934280b645d277b6d0076",
+    "semantic_hash": "fafdbbd0882934280b645d277b6d0076"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/renderer/src/services/ai-actions.ts": {
+    "mtime": 1761663865.848906,
+    "ast_hash": "85c3ca2878af85e28cd535cae09a8dc9",
+    "semantic_hash": "85c3ca2878af85e28cd535cae09a8dc9"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/renderer/src/services/analytics-service.ts": {
+    "mtime": 1760693717.5216722,
+    "ast_hash": "8bf531eee8538c584b7a6395f472ce48",
+    "semantic_hash": "8bf531eee8538c584b7a6395f472ce48"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/renderer/src/services/supabaseClient.ts": {
+    "mtime": 1759143095.4330351,
+    "ast_hash": "0cbb60c01993e972c327bdf736d9e64a",
+    "semantic_hash": "0cbb60c01993e972c327bdf736d9e64a"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/renderer/src/services/transcription.ts": {
+    "mtime": 1770455778.8996785,
+    "ast_hash": "05a3465270caad36dda7f9b364751f46",
+    "semantic_hash": "05a3465270caad36dda7f9b364751f46"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/renderer/src/services/whisperClient.ts": {
+    "mtime": 1760208358.574906,
+    "ast_hash": "035cda158de877e55a681c5e512a6942",
+    "semantic_hash": "035cda158de877e55a681c5e512a6942"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/renderer/src/settings.tsx": {
+    "mtime": 1759765539.3185148,
+    "ast_hash": "aebadab83cc3d33adfb37f29f7ffc01d",
+    "semantic_hash": "aebadab83cc3d33adfb37f29f7ffc01d"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/renderer/src/types/history.ts": {
+    "mtime": 1760208358.5752823,
+    "ast_hash": "0a6af63d87abcc9cb88118410f9d9001",
+    "semantic_hash": "0a6af63d87abcc9cb88118410f9d9001"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/renderer/src/types/index.ts": {
+    "mtime": 1770446006.5693939,
+    "ast_hash": "8f659fa89314138e56df12361b76eb26",
+    "semantic_hash": "8f659fa89314138e56df12361b76eb26"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/renderer/src/types/settings.ts": {
+    "mtime": 1760208358.5756102,
+    "ast_hash": "0ba8d6dfe036dff1fc72083a23a509cd",
+    "semantic_hash": "0ba8d6dfe036dff1fc72083a23a509cd"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/tailwind.config.ts": {
+    "mtime": 1755360516.1736,
+    "ast_hash": "f2772f24798a4a5211bc4fbd150d435a",
+    "semantic_hash": "f2772f24798a4a5211bc4fbd150d435a"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/tests/local-transcription/benchmark-performance.js": {
+    "mtime": 1761925251.4153054,
+    "ast_hash": "b1eda9c0f0bebf8e22c5772c049f16d1",
+    "semantic_hash": "b1eda9c0f0bebf8e22c5772c049f16d1"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/tests/local-transcription/quick-benchmark.js": {
+    "mtime": 1759200200.9277232,
+    "ast_hash": "dda37be86af5dcf3fa87d3c244faede5",
+    "semantic_hash": "dda37be86af5dcf3fa87d3c244faede5"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/tests/local-transcription/test-comprehensive.js": {
+    "mtime": 1761925251.4157693,
+    "ast_hash": "9fc63f5bd961fdd482cdb0cb6dfd2c7f",
+    "semantic_hash": "9fc63f5bd961fdd482cdb0cb6dfd2c7f"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/tests/local-transcription/test-services.mjs": {
+    "mtime": 1761925251.416296,
+    "ast_hash": "9fb879c7a3b49ee0e6144e2225180d30",
+    "semantic_hash": "9fb879c7a3b49ee0e6144e2225180d30"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/tests/local-transcription/test-transcription.js": {
+    "mtime": 1761925251.4166093,
+    "ast_hash": "1350b73c440efda5d8dbbe59f4a2fa48",
+    "semantic_hash": "1350b73c440efda5d8dbbe59f4a2fa48"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/tsconfig.json": {
+    "mtime": 1755360516.1737788,
+    "ast_hash": "f78ff8c2e2efb59fcf218eac57774d94",
+    "semantic_hash": "f78ff8c2e2efb59fcf218eac57774d94"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/tsconfig.node.json": {
+    "mtime": 1755360516.1738877,
+    "ast_hash": "9a09247aa797699e4223e0a9f78914dc",
+    "semantic_hash": "9a09247aa797699e4223e0a9f78914dc"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/tsconfig.web.json": {
+    "mtime": 1757598837.9316492,
+    "ast_hash": "190e07fadcd53c0606fde7cb23ef2855",
+    "semantic_hash": "190e07fadcd53c0606fde7cb23ef2855"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/proxy/package.json": {
+    "mtime": 1759060999.1550891,
+    "ast_hash": "b4defff384fe416d069105bab8384d2e",
+    "semantic_hash": "b4defff384fe416d069105bab8384d2e"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/proxy/startProxy.js": {
+    "mtime": 1759143095.433604,
+    "ast_hash": "e8cecb4fa57a401029797cb2b3977965",
+    "semantic_hash": "e8cecb4fa57a401029797cb2b3977965"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/web/app/(landing)/layout.tsx": {
+    "mtime": 1757338195.20135,
+    "ast_hash": "b2696cac2a696998e95af3eccd2800fb",
+    "semantic_hash": "b2696cac2a696998e95af3eccd2800fb"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/web/app/(landing)/page.tsx": {
+    "mtime": 1762694351.376422,
+    "ast_hash": "bf117acc8967468b4c76433df29481b1",
+    "semantic_hash": "bf117acc8967468b4c76433df29481b1"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/web/app/(landing)/privacy/page.tsx": {
+    "mtime": 1757338267.5203032,
+    "ast_hash": "84bde892d2536024d7abac46d2b19d81",
+    "semantic_hash": "84bde892d2536024d7abac46d2b19d81"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/web/app/(landing)/terms/page.tsx": {
+    "mtime": 1758383563.1580882,
+    "ast_hash": "a16fd35ff0e1714a031880dbe27e9731",
+    "semantic_hash": "a16fd35ff0e1714a031880dbe27e9731"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/web/app/api/ai/audioUtils.ts": {
+    "mtime": 1756796812.1722221,
+    "ast_hash": "ec7a2cf2c780d5671d367e983c9e34cc",
+    "semantic_hash": "ec7a2cf2c780d5671d367e983c9e34cc"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/web/app/api/ai/proxy.ts": {
+    "mtime": 1756796812.1726952,
+    "ast_hash": "238e2abf35c5d711790c2bacf6cb99cd",
+    "semantic_hash": "238e2abf35c5d711790c2bacf6cb99cd"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/web/app/api/ai/proxy/geminiClient.ts": {
+    "mtime": 1756796812.1730266,
+    "ast_hash": "1aeed7b79ac6b039bfe5db12a7213688",
+    "semantic_hash": "1aeed7b79ac6b039bfe5db12a7213688"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/web/app/api/ai/route.ts": {
+    "mtime": 1756802260.0421736,
+    "ast_hash": "f0651364d2800c0475578adecd4a1bed",
+    "semantic_hash": "f0651364d2800c0475578adecd4a1bed"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/web/app/api/ai/transcriptionService.ts": {
+    "mtime": 1756375755.509268,
+    "ast_hash": "8fe3fb87070bf4fc64c4e614dad2ad2a",
+    "semantic_hash": "8fe3fb87070bf4fc64c4e614dad2ad2a"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/web/app/api/feedback/route.ts": {
+    "mtime": 1756796812.1737113,
+    "ast_hash": "7b56e75e7eaa350d8cdaf8f70bbcce93",
+    "semantic_hash": "7b56e75e7eaa350d8cdaf8f70bbcce93"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/web/app/api/process-audio/route.ts": {
+    "mtime": 1756796812.1740062,
+    "ast_hash": "2072c7467de869b05c0483527ddcd468",
+    "semantic_hash": "2072c7467de869b05c0483527ddcd468"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/web/app/api/waitlist/route.ts": {
+    "mtime": 1756796812.1742282,
+    "ast_hash": "11a8edb647b1c782ff770ca71868cc99",
+    "semantic_hash": "11a8edb647b1c782ff770ca71868cc99"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/web/app/auth/callback/layout.tsx": {
+    "mtime": 1756796812.1744335,
+    "ast_hash": "7e34734da47244c804a1c46ca4db7dbc",
+    "semantic_hash": "7e34734da47244c804a1c46ca4db7dbc"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/web/app/auth/callback/page.tsx": {
+    "mtime": 1756796812.1746285,
+    "ast_hash": "e217ecae5ab75413eac530639dbba606",
+    "semantic_hash": "e217ecae5ab75413eac530639dbba606"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/web/app/auth/login/page.tsx": {
+    "mtime": 1756796812.1748686,
+    "ast_hash": "1bfe046f2067705276f79ca593490744",
+    "semantic_hash": "1bfe046f2067705276f79ca593490744"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/web/app/auth/register/page.tsx": {
+    "mtime": 1756796812.175139,
+    "ast_hash": "45c9651602bebcd442acd0c773cf85fb",
+    "semantic_hash": "45c9651602bebcd442acd0c773cf85fb"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/web/app/layout.tsx": {
+    "mtime": 1758383563.1584144,
+    "ast_hash": "70980de3e214e71a5fb6f4eefc52061b",
+    "semantic_hash": "70980de3e214e71a5fb6f4eefc52061b"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/web/components.json": {
+    "mtime": 1753113293.2774103,
+    "ast_hash": "7495a623b1693e1588cd718f03961093",
+    "semantic_hash": "7495a623b1693e1588cd718f03961093"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/web/components/AudioControl.tsx": {
+    "mtime": 1753113293.2776525,
+    "ast_hash": "aedd8ab73d288c4d804206cfae539cf5",
+    "semantic_hash": "aedd8ab73d288c4d804206cfae539cf5"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/web/components/AudioVisualizer.tsx": {
+    "mtime": 1756796812.1759813,
+    "ast_hash": "d5a190f42ba63589583ec4c6b3d500f9",
+    "semantic_hash": "d5a190f42ba63589583ec4c6b3d500f9"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/web/components/RealTimeAnalysis.tsx": {
+    "mtime": 1756796812.1791372,
+    "ast_hash": "0ae09f3e6a17fa30715aa03903173390",
+    "semantic_hash": "0ae09f3e6a17fa30715aa03903173390"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/web/components/SegmentDemo.tsx": {
+    "mtime": 1756796812.179741,
+    "ast_hash": "c62188ce0493a7d311fe155bd9997912",
+    "semantic_hash": "c62188ce0493a7d311fe155bd9997912"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/web/components/call-to-action.tsx": {
+    "mtime": 1756796812.1802897,
+    "ast_hash": "ca72a90086e2117cb8c9a42ee87a5288",
+    "semantic_hash": "ca72a90086e2117cb8c9a42ee87a5288"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/web/components/demo.tsx": {
+    "mtime": 1762694394.7825956,
+    "ast_hash": "daada30952c335ce62a4961cca24ea93",
+    "semantic_hash": "daada30952c335ce62a4961cca24ea93"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/web/components/evidence.tsx": {
+    "mtime": 1762517029.0194418,
+    "ast_hash": "74a2a88fb26fadfc3fd2390770e6ed0b",
+    "semantic_hash": "74a2a88fb26fadfc3fd2390770e6ed0b"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/web/components/features.tsx": {
+    "mtime": 1762516271.1541996,
+    "ast_hash": "b46d58331af1ad79731ddda97a3922b5",
+    "semantic_hash": "b46d58331af1ad79731ddda97a3922b5"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/web/components/footer.tsx": {
+    "mtime": 1761665798.6586232,
+    "ast_hash": "5afa6bf295d7fd14a9510010798c6192",
+    "semantic_hash": "5afa6bf295d7fd14a9510010798c6192"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/web/components/hero-header.tsx": {
+    "mtime": 1757338195.2023535,
+    "ast_hash": "890e3dfb9a83eb14992408dcff5b780e",
+    "semantic_hash": "890e3dfb9a83eb14992408dcff5b780e"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/web/components/hero-section.tsx": {
+    "mtime": 1757338195.0899572,
+    "ast_hash": "73609081e6235035c5818c35a69f8292",
+    "semantic_hash": "73609081e6235035c5818c35a69f8292"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/web/components/integrations.tsx": {
+    "mtime": 1756796812.1840067,
+    "ast_hash": "5e56cddff792da33df5ad291459639a7",
+    "semantic_hash": "5e56cddff792da33df5ad291459639a7"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/web/components/language-switcher.tsx": {
+    "mtime": 1756796812.1844647,
+    "ast_hash": "a64270a95f84848c7b62366c4a46946b",
+    "semantic_hash": "a64270a95f84848c7b62366c4a46946b"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/web/components/logo.tsx": {
+    "mtime": 1756796812.185946,
+    "ast_hash": "61dca0ea09e1f217b5b99f50feb7e20f",
+    "semantic_hash": "61dca0ea09e1f217b5b99f50feb7e20f"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/web/components/markdown.tsx": {
+    "mtime": 1756796812.1862965,
+    "ast_hash": "254ecf5e7474985e53cc639ed4acef1c",
+    "semantic_hash": "254ecf5e7474985e53cc639ed4acef1c"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/web/components/page-transition.tsx": {
+    "mtime": 1757338195.2133982,
+    "ast_hash": "671e4d9c773036b95d9322ef38b48710",
+    "semantic_hash": "671e4d9c773036b95d9322ef38b48710"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/web/components/pain-point.tsx": {
+    "mtime": 1762517082.8417146,
+    "ast_hash": "22bd150b415657f32479af077909519e",
+    "semantic_hash": "22bd150b415657f32479af077909519e"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/web/components/providers.tsx": {
+    "mtime": 1756375755.6541507,
+    "ast_hash": "fd29d949ab99a26acb856dec339c6c47",
+    "semantic_hash": "fd29d949ab99a26acb856dec339c6c47"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/web/components/solution.tsx": {
+    "mtime": 1756796812.187204,
+    "ast_hash": "590dc03c22069a453a6f4da0da817465",
+    "semantic_hash": "590dc03c22069a453a6f4da0da817465"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/web/components/team.tsx": {
+    "mtime": 1762179093.0916417,
+    "ast_hash": "d9eb244ac635d93bfc2606593350913b",
+    "semantic_hash": "d9eb244ac635d93bfc2606593350913b"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/web/components/video-demo.tsx": {
+    "mtime": 1762694749.296534,
+    "ast_hash": "88a888fd94035102cc5dd3cf178d2bc8",
+    "semantic_hash": "88a888fd94035102cc5dd3cf178d2bc8"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/web/components/waitlist-form.tsx": {
+    "mtime": 1756796812.187992,
+    "ast_hash": "5bfd47f804bf36b752b709d29b5d82e6",
+    "semantic_hash": "5bfd47f804bf36b752b709d29b5d82e6"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/web/components/waitlist-section.tsx": {
+    "mtime": 1756796812.188872,
+    "ast_hash": "97e561fe413b761a938fa6939f906e29",
+    "semantic_hash": "97e561fe413b761a938fa6939f906e29"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/web/context/language-context.tsx": {
+    "mtime": 1757338195.1703641,
+    "ast_hash": "e90c39eaa57e498b459aa35df7b9414a",
+    "semantic_hash": "e90c39eaa57e498b459aa35df7b9414a"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/web/eslint.config.js": {
+    "mtime": 1753113293.2802422,
+    "ast_hash": "b1b307ace41d163147d2e6b23fd3d2d6",
+    "semantic_hash": "b1b307ace41d163147d2e6b23fd3d2d6"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/web/hooks/useIntersectionObserver.ts": {
+    "mtime": 1762696061.6570556,
+    "ast_hash": "50133f6f2d8ad56bccfae36e91b6b9d8",
+    "semantic_hash": "50133f6f2d8ad56bccfae36e91b6b9d8"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/web/hooks/useSegmentRecorder.ts": {
+    "mtime": 1756796812.1894474,
+    "ast_hash": "d0a3ad9f541f0e7d5d760cdab32a5183",
+    "semantic_hash": "d0a3ad9f541f0e7d5d760cdab32a5183"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/web/lib/i18n.ts": {
+    "mtime": 1756796812.1896904,
+    "ast_hash": "58db46dfde404b12a71c2cb944f36259",
+    "semantic_hash": "58db46dfde404b12a71c2cb944f36259"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/web/lib/supabaseClient.ts": {
+    "mtime": 1756796812.1899698,
+    "ast_hash": "508b85fbc7b14dc46b69c0ef680fcab3",
+    "semantic_hash": "508b85fbc7b14dc46b69c0ef680fcab3"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/web/lib/validateEnv.ts": {
+    "mtime": 1756796812.190404,
+    "ast_hash": "8c52020bc2c93028992a83aeed975700",
+    "semantic_hash": "8c52020bc2c93028992a83aeed975700"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/web/next-env.d.ts": {
+    "mtime": 1759765539.3192022,
+    "ast_hash": "ba64ff7d54714a8f64db89b1003207d8",
+    "semantic_hash": "ba64ff7d54714a8f64db89b1003207d8"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/web/next.config.mjs": {
+    "mtime": 1753113293.2808988,
+    "ast_hash": "96b5421c5a84d7826cc2a757595ac568",
+    "semantic_hash": "96b5421c5a84d7826cc2a757595ac568"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/web/package.json": {
+    "mtime": 1761667761.657756,
+    "ast_hash": "48ccc7e343144387817cbf3c13b9a00e",
+    "semantic_hash": "48ccc7e343144387817cbf3c13b9a00e"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/web/postcss.config.mjs": {
+    "mtime": 1753113293.281078,
+    "ast_hash": "c2fa9f5bf5678c555f31e75bed0a4fc2",
+    "semantic_hash": "c2fa9f5bf5678c555f31e75bed0a4fc2"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/web/public/locales/en.json": {
+    "mtime": 1762694640.6108718,
+    "ast_hash": "728ad4d9bde1225341684fed1543c46e",
+    "semantic_hash": "728ad4d9bde1225341684fed1543c46e"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/web/public/locales/zh-TW.json": {
+    "mtime": 1762694616.5367255,
+    "ast_hash": "5cce5e4f9d7573974d77ae3caae6750e",
+    "semantic_hash": "5cce5e4f9d7573974d77ae3caae6750e"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/web/public/worklets/audio-processor.js": {
+    "mtime": 1753113293.2850184,
+    "ast_hash": "a8192c07a29046fe648771a5657fcf5b",
+    "semantic_hash": "a8192c07a29046fe648771a5657fcf5b"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/web/scripts/startProxy.ts": {
+    "mtime": 1756375755.7318938,
+    "ast_hash": "b701f74672fa372d085f985126949e78",
+    "semantic_hash": "b701f74672fa372d085f985126949e78"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/web/tsconfig.json": {
+    "mtime": 1753113293.2851994,
+    "ast_hash": "ae42a760d61107cbc206566c7b6cce0a",
+    "semantic_hash": "ae42a760d61107cbc206566c7b6cce0a"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/web/utils/audioUtils.ts": {
+    "mtime": 1756796812.1906981,
+    "ast_hash": "3137b4594fb76742ebbbe71e3d7ab3af",
+    "semantic_hash": "3137b4594fb76742ebbbe71e3d7ab3af"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/web/vercel.json": {
+    "mtime": 1761665798.6588185,
+    "ast_hash": "688431b89ce81afc9922ff736e5224f9",
+    "semantic_hash": "688431b89ce81afc9922ff736e5224f9"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/package.json": {
+    "mtime": 1761372095.380427,
+    "ast_hash": "8085064aa304f3289eeca5cd748d8e4b",
+    "semantic_hash": "8085064aa304f3289eeca5cd748d8e4b"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/packages/eslint-config/base.js": {
+    "mtime": 1753113293.2856667,
+    "ast_hash": "45b355ae247772103aa02662e5648aea",
+    "semantic_hash": "45b355ae247772103aa02662e5648aea"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/packages/eslint-config/next.js": {
+    "mtime": 1753113293.2857325,
+    "ast_hash": "114583a5838869d01a4edb0d00fb1bb0",
+    "semantic_hash": "114583a5838869d01a4edb0d00fb1bb0"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/packages/eslint-config/package.json": {
+    "mtime": 1753113293.285806,
+    "ast_hash": "edbc74ce7ebb0ab8af7665ec705c2373",
+    "semantic_hash": "edbc74ce7ebb0ab8af7665ec705c2373"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/packages/eslint-config/react-internal.js": {
+    "mtime": 1753113293.2858813,
+    "ast_hash": "8304db1ab4204bfa8586682a1c96a139",
+    "semantic_hash": "8304db1ab4204bfa8586682a1c96a139"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/packages/typescript-config/base.json": {
+    "mtime": 1753113293.2860532,
+    "ast_hash": "91496257ade11c7e49703b57f8dbe504",
+    "semantic_hash": "91496257ade11c7e49703b57f8dbe504"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/packages/typescript-config/nextjs.json": {
+    "mtime": 1753113293.2861164,
+    "ast_hash": "8cbd1ce342dc2fa14771e38d4ae2d228",
+    "semantic_hash": "8cbd1ce342dc2fa14771e38d4ae2d228"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/packages/typescript-config/package.json": {
+    "mtime": 1753113293.2861855,
+    "ast_hash": "b0509474339825bc63016ad5692d1f33",
+    "semantic_hash": "b0509474339825bc63016ad5692d1f33"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/packages/typescript-config/react-library.json": {
+    "mtime": 1753113293.2862523,
+    "ast_hash": "177e163c90fad6598867a3a4a6b18d87",
+    "semantic_hash": "177e163c90fad6598867a3a4a6b18d87"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/packages/ui/components.json": {
+    "mtime": 1754578277.4957373,
+    "ast_hash": "e4d2acbc892182625e010022820cee45",
+    "semantic_hash": "e4d2acbc892182625e010022820cee45"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/packages/ui/eslint.config.js": {
+    "mtime": 1753113293.2870367,
+    "ast_hash": "c51fb75d7965548fed2964c1d5b91a73",
+    "semantic_hash": "c51fb75d7965548fed2964c1d5b91a73"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/packages/ui/package.json": {
+    "mtime": 1755360516.1946917,
+    "ast_hash": "4b5bc4fbd11bc4a78e84247ae97f31e0",
+    "semantic_hash": "4b5bc4fbd11bc4a78e84247ae97f31e0"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/packages/ui/postcss.config.mjs": {
+    "mtime": 1755360516.1948516,
+    "ast_hash": "784097f99502acdfcd097af2be35c661",
+    "semantic_hash": "784097f99502acdfcd097af2be35c661"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/packages/ui/src/components/accordion.tsx": {
+    "mtime": 1756796812.1920834,
+    "ast_hash": "a537bb58ca63dcdbefc87d1293f17456",
+    "semantic_hash": "a537bb58ca63dcdbefc87d1293f17456"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/packages/ui/src/components/alert-dialog.tsx": {
+    "mtime": 1756796812.1925488,
+    "ast_hash": "524d68ddfdf46366d299382b5e25336a",
+    "semantic_hash": "524d68ddfdf46366d299382b5e25336a"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/packages/ui/src/components/alert.tsx": {
+    "mtime": 1756796812.1927657,
+    "ast_hash": "9e5e072768d711a05b50ca8e6a511b76",
+    "semantic_hash": "9e5e072768d711a05b50ca8e6a511b76"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/packages/ui/src/components/animated-group.tsx": {
+    "mtime": 1756375756.0791943,
+    "ast_hash": "09a37f0bd0636e47147398569e33f3e1",
+    "semantic_hash": "09a37f0bd0636e47147398569e33f3e1"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/packages/ui/src/components/aspect-ratio.tsx": {
+    "mtime": 1756796812.1932034,
+    "ast_hash": "09aa81bcf9b2130d0ee47abcb77ffe1e",
+    "semantic_hash": "09aa81bcf9b2130d0ee47abcb77ffe1e"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/packages/ui/src/components/avatar.tsx": {
+    "mtime": 1756796812.193471,
+    "ast_hash": "09ca0e330f4c3f5659c378edb825c0cf",
+    "semantic_hash": "09ca0e330f4c3f5659c378edb825c0cf"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/packages/ui/src/components/badge.tsx": {
+    "mtime": 1756796812.1937494,
+    "ast_hash": "f2edc10e0144b70070fab428fa1fec1b",
+    "semantic_hash": "f2edc10e0144b70070fab428fa1fec1b"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/packages/ui/src/components/border-beam.tsx": {
+    "mtime": 1756375756.0872424,
+    "ast_hash": "aa87e342b7068180b564c18426fdf467",
+    "semantic_hash": "aa87e342b7068180b564c18426fdf467"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/packages/ui/src/components/breadcrumb.tsx": {
+    "mtime": 1756796812.1940434,
+    "ast_hash": "c92e8083ea134efbd8e00ffe93918175",
+    "semantic_hash": "c92e8083ea134efbd8e00ffe93918175"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/packages/ui/src/components/button.tsx": {
+    "mtime": 1756796812.1943848,
+    "ast_hash": "695fbfbfa132f4b1ca293025b7a2e626",
+    "semantic_hash": "695fbfbfa132f4b1ca293025b7a2e626"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/packages/ui/src/components/calendar.tsx": {
+    "mtime": 1756796812.194636,
+    "ast_hash": "16e5e02e875d53625604ff654d047fa5",
+    "semantic_hash": "16e5e02e875d53625604ff654d047fa5"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/packages/ui/src/components/card.tsx": {
+    "mtime": 1756796812.1950126,
+    "ast_hash": "87a38154e62a31725a4568e1cec55592",
+    "semantic_hash": "87a38154e62a31725a4568e1cec55592"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/packages/ui/src/components/carousel.tsx": {
+    "mtime": 1756796812.1954567,
+    "ast_hash": "3ba70c2a6739a957dc8cb56f1a96e2f0",
+    "semantic_hash": "3ba70c2a6739a957dc8cb56f1a96e2f0"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/packages/ui/src/components/chart.tsx": {
+    "mtime": 1756796812.195785,
+    "ast_hash": "468043b2dff2e8247642c54c599828cb",
+    "semantic_hash": "468043b2dff2e8247642c54c599828cb"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/packages/ui/src/components/checkbox.tsx": {
+    "mtime": 1756796812.1962452,
+    "ast_hash": "0f298ce6bb7c88034fb55ab286fe78af",
+    "semantic_hash": "0f298ce6bb7c88034fb55ab286fe78af"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/packages/ui/src/components/collapsible.tsx": {
+    "mtime": 1756796812.1966143,
+    "ast_hash": "062d650afb7bd535dff418df0410b68d",
+    "semantic_hash": "062d650afb7bd535dff418df0410b68d"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/packages/ui/src/components/command.tsx": {
+    "mtime": 1756796812.1968942,
+    "ast_hash": "2a71424450872e26290a9a3ddc6768da",
+    "semantic_hash": "2a71424450872e26290a9a3ddc6768da"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/packages/ui/src/components/context-menu.tsx": {
+    "mtime": 1756796812.1971576,
+    "ast_hash": "a1d3da5b2f4987f8157702c06d73fa42",
+    "semantic_hash": "a1d3da5b2f4987f8157702c06d73fa42"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/packages/ui/src/components/dialog.tsx": {
+    "mtime": 1756796812.1975255,
+    "ast_hash": "34f40dd328ac553fccbd87fcc126898d",
+    "semantic_hash": "34f40dd328ac553fccbd87fcc126898d"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/packages/ui/src/components/drawer.tsx": {
+    "mtime": 1756796812.197732,
+    "ast_hash": "3513c5400f0f0bf499ebac430c728a33",
+    "semantic_hash": "3513c5400f0f0bf499ebac430c728a33"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/packages/ui/src/components/dropdown-menu.tsx": {
+    "mtime": 1756796812.1980915,
+    "ast_hash": "76fe1f7d44eb7e1b198909d9111fed3e",
+    "semantic_hash": "76fe1f7d44eb7e1b198909d9111fed3e"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/packages/ui/src/components/form.tsx": {
+    "mtime": 1756796812.1984906,
+    "ast_hash": "24dc9910c160c392d7087dbe0eab2acc",
+    "semantic_hash": "24dc9910c160c392d7087dbe0eab2acc"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/packages/ui/src/components/hover-card.tsx": {
+    "mtime": 1756796812.198862,
+    "ast_hash": "467faf0d8dcc0fd6e9a17564cc305b13",
+    "semantic_hash": "467faf0d8dcc0fd6e9a17564cc305b13"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/packages/ui/src/components/input-otp.tsx": {
+    "mtime": 1756796812.1992953,
+    "ast_hash": "f1bec9a7e992aa43f614b897fed802c8",
+    "semantic_hash": "f1bec9a7e992aa43f614b897fed802c8"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/packages/ui/src/components/input.tsx": {
+    "mtime": 1756628901.9464993,
+    "ast_hash": "346b6066a33df53430343e62d928e66d",
+    "semantic_hash": "346b6066a33df53430343e62d928e66d"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/packages/ui/src/components/label.tsx": {
+    "mtime": 1756796812.1995742,
+    "ast_hash": "ad11ebc3d88bbf197649cb3a4c76f681",
+    "semantic_hash": "ad11ebc3d88bbf197649cb3a4c76f681"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/packages/ui/src/components/menubar.tsx": {
+    "mtime": 1756796812.1999192,
+    "ast_hash": "b0a897c9661ea5e7424ebae6e52f9591",
+    "semantic_hash": "b0a897c9661ea5e7424ebae6e52f9591"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/packages/ui/src/components/navigation-menu.tsx": {
+    "mtime": 1756796812.2001877,
+    "ast_hash": "b9d2ed8f69c391318eeeee1a6212a817",
+    "semantic_hash": "b9d2ed8f69c391318eeeee1a6212a817"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/packages/ui/src/components/pagination.tsx": {
+    "mtime": 1756796812.200422,
+    "ast_hash": "2157df6b4a55a2db244f7923aca4c427",
+    "semantic_hash": "2157df6b4a55a2db244f7923aca4c427"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/packages/ui/src/components/popover.tsx": {
+    "mtime": 1756796812.2006984,
+    "ast_hash": "25ad5b561e260efb71536e3ac0af1d15",
+    "semantic_hash": "25ad5b561e260efb71536e3ac0af1d15"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/packages/ui/src/components/progress.tsx": {
+    "mtime": 1756796812.2009153,
+    "ast_hash": "0a49844e22b1807e52e90b6533a2f812",
+    "semantic_hash": "0a49844e22b1807e52e90b6533a2f812"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/packages/ui/src/components/radio-group.tsx": {
+    "mtime": 1756375756.1731637,
+    "ast_hash": "2e30d5258660e97a2a9deb4db723c43f",
+    "semantic_hash": "2e30d5258660e97a2a9deb4db723c43f"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/packages/ui/src/components/resizable.tsx": {
+    "mtime": 1756796812.2011187,
+    "ast_hash": "dd24a5270719a9771c87dda4ed858272",
+    "semantic_hash": "dd24a5270719a9771c87dda4ed858272"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/packages/ui/src/components/scroll-area.tsx": {
+    "mtime": 1756796812.2013478,
+    "ast_hash": "acc38d43222ce8c8ed7062a8818f0aa4",
+    "semantic_hash": "acc38d43222ce8c8ed7062a8818f0aa4"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/packages/ui/src/components/select.tsx": {
+    "mtime": 1756796812.2016082,
+    "ast_hash": "a5efeaa0304f8f83f2081628499367d2",
+    "semantic_hash": "a5efeaa0304f8f83f2081628499367d2"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/packages/ui/src/components/separator.tsx": {
+    "mtime": 1756375756.1853745,
+    "ast_hash": "93837cf06f10f5302c5301efc9e3663b",
+    "semantic_hash": "93837cf06f10f5302c5301efc9e3663b"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/packages/ui/src/components/sheet.tsx": {
+    "mtime": 1756796812.202171,
+    "ast_hash": "eecce4b5528b1c3d02d33932edce9abc",
+    "semantic_hash": "eecce4b5528b1c3d02d33932edce9abc"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/packages/ui/src/components/sidebar.tsx": {
+    "mtime": 1756796812.2025702,
+    "ast_hash": "1363b23a82b2d372c71a45cde5a387d1",
+    "semantic_hash": "1363b23a82b2d372c71a45cde5a387d1"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/packages/ui/src/components/skeleton.tsx": {
+    "mtime": 1756375756.204101,
+    "ast_hash": "361a581bea90af8fc032bb52f401abe3",
+    "semantic_hash": "361a581bea90af8fc032bb52f401abe3"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/packages/ui/src/components/slider.tsx": {
+    "mtime": 1756796812.2029035,
+    "ast_hash": "156225cab4cacc7092f58f2c8bd3402d",
+    "semantic_hash": "156225cab4cacc7092f58f2c8bd3402d"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/packages/ui/src/components/sonner.tsx": {
+    "mtime": 1756375756.2079463,
+    "ast_hash": "ace3a6465858e1f9a441724008f2d921",
+    "semantic_hash": "ace3a6465858e1f9a441724008f2d921"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/packages/ui/src/components/switch.tsx": {
+    "mtime": 1756796812.2031567,
+    "ast_hash": "156001859c6a65a7fa8bc36bdd7b534d",
+    "semantic_hash": "156001859c6a65a7fa8bc36bdd7b534d"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/packages/ui/src/components/table.tsx": {
+    "mtime": 1756796812.203441,
+    "ast_hash": "c398dd9017babb00c42cb8dfecfff3c9",
+    "semantic_hash": "c398dd9017babb00c42cb8dfecfff3c9"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/packages/ui/src/components/tabs.tsx": {
+    "mtime": 1756796812.2037952,
+    "ast_hash": "f5ffc55ef2c3be7753fb884cceedca6a",
+    "semantic_hash": "f5ffc55ef2c3be7753fb884cceedca6a"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/packages/ui/src/components/text-effect.tsx": {
+    "mtime": 1756796812.20427,
+    "ast_hash": "bb9ac4c581c443322949e60e3b53b5ca",
+    "semantic_hash": "bb9ac4c581c443322949e60e3b53b5ca"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/packages/ui/src/components/textarea.tsx": {
+    "mtime": 1756375756.227261,
+    "ast_hash": "c7fc3e4200d561f7e6a6e700b005e865",
+    "semantic_hash": "c7fc3e4200d561f7e6a6e700b005e865"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/packages/ui/src/components/toggle-group.tsx": {
+    "mtime": 1756796812.2051353,
+    "ast_hash": "b65424839269ffaeaaf44ef95319a769",
+    "semantic_hash": "b65424839269ffaeaaf44ef95319a769"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/packages/ui/src/components/toggle.tsx": {
+    "mtime": 1756796812.205347,
+    "ast_hash": "a7019f85ca880689daa02ee18f8e568c",
+    "semantic_hash": "a7019f85ca880689daa02ee18f8e568c"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/packages/ui/src/components/tooltip.tsx": {
+    "mtime": 1756796812.2055485,
+    "ast_hash": "294535a32714d0b728133f07b7987cec",
+    "semantic_hash": "294535a32714d0b728133f07b7987cec"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/packages/ui/src/hooks/use-mobile.ts": {
+    "mtime": 1756796812.205872,
+    "ast_hash": "c0a0bdd4638c391a1dd06ac82074e60b",
+    "semantic_hash": "c0a0bdd4638c391a1dd06ac82074e60b"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/packages/ui/src/lib/utils.ts": {
+    "mtime": 1756375756.240204,
+    "ast_hash": "618d00bf4537ce84f9ba62c5b215fb30",
+    "semantic_hash": "618d00bf4537ce84f9ba62c5b215fb30"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/packages/ui/tsconfig.json": {
+    "mtime": 1753113293.2930648,
+    "ast_hash": "750dcc9a42219306cae210934c27fc1e",
+    "semantic_hash": "750dcc9a42219306cae210934c27fc1e"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/packages/ui/tsconfig.lint.json": {
+    "mtime": 1753113293.2931433,
+    "ast_hash": "587fb50f2f4632cf1134fb279a900305",
+    "semantic_hash": "587fb50f2f4632cf1134fb279a900305"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/scripts/deploy-proxy.sh": {
+    "mtime": 1756630430.9615598,
+    "ast_hash": "36cbdbad4aa1c63ff7ac5218f8752a33",
+    "semantic_hash": "36cbdbad4aa1c63ff7ac5218f8752a33"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/supabase/functions/_shared/cors.ts": {
+    "mtime": 1761824751.220853,
+    "ast_hash": "7ddbae13df270acdfbf701dd1deb7f2a",
+    "semantic_hash": "7ddbae13df270acdfbf701dd1deb7f2a"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/supabase/functions/_shared/gemini-client.ts": {
+    "mtime": 1760161026.6871226,
+    "ast_hash": "d643485d2efd2b3370d212555441ae7b",
+    "semantic_hash": "d643485d2efd2b3370d212555441ae7b"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/supabase/functions/_shared/prompts.ts": {
+    "mtime": 1761665817.6546266,
+    "ast_hash": "701ab143a7a7397ce7bf401923daade4",
+    "semantic_hash": "701ab143a7a7397ce7bf401923daade4"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/supabase/functions/_shared/rbac.ts": {
+    "mtime": 1760696521.7035341,
+    "ast_hash": "91e93fc3d4025c12a7ffbf2397c40889",
+    "semantic_hash": "91e93fc3d4025c12a7ffbf2397c40889"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/supabase/functions/add-to-waitlist/deno.json": {
+    "mtime": 1756134156.8737535,
+    "ast_hash": "af84e44d5c8e2c89ab58060848ce672d",
+    "semantic_hash": "af84e44d5c8e2c89ab58060848ce672d"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/supabase/functions/add-to-waitlist/emails/waitlist-welcome.tsx": {
+    "mtime": 1756796812.2087843,
+    "ast_hash": "3c654594dc97ce15bbc819bccf21653c",
+    "semantic_hash": "3c654594dc97ce15bbc819bccf21653c"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/supabase/functions/add-to-waitlist/index.ts": {
+    "mtime": 1761748353.17078,
+    "ast_hash": "1405521fd6452a57499e61ff2633d93a",
+    "semantic_hash": "1405521fd6452a57499e61ff2633d93a"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/supabase/functions/add-to-waitlist/package.json": {
+    "mtime": 1756134156.8741074,
+    "ast_hash": "5151ba554b240b2c1058f2c1d7f93ba5",
+    "semantic_hash": "5151ba554b240b2c1058f2c1d7f93ba5"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/supabase/functions/admin-api/index.ts": {
+    "mtime": 1760704894.9915097,
+    "ast_hash": "da20709c2ccbee992cdbbb20dde5855e",
+    "semantic_hash": "da20709c2ccbee992cdbbb20dde5855e"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/supabase/functions/ai-action-chat/index.ts": {
+    "mtime": 1761372095.3839433,
+    "ast_hash": "a5deeec883e2cb465467fe9ae799f801",
+    "semantic_hash": "a5deeec883e2cb465467fe9ae799f801"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/supabase/functions/ai-action-deep-response/index.test.ts": {
+    "mtime": 1761663865.8222618,
+    "ast_hash": "78ce70ef3474ad665dcc6cf1958c17e3",
+    "semantic_hash": "78ce70ef3474ad665dcc6cf1958c17e3"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/supabase/functions/ai-action-deep-response/index.ts": {
+    "mtime": 1761663865.8226912,
+    "ast_hash": "e1959cb1b4298222e3ba9e99864cb7ea",
+    "semantic_hash": "e1959cb1b4298222e3ba9e99864cb7ea"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/supabase/functions/ai-action-keyword-search/index.test.ts": {
+    "mtime": 1757084252.07272,
+    "ast_hash": "995e2123a14f6cd5f71eaf05e792c12d",
+    "semantic_hash": "995e2123a14f6cd5f71eaf05e792c12d"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/supabase/functions/ai-action-keyword-search/index.ts": {
+    "mtime": 1761372095.3842793,
+    "ast_hash": "0c35e4a0e886cc2375b60954d752d086",
+    "semantic_hash": "0c35e4a0e886cc2375b60954d752d086"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/supabase/functions/ai-action-recommend-response/index.test.ts": {
+    "mtime": 1758383563.1618178,
+    "ast_hash": "8feb152c7b71780c118a220163150c85",
+    "semantic_hash": "8feb152c7b71780c118a220163150c85"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/supabase/functions/ai-action-recommend-response/index.ts": {
+    "mtime": 1761372095.3846138,
+    "ast_hash": "0e384c99ed3930b0aca667a9100110af",
+    "semantic_hash": "0e384c99ed3930b0aca667a9100110af"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/supabase/functions/ai-action-screenshot-analysis/index.ts": {
+    "mtime": 1761372095.3849072,
+    "ast_hash": "a2df5f17f91d8f83c704cbaf8040e45d",
+    "semantic_hash": "a2df5f17f91d8f83c704cbaf8040e45d"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/supabase/functions/ai-action-summarize/index.test.ts": {
+    "mtime": 1758383563.1619868,
+    "ast_hash": "7e0da024ded75544e643a2a282803916",
+    "semantic_hash": "7e0da024ded75544e643a2a282803916"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/supabase/functions/ai-action-summarize/index.ts": {
+    "mtime": 1760693717.5264027,
+    "ast_hash": "37731af841bdf41aa3584f725ff4b1ba",
+    "semantic_hash": "37731af841bdf41aa3584f725ff4b1ba"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/supabase/functions/get-latest-release/index.ts": {
+    "mtime": 1761925251.4179158,
+    "ast_hash": "4357a18e485bd28b17c464f84c179920",
+    "semantic_hash": "4357a18e485bd28b17c464f84c179920"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/supabase/functions/get-session-profile/index.ts": {
+    "mtime": 1760704894.9917977,
+    "ast_hash": "9daa3a9d355f5c0366a056f7a716ccbb",
+    "semantic_hash": "9daa3a9d355f5c0366a056f7a716ccbb"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/supabase/functions/send-beta-invitation/emails/beta-invitation.tsx": {
+    "mtime": 1762180707.9112477,
+    "ast_hash": "d7cb667af129a86dede99c3d73c81125",
+    "semantic_hash": "d7cb667af129a86dede99c3d73c81125"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/supabase/functions/send-beta-invitation/index.ts": {
+    "mtime": 1761843636.5754278,
+    "ast_hash": "1c77902aa35595650846891b9c63392f",
+    "semantic_hash": "1c77902aa35595650846891b9c63392f"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/supabase/functions/transcription-enhance/index.ts": {
+    "mtime": 1761372095.3852215,
+    "ast_hash": "0b30803eb2289aa82b4d0202bbeb3e12",
+    "semantic_hash": "0b30803eb2289aa82b4d0202bbeb3e12"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/supabase/functions/transcription-enhance/test.sh": {
+    "mtime": 1759386727.0325782,
+    "ast_hash": "3ac693a0b1f889b36b533de09cf58b0f",
+    "semantic_hash": "3ac693a0b1f889b36b533de09cf58b0f"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/supabase/migrations/20250825112617_consolidated_waitlist.sql": {
+    "mtime": 1758117442.1476517,
+    "ast_hash": "6d045ae63be7c2bc3c82083bbb096632",
+    "semantic_hash": "6d045ae63be7c2bc3c82083bbb096632"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/supabase/migrations/20250918150000_consolidated_initial_schema.sql": {
+    "mtime": 1758117442.1480882,
+    "ast_hash": "faf4ffb1df3a13ac2492ac4abb72ceea",
+    "semantic_hash": "faf4ffb1df3a13ac2492ac4abb72ceea"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/supabase/migrations/20250918160000_add_rls_to_roles_table.sql": {
+    "mtime": 1758117442.1487057,
+    "ast_hash": "7d11dd5d44a801e8cb9be839fd4cc195",
+    "semantic_hash": "7d11dd5d44a801e8cb9be839fd4cc195"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/supabase/migrations/20250918170000_setup_automatic_profile_creation.sql": {
+    "mtime": 1758636998.4158542,
+    "ast_hash": "d84c364cd7f124b785ce1b9afb1696f0",
+    "semantic_hash": "d84c364cd7f124b785ce1b9afb1696f0"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/supabase/migrations/20250930200000_add_transcription_enhance_entitlement.sql": {
+    "mtime": 1759386727.0327382,
+    "ast_hash": "9ac3129fb30875a531a9dfffa378db3a",
+    "semantic_hash": "9ac3129fb30875a531a9dfffa378db3a"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/supabase/migrations/20251015181639_analytics_lean_implementation.sql": {
+    "mtime": 1760693717.5272293,
+    "ast_hash": "ab357f3a96e46c8b49b3495fb402bbdd",
+    "semantic_hash": "ab357f3a96e46c8b49b3495fb402bbdd"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/supabase/migrations/20251015183745_fix_analytics_rls_policies.sql": {
+    "mtime": 1760693717.527381,
+    "ast_hash": "0a876ad1ace1787ebfd1ac15ab6b9038",
+    "semantic_hash": "0a876ad1ace1787ebfd1ac15ab6b9038"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/supabase/migrations/20251015190000_fix_rbac_function_for_analytics.sql": {
+    "mtime": 1760693717.527519,
+    "ast_hash": "d1a0a408a3198bb06a5e6f507d644b6f",
+    "semantic_hash": "d1a0a408a3198bb06a5e6f507d644b6f"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/supabase/migrations/20251015200000_remove_api_cost_usd.sql": {
+    "mtime": 1760693717.52765,
+    "ast_hash": "3d6ea445c679687b4ec56f8c0d0a79d8",
+    "semantic_hash": "3d6ea445c679687b4ec56f8c0d0a79d8"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/supabase/migrations/20251017000000_add_admin_rls_policies.sql": {
+    "mtime": 1760696521.7039666,
+    "ast_hash": "29877d8003c2b4333600324fc93f1541",
+    "semantic_hash": "29877d8003c2b4333600324fc93f1541"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/supabase/migrations/20251028000000_add_deep_response_rbac.sql": {
+    "mtime": 1761663865.8319397,
+    "ast_hash": "6e1c2f3242b17b1ee0883f6e9513ed5f",
+    "semantic_hash": "6e1c2f3242b17b1ee0883f6e9513ed5f"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/supabase/migrations/20251028120000_add_beta_invitation_tracking.sql": {
+    "mtime": 1761748353.17156,
+    "ast_hash": "9e158c995021a536e87336b52db73eee",
+    "semantic_hash": "9e158c995021a536e87336b52db73eee"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/supabase/migrations/20251028130000_enhance_auto_beta_conversion.sql": {
+    "mtime": 1761748353.171807,
+    "ast_hash": "bd5dad1d069ae8a2604d31926fe4042c",
+    "semantic_hash": "bd5dad1d069ae8a2604d31926fe4042c"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/supabase/migrations/20251030050000_update_beta_transcription_quota.sql": {
+    "mtime": 1761824751.2219238,
+    "ast_hash": "4eed0264ff9fc5193fa26bb359b8eeb9",
+    "semantic_hash": "4eed0264ff9fc5193fa26bb359b8eeb9"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/tsconfig.json": {
+    "mtime": 1753113293.2943778,
+    "ast_hash": "0e3be1e56cca99765fbcee2a43cc9573",
+    "semantic_hash": "0e3be1e56cca99765fbcee2a43cc9573"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/turbo.json": {
+    "mtime": 1755247025.7136104,
+    "ast_hash": "34a33f53eaa9fe63b3c770a00c82f89f",
+    "semantic_hash": "34a33f53eaa9fe63b3c770a00c82f89f"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/types/renderer.d.ts": {
+    "mtime": 1758636998.4162247,
+    "ast_hash": "005ab3720a6e3f430c579651cf089a36",
+    "semantic_hash": "005ab3720a6e3f430c579651cf089a36"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/.github/workflows/release.yml": {
+    "mtime": 1770456627.0254822,
+    "ast_hash": "f02eb64e6c46be38c0442dd84ee6919f",
+    "semantic_hash": "f02eb64e6c46be38c0442dd84ee6919f"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/.prettierrc.yaml": {
+    "mtime": 1756796812.1335547,
+    "ast_hash": "9933f2a775239515483fe7974aefa8e0",
+    "semantic_hash": "9933f2a775239515483fe7974aefa8e0"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/CLAUDE.md": {
+    "mtime": 1759143095.4250271,
+    "ast_hash": "f16b0875c57d656e81c9b6d98108e2bc",
+    "semantic_hash": "f16b0875c57d656e81c9b6d98108e2bc"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/CONTRIBUTING.md": {
+    "mtime": 1759397052.0759795,
+    "ast_hash": "86a3a149c8ea065de42c810658a920fc",
+    "semantic_hash": "86a3a149c8ea065de42c810658a920fc"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/README.md": {
+    "mtime": 1762786385.472305,
+    "ast_hash": "370a67ff1d30a3ec7b8103630703f845",
+    "semantic_hash": "370a67ff1d30a3ec7b8103630703f845"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/agents/GEMINI.md": {
+    "mtime": 1758618900.3707414,
+    "ast_hash": "3eab3a0be5ee4f8314216763c4a7d28e",
+    "semantic_hash": "3eab3a0be5ee4f8314216763c4a7d28e"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/agents/core/code-archaeologist.md": {
+    "mtime": 1756796812.1356933,
+    "ast_hash": "39ef7cc7dfc5141ef4673a7e0894ed10",
+    "semantic_hash": "39ef7cc7dfc5141ef4673a7e0894ed10"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/agents/core/code-reviewer.md": {
+    "mtime": 1756972278.6507516,
+    "ast_hash": "504af67d76d2a3926559adc062d43aee",
+    "semantic_hash": "504af67d76d2a3926559adc062d43aee"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/agents/core/documentation-specialist.md": {
+    "mtime": 1754200851.4479103,
+    "ast_hash": "43638ec2e7786266c82542de896d9d6f",
+    "semantic_hash": "43638ec2e7786266c82542de896d9d6f"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/agents/core/performance-optimizer.md": {
+    "mtime": 1756796812.1364415,
+    "ast_hash": "c55d5d94f13158b35fb5513f5367a981",
+    "semantic_hash": "c55d5d94f13158b35fb5513f5367a981"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/agents/orchestrators/project-analyst.md": {
+    "mtime": 1756796812.1370933,
+    "ast_hash": "23b9713360c5c91e5cc795dfd170b2d6",
+    "semantic_hash": "23b9713360c5c91e5cc795dfd170b2d6"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/agents/orchestrators/team-configurator.md": {
+    "mtime": 1756796812.1373167,
+    "ast_hash": "1a7646e1bab43ee5b014fa8bfcb7a152",
+    "semantic_hash": "1a7646e1bab43ee5b014fa8bfcb7a152"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/agents/orchestrators/tech-lead-orchestrator.md": {
+    "mtime": 1756626128.4692688,
+    "ast_hash": "f2b95f20df2742e30ab5e9739e2f5847",
+    "semantic_hash": "f2b95f20df2742e30ab5e9739e2f5847"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/agents/specialized/react-component-architect.md": {
+    "mtime": 1754200851.4487817,
+    "ast_hash": "8aa038310989bb412015831dc31e0f36",
+    "semantic_hash": "8aa038310989bb412015831dc31e0f36"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/agents/specialized/react-nextjs-expert.md": {
+    "mtime": 1754281801.8778498,
+    "ast_hash": "ae18448b7d80c89cb3443ccee0793d90",
+    "semantic_hash": "ae18448b7d80c89cb3443ccee0793d90"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/agents/universal/api-architect.md": {
+    "mtime": 1756796812.1375468,
+    "ast_hash": "3fbe7f926c3f16dd2814453656f82e51",
+    "semantic_hash": "3fbe7f926c3f16dd2814453656f82e51"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/agents/universal/backend-developer.md": {
+    "mtime": 1754200851.449105,
+    "ast_hash": "6f0349654532042990fb85b521c8099d",
+    "semantic_hash": "6f0349654532042990fb85b521c8099d"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/agents/universal/frontend-developer.md": {
+    "mtime": 1754200851.4492216,
+    "ast_hash": "7c4d64fa62bf52be1538f8a3e9d9b3a1",
+    "semantic_hash": "7c4d64fa62bf52be1538f8a3e9d9b3a1"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/agents/universal/tailwind-css-expert.md": {
+    "mtime": 1754200851.4493778,
+    "ast_hash": "4b0fb322994a133a5c36d3ceb8466469",
+    "semantic_hash": "4b0fb322994a133a5c36d3ceb8466469"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/admin-dashboard/README.md": {
+    "mtime": 1758383563.151353,
+    "ast_hash": "c1bd77ce9448328061653a4b3743293f",
+    "semantic_hash": "c1bd77ce9448328061653a4b3743293f"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/.prettierrc.yaml": {
+    "mtime": 1755360516.1610472,
+    "ast_hash": "0494080f0af72e414e6fb29f89c49d89",
+    "semantic_hash": "0494080f0af72e414e6fb29f89c49d89"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/README.md": {
+    "mtime": 1770456645.9531398,
+    "ast_hash": "a61ac52d5fb2dec99979eb630c1b52d4",
+    "semantic_hash": "a61ac52d5fb2dec99979eb630c1b52d4"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/dev-app-update.yml": {
+    "mtime": 1755360516.1616619,
+    "ast_hash": "6022599c251e3a78dbb8f6e31b7c79da",
+    "semantic_hash": "6022599c251e3a78dbb8f6e31b7c79da"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/electron-builder.yml": {
+    "mtime": 1759399485.6008196,
+    "ast_hash": "18809faab4c334699ffe799706fe9169",
+    "semantic_hash": "18809faab4c334699ffe799706fe9169"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/resources/whisper.cpp/README.md": {
+    "mtime": 1759399108.687297,
+    "ast_hash": "f696c19d21b6498fb750e8621387a136",
+    "semantic_hash": "f696c19d21b6498fb750e8621387a136"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/renderer/index.html": {
+    "mtime": 1770456624.0700357,
+    "ast_hash": "08aa1dfeac9f7290ef496131360f3e26",
+    "semantic_hash": "08aa1dfeac9f7290ef496131360f3e26"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/renderer/selection.html": {
+    "mtime": 1759765539.2972813,
+    "ast_hash": "80f9081aa75d7cd4ec7572b081f4acd2",
+    "semantic_hash": "80f9081aa75d7cd4ec7572b081f4acd2"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/renderer/settings.html": {
+    "mtime": 1759765539.2975514,
+    "ast_hash": "4561bfa130494618c475338fb76b992d",
+    "semantic_hash": "4561bfa130494618c475338fb76b992d"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/tests/local-transcription/README.md": {
+    "mtime": 1759200200.9269557,
+    "ast_hash": "66d1b165d18d548d3dc8526e70adff8d",
+    "semantic_hash": "66d1b165d18d548d3dc8526e70adff8d"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/proxy/README.md": {
+    "mtime": 1758183040.767407,
+    "ast_hash": "fb4cab30ebf91d4866a21cf61fc60dfc",
+    "semantic_hash": "fb4cab30ebf91d4866a21cf61fc60dfc"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/proxy/cloudbuild.yaml": {
+    "mtime": 1758636998.4111974,
+    "ast_hash": "c3f298e431908265424ea5efe19d7ad6",
+    "semantic_hash": "c3f298e431908265424ea5efe19d7ad6"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/proxy/docker-compose.yml": {
+    "mtime": 1756802273.439536,
+    "ast_hash": "0efa369aedb78d659fa57460f40263b4",
+    "semantic_hash": "0efa369aedb78d659fa57460f40263b4"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/proxy/prompts/answer.md": {
+    "mtime": 1757084252.0694797,
+    "ast_hash": "deee739e90ffbc6e310d504f29cb80c5",
+    "semantic_hash": "deee739e90ffbc6e310d504f29cb80c5"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/proxy/prompts/transcription.md": {
+    "mtime": 1758820989.9055026,
+    "ast_hash": "3a5c286d8fdc7b6ead0e33d89443c85f",
+    "semantic_hash": "3a5c286d8fdc7b6ead0e33d89443c85f"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/web/README.md": {
+    "mtime": 1758183040.7677991,
+    "ast_hash": "00827f674894a151aef6257f573df82f",
+    "semantic_hash": "00827f674894a151aef6257f573df82f"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/docs/api/edge-functions.md": {
+    "mtime": 1760693624.6887784,
+    "ast_hash": "1e8dfcac18f73b1cee44e476e5c2c6c0",
+    "semantic_hash": "1e8dfcac18f73b1cee44e476e5c2c6c0"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/docs/architecture/Message-threading.md": {
+    "mtime": 1760375689.5798874,
+    "ast_hash": "977d596c4be549160de3c51416587e89",
+    "semantic_hash": "977d596c4be549160de3c51416587e89"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/docs/architecture/RBAC.md": {
+    "mtime": 1760516091.8541884,
+    "ast_hash": "8f4a13485fb2deda401785addc6b7e5d",
+    "semantic_hash": "8f4a13485fb2deda401785addc6b7e5d"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/docs/architecture/overview.md": {
+    "mtime": 1760693625.2528338,
+    "ast_hash": "96f65a7a8d5f4819026ba4b2fc1d1f0f",
+    "semantic_hash": "96f65a7a8d5f4819026ba4b2fc1d1f0f"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/docs/architecture/whisper.md": {
+    "mtime": 1760693717.522228,
+    "ast_hash": "4c47479e710d5bdac412331e1076a0ae",
+    "semantic_hash": "4c47479e710d5bdac412331e1076a0ae"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/docs/setup/development.md": {
+    "mtime": 1760693625.8401766,
+    "ast_hash": "ce3b7450414734861557977c3a422a40",
+    "semantic_hash": "ce3b7450414734861557977c3a422a40"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/docs/waitlist-to-beta-conversion-implementation.md": {
+    "mtime": 1761748353.1699724,
+    "ast_hash": "8b889703f5c7fee418efa89ecce0a82a",
+    "semantic_hash": "8b889703f5c7fee418efa89ecce0a82a"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/packages/eslint-config/README.md": {
+    "mtime": 1753113293.285602,
+    "ast_hash": "59963ee08d1627771348c8de3359daf7",
+    "semantic_hash": "59963ee08d1627771348c8de3359daf7"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/packages/typescript-config/README.md": {
+    "mtime": 1753113293.2859876,
+    "ast_hash": "7f23ef73f596183f048ced7c752cfedb",
+    "semantic_hash": "7f23ef73f596183f048ced7c752cfedb"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/plans/20250831-backend-security-refactor.md": {
+    "mtime": 1757084252.0705702,
+    "ast_hash": "ac48708d7fb3a2d73da65bb673aac373",
+    "semantic_hash": "ac48708d7fb3a2d73da65bb673aac373"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/plans/20250905-secure-ai-actions-flow.md": {
+    "mtime": 1757084252.0706863,
+    "ast_hash": "f8a05da3f2fff21f20fd1854b32acb80",
+    "semantic_hash": "f8a05da3f2fff21f20fd1854b32acb80"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/plans/20250911-dynamic-summarize.md": {
+    "mtime": 1758383563.1593366,
+    "ast_hash": "9313fc4a156832fa8cae5a5f7f60bf4e",
+    "semantic_hash": "9313fc4a156832fa8cae5a5f7f60bf4e"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/plans/20250911-update-ui.md": {
+    "mtime": 1757654451.2232656,
+    "ast_hash": "127f08adfef52c5c22b7127aea370162",
+    "semantic_hash": "127f08adfef52c5c22b7127aea370162"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/plans/20250912-improve-login-experience.md": {
+    "mtime": 1758383563.1597872,
+    "ast_hash": "be42a704f9880575fbb6dc9746ebb47f",
+    "semantic_hash": "be42a704f9880575fbb6dc9746ebb47f"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/plans/20250913-auto-update-experience.md": {
+    "mtime": 1757825615.3577483,
+    "ast_hash": "019d61537b6057f6f10ae5d2c4afc024",
+    "semantic_hash": "019d61537b6057f6f10ae5d2c4afc024"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/plans/20250913-rbac-for-the-app.md": {
+    "mtime": 1758383563.1600742,
+    "ast_hash": "de3c10ca6e9e29abdbb0d911eb6279ea",
+    "semantic_hash": "de3c10ca6e9e29abdbb0d911eb6279ea"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/plans/20250913-update-ui-ux.md": {
+    "mtime": 1758383563.1604064,
+    "ast_hash": "fc634fe524f45189bf8337560ba7be59",
+    "semantic_hash": "fc634fe524f45189bf8337560ba7be59"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/plans/20250914-coexistence-of-panels.md": {
+    "mtime": 1758117442.142634,
+    "ast_hash": "61c03c7b957e4d952992cba0dee4a106",
+    "semantic_hash": "61c03c7b957e4d952992cba0dee4a106"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/plans/20250914-highlight-the-keywords-in-the-transcriptions.md": {
+    "mtime": 1758383563.160649,
+    "ast_hash": "a5f5e99631fa18f73116b6eaf2022fc2",
+    "semantic_hash": "a5f5e99631fa18f73116b6eaf2022fc2"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/plans/20250914-refactor-electron-apis.md": {
+    "mtime": 1758383563.1608336,
+    "ast_hash": "d3e95e2a46eb65f32226d6e13c009ea9",
+    "semantic_hash": "d3e95e2a46eb65f32226d6e13c009ea9"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/plans/20250917-universal-entitlements-engine.md": {
+    "mtime": 1758383563.1610982,
+    "ast_hash": "d05b25ca2b0022f9c9268e905e08997c",
+    "semantic_hash": "d05b25ca2b0022f9c9268e905e08997c"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/plans/20250928-local-transcription.md": {
+    "mtime": 1759200200.929625,
+    "ast_hash": "581be5e4db2cc43d21225db563af1099",
+    "semantic_hash": "581be5e4db2cc43d21225db563af1099"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/plans/20250930-audio-processing.md": {
+    "mtime": 1759386727.0290282,
+    "ast_hash": "858c7cc9726264720e5a786c8df13fcc",
+    "semantic_hash": "858c7cc9726264720e5a786c8df13fcc"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/plans/20250930-multilingual-whisper.md": {
+    "mtime": 1759386727.0292711,
+    "ast_hash": "4094a239d4d5886cebc01df6b996e81a",
+    "semantic_hash": "4094a239d4d5886cebc01df6b996e81a"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/plans/20251001-whisper-transcription-review.md": {
+    "mtime": 1759386727.0294683,
+    "ast_hash": "95aba0b84ee1202af2b46a905bb10a47",
+    "semantic_hash": "95aba0b84ee1202af2b46a905bb10a47"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/plans/20251004-redesign-settings.md": {
+    "mtime": 1759765539.3197007,
+    "ast_hash": "5016a267849ef796251a127f9c9b93c4",
+    "semantic_hash": "5016a267849ef796251a127f9c9b93c4"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/plans/20251009-download-session-json-file-issue.md": {
+    "mtime": 1760208358.5764382,
+    "ast_hash": "16760d41a0288e6f98f51a7c5695d3ee",
+    "semantic_hash": "16760d41a0288e6f98f51a7c5695d3ee"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/plans/20251009-first-keyword-search-issue.md": {
+    "mtime": 1760208358.5767758,
+    "ast_hash": "e264f73bec04a4ee80fa80250dd90541",
+    "semantic_hash": "e264f73bec04a4ee80fa80250dd90541"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/plans/20251009-keywords-display-issue.md": {
+    "mtime": 1760208358.577202,
+    "ast_hash": "6d3d8e77ac0a8cb99ece90478a188ac4",
+    "semantic_hash": "6d3d8e77ac0a8cb99ece90478a188ac4"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/plans/20251010-actions-for-intention-detection.md": {
+    "mtime": 1760208358.577804,
+    "ast_hash": "01e159b2ec73b2bbf1b0c347439d16e5",
+    "semantic_hash": "01e159b2ec73b2bbf1b0c347439d16e5"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/plans/20251011-whisper-hallucination-issue.md": {
+    "mtime": 1760208358.5782325,
+    "ast_hash": "cd1a254972536d9500f6a1c0b65ffc57",
+    "semantic_hash": "cd1a254972536d9500f6a1c0b65ffc57"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/plans/20251012-auto-summarize.md": {
+    "mtime": 1760208358.5786753,
+    "ast_hash": "614a8a0ce4c7fff6bfa34e75035a3770",
+    "semantic_hash": "614a8a0ce4c7fff6bfa34e75035a3770"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/plans/20251012-structure-of-gemini-response-of-summary.md": {
+    "mtime": 1760208358.578993,
+    "ast_hash": "b283983d16f38285d306ef3f05c01b5d",
+    "semantic_hash": "b283983d16f38285d306ef3f05c01b5d"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/plans/20251015-users-behavior-and-preferences-analytics.md": {
+    "mtime": 1760696521.7015724,
+    "ast_hash": "2e5bafdcef1a2df263f773caa5e89283",
+    "semantic_hash": "2e5bafdcef1a2df263f773caa5e89283"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/plans/20251016-admin-monitor.md": {
+    "mtime": 1760696521.7018433,
+    "ast_hash": "39fee55722d49da1d6a9b192a9a9b037",
+    "semantic_hash": "39fee55722d49da1d6a9b192a9a9b037"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/plans/20251024_prompt_improvement_for_all_ai_actions.md": {
+    "mtime": 1761372095.3809114,
+    "ast_hash": "0e325a29302046b9a6468ef65b74ad7c",
+    "semantic_hash": "0e325a29302046b9a6468ef65b74ad7c"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/plans/20251025-prepare-for-beta-release.md": {
+    "mtime": 1761372095.3813128,
+    "ast_hash": "7a08b7c2cb507cd718985ac6168c7e58",
+    "semantic_hash": "7a08b7c2cb507cd718985ac6168c7e58"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/plans/20251030-waitlist-management-page.md": {
+    "mtime": 1761843884.4409823,
+    "ast_hash": "706ef89b7810fcdaceb06bfd2645448f",
+    "semantic_hash": "706ef89b7810fcdaceb06bfd2645448f"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/plans/20251030-waitlist-to-beta-conversion.md": {
+    "mtime": 1761838796.7332568,
+    "ast_hash": "23041aa501cfe4acda2c2f27ed653799",
+    "semantic_hash": "23041aa501cfe4acda2c2f27ed653799"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/plans/20251031-update-invitation-email-content.md": {
+    "mtime": 1762180707.9102917,
+    "ast_hash": "e29b86bd383b60c7bb711efb9793dba5",
+    "semantic_hash": "e29b86bd383b60c7bb711efb9793dba5"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/plans/20260207-local-ollama-transcription-enhancement.md": {
+    "mtime": 1770449326.6753204,
+    "ast_hash": "951d55f8e28959ba2a47894b34b5a66f",
+    "semantic_hash": "951d55f8e28959ba2a47894b34b5a66f"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/pnpm-workspace.yaml": {
+    "mtime": 1756134156.8733323,
+    "ast_hash": "5ea7919401809311057872d5a0a1504a",
+    "semantic_hash": "5ea7919401809311057872d5a0a1504a"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/admin-dashboard/public/logo/intevia(+logo).svg": {
+    "mtime": 1757825615.344873,
+    "ast_hash": "a8da20188033cbf6dd8cbe5cd0f88af4",
+    "semantic_hash": "a8da20188033cbf6dd8cbe5cd0f88af4"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/admin-dashboard/public/logo/intevia.svg": {
+    "mtime": 1757825615.3451345,
+    "ast_hash": "02bdbaa81b8cc03adcb530e19542e3bb",
+    "semantic_hash": "02bdbaa81b8cc03adcb530e19542e3bb"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/admin-dashboard/public/logo/intevia_logo.png": {
+    "mtime": 1757825615.3455944,
+    "ast_hash": "7033f3e5ce98174ba6927679ac59af64",
+    "semantic_hash": "7033f3e5ce98174ba6927679ac59af64"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/admin-dashboard/public/logo/intevia_logo.svg": {
+    "mtime": 1757825615.3459468,
+    "ast_hash": "fda17cb2ce4448ad731bad1e1f77f58a",
+    "semantic_hash": "fda17cb2ce4448ad731bad1e1f77f58a"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/renderer/public/logo/intevia(+logo).svg": {
+    "mtime": 1757084252.0642462,
+    "ast_hash": "a8da20188033cbf6dd8cbe5cd0f88af4",
+    "semantic_hash": "a8da20188033cbf6dd8cbe5cd0f88af4"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/renderer/public/logo/intevia.svg": {
+    "mtime": 1757084252.0643234,
+    "ast_hash": "02bdbaa81b8cc03adcb530e19542e3bb",
+    "semantic_hash": "02bdbaa81b8cc03adcb530e19542e3bb"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/renderer/public/logo/intevia_logo.png": {
+    "mtime": 1759200200.9235022,
+    "ast_hash": "6a36a8c735c8a61bfd564523ad92cfcd",
+    "semantic_hash": "6a36a8c735c8a61bfd564523ad92cfcd"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/renderer/public/logo/intevia_logo.svg": {
+    "mtime": 1757084252.0646572,
+    "ast_hash": "fda17cb2ce4448ad731bad1e1f77f58a",
+    "semantic_hash": "fda17cb2ce4448ad731bad1e1f77f58a"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/renderer/public/logo/intevia_logo_bg.svg": {
+    "mtime": 1759200200.923822,
+    "ast_hash": "70cf11122cb7f76b436fed00adaffea0",
+    "semantic_hash": "70cf11122cb7f76b436fed00adaffea0"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/renderer/src/assets/electron.svg": {
+    "mtime": 1756297804.5598474,
+    "ast_hash": "7e350671f4993b01b6110e283cb7ab02",
+    "semantic_hash": "7e350671f4993b01b6110e283cb7ab02"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/app/src/renderer/src/assets/wavy-lines.svg": {
+    "mtime": 1756297800.9859123,
+    "ast_hash": "990cf549e920e993d4c1998c217661c6",
+    "semantic_hash": "990cf549e920e993d4c1998c217661c6"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/web/public/meeting/google.png": {
+    "mtime": 1753113293.2812545,
+    "ast_hash": "2e776d99c875a69cad1e2e14552551a4",
+    "semantic_hash": "2e776d99c875a69cad1e2e14552551a4"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/web/public/meeting/intevia(+logo).svg": {
+    "mtime": 1757776142.2775347,
+    "ast_hash": "a8da20188033cbf6dd8cbe5cd0f88af4",
+    "semantic_hash": "a8da20188033cbf6dd8cbe5cd0f88af4"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/web/public/meeting/intevia.svg": {
+    "mtime": 1757776142.9608235,
+    "ast_hash": "02bdbaa81b8cc03adcb530e19542e3bb",
+    "semantic_hash": "02bdbaa81b8cc03adcb530e19542e3bb"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/web/public/meeting/intevia_logo.png": {
+    "mtime": 1757776143.7603736,
+    "ast_hash": "7033f3e5ce98174ba6927679ac59af64",
+    "semantic_hash": "7033f3e5ce98174ba6927679ac59af64"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/web/public/meeting/intevia_logo.svg": {
+    "mtime": 1757776144.5602608,
+    "ast_hash": "fda17cb2ce4448ad731bad1e1f77f58a",
+    "semantic_hash": "fda17cb2ce4448ad731bad1e1f77f58a"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/web/public/meeting/ms_meeting.png": {
+    "mtime": 1755360516.1930923,
+    "ast_hash": "58209df0050c34149dfb1a11e2424942",
+    "semantic_hash": "58209df0050c34149dfb1a11e2424942"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/web/public/meeting/webex.png": {
+    "mtime": 1755360516.1942236,
+    "ast_hash": "969b27a3c2d1424a4e84615ccb00c1f4",
+    "semantic_hash": "969b27a3c2d1424a4e84615ccb00c1f4"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/web/public/meeting/zoom.png": {
+    "mtime": 1753113293.2826123,
+    "ast_hash": "d0da0f30b87514d3a4db058dc422ae3a",
+    "semantic_hash": "d0da0f30b87514d3a4db058dc422ae3a"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/web/public/placeholder.png": {
+    "mtime": 1753113293.2828119,
+    "ast_hash": "f04ec8cef80f319a70f846b07fefe4f6",
+    "semantic_hash": "f04ec8cef80f319a70f846b07fefe4f6"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/web/public/team/wei.jpg": {
+    "mtime": 1762178339.53229,
+    "ast_hash": "ffb52722149e204ee103736b4625c2c1",
+    "semantic_hash": "ffb52722149e204ee103736b4625c2c1"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/web/public/team/yao.jpg": {
+    "mtime": 1762178339.5327034,
+    "ast_hash": "828ec3430471561fe3e47151c5ae3314",
+    "semantic_hash": "828ec3430471561fe3e47151c5ae3314"
+  },
+  "/Users/tweizh/DEV/Intevia/Knovy/apps/web/public/team/ye.jpg": {
+    "mtime": 1762178339.5329013,
+    "ast_hash": "db3af16e4ddce04080d22e83274a8c6c",
+    "semantic_hash": "db3af16e4ddce04080d22e83274a8c6c"
+  }
+}

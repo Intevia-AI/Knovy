@@ -1,0 +1,6 @@
+# Machine-specific absolute paths (interpreter + scan root) — not portable
+.graphify_python
+.graphify_root
+
+# Regenerable content-hash extraction cache — large and churny
+cache/
