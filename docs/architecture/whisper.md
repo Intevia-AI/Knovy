@@ -51,7 +51,7 @@ graph TB
 - **Model Management**: Downloads, validates, and manages Whisper models (default: base model)
 - **Audio Processing**: Converts audio data to WAV format and processes through whisper.cpp
 - **Two-Stage Language Detection**: Implements detection-first approach for improved accuracy
-- **Transcription Enhancement**: Integrates with Gemini API for post-processing
+- **Transcription Enhancement**: Integrates with a local Ollama model for post-processing
 - **Noise Filtering**: Advanced audio energy analysis and hallucination detection
 - **Error Handling**: Comprehensive error recovery and process management
 
@@ -59,7 +59,7 @@ graph TB
 
 - Automatic model download (base model by default, 142MB)
 - Two-stage detection for Chinese languages (detect → targeted transcription)
-- Progressive enhancement pattern (raw display → async Gemini enhancement)
+- Local enhancement via Ollama (grammar, zh-TW, keywords, intention) with raw-text fallback
 - Configurable model sizes (tiny/base/small/medium)
 - Energy-based noise filtering
 - Pattern-based hallucination detection
@@ -120,13 +120,12 @@ System Audio Worklet → Base64 PCM → WhisperTranscriptionProcessor (system) �
 5. **Transcription**: WhisperBackend processes through whisper.cpp binary
 6. **Filtering**: Noise filtering and hallucination detection applied
 7. **Database Storage**: Raw transcription saved with unique ID
-8. **Immediate Display**: Raw text shown in UI for instant feedback
-9. **Enhancement** (100ms delay): Gemini API post-processes transcription
+8. **Enhancement** (local, if model ready): Ollama post-processes transcription
    - Grammar and punctuation correction
    - Traditional Chinese conversion (for zh-TW users)
    - Keyword extraction
    - Intent detection
-10. **UI Update**: Enhanced text replaces raw text in-place (by ID)
+9. **UI Update**: Enhanced text broadcast to the renderer via `transcription:data` (raw text used as fallback if enhancement is unavailable)
 
 ### Model Management
 
@@ -477,7 +476,7 @@ sequenceDiagram
     participant Whisper as whisper.cpp<br/>Binary
     participant TES as TranscriptionEnhancementService
     participant DB as SQLite Database
-    participant Edge as Supabase Edge Function
+    participant Ollama as Ollama<br/>(local)
 
     Mic->>RTA: PCM audio chunks
     RTA->>WTP: processAudioChunk(base64Audio)
@@ -494,19 +493,15 @@ sequenceDiagram
 
     WB->>Main: Return transcription
     Main->>DB: Save raw transcript (with ID)
-    Main->>RTA: IPC: transcription:data
-    RTA->>RTA: Display raw text immediately
 
-    Note over Main,TES: Enhancement Path (100ms delay)
+    Note over Main,Ollama: Enhancement Path (local, if model ready)
     Main->>TES: enhanceSegment(segment, context)
-    TES->>TES: Queue segment (batching)
-    TES->>Edge: POST /transcription-enhance<br/>(batch of segments)
-    Edge->>Edge: Gemini API processing<br/>(grammar, zh-TW, keywords)
-    Edge->>TES: Enhanced results
-    TES->>Main: Enhancement complete event
+    TES->>Ollama: Local inference<br/>(grammar, zh-TW, keywords, intention)
+    Ollama->>TES: Enhanced segment
+    TES->>Main: Enhanced result (or raw fallback)
     Main->>DB: Update transcript with enhanced text
-    Main->>RTA: IPC: transcription:enhanced
-    RTA->>RTA: Replace raw text with enhanced (by ID)
+    Main->>RTA: IPC: transcription:data<br/>(enhanced, or raw fallback)
+    RTA->>RTA: Display text
 ```
 
 ### Flow Stages
@@ -554,23 +549,22 @@ WhisperTranscriptionProcessor buffers audio until:
 **File:** `apps/app/src/main/index.ts` (lines 801-965)
 
 - Save raw transcription to SQLite with unique ID
-- Broadcast to renderer immediately via `transcription:data`
-- UI displays raw text within milliseconds
+- Enhance locally (see step 6), then broadcast the result via `transcription:data`
+- UI displays the enhanced text (or the raw text, if enhancement is unavailable)
 
 #### 6. Enhancement Path
 
-**File:** `apps/app/src/main/transcriptionEnhancementService.ts`
+**Files:** `apps/app/src/main/index.ts`, `apps/app/src/main/transcriptionEnhancementService.ts`, `apps/app/src/main/ollamaService.ts`
 
-After 100ms delay:
+If the local Ollama model is ready:
 
-1. Gather session context (existing summary, recent transcripts)
-2. Queue segment in TranscriptionEnhancementService
-3. Batch segments (5 segments OR 3 seconds)
-4. Send batch to Supabase Edge Function
-5. Gemini API processes: grammar, zh-TW conversion, keywords
-6. Update database with enhanced text
-7. Broadcast `transcription:enhanced` event
-8. UI replaces raw text with enhanced (by ID match)
+1. Gather session context (session ID, user language)
+2. Pass the segment to TranscriptionEnhancementService → OllamaService
+3. Run local inference: grammar correction, Traditional Chinese conversion, keyword extraction, intention detection
+4. Update the database with the enhanced text and metadata
+5. Broadcast `transcription:data` with the enhanced result (raw text is used as a fallback if the model is unavailable)
+
+Enhancement runs locally over HTTP to Ollama — there is no Supabase Edge Function or Gemini API call, no batching, and no entitlement/quota check.
 
 ### Key Implementation Details
 
@@ -738,7 +732,7 @@ setTranscriptions((prev) =>
 - **Dual-Stream Audio**: Microphone and system audio processing
 - **Model Management**: Download, validation, and storage (base model default)
 - **Two-Stage Language Detection**: Enhanced accuracy for Chinese languages
-- **Progressive Enhancement**: Gemini API post-processing with ID-based updates
+- **Local Enhancement**: On-device Ollama post-processing with ID-based updates
 - **Traditional Chinese Support**: Automatic conversion for zh-TW users
 - **Noise Filtering**: Advanced hallucination detection
 - **Error Recovery**: Comprehensive error handling

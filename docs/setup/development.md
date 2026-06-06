@@ -94,10 +94,10 @@ pnpm --filter app dev
 
 **First Launch**: The app will automatically download the base whisper model (142MB) on first startup. Ensure you have an internet connection for the initial model download.
 
-**Transcription Enhancement**: The desktop app can optionally enhance raw transcriptions using the Gemini API. To enable this feature:
-1. Ensure you have a valid Supabase configuration
-2. The user must have the `transcription_enhance` entitlement
-3. Enhancement runs automatically after raw transcription is displayed
+**Transcription Enhancement**: The desktop app can optionally enhance raw transcriptions using a local Ollama model. To enable this feature:
+1. Install [Ollama](https://ollama.com) and ensure it is running (default `http://localhost:11434`)
+2. Pull/select an enhancement model from the app's AI Models settings
+3. Enhancement runs automatically and on-device; if the model is unavailable, the raw transcription is shown unchanged
 
 ### Supabase
 

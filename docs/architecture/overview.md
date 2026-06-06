@@ -70,14 +70,15 @@ graph TD
     - Stage 2: Performs targeted transcription with detected language for improved accuracy.
     - Particularly beneficial for Traditional Chinese (zh-TW) users.
   - **Dual Audio Streams**: Captures both microphone and system audio simultaneously, each processed independently.
-  - **Progressive Enhancement Pattern**:
-    - Raw transcription displayed immediately for responsiveness.
-    - Enhanced transcription (grammar correction, Traditional Chinese conversion, keyword extraction) applied asynchronously via Gemini API.
-    - UI updates in-place without creating duplicate messages.
+  - **Local Transcription Enhancement**:
+    - Raw transcription is enhanced on-device by a local Ollama model in the main process before being sent to the UI.
+    - Enhancement covers grammar correction, Traditional Chinese conversion, and keyword extraction.
+    - If the model is unavailable, the raw transcription is shown unchanged (best-effort, never blocking).
 - **Backend Interaction**:
   - **Authentication**: Uses Supabase for user login (OAuth).
   - **Session Management**: On startup, it calls the `get-session-profile` Edge Function to fetch the user's role, entitlements, and quotas, which dynamically configures the UI.
-  - **AI Actions**: Connects to secure Supabase Edge Functions (e.g., `ai-action-summarize`, `ai-action-transcription-enhance`), which are protected by the entitlements middleware.
+  - **AI Actions**: Connects to secure Supabase Edge Functions (e.g., `ai-action-summarize`, `ai-action-chat`), which are protected by the entitlements middleware.
+  - **Transcription Enhancement**: Runs locally via Ollama in the main process — no network call (see Section 5).
   - **Local Storage**: SQLite database stores both raw and enhanced transcriptions with metadata.
 
 ### 3.2. Web Application (`apps/web`)
@@ -111,7 +112,6 @@ Our backend is composed of several key pieces:
   - **Edge Functions**: Secure, serverless Deno functions that host all application logic.
     - **Core Services**: Functions like `get-session-profile` that provide essential data to clients.
     - **AI Actions**: A suite of functions that perform specific AI tasks, each protected by the `withEntitlements` middleware to enforce RBAC and quotas.
-      - **Transcription Enhancement** (`ai-action-transcription-enhance`): Post-processes raw transcriptions to correct grammar, convert to Traditional Chinese for zh-TW users, extract keywords, and detect user intentions. Uses smart batching to optimize API usage.
     - **Admin API**: A dedicated API for platform management, restricted to admin users.
 
 - **WebSocket Proxy (`apps/proxy`)**: A Node.js server that handles real-time, stateful WebSocket connections for features like live transcription. It proxies requests to the Google Generative AI API. **Note**: Currently used by the web application only; the desktop application uses local whisper.cpp transcription.
@@ -127,25 +127,21 @@ sequenceDiagram
     participant Audio as Audio Input
     participant Whisper as whisper.cpp
     participant Main as Main Process
+    participant Ollama as Ollama (local)
     participant DB as SQLite Database
     participant UI as Renderer (UI)
-    participant Gemini as Gemini API
 
     Audio->>Whisper: Raw audio buffer
     Whisper->>Whisper: Two-stage detection<br/>(if Chinese user)
     Whisper->>Main: Raw transcription text
     Main->>DB: Save raw transcription<br/>(with unique ID)
-    Main->>UI: Broadcast transcription<br/>(immediate display)
-    UI->>UI: Display raw text
 
-    Note over Main,Gemini: 100ms delay for DB consistency
-
-    Main->>Gemini: Request enhancement<br/>(same transcript ID)
-    Note over Gemini: - Grammar correction<br/>- Traditional Chinese conversion<br/>- Keyword extraction<br/>- Intent detection
-    Gemini->>Main: Enhanced result
+    Main->>Ollama: Enhance segment<br/>(if model ready)
+    Note over Ollama: - Grammar correction<br/>- Traditional Chinese conversion<br/>- Keyword extraction<br/>- Intent detection
+    Ollama->>Main: Enhanced result<br/>(falls back to raw if unavailable)
     Main->>DB: Update with enhanced text
-    Main->>UI: Send update event<br/>(with transcript ID)
-    UI->>UI: Replace raw text<br/>(by ID match)
+    Main->>UI: Broadcast transcription<br/>(enhanced, or raw fallback)
+    UI->>UI: Display text
 ```
 
 ### Key Features
@@ -157,14 +153,9 @@ sequenceDiagram
    - **Stage 2**: If Chinese detected for zh-TW user, runs targeted transcription with `--language zh`
    - Improves accuracy for Traditional Chinese users by providing language context to whisper
 
-3. **Progressive Enhancement Pattern**:
-   - Raw transcription displayed within milliseconds for immediate feedback
-   - Enhancement request batched and sent to Gemini API
-   - UI updates in-place when enhancement completes (typically 2-5 seconds)
+3. **Local Enhancement**: Each segment is enhanced by a local Ollama model in the main process — no network round-trip, no API cost, and no entitlement check. Enhancement runs per segment (the earlier Gemini-based batching was removed).
 
-4. **Smart Batching**: Enhancement service queues segments and sends batches to Gemini API to optimize costs and rate limits.
-
-5. **Entitlement Protection**: The `ai-action-transcription-enhance` Edge Function is protected by the `withEntitlements` middleware, ensuring only authorized users can access enhancement features based on their subscription tier.
+4. **Graceful Fallback**: If the Ollama model is not ready, the raw transcription is displayed unchanged; enhancement is best-effort and never blocks display.
 
 ### Database Schema
 
@@ -176,7 +167,7 @@ CREATE TABLE transcripts (
   session_id TEXT NOT NULL,
   content TEXT NOT NULL,              -- Initially raw, updated to enhanced
   raw_text TEXT,                      -- Original whisper output
-  enhanced_text TEXT,                 -- Gemini-enhanced version
+  enhanced_text TEXT,                 -- Ollama-enhanced version
   detected_language TEXT,             -- From two-stage detection
   enhancement_status TEXT DEFAULT 'pending',
   enhancement_metadata TEXT,          -- JSON: keywords, intention, confidence
