@@ -1,25 +1,20 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { AppRouter } from './AppRouter'
-import { useAuth, AuthProvider } from '../context/AuthContext'
 import { TranslationProvider } from '../context/TranslationContext'
-import { Loader2 } from 'lucide-react'
-import { LoginPage, Waitlist } from '../components/LoginPage'
 import { LoadingPage } from '../components/LoadingPage'
 import { motion, AnimatePresence } from 'motion'
 import { getWhisperClient } from '../services/whisperClient'
 
 /**
  * Main page component that serves as the entry point for the application.
- * Shows a loading spinner during authentication, then renders either the
- * login page or the main application based on user authentication state.
+ * Shows a loading spinner while models initialize, then renders the main application.
  * It also resizes the main window to fit the content.
  *
  * @component
  * @returns {JSX.Element} The rendered page.
  */
 function AppContent() {
-  const { user, isLoading, sessionProfile } = useAuth()
   const [isInitialLoad, setIsInitialLoad] = useState(true)
   const [hasBeenPositioned, setHasBeenPositioned] = useState(false)
   const [isUnifiedLoading, setIsUnifiedLoading] = useState(true) // Unified loading for all initialization
@@ -53,45 +48,25 @@ function AppContent() {
   }
 
   useEffect(() => {
-    if (isInitialLoad && !isLoading) {
+    if (isInitialLoad) {
       setIsInitialLoad(false)
     }
 
     if (isPopover) return // Do not run this effect in popover windows
-
-    const isUserLoggedIn = user && sessionProfile
-    const isWaitlisted =
-      isUserLoggedIn &&
-      sessionProfile.role === 'free' &&
-      sessionProfile.app_settings.free_tier_experience?.mode === 'non-access'
 
     // Don't resize during unified loading
     if (isUnifiedLoading) {
       return
     }
 
-    if (isUserLoggedIn && !isWaitlisted) {
-      // Main App View
-      if (!hasBeenPositioned) {
-        console.log('[App] Transitioning to main app view')
-        debouncedWindowResize(360, 50, 'bottom-left', true)
-        setHasBeenPositioned(true)
-      }
-    } else {
-      // Login, Waitlist, or Error View
-      console.log('[App] Transitioning to login/waitlist view')
-      debouncedWindowResize(320, 300, 'center', false)
-      if (hasBeenPositioned) {
-        setHasBeenPositioned(false)
-      }
+    if (!hasBeenPositioned) {
+      debouncedWindowResize(360, 50, 'bottom-left', true)
+      setHasBeenPositioned(true)
     }
   }, [
-    user,
-    isLoading,
     isInitialLoad,
     isPopover,
     hasBeenPositioned,
-    sessionProfile,
     isUnifiedLoading
   ])
 
@@ -109,7 +84,7 @@ function AppContent() {
     }
   }, [])
 
-  // Handle unified app initialization (model + auth)
+  // Handle unified app initialization (model check)
   useEffect(() => {
     // Skip for popover windows - they should load immediately
     if (isPopover) {
@@ -133,7 +108,7 @@ function AppContent() {
     {
       name: 'model-check',
       message: 'Preparing models...',
-      weight: 0.6, // 60% of total progress
+      weight: 1.0, // 100% of total progress
       executor: async () => {
         try {
           console.log('[App] Starting model preparation phase')
@@ -164,44 +139,6 @@ function AppContent() {
           return true
         } catch (error) {
           console.error('[App] Error during model preparation:', error)
-          return false
-        }
-      }
-    },
-    {
-      name: 'auth-check',
-      message: 'Verifying authentication...',
-      weight: 0.4, // 40% of total progress
-      executor: async () => {
-        try {
-          console.log('[App] Starting authentication verification phase')
-
-          // Wait for auth to complete if still loading
-          while (isLoading) {
-            await new Promise((resolve) => setTimeout(resolve, 100))
-          }
-
-          // If we have a user, wait for session profile to load
-          if (user && !sessionProfile) {
-            console.log('[App] User found, waiting for session profile...')
-            let attempts = 0
-            const maxAttempts = 50 // 5 seconds max wait
-
-            while (!sessionProfile && attempts < maxAttempts) {
-              await new Promise((resolve) => setTimeout(resolve, 100))
-              attempts++
-            }
-
-            if (!sessionProfile) {
-              console.warn('[App] Session profile loading timed out')
-              return false
-            }
-          }
-
-          console.log('[App] Authentication verification completed')
-          return true
-        } catch (error) {
-          console.error('[App] Error during authentication verification:', error)
           return false
         }
       }
@@ -246,7 +183,7 @@ function AppContent() {
 
   return (
     <AnimatePresence mode="wait">
-      {/* Unified loading (model + auth) - first priority */}
+      {/* Unified loading (model check) - first priority */}
       {isUnifiedLoading && !isPopover ? (
         <motion.div
           key="unified-loading"
@@ -262,45 +199,15 @@ function AppContent() {
           />
         </motion.div>
       ) : (
-        /* Main content */
-        <div key="content">
-          <AnimatePresence mode="wait">
-            {user && sessionProfile ? (
-              sessionProfile.app_settings.free_tier_experience?.mode === 'non-access' &&
-              sessionProfile.role === 'free' ? (
-                <motion.div
-                  key="waitlist"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  <Waitlist />
-                </motion.div>
-              ) : (
-                <motion.div
-                  key="main"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  <AppRouter />
-                </motion.div>
-              )
-            ) : (
-              <motion.div
-                key="login"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.2 }}
-              >
-                <LoginPage />
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
+        <motion.div
+          key="main"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+        >
+          <AppRouter />
+        </motion.div>
       )}
     </AnimatePresence>
   )
@@ -309,9 +216,7 @@ function AppContent() {
 export default function App() {
   return (
     <TranslationProvider>
-      <AuthProvider>
-        <AppContent />
-      </AuthProvider>
+      <AppContent />
     </TranslationProvider>
   )
 }
