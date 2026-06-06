@@ -7,10 +7,14 @@
 ## Goal
 
 Strip all authentication, entitlement/quota gating, Supabase, the OAuth
-`intevia://` flow, and the admin dashboard from the Knovy monorepo. The desktop
-app boots straight into the main UI with every feature unconditionally enabled,
-running entirely on local Whisper (transcription) + Ollama (AI actions). The
-website becomes a static marketing site. The app is being open-sourced.
+`intevia://` flow, the admin dashboard, **and the marketing website** from the
+Knovy monorepo. The desktop app boots straight into the main UI with every
+feature unconditionally enabled, running entirely on local Whisper
+(transcription) + Ollama (AI actions). The app is being open-sourced.
+
+The marketing website (`apps/web`) is removed entirely — a new version is owned
+in a **separate repository** by a collaborator, so this repo collapses to the
+desktop app (+ shared packages) only.
 
 PostHog telemetry is explicitly **deferred** to a separate future project.
 
@@ -36,9 +40,9 @@ PostHog telemetry is explicitly **deferred** to a separate future project.
 - **Desktop**: `App.tsx` = `isUnifiedLoading ? <LoadingPage/> : <AppRouter/>`.
   No `AuthProvider`, no gate. `LoadingPage` keeps only the Whisper `model-check`
   phase. Single implicit local user; no user ids anywhere.
-- **Web**: static Next.js marketing site (landing/privacy/terms + feedback
-  form). No Supabase, no auth, no waitlist.
-- **Backend**: none. `supabase/` and `apps/admin-dashboard/` deleted.
+- **Web**: removed. The marketing site lives in a separate repo.
+- **Backend**: none. `supabase/`, `apps/admin-dashboard/`, and `apps/web/`
+  deleted. The monorepo is left with `apps/app` (+ `packages/*`).
 
 ## Desktop Changes (`apps/app`)
 
@@ -95,35 +99,26 @@ PostHog telemetry is explicitly **deferred** to a separate future project.
     strip `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` from `.env` and
     `.env.example`.
 
-## Web Changes (`apps/web`)
-
-- **Delete**: `app/auth/` (login, register, callback), `app/api/waitlist/`,
-  `lib/supabaseClient.ts`, `components/waitlist-form.tsx`,
-  `components/waitlist-section.tsx`. Delete `app/api/process-audio/` after
-  confirming it is orphaned leftover demo/proxy infra.
-- **Landing** (`app/(landing)/page.tsx`): replace `<WaitlistSection/>` with a
-  Download CTA (placeholder link; real app link provided later). Check
-  `hero-section.tsx` for any waitlist CTA and convert to Download.
-- **`lib/validateEnv.ts`** + **`.env.example`**: remove the
-  `NEXT_PUBLIC_SUPABASE_*` entries; keep `GMAIL_USER` / `GMAIL_PASS` (feedback
-  form, nodemailer — not auth).
-- **Deps**: remove `@supabase/supabase-js` from `apps/web/package.json`.
-
 ## Full-Directory Deletions + Monorepo Wiring
 
+- Delete `apps/web/` outright — the marketing site moves to a separate repo.
+  This subsumes all the former web auth/waitlist/Supabase work into one deletion.
 - Delete `apps/admin-dashboard/` outright (separate Next.js app; only referenced
   by deleted Supabase functions + CORS allowlist).
 - Delete `supabase/` outright — all edge functions, `migrations/`,
   `config.toml`, seed, `_shared/`. No archive (git history preserves it).
 - `pnpm-workspace.yaml`: remove the `supabase/functions/*` entry.
-  `apps/admin-dashboard` needs no edit (covered by the `apps/*` glob; Turbo
-  discovers dynamically).
+  `apps/web` and `apps/admin-dashboard` need no workspace edit (covered by the
+  `apps/*` glob; Turbo discovers dynamically). After deletion the only workspace
+  app is `apps/app`.
 - `.github/workflows/release.yml`: remove `VITE_SUPABASE_URL` /
   `VITE_SUPABASE_ANON_KEY` from the build env (release builds the desktop app
   only).
+- Check root `package.json`, `turbo.json`, and any docs for hard references to
+  `web` / `admin-dashboard` (e.g. `--filter web` scripts) and remove them.
 - `pnpm-lock.yaml` regenerates as a result (approved dependency removal:
-  `@supabase/supabase-js` from `app` + `web`; `@supabase/ssr` +
-  `@supabase/supabase-js` removed with `admin-dashboard`).
+  `@supabase/supabase-js` removed with `apps/app`, `apps/web`, and
+  `apps/admin-dashboard`).
 
 ## Docs
 
@@ -135,9 +130,9 @@ PostHog telemetry is explicitly **deferred** to a separate future project.
 
 ## Verification
 
-- Run `pnpm --filter app typecheck` and `pnpm --filter web typecheck` on the
-  affected commits. Pre-existing TS errors in the codebase are expected; the
-  goal is no *new* errors from these changes.
+- Run `pnpm --filter app typecheck` on the affected commits. Pre-existing TS
+  errors in the codebase are expected; the goal is no *new* errors from these
+  changes. (`apps/web` is deleted, so there is no web typecheck.)
 - No formal renderer/web test suite exists. No build or dev server run unless
   explicitly requested.
 - Manual smoke (when requested): launch desktop app → boots straight to the main
@@ -155,8 +150,7 @@ Granular, one logical subtask per commit:
 3. Desktop: remove analytics / user-session telemetry.
 4. Desktop: remove Supabase client, `intevia://` protocol, auth/session/
    analytics IPC; drop `@supabase/supabase-js` dep + env.
-5. Web: strip auth/waitlist/Supabase, add Download CTA, fix `validateEnv`/env,
-   delete orphaned `process-audio`.
+5. Delete `apps/web` (marketing site moves to a separate repo).
 6. Delete `apps/admin-dashboard`.
 7. Delete `supabase/`; fix `pnpm-workspace.yaml` + CI secrets.
 8. Docs: update `CLAUDE.md` + `docs/` to local-only.
