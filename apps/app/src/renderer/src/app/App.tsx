@@ -15,7 +15,6 @@ import { getWhisperClient } from '../services/whisperClient'
  * @returns {JSX.Element} The rendered page.
  */
 function AppContent() {
-  const [isInitialLoad, setIsInitialLoad] = useState(true)
   const [hasBeenPositioned, setHasBeenPositioned] = useState(false)
   const [isUnifiedLoading, setIsUnifiedLoading] = useState(true) // Unified loading for all initialization
   const [hash] = useState(() => window.location.hash) // Get hash once
@@ -48,10 +47,6 @@ function AppContent() {
   }
 
   useEffect(() => {
-    if (isInitialLoad) {
-      setIsInitialLoad(false)
-    }
-
     if (isPopover) return // Do not run this effect in popover windows
 
     // Don't resize during unified loading
@@ -64,7 +59,6 @@ function AppContent() {
       setHasBeenPositioned(true)
     }
   }, [
-    isInitialLoad,
     isPopover,
     hasBeenPositioned,
     isUnifiedLoading
@@ -93,15 +87,13 @@ function AppContent() {
       return
     }
 
-    // Start unified loading process immediately
-    if (isInitialLoad) {
-      console.log('[App] Starting unified app initialization')
-      // Set appropriate window size for loading (always centered for initial app load)
-      window.electronAPI.send('app:set-always-on-top', { alwaysOnTop: false })
-      window.electronAPI.send('app:resize-window', { width: 320, height: 300 })
-      window.electronAPI.send('window:set-position', { position: 'center' })
-    }
-  }, [isInitialLoad, isPopover])
+    // Start unified loading process on mount
+    console.log('[App] Starting unified app initialization')
+    // Set appropriate window size for loading (always centered for initial app load)
+    window.electronAPI.send('app:set-always-on-top', { alwaysOnTop: false })
+    window.electronAPI.send('app:resize-window', { width: 320, height: 300 })
+    window.electronAPI.send('window:set-position', { position: 'center' })
+  }, [])
 
   // Create loading phases configuration
   const createLoadingPhases = () => [
