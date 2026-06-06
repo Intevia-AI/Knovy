@@ -492,7 +492,11 @@ const createWindow = async () => {
     frame: false,
     transparent: true,
     hasShadow: false,
-    resizable: false, // Window is not resizable
+    // Frameless windows have no user-draggable resize borders, so this stays
+    // effectively non-resizable to the user. It must be true for the programmatic
+    // min/max height lock in 'app:resize-window' to be honored on macOS, which
+    // prevents the transparent window from auto-growing to fit content.
+    resizable: true,
     alwaysOnTop: false, // Not always-on-top initially
     visualEffectState: 'active',
     backgroundMaterial: 'acrylic',
@@ -2224,6 +2228,13 @@ app.on('ready', async () => {
       const [currentWidth, currentHeight] = mainWindow.getSize()
       const newWidth = width || currentWidth
       const newHeight = height || currentHeight
+      // Lock the height so the transparent, frameless window cannot auto-grow to
+      // fit its content. Without this, starting a recording re-renders the control
+      // bar and the window briefly snaps 50→78px and drifts upward (it is
+      // bottom-anchored on macOS). Pinning min/max height to the target value
+      // before that render blocks the grow entirely; width stays flexible.
+      mainWindow.setMinimumSize(0, newHeight)
+      mainWindow.setMaximumSize(10000, newHeight)
       mainWindow.setSize(newWidth, newHeight, true) // Animate the resize
     }
   })

@@ -34,7 +34,10 @@ export function MainController() {
 
   useEffect(() => {
     const newWidth = isScreenSharing ? 440 : 360
-    window.electronAPI.send('app:resize-window', { width: newWidth })
+    // Always pin the bar height. The transparent frameless window can momentarily
+    // auto-grow when the control bar re-renders on toggle; sending an explicit
+    // height keeps the resize handler authoritative instead of preserving the drift.
+    window.electronAPI.send('app:resize-window', { width: newWidth, height: 50 })
 
     if (!isScreenSharing) {
       // Close all popovers when screen sharing stops
