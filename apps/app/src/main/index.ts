@@ -1893,11 +1893,11 @@ app.on('ready', async () => {
   ipcMain.handle('db:end-session', (event, sessionId) => dbService.endSession(sessionId))
   ipcMain.handle('db:get-summary', (event, sessionId) => dbService.getSummary(sessionId))
   ipcMain.handle('db:save-summary', (event, summary) => dbService.saveSummary(summary))
-  ipcMain.handle('db:get-sessions-with-transcripts', (event, { userId, limit, offset }) =>
-    dbService.getSessionsWithTranscripts(userId, limit, offset)
+  ipcMain.handle('db:get-sessions-with-transcripts', (event, { limit, offset }) =>
+    dbService.getSessionsWithTranscripts(limit, offset)
   )
-  ipcMain.handle('db:get-total-session-count', (event, userId) =>
-    dbService.getTotalSessionCount(userId)
+  ipcMain.handle('db:get-total-session-count', () =>
+    dbService.getTotalSessionCount()
   )
   ipcMain.handle('db:export-session', (event, { sessionId, locale, timezone }) =>
     dbService.exportSession(sessionId, locale, timezone)

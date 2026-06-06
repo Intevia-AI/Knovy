@@ -337,11 +337,10 @@ export async function endSession(sessionId: string) {
 // History pagination functions
 
 export async function getSessionsWithTranscripts(
-  userId: string, // Not used currently as sessions table doesn't have user_id
   limit: number = 20,
   offset: number = 0
 ) {
-  console.log('[DB] getSessionsWithTranscripts called with userId:', userId, 'limit:', limit, 'offset:', offset)
+  console.log('[DB] getSessionsWithTranscripts called with limit:', limit, 'offset:', offset)
   const db = await dbPromise
 
   // Get sessions with pagination (without user_id filter since table doesn't have it)
@@ -375,7 +374,6 @@ export async function getSessionsWithTranscripts(
 
       return {
         ...session,
-        user_id: userId, // Add user_id to match type expectations
         transcripts
       }
     })
@@ -385,7 +383,7 @@ export async function getSessionsWithTranscripts(
   return sessionsWithTranscripts
 }
 
-export async function getTotalSessionCount(userId: string) {
+export async function getTotalSessionCount() {
   const db = await dbPromise
   const stmt = await db.prepare('SELECT COUNT(*) as count FROM sessions')
   const result = await stmt.get()

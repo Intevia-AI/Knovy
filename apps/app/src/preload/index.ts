@@ -109,10 +109,10 @@ const api = {
   getTranscripts: (sessionId, page, limit) =>
     ipcRenderer.invoke('db:get-transcripts', { sessionId, page, limit }),
   endSession: (sessionId) => ipcRenderer.invoke('db:end-session', sessionId),
-  getSessionsWithTranscripts: (userId: string, limit: number, offset: number) =>
-    ipcRenderer.invoke('db:get-sessions-with-transcripts', { userId, limit, offset }),
-  getTotalSessionCount: (userId: string) =>
-    ipcRenderer.invoke('db:get-total-session-count', userId),
+  getSessionsWithTranscripts: (limit: number, offset: number) =>
+    ipcRenderer.invoke('db:get-sessions-with-transcripts', { limit, offset }),
+  getTotalSessionCount: () =>
+    ipcRenderer.invoke('db:get-total-session-count'),
   exportSession: (sessionId: string, locale?: string, timezone?: string) =>
     ipcRenderer.invoke('db:export-session', { sessionId, locale, timezone }),
   deleteSession: (sessionId: string) => ipcRenderer.invoke('db:delete-session', sessionId),
