@@ -4,3 +4,9 @@
 
 # Regenerable content-hash extraction cache — large and churny
 cache/
+
+# Build artifacts — rebuilt by the post-commit hook / --update; kept local-only
+# to avoid post-commit churn (graph.html is not rebuilt by the hook and goes stale)
+graph.json
+graph.html
+GRAPH_REPORT.md
