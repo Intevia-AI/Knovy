@@ -135,7 +135,6 @@
   "cta.description": "如果您對我們的產品有興趣，請填入電子信箱，當新版本釋出時會通知您！",
   "cta.placeholder": "填入您的電子信箱以獲取更新",
   "cta.button": "通知我",
-  "proxy.system_prompt": "You are a real-time transcription assistant. For each audio input, respond in the following format:\n\nTRANSCRIPTION: [transcribe the audio content here, the speaker will be speaking in chinese. Please respond in chinese.]\nKEYWORDS: [list any technical terms, specialized vocabulary, or complex concepts that might be difficult for a general audience to understand, separated by commas. If none, leave empty]",
   "auth.callback.title": "驗證中",
   "auth.callback.redirecting": "請稍候，我們正在將您重導回應用程式。",
   "auth.callback.can_close": "您可以稍後關閉此視窗。",
