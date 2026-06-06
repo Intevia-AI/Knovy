@@ -307,8 +307,14 @@ async function startSession() {
     const { id } = await dbService.createSession(newSession)
     currentSessionId = id
 
-    // Note: IntentionProcessor uses analytics session ID, not SQLite session ID
-    // It will be set by the analytics:set-session-id handler
+    // Wire IntentionProcessor to the local session ID so auto-trigger works
+    loadSettings().then((s) => {
+      const intentionProcessor = getIntentionProcessor(s.autoTrigger)
+      intentionProcessor.setSessionId(id)
+      console.log('[main/index.ts] IntentionProcessor session ID set to local session:', id)
+    }).catch((err) => {
+      console.error('[main/index.ts] Failed to set IntentionProcessor session ID:', err)
+    })
 
     console.log(`[main/index.ts] Started and set new session ID: ${id}`)
     return id
@@ -326,7 +332,14 @@ async function endCurrentSession() {
   const sessionIdToEnd = currentSessionId
   currentSessionId = null // Clear session ID immediately
 
-  // Note: IntentionProcessor session ID is cleared by analytics:clear-session-id handler
+  // Clear IntentionProcessor session ID now that the local session has ended
+  loadSettings().then((s) => {
+    const intentionProcessor = getIntentionProcessor(s.autoTrigger)
+    intentionProcessor.setSessionId(null)
+    console.log('[main/index.ts] IntentionProcessor session ID cleared on session end')
+  }).catch((err) => {
+    console.error('[main/index.ts] Failed to clear IntentionProcessor session ID:', err)
+  })
 
   try {
     const result = await dbService.endSession(sessionIdToEnd)
@@ -2123,7 +2136,8 @@ app.on('ready', async () => {
         // Initialize IntentionProcessor with current settings for auto-trigger
         const settings = await loadSettings()
         const intentionProcessor = getIntentionProcessor(settings.autoTrigger)
-        intentionProcessor.setSessionId(analyticsSessionId)
+        // Use local session ID (analytics session ID is no longer set after analytics removal)
+        intentionProcessor.setSessionId(analyticsSessionId || currentSessionId)
 
         // Clear existing listeners to prevent duplicates
         intentionProcessor.removeAllListeners('actionTriggered')

@@ -343,7 +343,7 @@ export async function getSessionsWithTranscripts(
   console.log('[DB] getSessionsWithTranscripts called with limit:', limit, 'offset:', offset)
   const db = await dbPromise
 
-  // Get sessions with pagination (without user_id filter since table doesn't have it)
+  // Get sessions with pagination
   const sessionsStmt = await db.prepare(`
     SELECT
       s.*,
