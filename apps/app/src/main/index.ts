@@ -1349,7 +1349,8 @@ app.on('ready', async () => {
 
         if (ollamaSvc.getStatus() === 'ready') {
           try {
-            const userLanguage = 'auto'
+            const settings = await loadSettings()
+            const userLanguage = settings.language
 
             const segment = {
               id: transcriptId,

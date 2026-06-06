@@ -2,7 +2,6 @@ import { motion } from 'motion'
 import {
   Settings,
   History,
-  Monitor,
   Keyboard,
   Info,
   Power,

@@ -84,7 +84,6 @@ export const translations = {
     // Section Titles
     generalSection: 'General',
     appearanceSection: 'Appearance',
-    accountSection: 'Account',
     aboutSection: 'About',
 
     // About Section
@@ -149,7 +148,6 @@ export const translations = {
     displaySettingsDescription: 'Configure display and screen settings',
     displayChangeWarning: 'Changing display will restart your current recording session',
     contentProtectionDescription: 'Hide app content from screenshots and screen recordings',
-    accountSettingsDescription: 'Manage your account and subscription',
     // Delete Confirmation Dialog
     deleteSessionTitle: 'Delete Session?',
     deleteSessionMessage:
@@ -273,7 +271,6 @@ export const translations = {
     // Section Titles
     generalSection: '一般',
     appearanceSection: '外觀',
-    accountSection: '帳戶',
     aboutSection: '關於',
 
     // About Section
@@ -339,7 +336,6 @@ export const translations = {
     displaySettingsDescription: '設定 Knovy 所處的螢幕',
     displayChangeWarning: '變更顯示器將會重新開始您目前的錄製對話紀錄',
     contentProtectionDescription: '隱藏應用程式內容，防止螢幕截圖和錄影',
-    accountSettingsDescription: '管理您的帳戶和訂閱',
     // Delete Confirmation Dialog
     deleteSessionTitle: '刪除紀錄',
     deleteSessionMessage: '您確定要刪除此對話紀錄嗎？此操作無法復原。',
@@ -468,7 +464,6 @@ export type TranslationKey =
   // Section Titles
   | 'generalSection'
   | 'appearanceSection'
-  | 'accountSection'
   | 'aboutSection'
   | 'versionLabel'
   | 'copyrightLabel'
@@ -531,7 +526,6 @@ export type TranslationKey =
   | 'displaySettingsDescription'
   | 'displayChangeWarning'
   | 'contentProtectionDescription'
-  | 'accountSettingsDescription'
   // Delete Confirmation Dialog
   | 'deleteSessionTitle'
   | 'deleteSessionMessage'
