@@ -60,3 +60,13 @@ jobs:
           CSC_LINK: ${{ secrets.CSC_LINK }}
           CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
         run: pnpm --filter Knovy run build:staging
+
+      - name: Upload staging build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: knovy-staging-${{ github.run_number }}
+          path: |
+            apps/app/dist/*.dmg
+            apps/app/dist/*.zip
+          retention-days: 14
+          if-no-files-found: error

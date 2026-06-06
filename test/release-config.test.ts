@@ -90,6 +90,19 @@ describe('staging workflow', () => {
     )
     expect(step).toBeDefined()
   })
+
+  it('uploads the build as a downloadable Actions artifact', () => {
+    const step = stagingSteps().find(
+      (s) => typeof s.uses === 'string' && s.uses.includes('actions/upload-artifact'),
+    )
+    expect(step).toBeDefined()
+  })
+
+  it('does not create a GitHub release', () => {
+    const raw = readFileSync(resolve(repoRoot, stagingPath), 'utf8')
+    expect(raw).not.toContain('softprops/action-gh-release')
+    expect(raw).not.toContain('--publish always')
+  })
 })
 
 describe('staging build:staging script', () => {
