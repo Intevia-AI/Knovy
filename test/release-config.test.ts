@@ -45,3 +45,19 @@ describe('release workflow', () => {
     expect(workflow.jobs.release.permissions.contents).toBe('write')
   })
 })
+
+describe('no leftover references to the external release setup', () => {
+  const files = ['.github/workflows/release.yml', 'apps/app/electron-builder.yml']
+
+  for (const file of files) {
+    const raw = readFileSync(resolve(repoRoot, file), 'utf8')
+
+    it(`${file} does not mention the separate Knovy-Release repo`, () => {
+      expect(raw).not.toContain('Knovy-Release')
+    })
+
+    it(`${file} does not reference the personal RELEASE_PAT secret`, () => {
+      expect(raw).not.toContain('RELEASE_PAT')
+    })
+  }
+})
