@@ -25,8 +25,7 @@ import {
   closeAllPopovers,
   forceClosePopover,
   resizePopover,
-  getPopover,
-  setAdminStatus as setPopoverAdminStatus
+  getPopover
 } from './popoverManager'
 import { positionWindow, type PositionOptions } from './windowManager'
 import electronUpdater, { type AppUpdater } from 'electron-updater'
@@ -58,23 +57,10 @@ const s2twConverter = ConverterFactory(Locale.from.cn, Locale.to.tw)
 console.log('[Debug] Imported dbService module:', dbService)
 
 let isScreenSharing = false
-let cachedSessionProfile: any | null = null
 let currentSessionId: string | null = null // SQLite session ID
-let analyticsSessionId: string | null = null // Analytics session ID from renderer
 let activeScreenSourceId: string | null = null
 let mainWindow: BrowserWindow | null
 let selectionWindow: BrowserWindow | null
-
-/**
- * Check if the current user is an admin
- * Beta release restrictions (window resizing, cmd+q, DevTools) only apply to non-admin users
- */
-function isAdminUser(): boolean {
-  const role = cachedSessionProfile?.role
-  const isAdmin = role === 'admin'
-  console.log(`[main/index.ts] Role check: ${role}, isAdmin: ${isAdmin}`)
-  return isAdmin
-}
 
 /**
  * Update application menu based on user role
@@ -359,110 +345,6 @@ ipcMain.handle('session:get-id', () => {
   return currentSessionId
 })
 
-ipcMain.handle('session:get-profile', () => {
-  return cachedSessionProfile
-})
-
-ipcMain.handle('session:set-profile', (event, profile) => {
-  cachedSessionProfile = profile
-  console.log('[main/index.ts] Session profile cached.')
-
-  // Apply role-based restrictions after profile is loaded
-  const isAdmin = isAdminUser()
-  console.log(`[main/index.ts] Applying role-based restrictions. User is admin: ${isAdmin}`)
-
-  // Update main window restrictions based on role
-  if (mainWindow && !mainWindow.isDestroyed()) {
-    // Admin users can resize main window
-    mainWindow.setResizable(isAdmin)
-    console.log(`[main/index.ts] Main window resizable: ${isAdmin}`)
-
-    // Open DevTools for admin users (even in production builds)
-    if (isAdmin && !is.dev) {
-      mainWindow.webContents.openDevTools()
-      console.log('[main/index.ts] DevTools opened for admin user in production')
-    }
-  }
-
-  // Update popover admin status (settings window is resizable for all users)
-  setPopoverAdminStatus(isAdmin)
-
-  // Update application menu based on role
-  if (process.platform === 'darwin') {
-    updateApplicationMenu(isAdmin)
-  }
-})
-
-ipcMain.handle('session:clear-profile', () => {
-  cachedSessionProfile = null
-  console.log('[main/index.ts] Session profile cache cleared.')
-})
-
-// Analytics session ID handlers (separate from SQLite session ID)
-ipcMain.handle('analytics:set-session-id', (event, sessionId: string) => {
-  analyticsSessionId = sessionId
-  console.log('[main/index.ts] ✓ Analytics session ID set:', sessionId)
-
-  // Update IntentionProcessor with analytics session ID (the one used by enhancement service)
-  const settings = loadSettings()
-  settings.then((s) => {
-    const intentionProcessor = getIntentionProcessor(s.autoTrigger)
-    intentionProcessor.setSessionId(sessionId)
-    console.log('[main/index.ts] Updated IntentionProcessor with analytics session ID:', sessionId)
-  }).catch((err) => {
-    console.error('[main/index.ts] Failed to update IntentionProcessor session ID:', err)
-  })
-
-  // Get all windows for broadcasting
-  const allWindows = BrowserWindow.getAllWindows()
-  const validWindows = allWindows.filter((win) => !win.isDestroyed())
-
-  console.log(`[main/index.ts] Broadcasting analytics session ID to ${validWindows.length} windows`)
-
-  // Broadcast to ALL windows (including popovers) so they can use the same session_id
-  validWindows.forEach((win, index) => {
-    try {
-      const url = win.webContents.getURL()
-      console.log(`[main/index.ts]   → Window ${index + 1}: Sending to ${url.substring(0, 50)}...`)
-      win.webContents.send('analytics:session-id-changed', sessionId)
-    } catch (error) {
-      console.error(`[main/index.ts]   ✗ Window ${index + 1}: Failed to send:`, error.message)
-    }
-  })
-
-  console.log('[main/index.ts] ✓ Broadcast completed')
-  return { success: true }
-})
-
-ipcMain.handle('analytics:get-session-id', () => {
-  console.log('[main/index.ts] Analytics session ID requested, returning:', analyticsSessionId)
-  return analyticsSessionId
-})
-
-ipcMain.handle('analytics:clear-session-id', () => {
-  analyticsSessionId = null
-  console.log('[main/index.ts] Analytics session ID cleared')
-
-  // Clear IntentionProcessor session ID
-  const settings = loadSettings()
-  settings.then((s) => {
-    const intentionProcessor = getIntentionProcessor(s.autoTrigger)
-    intentionProcessor.setSessionId(null)
-    console.log('[main/index.ts] Cleared IntentionProcessor session ID')
-  }).catch((err) => {
-    console.error('[main/index.ts] Failed to clear IntentionProcessor session ID:', err)
-  })
-
-  // Broadcast to ALL windows
-  console.log('[main/index.ts] Broadcasting analytics session ID cleared to all windows')
-  for (const win of BrowserWindow.getAllWindows()) {
-    if (!win.isDestroyed()) {
-      win.webContents.send('analytics:session-id-changed', null)
-    }
-  }
-
-  return { success: true }
-})
 
 ipcMain.handle('electronAPI:getActiveScreenSourceId', () => {
   return activeScreenSourceId
@@ -532,62 +414,18 @@ async function saveSettings(settings: any) {
   }
 }
 
-const PROTOCOL = 'intevia'
-let oauthCallbackUrlOnStartup: string | null = null
-
 const gotTheLock = app.requestSingleInstanceLock()
 
 if (!gotTheLock) {
   app.quit()
 } else {
-  app.on('second-instance', (event, commandLine) => {
-    const url = commandLine.find((arg) => arg.startsWith(`${PROTOCOL}://`))
-    if (url) {
-      if (
-        mainWindow &&
-        !mainWindow.isDestroyed() &&
-        mainWindow.webContents &&
-        !mainWindow.webContents.isLoading()
-      ) {
-        if (mainWindow.isMinimized()) mainWindow.restore()
-        mainWindow.focus()
-        mainWindow.webContents.send('electronAPI:oauth-callback', url)
-        oauthCallbackUrlOnStartup = null
-      } else {
-        oauthCallbackUrlOnStartup = url
-        if (mainWindow) {
-          if (mainWindow.isMinimized()) mainWindow.restore()
-          mainWindow.focus()
-        }
-      }
-    } else {
-      if (mainWindow) {
-        if (mainWindow.isMinimized()) mainWindow.restore()
-        mainWindow.focus()
-      }
+  app.on('second-instance', () => {
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore()
+      mainWindow.focus()
     }
   })
 }
-
-app.on('open-url', (event, url) => {
-  event.preventDefault()
-  oauthCallbackUrlOnStartup = url
-  if (mainWindow) {
-    if (mainWindow.isMinimized()) mainWindow.restore()
-    mainWindow.show()
-    mainWindow.focus()
-    if (mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
-      mainWindow.webContents.send('electronAPI:oauth-callback', url)
-    }
-  }
-})
-
-ipcMain.on('renderer-auth-ready', (event) => {
-  if (oauthCallbackUrlOnStartup) {
-    event.sender.send('electronAPI:oauth-callback', oauthCallbackUrlOnStartup)
-    oauthCallbackUrlOnStartup = null
-  }
-})
 
 function createSelectionWindow() {
   console.log('[main/index.ts] Creating selection window')
@@ -690,14 +528,6 @@ const createWindow = async () => {
     await saveSettings({ ...settings, displayId: actualDisplayId })
   }
 
-  mainWindow.webContents.on('did-finish-load', () => {
-    if (oauthCallbackUrlOnStartup) {
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send('electronAPI:oauth-callback', oauthCallbackUrlOnStartup)
-      }
-      oauthCallbackUrlOnStartup = null
-    }
-  })
 
   // mainWindow.on('blur', () => {
   //   closeAllPopovers();
@@ -839,14 +669,6 @@ app.on('ready', async () => {
     await installExtension(REACT_DEVELOPER_TOOLS).catch(console.log)
   }
   nativeTheme.themeSource = 'light'
-
-  if (process.defaultApp) {
-    if (process.argv.length >= 2) {
-      app.setAsDefaultProtocolClient(PROTOCOL, process.execPath, [path.resolve(process.argv[1])])
-    }
-  } else {
-    app.setAsDefaultProtocolClient(PROTOCOL, process.execPath, ['--auth-callback'])
-  }
 
   // Show dock icon for all users (beta release requirement)
   // Dock icon allows right-click → Quit functionality
@@ -1020,20 +842,6 @@ app.on('ready', async () => {
   ipcMain.handle('settings:navigate', (event, section: string) => {
     // Navigation handled in renderer, just for future use
     return { success: true, section }
-  })
-
-  ipcMain.handle('supabase:signInWithOAuth', async (event, provider) => {
-    if (provider.urlToOpen) {
-      await shell.openExternal(provider.urlToOpen)
-      return { success: true }
-    }
-    return { error: 'No URL provided' }
-  })
-
-  ipcMain.on('auth:request-sign-out', () => {
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('auth:execute-sign-out')
-    }
   })
 
   // Auto-trigger settings IPC handlers
@@ -1551,9 +1359,7 @@ app.on('ready', async () => {
 
         if (ollamaSvc.getStatus() === 'ready') {
           try {
-            const userLanguage = cachedSessionProfile?.profile?.language ||
-                               cachedSessionProfile?.app_settings?.language ||
-                               'auto'
+            const userLanguage = 'auto'
 
             const segment = {
               id: transcriptId,
@@ -1563,7 +1369,7 @@ app.on('ready', async () => {
             }
 
             const sessionContext = {
-              sessionId: analyticsSessionId || currentSessionId,
+              sessionId: currentSessionId,
               conversationHistory: [] as string[],
               userLanguage
             }
@@ -1865,16 +1671,6 @@ app.on('ready', async () => {
   // Note: History viewer has been integrated into the settings window.
   // The old Express server and separate Next.js app have been removed.
 
-  if (process.platform !== 'darwin' && gotTheLock) {
-    const cmdLineUrl = process.argv.find((arg) => arg.startsWith(`${PROTOCOL}://`))
-    if (cmdLineUrl) {
-      console.log(
-        `[main.js app.ready] Initial command line OAuth URL for Windows/Linux: ${cmdLineUrl}`
-      )
-      oauthCallbackUrlOnStartup = cmdLineUrl
-    }
-  }
-
   // Database IPC handlers
   ipcMain.handle('db:create-session', (event, session) => {
     console.log('[main] db:create-session received for id:', session.id)
@@ -2136,8 +1932,7 @@ app.on('ready', async () => {
         // Initialize IntentionProcessor with current settings for auto-trigger
         const settings = await loadSettings()
         const intentionProcessor = getIntentionProcessor(settings.autoTrigger)
-        // Use local session ID (analytics session ID is no longer set after analytics removal)
-        intentionProcessor.setSessionId(analyticsSessionId || currentSessionId)
+        intentionProcessor.setSessionId(currentSessionId)
 
         // Clear existing listeners to prevent duplicates
         intentionProcessor.removeAllListeners('actionTriggered')

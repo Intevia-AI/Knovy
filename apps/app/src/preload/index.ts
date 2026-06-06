@@ -5,8 +5,6 @@ console.log('[Preload] Script loaded.')
 const api = {
   openExternal: (url: string) => ipcRenderer.send('electronAPI:openExternal', url),
 
-  supabaseSignInWithOAuth: (provider) => ipcRenderer.invoke('supabase:signInWithOAuth', provider),
-
   selectSource: (sourceId) => ipcRenderer.invoke('electronAPI:selectSource', sourceId),
 
   cancelSourceSelection: () => ipcRenderer.invoke('electronAPI:cancelSourceSelection'),
@@ -144,7 +142,6 @@ const api = {
       'electronAPI:sources-empty',
       'electronAPI:screenshotTaken',
       'electronAPI:screenshotError',
-      'electronAPI:oauth-callback',
       'source-picker:select',
       'source-picker:cancel',
       'ai:message',
@@ -152,10 +149,8 @@ const api = {
       'transcription:data',
       'transcription:update',
       'screenshare:state-changed',
-      'analytics:session-id-changed',
       'popover:prepare-to-close',
       'popover:was-closed',
-      'auth:execute-sign-out',
       'updater:log',
       'updater:update-downloaded',
       'updater:check-error',
@@ -208,7 +203,6 @@ const api = {
   },
   send: (channel, ...args) => {
     const validChannels = [
-      'renderer-auth-ready',
       'history:open',
       'app:resize-window',
       'app:set-always-on-top',
@@ -220,7 +214,6 @@ const api = {
       'set-screenshare-state',
       'transcription:data',
       'transcription:update',
-      'auth:request-sign-out',
       'updater:quit-and-install',
       'updater:check-for-updates',
       'keyword:click',
@@ -248,7 +241,6 @@ const api = {
   invoke: (channel, ...args) => {
     const validChannels = [
       'electronAPI:getMainWindowBounds',
-      'supabase:signInWithOAuth',
       'electronAPI:selectSource',
       'electronAPI:cancelSourceSelection',
       'electronAPI:getInitialAlwaysOnTop',
@@ -268,12 +260,6 @@ const api = {
       'session:start',
       'session:end',
       'session:get-id',
-      'session:get-profile',
-      'session:set-profile',
-      'session:clear-profile',
-      'analytics:set-session-id',
-      'analytics:get-session-id',
-      'analytics:clear-session-id',
       'electronAPI:getAppVersion',
       'electronAPI:getMediaAccessStatus',
       'electronAPI:askForMediaAccess',

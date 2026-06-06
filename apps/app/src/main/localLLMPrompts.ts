@@ -1,7 +1,6 @@
 /**
  * Prompts adapted for local LLMs (Ollama).
  * Shorter and more structured than cloud prompts to work well with smaller models.
- * Derived from supabase/functions/_shared/prompts.ts (lines 622-741).
  */
 
 interface PromptParams {
