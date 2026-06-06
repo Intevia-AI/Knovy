@@ -33,6 +33,15 @@ import electronUpdater, { type AppUpdater } from 'electron-updater'
 import { getWhisperBackend } from './whisperBackend'
 import { getOllamaService } from './ollamaService'
 import {
+  getChatPrompt,
+  getSummarizePrompt,
+  getSummarizeJsonSchema,
+  getRecommendResponsePrompt,
+  getDeepResponsePrompt,
+  getKeywordSearchPrompt,
+  getScreenshotAnalysisPrompt
+} from './localLLMPrompts'
+import {
   createSettingsWindow,
   closeSettingsWindow,
   toggleSettingsWindow,
@@ -41,6 +50,10 @@ import {
 } from './settingsWindowManager'
 import { DEFAULT_AUTO_TRIGGER_SETTINGS } from '../renderer/src/types/settings'
 import { getIntentionProcessor } from './intentionProcessor'
+import { ConverterFactory, Locale } from 'opencc-js'
+
+// Simplified → Traditional Chinese converter for post-processing enhanced text
+const s2twConverter = ConverterFactory(Locale.from.cn, Locale.to.tw)
 
 console.log('[Debug] Imported dbService module:', dbService)
 
@@ -1447,7 +1460,8 @@ app.on('ready', async () => {
     }
   })
 
-  // IPC relay for transcription data with enhanced error handling
+  // IPC relay for transcription data with real-time enhancement
+  // Enhancement happens BEFORE broadcasting - only enhanced text reaches the UI
   ipcMain.on(
     'transcription:data',
     async (event, transcriptionData: { text: string; sourceType: 'microphone' | 'system' }) => {
@@ -1481,28 +1495,16 @@ app.on('ready', async () => {
       }
 
       try {
-        // 1. Create the full transcript object for display
         const transcriptId = randomUUID()
-        const displayTranscript = {
-          id: transcriptId,
-          session_id: currentSessionId,
-          timestamp: new Date().toISOString(),
-          content: transcriptionData.text,
-          sourceType: transcriptionData.sourceType,
-          // Add role and type for consistency with the frontend's TranscriptionMessage type
-          role: 'assistant',
-          type: 'transcription'
-        }
+        const timestamp = new Date().toISOString()
 
-        // 2. Create enhanced transcript data for database storage
-        // Text from whisper.cpp is already clean (no backticks), backend returns keywords separately
+        // 1. Save raw transcript to database with pending enhancement status
         const enhancedDbTranscript = {
           id: transcriptId,
           session_id: currentSessionId,
-          timestamp: new Date().toISOString(),
-          content: transcriptionData.text, // Display content (will be updated to enhanced when available)
+          timestamp,
+          content: transcriptionData.text,
           sourceType: transcriptionData.sourceType,
-          // Raw whisper.cpp data (Phase 2.1)
           rawText: transcriptionData.text,
           detectedLanguage: transcriptionData.detectedLanguage,
           whisperLanguage: transcriptionData.whisperLanguage,
@@ -1512,18 +1514,16 @@ app.on('ready', async () => {
           enhancementStatus: 'pending' as const
         }
 
-        // 3. Save enhanced transcript to database with proper error handling
         try {
           await dbService.addEnhancedTranscript(enhancedDbTranscript)
           console.log(
-            `[main/index.ts] Successfully saved enhanced transcript ${transcriptId} to database`
+            `[main/index.ts] Saved raw transcript ${transcriptId} to database`
           )
         } catch (dbError) {
           console.error(
-            `[main/index.ts] Failed to save enhanced transcript ${transcriptId} to database:`,
+            `[main/index.ts] Failed to save transcript ${transcriptId} to database:`,
             dbError
           )
-          // Continue with broadcast even if database save fails
           event.sender.send('transcription:warning', {
             warning: 'Failed to save transcription to database',
             transcriptId,
@@ -1531,101 +1531,119 @@ app.on('ready', async () => {
           })
         }
 
-        // 4. Broadcast the original version (with keywords) to all windows for real-time display
-        const windows = BrowserWindow.getAllWindows()
-        const validWindows = windows.filter((win) => !win.isDestroyed())
+        // 2. Attempt real-time enhancement before broadcasting
+        let displayContent = transcriptionData.text // Fallback: raw text
+        let enhancedData: any = null
+        const ollamaSvc = getOllamaService()
 
-        console.log(
-          `[main/index.ts] Broadcasting transcript ${transcriptId} to ${validWindows.length} windows`
-        )
-
-        let broadcastSuccessCount = 0
-        const broadcastPromises = validWindows.map(async (win, index) => {
+        if (ollamaSvc.getStatus() === 'ready') {
           try {
-            // Use a promise-based approach to track broadcast success
-            return new Promise<void>((resolve, reject) => {
-              const timeout = setTimeout(() => {
-                reject(new Error(`Broadcast timeout for window ${index}`))
-              }, 2000) // 2 second timeout per window
-
-              try {
-                win.webContents.send('transcription:data', displayTranscript)
-                broadcastSuccessCount++
-                clearTimeout(timeout)
-                resolve()
-              } catch (sendError) {
-                console.error(`[main/index.ts] Error sending to window ${index}:`, sendError)
-                clearTimeout(timeout)
-                reject(sendError)
-              }
-            })
-          } catch (error) {
-            console.warn(`[main/index.ts] Failed to broadcast to window ${index}:`, error)
-            throw error
-          }
-        })
-
-        // Wait for all broadcasts with timeout
-        try {
-          await Promise.allSettled(broadcastPromises)
-          console.log(
-            `[main/index.ts] Broadcast completed for transcript ${transcriptId}. Success: ${broadcastSuccessCount}/${validWindows.length}`
-          )
-
-          // Send confirmation back to sender
-          event.sender.send('transcription:processed', {
-            transcriptId,
-            broadcastCount: broadcastSuccessCount,
-            totalWindows: validWindows.length
-          })
-
-          // Trigger transcription enhancement with the correct transcript ID
-          const transcriptionService = getWhisperBackend()
-          const enhancementService = transcriptionService.getEnhancementService()
-          if (enhancementService) {
-            // Get user language from cached session profile
             const userLanguage = cachedSessionProfile?.profile?.language ||
                                cachedSessionProfile?.app_settings?.language ||
                                'auto'
 
-            // Create segment with the SAME transcript ID for proper update matching
             const segment = {
-              id: transcriptId, // Use the same ID that was broadcasted to UI
+              id: transcriptId,
               rawText: transcriptionData.text,
               timestamp: Date.now(),
               sourceType: transcriptionData.sourceType
             }
 
-            // Get session context - use analytics session ID, not SQLite session ID
             const sessionContext = {
-              sessionId: analyticsSessionId || currentSessionId, // Prefer analytics ID
-              conversationHistory: [], // TODO: Get from session history if needed
-              userLanguage: userLanguage
+              sessionId: analyticsSessionId || currentSessionId,
+              conversationHistory: [] as string[],
+              userLanguage
             }
 
-            // Warn if analytics session ID is missing
-            if (!analyticsSessionId) {
-              console.warn('[main/index.ts] Analytics session ID not set, using SQLite session ID as fallback')
-            }
+            const enhanceResult = await ollamaSvc.enhance([segment], sessionContext)
 
-            // Trigger enhancement (async, non-blocking) with small delay to ensure DB save completes
-            setTimeout(() => {
-              enhancementService.enhanceSegment(segment, sessionContext, false)
+            if (enhanceResult.segments.length > 0) {
+              const enhanced = enhanceResult.segments[0]
+              // Ensure Traditional Chinese after enhancement (model may output Simplified)
+              if (userLanguage === 'zh-TW' && enhanced.corrected) {
+                enhanced.corrected = s2twConverter(enhanced.corrected)
+              }
+              displayContent = enhanced.corrected
+              enhancedData = enhanced
+
+              // Update database with enhanced text
+              try {
+                await dbService.updateTranscriptEnhancement(transcriptId, {
+                  enhancedText: enhanced.corrected,
+                  enhancementMetadata: {
+                    intention: enhanced.intention,
+                    keywords: enhanced.keywords,
+                    confidence: enhanced.confidence,
+                    processingTime: enhanceResult.processingTime
+                  }
+                })
+              } catch (dbError) {
+                console.error(
+                  `[main/index.ts] Failed to update enhancement in DB for ${transcriptId}:`,
+                  dbError
+                )
+              }
+
+              // Process through IntentionProcessor for auto-trigger
+              const intentionProcessor = getIntentionProcessor()
+              intentionProcessor.processEnhancedSegment({
+                sessionId: sessionContext.sessionId,
+                original: segment,
+                enhanced,
+                processingTime: enhanceResult.processingTime
+              })
+
               console.log(
-                `[main/index.ts] Triggered enhancement for transcript ${transcriptId} with user language: ${userLanguage}`
+                `[main/index.ts] Real-time enhancement for ${transcriptId}: "${transcriptionData.text.substring(0, 40)}..." → "${displayContent.substring(0, 40)}..." (${enhanceResult.processingTime}ms)`
               )
-            }, 100) // 100ms delay to allow transcript to be saved to database first
+            }
+          } catch (enhanceError) {
+            console.warn(
+              `[main/index.ts] Enhancement failed for ${transcriptId}, using raw text:`,
+              enhanceError
+            )
+            // Fallback: displayContent remains as raw text
           }
-
+        } else {
           console.log(
-            `[main/index.ts] Transcript ${transcriptId} broadcast and enhancement queued successfully`
-          )
-        } catch (broadcastError) {
-          console.error(
-            `[main/index.ts] Broadcast errors for transcript ${transcriptId}:`,
-            broadcastError
+            `[main/index.ts] Ollama not ready (${ollamaSvc.getStatus()}), broadcasting raw text for ${transcriptId}`
           )
         }
+
+        // 3. Broadcast enhanced (or raw fallback) text to all windows
+        const displayTranscript = {
+          id: transcriptId,
+          session_id: currentSessionId,
+          timestamp,
+          content: displayContent,
+          sourceType: transcriptionData.sourceType,
+          role: 'assistant',
+          type: 'transcription',
+          keywords: enhancedData?.keywords || []
+        }
+
+        const windows = BrowserWindow.getAllWindows()
+        const validWindows = windows.filter((win) => !win.isDestroyed())
+
+        let broadcastSuccessCount = 0
+        for (const win of validWindows) {
+          try {
+            win.webContents.send('transcription:data', displayTranscript)
+            broadcastSuccessCount++
+          } catch (sendError) {
+            console.error(`[main/index.ts] Error sending to window:`, sendError)
+          }
+        }
+
+        console.log(
+          `[main/index.ts] Broadcast transcript ${transcriptId} to ${broadcastSuccessCount}/${validWindows.length} windows`
+        )
+
+        event.sender.send('transcription:processed', {
+          transcriptId,
+          broadcastCount: broadcastSuccessCount,
+          totalWindows: validWindows.length
+        })
       } catch (processingError) {
         console.error(`[main/index.ts] Error processing transcription:`, processingError)
         event.sender.send('transcription:error', {
@@ -2079,10 +2097,12 @@ app.on('ready', async () => {
     }
   })
 
-  // Transcription enhancement IPC handlers
+  // Transcription enhancement setup handler
+  // Enhancement now happens inline in transcription:data handler (real-time, no batch)
+  // This handler initializes Ollama connection + IntentionProcessor for auto-trigger
   ipcMain.handle(
     'transcription:setup-enhancement',
-    async (event) => {
+    async () => {
       try {
         // Clean up old event listeners to prevent duplicates
         console.log(
@@ -2091,123 +2111,48 @@ app.on('ready', async () => {
         enhancementEventCleanups.forEach((cleanup) => cleanup())
         enhancementEventCleanups = []
 
-        // Initialize Ollama service and check connection
+        // Initialize Ollama service, restore persisted model, and check connection
         const ollamaService = getOllamaService()
+        const enhancementSettings = await loadSettings()
+        if (enhancementSettings.ollamaModel) {
+          ollamaService.setActiveModel(enhancementSettings.ollamaModel)
+        }
         await ollamaService.checkConnection()
         ollamaService.startConnectionMonitoring()
 
-        const transcriptionService = getWhisperBackend()
-        transcriptionService.setupEnhancementService(ollamaService)
+        // Initialize IntentionProcessor with current settings for auto-trigger
+        const settings = await loadSettings()
+        const intentionProcessor = getIntentionProcessor(settings.autoTrigger)
+        intentionProcessor.setSessionId(analyticsSessionId)
 
-        // Set up event forwarding from enhancement service to renderer
-        const enhancementService = transcriptionService.getEnhancementService()
-        if (enhancementService) {
-          // Initialize IntentionProcessor with current settings
-          const settings = await loadSettings()
-          const intentionProcessor = getIntentionProcessor(settings.autoTrigger)
-          // Session ID will be set by analytics:set-session-id handler (uses analytics session ID, not SQLite session ID)
-          intentionProcessor.setSessionId(analyticsSessionId)
+        // Clear existing listeners to prevent duplicates
+        intentionProcessor.removeAllListeners('actionTriggered')
+        console.log('[main/index.ts] Cleared all existing IntentionProcessor listeners')
 
-          // IMPORTANT: Clear ALL existing listeners first to prevent duplicates
-          // IntentionProcessor is a singleton, so we must ensure only ONE listener exists
-          intentionProcessor.removeAllListeners('actionTriggered')
-          console.log('[main/index.ts] Cleared all existing IntentionProcessor listeners')
+        // Listen for triggered actions from IntentionProcessor
+        const actionTriggeredHandler = (pendingAction) => {
+          console.log('[main/index.ts] Action triggered by IntentionProcessor:', pendingAction.actionType)
 
-          // Listen for triggered actions from IntentionProcessor
-          const actionTriggeredHandler = (pendingAction) => {
-            console.log('[main/index.ts] Action triggered by IntentionProcessor:', pendingAction.actionType)
+          recentPendingActions.push({...pendingAction, timestamp: Date.now()})
+          const twoSecondsAgo = Date.now() - 2000
+          recentPendingActions = recentPendingActions.filter(a => a.timestamp > twoSecondsAgo)
 
-            // Cache the action for popovers that open later (race condition fix)
-            recentPendingActions.push({...pendingAction, timestamp: Date.now()})
-            // Keep only actions from the last 2 seconds
-            const twoSecondsAgo = Date.now() - 2000
-            recentPendingActions = recentPendingActions.filter(a => a.timestamp > twoSecondsAgo)
-
-            // Broadcast to all windows for approval/execution
-            for (const win of BrowserWindow.getAllWindows()) {
-              if (!win.isDestroyed()) {
-                win.webContents.send('auto-trigger:action-triggered', pendingAction)
-              }
+          for (const win of BrowserWindow.getAllWindows()) {
+            if (!win.isDestroyed()) {
+              win.webContents.send('auto-trigger:action-triggered', pendingAction)
             }
           }
-
-          intentionProcessor.on('actionTriggered', actionTriggeredHandler)
-          console.log('[main/index.ts] Added IntentionProcessor actionTriggered listener')
-
-          // Store cleanup function for IntentionProcessor
-          enhancementEventCleanups.push(() => {
-            intentionProcessor.off('actionTriggered', actionTriggeredHandler)
-            console.log('[main/index.ts] Removed IntentionProcessor actionTriggered listener')
-          })
-
-          const segmentEnhancedHandler = async (data) => {
-            try {
-              // Update database with enhanced transcription
-              const enhancementData = {
-                enhancedText: data.enhanced.corrected,
-                enhancementMetadata: {
-                  intention: data.enhanced.intention,
-                  keywords: data.enhanced.keywords,
-                  confidence: data.enhanced.confidence,
-                  processingTime: data.processingTime
-                }
-              }
-
-              await dbService.updateTranscriptEnhancement(data.original.id, enhancementData)
-              console.log(
-                `[main/index.ts] Updated transcript ${data.original.id} with enhancement in database`
-              )
-
-              // Process enhanced segment through IntentionProcessor for auto-trigger
-              intentionProcessor.processEnhancedSegment(data)
-
-              // Forward to renderer
-              event.sender.send('transcription:enhanced', data)
-            } catch (dbError) {
-              console.error(
-                `[main/index.ts] Failed to update enhancement in database for ${data.original.id}:`,
-                dbError
-              )
-              // Still forward the event to renderer even if database update fails
-              event.sender.send('transcription:enhanced', data)
-            }
-          }
-
-          enhancementService.on('segmentEnhanced', segmentEnhancedHandler)
-
-          // Store cleanup function
-          enhancementEventCleanups.push(() => {
-            enhancementService.off('segmentEnhanced', segmentEnhancedHandler)
-          })
-
-          const enhancementErrorHandler = async (error) => {
-            try {
-              // Update database with failed status
-              await dbService.updateTranscriptEnhancementStatus(error.segmentId, 'failed')
-              console.log(
-                `[main/index.ts] Updated transcript ${error.segmentId} enhancement status to failed`
-              )
-            } catch (dbError) {
-              console.error(
-                `[main/index.ts] Failed to update enhancement status in database for ${error.segmentId}:`,
-                dbError
-              )
-            }
-
-            // Forward to renderer
-            event.sender.send('transcription:enhancement-error', error)
-          }
-
-          enhancementService.on('enhancementError', enhancementErrorHandler)
-
-          // Store cleanup function
-          enhancementEventCleanups.push(() => {
-            enhancementService.off('enhancementError', enhancementErrorHandler)
-          })
-
-          console.log('[main/index.ts] Enhancement event listeners registered successfully')
         }
 
+        intentionProcessor.on('actionTriggered', actionTriggeredHandler)
+        console.log('[main/index.ts] Added IntentionProcessor actionTriggered listener')
+
+        enhancementEventCleanups.push(() => {
+          intentionProcessor.off('actionTriggered', actionTriggeredHandler)
+          console.log('[main/index.ts] Removed IntentionProcessor actionTriggered listener')
+        })
+
+        console.log('[main/index.ts] Enhancement setup complete (real-time mode)')
         return { success: true }
       } catch (error) {
         console.error('[main/index.ts] Failed to setup transcription enhancement:', error)
@@ -2255,6 +2200,9 @@ app.on('ready', async () => {
     const ollamaService = getOllamaService()
     ollamaService.setActiveModel(modelName)
     await ollamaService.checkConnection()
+    // Persist model selection to settings
+    const currentSettings = await loadSettings()
+    await saveSettings({ ...currentSettings, ollamaModel: modelName })
     return { success: true }
   })
 
@@ -2278,6 +2226,197 @@ app.on('ready', async () => {
         win.webContents.send('ollama:status-changed', data)
       }
     }
+  })
+
+  // ─── AI Action IPC Handlers (Local Ollama) ───
+
+  ipcMain.handle('ai:chat', async (_event, payload: {
+    text_input: string
+    existing_summary?: string
+    recent_transcriptions?: string
+    language?: string
+  }) => {
+    const svc = getOllamaService()
+    if (svc.getStatus() !== 'ready') {
+      throw new Error('Ollama is not ready. Please check AI Models settings.')
+    }
+    const prompt = getChatPrompt({
+      textInput: payload.text_input,
+      existingSummary: payload.existing_summary,
+      recentTranscriptions: payload.recent_transcriptions,
+      language: payload.language || 'en'
+    })
+    const result = await svc.chat({
+      messages: [
+        { role: 'system', content: prompt.system },
+        { role: 'user', content: prompt.user }
+      ],
+      temperature: 0.7
+    })
+    return { response: result.content, processingTime: result.processingTime }
+  })
+
+  ipcMain.handle('ai:summarize', async (_event, payload: {
+    text_input: string
+    existing_summary?: string
+    language?: string
+  }) => {
+    const svc = getOllamaService()
+    if (svc.getStatus() !== 'ready') {
+      throw new Error('Ollama is not ready. Please check AI Models settings.')
+    }
+    const prompt = getSummarizePrompt({
+      textInput: payload.text_input,
+      existingSummary: payload.existing_summary,
+      language: payload.language || 'en'
+    })
+    const result = await svc.chat({
+      messages: [
+        { role: 'system', content: prompt.system },
+        { role: 'user', content: prompt.user }
+      ],
+      format: getSummarizeJsonSchema(),
+      temperature: 0.3
+    })
+    try {
+      const parsed = JSON.parse(result.content)
+      return {
+        summary: parsed.long_summary,
+        short_summary: parsed.short_summary,
+        long_summary: parsed.long_summary,
+        context: parsed.context,
+        processingTime: result.processingTime
+      }
+    } catch {
+      // If JSON parsing fails, return raw content as summary
+      return {
+        summary: result.content,
+        short_summary: result.content.substring(0, 100),
+        long_summary: result.content,
+        context: {},
+        processingTime: result.processingTime
+      }
+    }
+  })
+
+  ipcMain.handle('ai:recommend-response', async (_event, payload: {
+    text_input: string
+    existing_summary?: string
+    recent_transcriptions?: string
+    language?: string
+  }) => {
+    const svc = getOllamaService()
+    if (svc.getStatus() !== 'ready') {
+      throw new Error('Ollama is not ready. Please check AI Models settings.')
+    }
+    const prompt = getRecommendResponsePrompt({
+      textInput: payload.text_input,
+      existingSummary: payload.existing_summary,
+      recentTranscriptions: payload.recent_transcriptions,
+      language: payload.language || 'en'
+    })
+    const result = await svc.chat({
+      messages: [
+        { role: 'system', content: prompt.system },
+        { role: 'user', content: prompt.user }
+      ],
+      temperature: 0.7
+    })
+    return { recommendation: result.content, processingTime: result.processingTime }
+  })
+
+  ipcMain.handle('ai:deep-response', async (_event, payload: {
+    text_input: string
+    existing_summary?: string
+    recent_transcriptions?: string
+    language?: string
+  }) => {
+    const svc = getOllamaService()
+    if (svc.getStatus() !== 'ready') {
+      throw new Error('Ollama is not ready. Please check AI Models settings.')
+    }
+    const prompt = getDeepResponsePrompt({
+      textInput: payload.text_input,
+      existingSummary: payload.existing_summary,
+      recentTranscriptions: payload.recent_transcriptions,
+      language: payload.language || 'en'
+    })
+    const result = await svc.chat({
+      messages: [
+        { role: 'system', content: prompt.system },
+        { role: 'user', content: prompt.user }
+      ],
+      temperature: 0.7
+    })
+    return { recommendation: result.content, processingTime: result.processingTime }
+  })
+
+  ipcMain.handle('ai:keyword-search', async (_event, payload: {
+    text_input: string
+    existing_summary?: string
+    recent_transcriptions?: string
+    language?: string
+  }) => {
+    const svc = getOllamaService()
+    if (svc.getStatus() !== 'ready') {
+      throw new Error('Ollama is not ready. Please check AI Models settings.')
+    }
+    const prompt = getKeywordSearchPrompt({
+      textInput: payload.text_input,
+      existingSummary: payload.existing_summary,
+      recentTranscriptions: payload.recent_transcriptions,
+      language: payload.language || 'en'
+    })
+    const result = await svc.chat({
+      messages: [
+        { role: 'system', content: prompt.system },
+        { role: 'user', content: prompt.user }
+      ],
+      temperature: 0.5
+    })
+    return { response: result.content, processingTime: result.processingTime }
+  })
+
+  ipcMain.handle('ai:screenshot-analysis', async (_event, payload: {
+    text_input: string
+    image_input?: string
+    existing_summary?: string
+    recent_transcriptions?: string
+    language?: string
+  }) => {
+    const svc = getOllamaService()
+    if (svc.getStatus() !== 'ready') {
+      throw new Error('Ollama is not ready. Please check AI Models settings.')
+    }
+    const prompt = getScreenshotAnalysisPrompt({
+      textInput: payload.text_input,
+      existingSummary: payload.existing_summary,
+      recentTranscriptions: payload.recent_transcriptions,
+      language: payload.language || 'en'
+    })
+
+    // Build messages with optional image for multimodal
+    const messages: Array<{ role: string; content: string; images?: string[] }> = [
+      { role: 'system', content: prompt.system }
+    ]
+
+    if (payload.image_input) {
+      // Ollama expects base64 image data without the data URL prefix
+      const base64Image = payload.image_input.replace(/^data:image\/\w+;base64,/, '')
+      messages.push({
+        role: 'user',
+        content: prompt.user,
+        images: [base64Image]
+      })
+    } else {
+      messages.push({ role: 'user', content: prompt.user })
+    }
+
+    const result = await svc.chat({
+      messages,
+      temperature: 0.5
+    })
+    return { analysis: result.content, processingTime: result.processingTime }
   })
 
   ipcMain.on('app:resize-window', (event, { width, height }) => {

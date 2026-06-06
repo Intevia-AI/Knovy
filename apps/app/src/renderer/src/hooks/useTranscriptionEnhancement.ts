@@ -1,24 +1,14 @@
 /**
- * @fileoverview Hook for managing transcription enhancement service
- * Handles initialization and event subscriptions for local Ollama enhancement
+ * @fileoverview Hook for initializing transcription enhancement service
+ * Triggers Ollama connection setup and IntentionProcessor initialization.
+ * Enhancement itself happens in the main process (transcription:data handler).
  */
 
 import { useEffect, useRef } from 'react'
-import type { SegmentEnhancedEvent, EnhancementErrorEvent } from '../services/transcription'
 
-interface UseTranscriptionEnhancementOptions {
-  onSegmentEnhanced?: (data: SegmentEnhancedEvent) => void
-  onEnhancementError?: (error: EnhancementErrorEvent) => void
-}
-
-export function useTranscriptionEnhancement({
-  onSegmentEnhanced,
-  onEnhancementError,
-}: UseTranscriptionEnhancementOptions = {}) {
+export function useTranscriptionEnhancement() {
   const isInitialized = useRef(false)
-  const cleanupFunctions = useRef<(() => void)[]>([])
 
-  // Initialize enhancement service (local Ollama - no auth required)
   useEffect(() => {
     const initializeEnhancement = async () => {
       if (isInitialized.current) {
@@ -26,24 +16,13 @@ export function useTranscriptionEnhancement({
       }
 
       try {
-        console.log('[useTranscriptionEnhancement] Initializing local enhancement service...')
+        console.log('[useTranscriptionEnhancement] Initializing Ollama and IntentionProcessor...')
 
         const result = await window.electronAPI.transcriptionSetupEnhancement()
 
         if (result?.success) {
           console.log('[useTranscriptionEnhancement] Enhancement service initialized successfully')
           isInitialized.current = true
-
-          // Set up event listeners
-          if (onSegmentEnhanced) {
-            const cleanup1 = window.electronAPI.on('transcription:enhanced', onSegmentEnhanced)
-            cleanupFunctions.current.push(cleanup1)
-          }
-
-          if (onEnhancementError) {
-            const cleanup2 = window.electronAPI.on('transcription:enhancement-error', onEnhancementError)
-            cleanupFunctions.current.push(cleanup2)
-          }
         } else {
           console.error('[useTranscriptionEnhancement] Failed to initialize enhancement service')
         }
@@ -53,13 +32,11 @@ export function useTranscriptionEnhancement({
     }
 
     initializeEnhancement()
-  }, [onSegmentEnhanced, onEnhancementError])
+  }, [])
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      cleanupFunctions.current.forEach((cleanup) => cleanup())
-      cleanupFunctions.current = []
       isInitialized.current = false
     }
   }, [])

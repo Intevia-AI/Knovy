@@ -25,18 +25,41 @@ export interface OllamaPullProgress {
 }
 
 const OLLAMA_BASE_URL = 'http://localhost:11434'
-const DEFAULT_MODEL = 'gemma3:1b'
+const DEFAULT_MODEL = 'gemma3:4b'
 const INFERENCE_TIMEOUT_MS = 30000
+const CHAT_TIMEOUT_MS = 60000
+
+export interface ChatParams {
+  messages: Array<{ role: string; content: string; images?: string[] }>
+  format?: object
+  temperature?: number
+  maxTokens?: number
+}
+
+export interface ChatResponse {
+  content: string
+  processingTime: number
+}
+
+type QueueItem =
+  | {
+      type: 'enhance'
+      resolve: (value: EnhanceResponse) => void
+      reject: (error: Error) => void
+      request: { segments: TranscriptionSegment[]; sessionContext: SessionContext }
+    }
+  | {
+      type: 'chat'
+      resolve: (value: ChatResponse) => void
+      reject: (error: Error) => void
+      request: ChatParams
+    }
 
 export class OllamaService extends EventEmitter {
   private status: OllamaStatus = 'disconnected'
   private activeModel: string = DEFAULT_MODEL
   private connectionCheckInterval: NodeJS.Timeout | null = null
-  private inferenceQueue: Array<{
-    resolve: (value: EnhanceResponse) => void
-    reject: (error: Error) => void
-    request: { segments: TranscriptionSegment[]; sessionContext: SessionContext }
-  }> = []
+  private inferenceQueue: QueueItem[] = []
   private isProcessingQueue = false
 
   constructor() {
@@ -229,15 +252,37 @@ export class OllamaService extends EventEmitter {
    * Enhance transcription segments using local LLM.
    * Requests are queued and processed sequentially to avoid overwhelming the local model.
    */
+  /**
+   * Enhance transcription segments using local LLM.
+   * Requests are queued and processed sequentially to avoid overwhelming the local model.
+   */
   async enhance(
     segments: TranscriptionSegment[],
     sessionContext: SessionContext
   ): Promise<EnhanceResponse> {
     return new Promise((resolve, reject) => {
       this.inferenceQueue.push({
+        type: 'enhance',
         resolve,
         reject,
         request: { segments, sessionContext }
+      })
+      this.processQueue()
+    })
+  }
+
+  /**
+   * General-purpose chat with local LLM.
+   * Supports multimodal (images), structured output (format), configurable temperature.
+   * Queued sequentially like enhance() to avoid overwhelming the local model.
+   */
+  async chat(params: ChatParams): Promise<ChatResponse> {
+    return new Promise((resolve, reject) => {
+      this.inferenceQueue.push({
+        type: 'chat',
+        resolve,
+        reject,
+        request: params
       })
       this.processQueue()
     })
@@ -250,14 +295,82 @@ export class OllamaService extends EventEmitter {
     while (this.inferenceQueue.length > 0) {
       const item = this.inferenceQueue.shift()!
       try {
-        const result = await this.runInference(item.request.segments, item.request.sessionContext)
-        item.resolve(result)
+        if (item.type === 'enhance') {
+          const result = await this.runInference(item.request.segments, item.request.sessionContext)
+          item.resolve(result)
+        } else {
+          const result = await this.runChat(item.request)
+          item.resolve(result)
+        }
       } catch (error) {
         item.reject(error instanceof Error ? error : new Error(String(error)))
       }
     }
 
     this.isProcessingQueue = false
+  }
+
+  private async runChat(params: ChatParams): Promise<ChatResponse> {
+    if (this.status !== 'ready') {
+      throw new Error(`Ollama not ready (status: ${this.status})`)
+    }
+
+    const startTime = Date.now()
+    console.log(
+      `[OllamaService] Running chat: ${params.messages.length} message(s), model=${this.activeModel}`
+    )
+
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), CHAT_TIMEOUT_MS)
+
+    try {
+      const body: Record<string, any> = {
+        model: this.activeModel,
+        messages: params.messages,
+        stream: false,
+        options: {
+          temperature: params.temperature ?? 0.7,
+          num_predict: params.maxTokens ?? 2048
+        }
+      }
+
+      if (params.format) {
+        body.format = params.format
+      }
+
+      const response = await fetch(`${OLLAMA_BASE_URL}/api/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+        signal: controller.signal
+      })
+
+      clearTimeout(timeout)
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        throw new Error(`Ollama chat failed (${response.status}): ${errorText}`)
+      }
+
+      const data = await response.json()
+      const content = data.message?.content
+
+      if (!content) {
+        throw new Error('Empty response from Ollama')
+      }
+
+      const elapsed = Date.now() - startTime
+      console.log(`[OllamaService] Chat complete: ${elapsed}ms, ${content.length} chars`)
+
+      return { content, processingTime: elapsed }
+    } catch (error) {
+      clearTimeout(timeout)
+
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw new Error('Ollama chat timed out')
+      }
+      throw error
+    }
   }
 
   private async runInference(

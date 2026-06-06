@@ -8,8 +8,6 @@ import { useState, useCallback, useRef, useEffect } from 'react'
 import { Message as AIMessage } from 'ai'
 import { useI18n } from '@/hooks/useI18n'
 import { useScreenShare } from './useScreenShare'
-import { supabase } from '@/services/supabaseClient.js'
-import { invokeAIAction } from '@/services/ai-actions'
 
 export type AIAction =
   | 'chat'
@@ -19,7 +17,6 @@ export type AIAction =
   | 'keyword_search'
   | 'screenshot'
   | 'file'
-  | 'transcription_enhance'
 
 interface TranscriptionMessage extends AIMessage {
   timestamp: number
@@ -81,12 +78,12 @@ export function useAIInteraction() {
 
   useEffect(() => {
     if ((window as any).electronAPI) {
+      // Transcriptions arrive already enhanced from main process (real-time enhancement)
       const unsubscribeData = (window as any).electronAPI.on(
         'transcription:data',
         (newTranscription: TranscriptionMessage) => {
           if (!newTranscription || !newTranscription.content) return
 
-          // The object from IPC has a string timestamp, which needs to be converted to a number.
           const formattedTranscription = {
             ...newTranscription,
             timestamp: new Date(newTranscription.timestamp as any).getTime(),
@@ -97,63 +94,11 @@ export function useAIInteraction() {
         }
       )
 
-      // Handle transcription updates (for enhancement replacements)
-      // Note: RealTimeAnalysis handles 'transcription:enhanced' and sends 'transcription:update'
-      // so we only need to listen to 'transcription:update' here to avoid duplicates
-      const unsubscribeUpdate = (window as any).electronAPI.on(
-        'transcription:update',
-        (updateData: {
-          id: string
-          enhancedText: string
-          sourceType?: 'microphone' | 'system'
-          keywords?: string[]
-          intention?: any
-          confidence?: number
-        }) => {
-          // Only log in main window to reduce console noise (avoid 4x duplicate logs)
-          const isMainWindow = !window.location.hash || window.location.hash === '#/'
-          if (isMainWindow) {
-            console.log('[useAIInteraction] Received transcription update:', updateData)
-          }
-
-          setTranscriptions((prev) => {
-            let foundMatch = false
-            const updated = prev.map((transcript) => {
-              if (transcript.id === updateData.id) {
-                foundMatch = true
-                console.log(`[useAIInteraction] Updating transcript ${transcript.id}:`, {
-                  oldContent: transcript.content,
-                  newContent: updateData.enhancedText,
-                  keywords: updateData.keywords
-                })
-                return {
-                  ...transcript,
-                  content: updateData.enhancedText,
-                  keywords: updateData.keywords || []
-                }
-              }
-              return transcript
-            })
-
-            // Warn if no matching transcript was found
-            if (!foundMatch && isMainWindow) {
-              console.warn(
-                `[useAIInteraction] No transcript found with ID ${updateData.id}. Available IDs:`,
-                prev.map((t) => t.id)
-              )
-            }
-
-            return updated
-          })
-        }
-      )
-
       return () => {
         unsubscribeData()
-        unsubscribeUpdate()
       }
     }
-    return () => {} // Return empty cleanup function when electronAPI is not available
+    return () => {}
   }, [])
 
   useEffect(() => {
@@ -252,23 +197,27 @@ export function useAIInteraction() {
       }
 
       try {
-        const {
-          data: { session }
-        } = await supabase.auth.getSession()
-        if (!session) throw new Error('User is not authenticated.')
+        // Map actions to IPC channels
+        const actionToChannel: Record<string, string> = {
+          chat: 'ai:chat',
+          summary: 'ai:summarize',
+          recommend_response: 'ai:recommend-response',
+          deep_response: 'ai:deep-response',
+          keyword_search: 'ai:keyword-search',
+          screenshot: 'ai:screenshot-analysis'
+        }
 
-        let functionName: string
-        const functionPayload: Record<string, any> = {
-          text_input: null,
-          message_history: null,
-          image_input: null,
+        const ipcChannel = actionToChannel[action]
+        if (!ipcChannel) {
+          throw new Error(`AI Action '${action}' is not supported.`)
+        }
+
+        const payload: Record<string, any> = {
           language: currentLanguage
-          // Note: session_id will be automatically added by invokeAIAction wrapper
         }
 
         switch (action) {
           case 'summary': {
-            functionName = 'ai-action-summarize'
             const sessionId = await (window as any).electronAPI.invoke('session:get-id')
             if (!sessionId) throw new Error('No active session found.')
 
@@ -282,7 +231,6 @@ export function useAIInteraction() {
 
             const newTranscripts = transcriptions.filter((t) => t.timestamp > lastSummaryTime)
 
-            // Condition 1: No new content and a summary already exists.
             if (newTranscripts.length === 0 && existingSummary) {
               console.log('[AIInteraction] No new transcripts. Displaying existing summary.')
               setAiMessages((prev) => {
@@ -297,23 +245,20 @@ export function useAIInteraction() {
                 return [...prev, summaryMessage]
               })
               setIsSummarizing(false)
-              return // Stop execution
+              return
             }
 
-            // Condition 2: No transcripts at all to summarize.
             if (newTranscripts.length === 0 && !existingSummary) {
               console.log('[AIInteraction] No content available to create a summary.')
-              // Optionally, set a message indicating not enough content
               setIsSummarizing(false)
-              return // Stop execution
+              return
             }
 
-            functionPayload.text_input = newTranscripts.map((t) => t.content).join('\n')
-            functionPayload.existing_summary = existingSummary?.content
+            payload.text_input = newTranscripts.map((t) => t.content).join('\n')
+            payload.existing_summary = existingSummary?.content
             break
           }
           case 'recommend_response': {
-            functionName = 'ai-action-recommend-response'
             const sessionId = await (window as any).electronAPI.invoke('session:get-id')
             if (!sessionId) throw new Error('No active session found.')
 
@@ -323,23 +268,20 @@ export function useAIInteraction() {
             )
             const context = await gatherContext(action)
 
-            // If query is provided, use it as the specific question/transcription
-            // Otherwise, gather context from recent transcriptions (keyboard shortcut case)
             if (query) {
-              functionPayload.text_input = query
+              payload.text_input = query
             } else {
               if (!context?.text?.trim()) {
                 throw new Error('There is no transcription history to recommend a response.')
               }
-              functionPayload.text_input = context.text
+              payload.text_input = context.text
             }
 
-            functionPayload.existing_summary = existingSummary?.content
-            functionPayload.recent_transcriptions = context?.text
+            payload.existing_summary = existingSummary?.content
+            payload.recent_transcriptions = context?.text
             break
           }
           case 'deep_response': {
-            functionName = 'ai-action-deep-response'
             const sessionId = await (window as any).electronAPI.invoke('session:get-id')
             if (!sessionId) throw new Error('No active session found.')
 
@@ -349,22 +291,20 @@ export function useAIInteraction() {
             )
             const context = await gatherContext()
 
-            // Deep response uses query if provided, otherwise uses recent context
             if (query) {
-              functionPayload.text_input = query
+              payload.text_input = query
             } else {
               if (!context?.text?.trim()) {
                 throw new Error('There is no transcription history to generate a deep response.')
               }
-              functionPayload.text_input = context.text
+              payload.text_input = context.text
             }
 
-            functionPayload.existing_summary = existingSummary?.content
-            functionPayload.recent_transcriptions = context?.text
+            payload.existing_summary = existingSummary?.content
+            payload.recent_transcriptions = context?.text
             break
           }
           case 'keyword_search': {
-            functionName = 'ai-action-keyword-search'
             const sessionId = await (window as any).electronAPI.invoke('session:get-id')
             const existingSummary = await (window as any).electronAPI.invoke(
               'db:get-summary',
@@ -372,30 +312,27 @@ export function useAIInteraction() {
             )
             const context = await gatherContext()
 
-            functionPayload.text_input = query
-            functionPayload.existing_summary = existingSummary?.content
-            functionPayload.recent_transcriptions = context?.text
+            payload.text_input = query
+            payload.existing_summary = existingSummary?.content
+            payload.recent_transcriptions = context?.text
             break
           }
           case 'screenshot': {
-            functionName = 'ai-action-screenshot-analysis'
             const sessionId = await (window as any).electronAPI.invoke('session:get-id')
             const existingSummary = await (window as any).electronAPI.invoke(
               'db:get-summary',
               sessionId
             )
             const context = await gatherContext()
-            // TODO: Currently we pass undefined to the query.
-            // TODO: We should let user ask what they want to know about the screenshot in the future.
-            functionPayload.text_input =
+
+            payload.text_input =
               query || 'Please analyze this screenshot and describe what you see.'
-            functionPayload.image_input = screenshot
-            functionPayload.existing_summary = existingSummary?.content
-            functionPayload.recent_transcriptions = context?.text
+            payload.image_input = screenshot
+            payload.existing_summary = existingSummary?.content
+            payload.recent_transcriptions = context?.text
             break
           }
           case 'chat': {
-            functionName = 'ai-action-chat'
             const sessionId = await (window as any).electronAPI.invoke('session:get-id')
             if (!sessionId) throw new Error('No active session found.')
             const existingSummary = await (window as any).electronAPI.invoke(
@@ -404,50 +341,17 @@ export function useAIInteraction() {
             )
             const context = await gatherContext()
 
-            functionPayload.text_input = query
-            functionPayload.existing_summary = existingSummary?.content
-            functionPayload.recent_transcriptions = context?.text
+            payload.text_input = query
+            payload.existing_summary = existingSummary?.content
+            payload.recent_transcriptions = context?.text
             break
           }
-          case 'transcription_enhance': {
-            functionName = 'transcription-enhance'
-            const sessionId = await (window as any).electronAPI.invoke('session:get-id')
-            if (!sessionId) throw new Error('No active session found.')
-            const existingSummary = await (window as any).electronAPI.invoke(
-              'db:get-summary',
-              sessionId
-            )
-            const context = await gatherContext()
-
-            // Parse query as batch of segments
-            // Expected format: { segments: Array<{id, text, sourceType}> }
-            const segmentBatch = typeof query === 'string' ? JSON.parse(query) : query
-
-            functionPayload.segments = segmentBatch.segments
-            functionPayload.text_input = context?.text
-            functionPayload.existing_summary = existingSummary?.content
-            functionPayload.recent_transcriptions = context?.text
-            functionPayload.sessionContext = {
-              sessionId,
-              conversationHistory: context?.text ? [context.text] : [],
-              userLanguage: currentLanguage
-            }
-            break
-          }
-          default:
-            throw new Error(`AI Action '${action}' is not supported.`)
         }
 
-        console.log(`[AIInteraction] Invoking function: ${functionName}`, {
-          payload: functionPayload
-        })
-        // Use AI actions wrapper for automatic session_id injection
-        const { data, error } = await invokeAIAction(functionName, functionPayload)
-        console.log('[AIInteraction] Function returned:', { data, error })
+        console.log(`[AIInteraction] Invoking IPC: ${ipcChannel}`, { payload })
+        const data = await (window as any).electronAPI.invoke(ipcChannel, payload)
+        console.log('[AIInteraction] IPC returned:', data)
 
-        if (error) throw error
-
-        console.log('[AIInteraction] Raw data for response mapping:', data)
         const responseMapping = {
           summary: (d: any) => d.summary,
           recommend_response: (d: any) => d.recommendation,
@@ -463,10 +367,9 @@ export function useAIInteraction() {
         if (action === 'summary') {
           const sessionId = await (window as any).electronAPI.invoke('session:get-id')
           if (sessionId && content) {
-            // Save structured summary data
             await (window as any).electronAPI.invoke('db:save-summary', {
               sessionId,
-              content, // long_summary
+              content,
               short_summary: data.short_summary,
               context: data.context
             })
@@ -504,7 +407,7 @@ export function useAIInteraction() {
         }
       }
     },
-    [gatherContext, t, language, transcriptions] // Added transcriptions dependency
+    [gatherContext, t, language, transcriptions]
   )
 
   const handleSendMessage = (action: 'chat', prompt: string) => {

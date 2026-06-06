@@ -304,7 +304,14 @@ const api = {
       'ollama:pull-model',
       'ollama:set-model',
       'ollama:delete-model',
-      'ollama:check-connection'
+      'ollama:check-connection',
+      // AI action channels (local Ollama)
+      'ai:chat',
+      'ai:summarize',
+      'ai:recommend-response',
+      'ai:deep-response',
+      'ai:keyword-search',
+      'ai:screenshot-analysis'
     ]
     if (!validChannels.includes(channel)) {
       return Promise.reject(new Error(`Invalid invoke channel: ${channel}`))

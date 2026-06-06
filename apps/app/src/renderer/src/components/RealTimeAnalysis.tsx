@@ -1,11 +1,9 @@
 'use client'
 
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { useEffect, useRef } from 'react'
 import {
   TranscriptionFactory,
-  TranscriptionProcessor,
-  type SegmentEnhancedEvent,
-  type EnhancementErrorEvent
+  TranscriptionProcessor
 } from '@/services/transcription'
 import { useAuth } from '@/hooks/useAuth'
 import { useTranscriptionEnhancement } from '@/hooks/useTranscriptionEnhancement'
@@ -46,83 +44,13 @@ export default function RealTimeAnalysis({
   const micTextBufferRef = useRef('')
   const systemTextBufferRef = useRef('')
 
-  // Enhanced transcription state
-  const [enhancedTranscriptions, setEnhancedTranscriptions] = useState<
-    Map<string, SegmentEnhancedEvent>
-  >(new Map())
-  const [transcriptionReplacements, setTranscriptionReplacements] = useState<Map<string, string>>(
-    new Map()
-  )
-  const [enhancementStatuses, setEnhancementStatuses] = useState<
-    Map<string, 'pending' | 'processing' | 'completed' | 'failed'>
-  >(new Map())
+  // Initialize Ollama connection and IntentionProcessor for auto-trigger
+  // Enhancement itself happens in main process (transcription:data handler) before broadcast
+  const { isEnhancementReady } = useTranscriptionEnhancement()
 
-  // Enhancement event handlers - wrapped in useCallback to prevent recreation on every render
-  const handleSegmentEnhanced = useCallback((data: SegmentEnhancedEvent) => {
-    console.log('[RealTimeAnalysis] Segment enhanced:', {
-      sessionId: data.sessionId,
-      transcriptId: data.original.id,
-      originalText: data.original.rawText,
-      enhancedText: data.enhanced.corrected,
-      intention: data.enhanced.intention,
-      keywords: data.enhanced.keywords,
-      confidence: data.enhanced.confidence,
-      processingTime: data.processingTime
-    })
-
-    // Store enhanced transcription data
-    setEnhancedTranscriptions((prev) => new Map(prev.set(data.original.id, data)))
-
-    // Update enhancement status to completed
-    setEnhancementStatuses((prev) => new Map(prev.set(data.original.id, 'completed')))
-
-    // Send update event to the main process to update the existing transcript in UI
-    // This will trigger useAIInteraction to update the existing message instead of adding a new one
-    if ((window as any).electronAPI?.send) {
-      const enhancedText = data.enhanced.corrected
-      const keywords = data.enhanced.keywords || []
-
-      // No need to wrap keywords with backticks - KeywordHighlighter handles that dynamically
-      console.log(`[RealTimeAnalysis] Sending transcription update for ${data.original.id}`)
-      ;(window as any).electronAPI.send('transcription:update', {
-        id: data.original.id,
-        enhancedText: enhancedText, // Use clean enhanced text without backticks
-        sourceType: data.original.sourceType,
-        keywords: keywords,
-        intention: data.enhanced.intention,
-        confidence: data.enhanced.confidence
-      })
-    }
-  }, []) // Empty deps - this function has no external dependencies
-
-  const handleEnhancementError = useCallback((error: EnhancementErrorEvent) => {
-    console.error('[RealTimeAnalysis] Enhancement error:', {
-      sessionId: error.sessionId,
-      segmentId: error.segmentId,
-      error: error.error
-    })
-
-    // Update enhancement status to failed
-    setEnhancementStatuses((prev) => new Map(prev.set(error.segmentId, 'failed')))
-
-    // Optionally show error indicator in UI
-    console.warn(
-      `[RealTimeAnalysis] Enhancement failed for segment ${error.segmentId}: ${error.error}`
-    )
-  }, []) // Empty deps - this function has no external dependencies
-
-  // Initialize transcription enhancement
-  const { isEnhancementReady } = useTranscriptionEnhancement({
-    onSegmentEnhanced: handleSegmentEnhanced,
-    onEnhancementError: handleEnhancementError
-  })
-
-  // Log enhancement status
   useEffect(() => {
     if (isEnhancementReady) {
-      console.log('[RealTimeAnalysis] ✅ Transcription enhancement is ready and active')
-    } else {
-      console.log('[RealTimeAnalysis] ⏳ Transcription enhancement not ready yet')
+      console.log('[RealTimeAnalysis] Ollama enhancement service initialized')
     }
   }, [isEnhancementReady])
 
