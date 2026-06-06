@@ -24,6 +24,7 @@
     "dev": "electron-vite dev",
     "build": "source ./code-signing/build-mac-signed.sh && electron-vite build && electron-builder",
     "build:ci": "electron-vite build && electron-builder",
+    "build:staging": "electron-vite build && electron-builder --publish never",
     "build:local": "export SKIP_NOTARIZE=true && electron-vite build && electron-builder -c.mac.identity=null",
     "postinstall": "node -e \"if (process.env.SKIP_ELECTRON_POSTINSTALL !== 'true') { require('child_process').execSync('electron-builder install-app-deps', { stdio: 'inherit' }) }\""
   },

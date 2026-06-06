@@ -48,6 +48,69 @@ describe('release workflow', () => {
   it('grants the release job contents:write so GITHUB_TOKEN can create releases', () => {
     expect(workflow.jobs.release.permissions.contents).toBe('write')
   })
+
+  it('verifies the pushed tag matches the app version before building', () => {
+    const guard = workflow.jobs.release.steps.find(
+      (step: any) =>
+        typeof step.name === 'string' &&
+        /tag/i.test(step.name) &&
+        /version/i.test(step.name),
+    )
+    expect(guard).toBeDefined()
+    expect(guard.run).toContain('package.json')
+  })
+})
+
+describe('staging workflow', () => {
+  const stagingPath = '.github/workflows/staging.yml'
+  const readStaging = () => readYaml(stagingPath)
+  const stagingSteps = () => {
+    const wf = readStaging()
+    const job: any = Object.values(wf.jobs)[0]
+    return job.steps as any[]
+  }
+
+  it('triggers on push to the stg branch', () => {
+    const wf = readStaging()
+    const on = wf.on ?? wf[true] // js-yaml may coerce the `on` key
+    expect(on.push.branches).toContain('stg')
+  })
+
+  it('stamps the build with a -stg.<run_number> prerelease suffix', () => {
+    const step = stagingSteps().find(
+      (s) => typeof s.run === 'string' && s.run.includes('-stg.'),
+    )
+    expect(step).toBeDefined()
+    expect(step.run).toContain('github.run_number')
+  })
+
+  it('builds without publishing a release', () => {
+    const step = stagingSteps().find(
+      (s) => typeof s.run === 'string' && s.run.includes('build:staging'),
+    )
+    expect(step).toBeDefined()
+  })
+
+  it('uploads the build as a downloadable Actions artifact', () => {
+    const step = stagingSteps().find(
+      (s) => typeof s.uses === 'string' && s.uses.includes('actions/upload-artifact'),
+    )
+    expect(step).toBeDefined()
+  })
+
+  it('does not create a GitHub release', () => {
+    const raw = readFileSync(resolve(repoRoot, stagingPath), 'utf8')
+    expect(raw).not.toContain('softprops/action-gh-release')
+    expect(raw).not.toContain('--publish always')
+  })
+})
+
+describe('staging build:staging script', () => {
+  const pkg = readYaml('apps/app/package.json')
+
+  it('builds the app without publishing (electron-builder --publish never)', () => {
+    expect(pkg.scripts['build:staging']).toContain('--publish never')
+  })
 })
 
 describe('no leftover references to the external release setup', () => {
