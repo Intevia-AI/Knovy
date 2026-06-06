@@ -261,9 +261,6 @@ export function MainController() {
           case 'restart':
             toggleScreenShare() // Start again
             break
-          case 'sign-out':
-            window.electronAPI.send('auth:request-sign-out')
-            break
           case 'quit':
             window.electronAPI.send('app:quit')
             break

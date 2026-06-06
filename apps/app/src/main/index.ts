@@ -63,12 +63,11 @@ let mainWindow: BrowserWindow | null
 let selectionWindow: BrowserWindow | null
 
 /**
- * Update application menu based on user role
- * Admin users: Standard macOS quit behavior (cmd+q works normally)
- * Non-admin users: cmd+q shows dialog directing to Settings panel
+ * Set the application menu.
+ * cmd+Q shows a dialog directing the user to quit through the Settings panel.
  */
-function updateApplicationMenu(isAdmin: boolean): void {
-  console.log(`[main/index.ts] Updating application menu for ${isAdmin ? 'admin' : 'non-admin'} user`)
+function updateApplicationMenu(): void {
+  console.log('[main/index.ts] Updating application menu')
 
   const template: MenuItemConstructorOptions[] = [
     {
@@ -82,27 +81,19 @@ function updateApplicationMenu(isAdmin: boolean): void {
         { role: 'hideOthers' },
         { role: 'unhide' },
         { type: 'separator' },
-        isAdmin
-          ? // Admin users: Normal quit behavior
-            {
-              label: 'Quit',
-              accelerator: 'Command+Q',
-              role: 'quit'
-            }
-          : // Non-admin users: Show dialog instead of quitting
-            {
-              label: 'Quit',
-              accelerator: 'Command+Q',
-              click: () => {
-                dialog.showMessageBox({
-                  type: 'info',
-                  title: 'Quit Application',
-                  message: 'Please quit the application through the Settings panel.',
-                  detail: 'You can also right-click the dock icon and select Quit.',
-                  buttons: ['OK']
-                })
-              }
-            }
+        {
+          label: 'Quit',
+          accelerator: 'Command+Q',
+          click: () => {
+            dialog.showMessageBox({
+              type: 'info',
+              title: 'Quit Application',
+              message: 'Please quit the application through the Settings panel.',
+              detail: 'You can also right-click the dock icon and select Quit.',
+              buttons: ['OK']
+            })
+          }
+        }
       ]
     },
     {
@@ -501,8 +492,8 @@ const createWindow = async () => {
     frame: false,
     transparent: true,
     hasShadow: false,
-    resizable: false, // Beta release: disable window resizing for non-admin users (will be updated after login)
-    alwaysOnTop: false, // Start with false since we'll be doing loading/login first
+    resizable: false, // Window is not resizable
+    alwaysOnTop: false, // Not always-on-top initially
     visualEffectState: 'active',
     backgroundMaterial: 'acrylic',
     webPreferences: {
@@ -510,7 +501,7 @@ const createWindow = async () => {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: false,
-      devTools: true // Allow DevTools (will be controlled by role after login)
+      devTools: true // DevTools available in dev mode
     }
   })
 
@@ -554,7 +545,7 @@ const createWindow = async () => {
     mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'))
   }
 
-  // Center the window initially since we always start with loading/login
+  // Center the window initially during loading
   mainWindow.center()
 
   mainWindow.on('closed', () => {
@@ -816,10 +807,9 @@ app.on('ready', async () => {
     }
   })
 
-  // Set initial application menu for non-admin users (before login)
-  // Will be updated to admin menu when admin user logs in
+  // Set the application menu
   if (process.platform === 'darwin') {
-    updateApplicationMenu(false) // Start with non-admin restrictions
+    updateApplicationMenu()
   }
 
   // Settings window IPC handlers

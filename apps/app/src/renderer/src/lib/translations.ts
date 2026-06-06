@@ -60,7 +60,6 @@ export const translations = {
     loginToUseAiActionsDescriptionToast: 'Please log in to use AI actions with screen content.',
     statusAuthLoading: 'Authenticating...',
     statusAuthLoadingShort: 'Auth...',
-    signOut: 'Sign Out',
     // Settings Panel
     viewHistory: 'View History',
     languageSettings: 'Language Settings',
@@ -251,7 +250,6 @@ export const translations = {
     loginToUseAiActionsDescriptionToast: '請登入以使用螢幕內容相關的 AI 功能。',
     statusAuthLoading: '驗證中...',
     statusAuthLoadingShort: '驗證...',
-    signOut: '登出',
     // Settings Panel
     viewHistory: '查看歷史紀錄',
     languageSettings: '語言設定',
@@ -447,7 +445,6 @@ export type TranslationKey =
   | 'loginToUseAiActionsDescriptionToast'
   | 'statusAuthLoading'
   | 'statusAuthLoadingShort'
-  | 'signOut'
   // Settings Panel
   | 'viewHistory'
   | 'languageSettings'

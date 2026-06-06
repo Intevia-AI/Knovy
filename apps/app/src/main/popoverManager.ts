@@ -3,19 +3,6 @@ import path from 'path'
 import { getMainWindow } from './index'
 
 const openPopovers = new Map<string, BrowserWindow>()
-let isAdminUserCached: boolean = false // Track admin status for popovers
-
-// Export function to set admin status from main process
-export function setAdminStatus(isAdmin: boolean): void {
-  isAdminUserCached = isAdmin
-  // Update existing popovers if any are open
-  for (const [id, popover] of openPopovers.entries()) {
-    if (popover && !popover.isDestroyed()) {
-      popover.setResizable(isAdmin)
-      console.log(`[PopoverManager] Popover ${id} resizable updated: ${isAdmin}`)
-    }
-  }
-}
 
 export interface PopoverOptions {
   id: string
@@ -55,7 +42,7 @@ export function createPopover(options: PopoverOptions): BrowserWindow {
     frame: false,
     transparent: true,
     hasShadow: false,
-    resizable: isAdminUserCached, // Admin users can resize, non-admin cannot
+    resizable: false, // Popovers are not resizable
     movable: true, // Allow moving
     focusable: true,
     alwaysOnTop: true,
