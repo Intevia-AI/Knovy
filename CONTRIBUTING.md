@@ -51,9 +51,8 @@ We expect all contributors to adhere to the following principles:
    Copy `.env.example` to `.env` in each application directory:
    - `apps/app/.env`
    - `apps/web/.env`
-   - `apps/proxy/.env`
 
-   Fill in required API keys (Google Generative AI, Supabase).
+   Fill in required API keys (Supabase).
 
 5. **Start the development servers**
 
@@ -66,11 +65,7 @@ We expect all contributors to adhere to the following principles:
    For the web application:
 
    ```bash
-   # Terminal 1: Start web app
    pnpm --filter web dev
-
-   # Terminal 2: Start proxy server
-   pnpm --filter web proxy
    ```
 
 ### Development Process
@@ -287,7 +282,6 @@ Desktop app releases are automated via GitHub Actions:
 - **Desktop App**: Automated via GitHub Actions on tag push
 - **Edge Functions**: `supabase functions deploy`
 - **Secrets**: `supabase secrets set --env-file ./supabase/.env.production`
-- **Proxy Server**: Deploy to Google Cloud Run (see `docs/setup/development.md`)
 
 ## Project-Specific Guidelines
 

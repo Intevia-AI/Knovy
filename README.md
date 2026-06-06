@@ -23,8 +23,7 @@ This is a monorepo managed with pnpm workspaces and Turborepo.
 ├── apps/
 │   ├── app/                   # Electron + Vite desktop application (main app)
 │   ├── web/                   # Next.js marketing and demo website
-│   ├── admin-dashboard/       # Admin management interface
-│   └── proxy/                 # WebSocket proxy server for web demos (not used after replacing the demo section with video)
+│   └── admin-dashboard/       # Admin management interface
 ├── packages/
 │   ├── ui/                    # Shared React components (shadcn/ui + Radix + Tailwind)
 │   ├── eslint-config/         # Shared ESLint configurations
@@ -71,9 +70,6 @@ This is a monorepo managed with pnpm workspaces and Turborepo.
    - `apps/app/.env` - Desktop app configuration
    - `apps/web/.env` - Web app configuration
    - `apps/admin-dashboard/.env` - Admin dashboard configuration
-   - `apps/proxy/.env` - Proxy server configuration (if needed)
-
-   Get Google Generative AI API key from [Google AI Studio](https://aistudio.google.com/app/apikey)
 
 5. **Start development**
 
@@ -187,10 +183,6 @@ pnpm build                # Build for production
 cd apps/admin-dashboard
 pnpm dev                  # Start development
 pnpm build                # Build for production
-
-# Proxy server (if needed)
-cd apps/proxy
-pnpm start                # Start WebSocket proxy
 
 # Supabase
 supabase start            # Start local services

@@ -25,16 +25,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `pnpm --filter web dev` - Start web app development server
 - `pnpm --filter web build` - Build web application
 - `pnpm --filter web typecheck` - Run TypeScript type checking
-- `pnpm --filter web proxy` - Start the WebSocket proxy server
 
 #### History Viewer (`apps/history-viewer`)
 
 - `pnpm --filter history-viewer dev:history` - Start on port 4001
 - `pnpm --filter history-viewer build` - Build static Next.js output
-
-#### Proxy Server (`apps/proxy`)
-
-- `pnpm --filter proxy start` - Start WebSocket proxy for real-time transcription
 
 ### Supabase Development
 
@@ -55,8 +50,7 @@ This is a **monorepo** managed with **pnpm workspaces** and **Turborepo**.
 │   ├── app_old/               # Legacy desktop app (deprecated)
 │   ├── history-viewer/        # Next.js app embedded in desktop app
 │   ├── web/                   # Next.js marketing and demo website
-│   ├── admin-dashboard/       # Admin management interface
-│   └── proxy/                 # WebSocket proxy for real-time transcription
+│   └── admin-dashboard/       # Admin management interface
 ├── packages/
 │   ├── ui/                    # Shared React components (Radix + Tailwind)
 │   ├── eslint-config/         # Shared ESLint configurations
@@ -117,12 +111,6 @@ The desktop app implements a **dual-stream audio architecture**:
 - **Session profiles** fetched via `get-session-profile` Edge Function
 - **Admin dashboard** restricted to users with `admin` role
 
-#### WebSocket Proxy
-
-- **Node.js server** (`apps/proxy/`) proxies real-time audio to Google Generative AI
-- Handles multiple concurrent connections for dual-stream audio
-- Manages WebSocket lifecycle and reconnection logic
-
 ### Environment Setup
 
 Each application requires environment configuration:
@@ -130,13 +118,12 @@ Each application requires environment configuration:
 1. **Copy `.env.example` to `.env`** in each app directory:
    - `apps/app/.env`
    - `apps/web/.env`
-   - `apps/proxy/.env`
 
 2. **Start Supabase locally**: `pnpm dlx supabase start`
 
 3. **Get Supabase credentials**: `pnpm dlx supabase status`
 
-4. **Fill in required API keys** (Google Generative AI, Supabase, etc.)
+4. **Fill in required API keys** (Supabase, etc.)
 
 ### Development Workflow
 

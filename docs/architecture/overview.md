@@ -29,7 +29,6 @@ graph TD
     end
 
     subgraph "Other Services"
-        Proxy[WebSocket Proxy <br/> Real-time Transcription <br/> Web Only]
         GoogleAI[Google Generative AI]
         WhisperCpp[Local whisper.cpp <br/> Desktop App Only]
     end
@@ -42,7 +41,6 @@ graph TD
     DesktopApp -- "Login" --> Auth
     AdminDashboard -- "Login (Admin Role Required)" --> Auth
 
-    WebApp -- "Real-time Transcription" --> Proxy
     DesktopApp -- "Local Transcription" --> WhisperCpp
     DesktopApp -- "Enhancement API Calls" --> AIActions
 
@@ -52,8 +50,6 @@ graph TD
 
     AIActions -- "Secure API Calls" --> GoogleAI
     EdgeFunctions -- "DB Operations" --> DB
-
-    Proxy -- "Proxies Requests" --> GoogleAI
 ```
 
 ## 3. Application Components
@@ -84,10 +80,9 @@ graph TD
 ### 3.2. Web Application (`apps/web`)
 
 - **Framework**: Next.js.
-- **Core Functionality**: Serves as the project's public-facing website and provides a demo of the real-time transcription feature.
+- **Core Functionality**: Serves as the project's public-facing website and provides a video demo of the product.
 - **Backend Interaction**:
   - **Authentication**: Uses Supabase for user login.
-  - **Real-time Transcription**: Connects to the WebSocket proxy (`apps/proxy`).
 
 ### 3.3. Admin Dashboard (`apps/admin-dashboard`)
 
@@ -113,8 +108,6 @@ Our backend is composed of several key pieces:
     - **Core Services**: Functions like `get-session-profile` that provide essential data to clients.
     - **AI Actions**: A suite of functions that perform specific AI tasks, each protected by the `withEntitlements` middleware to enforce RBAC and quotas.
     - **Admin API**: A dedicated API for platform management, restricted to admin users.
-
-- **WebSocket Proxy (`apps/proxy`)**: A Node.js server that handles real-time, stateful WebSocket connections for features like live transcription. It proxies requests to the Google Generative AI API. **Note**: Currently used by the web application only; the desktop application uses local whisper.cpp transcription.
 
 ## 5. Transcription Enhancement Architecture
 
