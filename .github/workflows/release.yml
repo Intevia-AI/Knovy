@@ -44,8 +44,8 @@ jobs:
 
       - name: Build and Publish
         env:
-          # This token is used to create a release in your public Knovy-Release repository.
-          GITHUB_TOKEN: ${{ secrets.RELEASE_PAT }}
+          # This token is used to create a release in this repository.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
           # The following secrets are required for macOS code signing and notarization.
           # You will need to create them in your repository's secrets.

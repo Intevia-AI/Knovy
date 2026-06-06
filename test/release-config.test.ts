@@ -26,3 +26,18 @@ describe('electron-builder publish target', () => {
     expect(config.publish.repo).toBe('Knovy')
   })
 })
+
+describe('release workflow', () => {
+  const workflow = readYaml('.github/workflows/release.yml')
+  const buildStep = workflow.jobs.release.steps.find(
+    (step: any) => step.name === 'Build and Publish',
+  )
+
+  it('has a Build and Publish step', () => {
+    expect(buildStep).toBeDefined()
+  })
+
+  it('uses the built-in GITHUB_TOKEN, not a personal RELEASE_PAT', () => {
+    expect(buildStep.env.GITHUB_TOKEN).toBe('${{ secrets.GITHUB_TOKEN }}')
+  })
+})
