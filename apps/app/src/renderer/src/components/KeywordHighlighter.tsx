@@ -112,7 +112,7 @@ const NonMemoizedKeywordHighlighter: React.FC<KeywordHighlighterProps> = ({
             className={cn(
               isClickableKeyword
                 ? 'bg-muted rounded-lg px-1 py-0.5 text-sm hover:bg-muted/80 cursor-pointer'
-                : 'bg-muted rounded-lg px-1 py-0.5 text-sm' // Non-clickable styling for free users
+                : 'bg-muted rounded-lg px-1 py-0.5 text-sm' // Non-clickable styling when no click handler
             )}
           >
             {segment.text}

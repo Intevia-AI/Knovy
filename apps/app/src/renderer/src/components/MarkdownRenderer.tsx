@@ -33,7 +33,7 @@ const NonMemoizedMarkdown: React.FC<MarkdownProps> = ({
         }
       }
 
-      // Only style as clickable keyword if user has entitlement and onKeywordClick is provided
+      // Style as clickable only if onKeywordClick is provided
       const isClickableKeyword = canUseKeywordSearch && onKeywordClick
 
       return (
@@ -44,7 +44,7 @@ const NonMemoizedMarkdown: React.FC<MarkdownProps> = ({
             className,
             isClickableKeyword
               ? 'bg-muted rounded-lg px-1 py-0.5 text-sm hover:bg-muted/80 cursor-pointer'
-              : 'bg-muted rounded-lg px-1 py-0.5 text-sm' // Non-clickable styling for free users
+              : 'bg-muted rounded-lg px-1 py-0.5 text-sm' // Non-clickable styling when no click handler
           )}
         >
           {children}
