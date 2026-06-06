@@ -57,7 +57,7 @@ npmRebuild: false
 publish:
   provider: github
   owner: Intevia-AI
-  repo: Knovy-Release
+  repo: Knovy
 electronDownload:
   mirror: https://npmmirror.com/mirrors/electron/
 afterPack: './code-signing/sign-dylibs.js'
