@@ -31,7 +31,6 @@ export function decideRecordAction(input: RecordGateInput): RecordAction {
     case 'verifying':
       return { type: 'prompt-downloading' }
     case 'error':
-    default:
       return { type: 'prompt-error' }
   }
 }
