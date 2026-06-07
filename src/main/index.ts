@@ -2353,6 +2353,12 @@ app.on('ready', async () => {
   })
 
   // AI action triggers - broadcast to all windows
+  ipcMain.on('model-gate:start-recording', () => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('model-gate:start-recording')
+    }
+  })
+
   ipcMain.on('ai-action:trigger-recommend-response', () => {
     console.log('[main/index.ts] Broadcasting ai-action:recommend-response to all windows')
     for (const win of BrowserWindow.getAllWindows()) {

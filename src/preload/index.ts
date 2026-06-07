@@ -190,7 +190,9 @@ const api = {
       'auto-trigger:action-completed',
       'auto-trigger:action-failed',
       // Ollama events
-      'ollama:model-state'
+      'ollama:model-state',
+      // Model-gate relay
+      'model-gate:start-recording'
     ]
     if (validChannels.includes(channel)) {
       const subscription = (event, ...args) => callback(...args)
@@ -229,7 +231,8 @@ const api = {
       'electronAPI:captureArea',
       'electronAPI:cancelScreenshot',
       'settings:close',
-      'ai-action:trigger-recommend-response'
+      'ai-action:trigger-recommend-response',
+      'model-gate:start-recording'
     ]
     if (!validChannels.includes(channel)) {
       console.warn(`[Preload] Attempted to send on invalid channel: ${channel}`)
