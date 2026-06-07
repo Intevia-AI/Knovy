@@ -479,10 +479,6 @@ export function useAIInteraction() {
     sendContextToAI(action, prompt)
   }
 
-  const cancelCorrections = useCallback(() => {
-    ;(window as any).electronAPI?.send('correction:cancel')
-  }, [])
-
   return {
     aiMessages,
     setAiMessages,
@@ -499,7 +495,6 @@ export function useAIInteraction() {
     toggleScreenShare,
     screenStreamRef,
     cancelScreenShare,
-    isSummarizing,
-    cancelCorrections
+    isSummarizing
   }
 }
