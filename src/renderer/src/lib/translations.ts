@@ -110,6 +110,9 @@ export const translations = {
     // Settings Pages
     settingsTitle: 'Settings',
     settingsDescription: 'Manage your general settings',
+    // Control bar
+    muteMicrophone: 'Mute microphone',
+    unmuteMicrophone: 'Unmute microphone',
     historyTitle: 'History',
     historyDescription: 'View and manage your session history',
     searchSessions: 'Search sessions...',
@@ -301,6 +304,9 @@ export const translations = {
     // Settings Pages
     settingsTitle: '設定',
     settingsDescription: '管理您的一般設定',
+    // Control bar
+    muteMicrophone: '靜音麥克風',
+    unmuteMicrophone: '取消靜音麥克風',
     historyTitle: '歷史紀錄',
     historyDescription: '查看和管理您的對話紀錄',
     searchSessions: '搜尋對話紀錄...',
@@ -493,6 +499,8 @@ export type TranslationKey =
   | 'aboutTab'
   // Settings Pages
   | 'settingsTitle'
+  | 'muteMicrophone'
+  | 'unmuteMicrophone'
   | 'settingsDescription'
   | 'historyTitle'
   | 'historyDescription'

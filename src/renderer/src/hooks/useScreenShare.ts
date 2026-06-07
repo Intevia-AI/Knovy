@@ -8,6 +8,7 @@ import { useState, useRef, useCallback, useEffect } from 'react'
 import { cleanupStream, cleanupRecorder } from '@/lib/utils'
 import { useSegmentRecorder } from '@/hooks/useSegmentRecorder'
 import type { Segment } from '@/types'
+import { INITIAL_MIC_ENABLED, toggleMicEnabled } from '@/lib/micToggle'
 
 const SYSTEM_AUDIO_CHUNK_MS = 1000
 
@@ -54,6 +55,8 @@ export function useScreenShare() {
   const [currentSystemAudioStream, setCurrentSystemAudioStream] = useState<MediaStream | null>(null)
   const [systemAudioSegments, setSystemAudioSegments] = useState<Segment[]>([])
   const [systemAudioMimeType, setSystemAudioMimeType] = useState<string>('')
+  const [micEnabled, setMicEnabled] = useState<boolean>(INITIAL_MIC_ENABLED)
+  const micEnabledRef = useRef<boolean>(INITIAL_MIC_ENABLED)
 
   const screenStreamRef = useRef<MediaStream | null>(null)
   const screenPreviewRef = useRef<HTMLVideoElement>(null)
@@ -69,6 +72,19 @@ export function useScreenShare() {
     mimeType: micMimeType,
     currentMicChunksRef // Get ref to current mic chunks
   } = useSegmentRecorder()
+
+  // Live mic mute/unmute during recording. Default ON; not persisted.
+  const toggleMic = useCallback(() => {
+    if (!isScreenSharing) return
+    const next = toggleMicEnabled(micEnabledRef.current)
+    micEnabledRef.current = next
+    setMicEnabled(next)
+    if (next) {
+      void startMicRecording()
+    } else {
+      stopMicRecording()
+    }
+  }, [isScreenSharing, startMicRecording, stopMicRecording])
 
   // --- System Audio Blob Creation and Dispatch ---
   const makeSystemAudioBlobAndDispatch = useCallback(() => {
@@ -299,6 +315,8 @@ export function useScreenShare() {
     setSystemAudioMimeType('')
     setRecordingDuration(0)
     setCurrentSystemAudioStream(null)
+    micEnabledRef.current = INITIAL_MIC_ENABLED
+    setMicEnabled(INITIAL_MIC_ENABLED)
     cleanupRecorder(systemAudioRecorderRef)
     systemAudioChunksRef.current = []
     if (systemAudioTimerRef.current) clearInterval(systemAudioTimerRef.current)
@@ -373,6 +391,7 @@ export function useScreenShare() {
   return {
     isScreenSharing,
     recordingDuration,
+    micEnabled,
     micStream,
     currentSystemAudioStream,
     micMimeType,
@@ -380,6 +399,7 @@ export function useScreenShare() {
     screenStreamRef, // Ref for the video element
     screenPreviewRef,
     toggleScreenShare,
+    toggleMic,
     restartScreenShare,
     cancelScreenShare // Expose the cancel function
   }
