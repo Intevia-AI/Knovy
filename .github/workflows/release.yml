@@ -79,3 +79,27 @@ jobs:
           CSC_LINK: ${{ secrets.CSC_LINK }} # Base64 encoded .p12 certificate
           CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }} # Password for the certificate
         run: pnpm run build:ci
+
+      - name: Verify macOS auto-update zip integrity
+        # Squirrel/ShipIt validates the new app's code signature before swapping the
+        # bundle. If the *-mac.zip was created with its framework symlinks flattened
+        # (Versions/Current, Squirrel, Resources stored as real files instead of
+        # symlinks), the bundle fails `codesign --verify --deep --strict` and ShipIt
+        # silently rejects the update and relaunches the old version. Fail the release
+        # loudly here so a non-installable auto-update zip is never shipped unnoticed.
+        run: |
+          set -euo pipefail
+          ZIP=$(ls dist/*-mac.zip | head -1)
+          echo "Inspecting $ZIP"
+          SYMLINKS=$(zipinfo "$ZIP" | awk '/^l/ {c++} END {print c+0}')
+          echo "symlink entries in zip: $SYMLINKS"
+          if [ "$SYMLINKS" -eq 0 ]; then
+            echo "::error::macOS auto-update zip has 0 symlinks — framework structure was flattened; Squirrel/ShipIt will reject the update. Do not ship this build."
+            exit 1
+          fi
+          WORK=$(mktemp -d)
+          ditto -x -k "$ZIP" "$WORK"
+          APP=$(find "$WORK" -maxdepth 2 -name '*.app' | head -1)
+          echo "Verifying code signature of $APP"
+          codesign --verify --deep --strict --verbose=2 "$APP"
+          echo "✅ Auto-update zip OK: framework symlinks intact and signature valid."
