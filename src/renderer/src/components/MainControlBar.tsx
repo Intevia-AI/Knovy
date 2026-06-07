@@ -2,6 +2,7 @@ import React from 'react'
 import { Button } from '@/components/ui/button'
 import {
   MicIcon,
+  MicOffIcon,
   SettingsIcon,
   LayoutGrid,
   MonitorIcon,
@@ -24,6 +25,8 @@ interface MainControlBarProps {
   openPanels: Set<string>
   isSettingsOpen: boolean
   preparingProgress?: number | null
+  micEnabled: boolean
+  onToggleMic: () => void
 }
 
 export function MainControlBar({
@@ -34,7 +37,9 @@ export function MainControlBar({
   onTogglePanel,
   openPanels,
   isSettingsOpen,
-  preparingProgress
+  preparingProgress,
+  micEnabled,
+  onToggleMic
 }: MainControlBarProps) {
   const { t } = useI18n()
   const canShowActions = true
@@ -82,6 +87,22 @@ export function MainControlBar({
         </Button>
         {isScreenSharing && (
           <>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onToggleMic}
+              className={`h-8 w-8 rounded-full shadow hover:bg-white ${
+                micEnabled ? '' : 'bg-destructive/80 text-white hover:text-black'
+              }`}
+              title={micEnabled ? t('muteMicrophone') : t('unmuteMicrophone')}
+              aria-pressed={!micEnabled}
+            >
+              {micEnabled ? (
+                <MicIcon className="h-4 w-4" />
+              ) : (
+                <MicOffIcon className="h-4 w-4" />
+              )}
+            </Button>
             <Button
               variant="ghost"
               size="icon"

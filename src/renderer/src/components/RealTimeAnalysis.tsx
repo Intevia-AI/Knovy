@@ -21,13 +21,15 @@ interface RealTimeAnalysisProps {
   systemAudioStream?: MediaStream
   isScreenSharing: boolean
   customPrompt?: string
+  micEnabled?: boolean
 }
 
 export default function RealTimeAnalysis({
   onTextResponse,
   systemAudioStream,
   isScreenSharing,
-  customPrompt
+  customPrompt,
+  micEnabled = true
 }: RealTimeAnalysisProps) {
   const canUseKeywordSearch = true
   const { language: userLanguage } = useLanguage()
@@ -58,6 +60,7 @@ export default function RealTimeAnalysis({
   const micAudioSourceRef = useRef<MediaStreamAudioSourceNode | null>(null)
   const micAnalyserRef = useRef<AnalyserNode | null>(null)
   const micMediaStreamRef = useRef<MediaStream | null>(null)
+  const micEnabledRef = useRef<boolean>(true)
   const systemAudioWorkletNodeRef = useRef<AudioWorkletNode | null>(null)
   const systemAudioSourceRef = useRef<MediaStreamAudioSourceNode | null>(null)
   const systemAnalyserRef = useRef<AnalyserNode | null>(null)
@@ -343,6 +346,7 @@ export default function RealTimeAnalysis({
             bufferSize: 8192
           }
         })
+        micAudioWorkletNodeRef.current = micAudioWorkletNode
 
         systemAudioWorkletNode = new AudioWorkletNode(audioContext, 'system-audio-processor', {
           processorOptions: {
@@ -375,7 +379,13 @@ export default function RealTimeAnalysis({
           }
 
           // Handle regular audio data
-          if (micProcessor && shouldSendAudio && sourceType === 'microphone' && pcmData) {
+          if (
+            micProcessor &&
+            shouldSendAudio &&
+            micEnabledRef.current &&
+            sourceType === 'microphone' &&
+            pcmData
+          ) {
             try {
               const pcmArray = new Uint8Array(pcmData)
               const b64Data = btoa(String.fromCharCode.apply(null, Array.from(pcmArray)))
@@ -660,6 +670,83 @@ export default function RealTimeAnalysis({
       )
     }
   }, [systemAudioStream, isScreenSharing])
+
+  // Separate effect to mute/unmute the microphone live, without restarting
+  // transcription. Full teardown on mute (stops tracks → OS mic indicator off);
+  // re-acquire on unmute. Mirrors the system-audio reconnect effect above.
+  useEffect(() => {
+    if (!isScreenSharing) return
+    micEnabledRef.current = micEnabled
+
+    const audioContext = audioContextRef.current
+    const micWorkletNode = micAudioWorkletNodeRef.current
+    // Pipeline not ready yet on first mount; the main effect's initial connect
+    // handles startup. This effect only acts on later toggles.
+    if (!audioContext || !micWorkletNode) return
+
+    let cancelled = false
+
+    // Stop and disconnect any current mic connection. Shared by mute and by the
+    // pre-assignment cleanup on unmute so a rapid toggle can never leak a live
+    // stream or an orphan audio node.
+    const teardownMic = () => {
+      if (micAudioSourceRef.current) {
+        micAudioSourceRef.current.disconnect()
+        micAudioSourceRef.current = null
+      }
+      if (micAnalyserRef.current) {
+        micAnalyserRef.current.disconnect()
+        micAnalyserRef.current = null
+      }
+      if (micMediaStreamRef.current) {
+        micMediaStreamRef.current.getTracks().forEach((track) => track.stop())
+        micMediaStreamRef.current = null
+      }
+    }
+
+    if (micEnabled) {
+      const alreadyLive = micMediaStreamRef.current
+        ?.getTracks()
+        .some((track) => track.readyState === 'live')
+      if (alreadyLive) return
+
+      ;(async () => {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+          if (cancelled) {
+            stream.getTracks().forEach((track) => track.stop())
+            return
+          }
+          // Tear down any stale/partial connection before wiring the new one,
+          // guarding against an overlapping unmute that already set a stream.
+          teardownMic()
+          micMediaStreamRef.current = stream
+
+          const micAnalyser = audioContext.createAnalyser()
+          micAnalyser.fftSize = 256
+          micAnalyserRef.current = micAnalyser
+
+          const micSource = audioContext.createMediaStreamSource(stream)
+          micAudioSourceRef.current = micSource
+
+          micSource.connect(micAnalyser)
+          micAnalyser.connect(micWorkletNode)
+          console.log('[RealTimeAnalysis] Microphone unmuted and reconnected')
+        } catch (error) {
+          // getUserMedia can reject (permission revoked); leave mic effectively
+          // off and keep the session alive.
+          console.error('[RealTimeAnalysis] Error re-acquiring microphone on unmute:', error)
+        }
+      })()
+    } else {
+      teardownMic()
+      console.log('[RealTimeAnalysis] Microphone muted and torn down')
+    }
+
+    return () => {
+      cancelled = true
+    }
+  }, [micEnabled, isScreenSharing])
 
   return null
 }

@@ -3,12 +3,6 @@ import path from 'path'
 import fs from 'fs/promises'
 import { app } from 'electron'
 import { randomUUID } from 'crypto'
-import {
-  getTranscriptionEnhancementService,
-  TranscriptionEnhancementService,
-  type TranscriptionSegment
-} from './transcriptionEnhancementService'
-import type { OllamaService } from './ollamaService'
 import { Converter, ConverterFactory, Locale } from 'opencc-js'
 
 // Configuration: Change this to set the default model size
@@ -75,9 +69,6 @@ export class WhisperBackend {
   private segmentContext = new Map<string, string>() // sessionId -> last sentence
   private sessionHistory = new Map<string, string[]>() // sessionId -> conversation history
 
-  // Enhancement service
-  private enhancementService: TranscriptionEnhancementService | null = null
-
   // VAD (Voice Activity Detection) model path
   private vadModelPath: string | null = null
 
@@ -122,69 +113,6 @@ export class WhisperBackend {
       console.log('[WhisperService] OpenCC converter initialized (CN → TW)')
     } catch (error) {
       console.error('[WhisperService] Failed to initialize OpenCC converter:', error)
-    }
-  }
-
-  /**
-   * Set up transcription enhancement service with local Ollama
-   */
-  setupEnhancementService(ollamaService: OllamaService): void {
-    try {
-      this.enhancementService = getTranscriptionEnhancementService(ollamaService)
-      console.log('[WhisperService] Transcription enhancement service initialized with Ollama')
-    } catch (error) {
-      console.error('[WhisperService] Failed to initialize enhancement service:', error)
-    }
-  }
-
-  /**
-   * Get the enhancement service for event subscription
-   */
-  getEnhancementService(): TranscriptionEnhancementService | null {
-    return this.enhancementService
-  }
-
-  /**
-   * Trigger transcription enhancement for a completed transcription
-   */
-  private triggerTranscriptionEnhancement(
-    sessionId: string,
-    rawText: string,
-    options: TranscriptionOptions,
-    timestamp: number
-  ): void {
-    if (!this.enhancementService) {
-      return
-    }
-
-    try {
-      // Create transcription segment
-      const segment: TranscriptionSegment = {
-        id: randomUUID(),
-        rawText,
-        timestamp,
-        sourceType: options.sourceType
-      }
-
-      // Get conversation history for context
-      const conversationHistory = this.sessionHistory.get(sessionId) || []
-
-      // Create session context
-      const sessionContext = {
-        sessionId,
-        conversationHistory: conversationHistory.slice(-10), // Last 10 segments for context
-        userLanguage: options.userLanguage || options.language || 'en' // Prefer userLanguage over detected language
-      }
-
-      // Trigger enhancement (async, non-blocking) with small delay to ensure DB save completes
-      setTimeout(() => {
-        this.enhancementService.enhanceSegment(segment, sessionContext, false)
-        console.log(
-          `[WhisperService] Triggered enhancement for segment ${segment.id} in session ${sessionId}`
-        )
-      }, 100) // 100ms delay to allow transcript to be saved to database first
-    } catch (error) {
-      console.error('[WhisperService] Error triggering enhancement:', error)
     }
   }
 

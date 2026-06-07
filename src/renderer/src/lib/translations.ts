@@ -138,6 +138,9 @@ export const translations = {
     // Settings Pages
     settingsTitle: 'Settings',
     settingsDescription: 'Manage your general settings',
+    // Control bar
+    muteMicrophone: 'Mute microphone',
+    unmuteMicrophone: 'Unmute microphone',
     historyTitle: 'History',
     historyDescription: 'View and manage your session history',
     searchSessions: 'Search sessions...',
@@ -170,6 +173,9 @@ export const translations = {
     visitWebsite: 'Visit Website',
     checkForUpdates: 'Check for Updates',
     checkingForUpdates: 'Checking for updates...',
+    updateUpToDate: "You're on the latest version",
+    updateCheckFailed: 'Update check failed. You can download the latest release manually.',
+    downloadFromGitHub: 'Download from GitHub',
     sendFeedback: 'Send Feedback',
     generalSettingsDescription: 'Manage your general application settings',
     languageChangeWarning: 'Changing language will restart your current recording session',
@@ -352,6 +358,9 @@ export const translations = {
     // Settings Pages
     settingsTitle: '設定',
     settingsDescription: '管理您的一般設定',
+    // Control bar
+    muteMicrophone: '靜音麥克風',
+    unmuteMicrophone: '取消靜音麥克風',
     historyTitle: '歷史紀錄',
     historyDescription: '查看和管理您的對話紀錄',
     searchSessions: '搜尋對話紀錄...',
@@ -384,6 +393,9 @@ export const translations = {
     visitWebsite: '來去官網',
     checkForUpdates: '檢查更新',
     checkingForUpdates: '正在檢查更新...',
+    updateUpToDate: '您已是最新版本',
+    updateCheckFailed: '檢查更新失敗，您可以手動下載最新版本。',
+    downloadFromGitHub: '從 GitHub 下載',
     sendFeedback: '提供回饋',
     generalSettingsDescription: '管理您的一般設定',
     languageChangeWarning: '變更語言將會重新開始您目前的錄製對話紀錄',
@@ -566,6 +578,8 @@ export type TranslationKey =
   | 'aboutTab'
   // Settings Pages
   | 'settingsTitle'
+  | 'muteMicrophone'
+  | 'unmuteMicrophone'
   | 'settingsDescription'
   | 'historyTitle'
   | 'historyDescription'
@@ -599,6 +613,9 @@ export type TranslationKey =
   | 'visitWebsite'
   | 'checkForUpdates'
   | 'checkingForUpdates'
+  | 'updateUpToDate'
+  | 'updateCheckFailed'
+  | 'downloadFromGitHub'
   | 'sendFeedback'
   | 'generalSettingsDescription'
   | 'languageChangeWarning'

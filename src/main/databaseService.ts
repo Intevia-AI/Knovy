@@ -165,7 +165,7 @@ export interface EnhancedTranscriptData {
   usedTwoStageDetection?: boolean
   processingTimeMs?: number
   // Enhancement data (initially empty)
-  enhancementStatus?: 'pending' | 'processing' | 'completed' | 'failed'
+  enhancementStatus?: 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled'
 }
 
 export async function addEnhancedTranscript(transcript: EnhancedTranscriptData) {
@@ -279,7 +279,7 @@ export async function updateTranscriptEnhancement(
 
 export async function updateTranscriptEnhancementStatus(
   transcriptId: string,
-  status: 'pending' | 'processing' | 'completed' | 'failed'
+  status: 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled'
 ) {
   const db = await dbPromise
   const stmt = await db.prepare(`

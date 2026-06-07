@@ -29,6 +29,7 @@ import {
 } from './popoverManager'
 import { positionWindow, type PositionOptions } from './windowManager'
 import electronUpdater, { type AppUpdater } from 'electron-updater'
+import { withTimeout } from './utils/withTimeout'
 import { getWhisperBackend } from './whisperBackend'
 import { getOllamaService } from './ollamaService'
 import {
@@ -59,6 +60,30 @@ console.log('[Debug] Imported dbService module:', dbService)
 let isScreenSharing = false
 let currentSessionId: string | null = null // SQLite session ID
 let activeScreenSourceId: string | null = null
+
+// Streaming correction state
+let currentGenerationId = 0
+const activeCorrections = new Map<string, AbortController>()
+
+function cancelAllCorrections(): void {
+  currentGenerationId++ // invalidate in-flight + queued work for the old generation
+  for (const controller of activeCorrections.values()) {
+    controller.abort()
+  }
+  activeCorrections.clear() // in-flight finally blocks then no-op delete on the cleared map
+}
+
+function broadcastToWindows(channel: string, payload: unknown): void {
+  for (const win of BrowserWindow.getAllWindows()) {
+    if (!win.isDestroyed()) {
+      try {
+        win.webContents.send(channel, payload)
+      } catch (e) {
+        console.error(`[main/index.ts] broadcast ${channel} failed:`, e)
+      }
+    }
+  }
+}
 let mainWindow: BrowserWindow | null
 let selectionWindow: BrowserWindow | null
 
@@ -136,6 +161,9 @@ export function getAutoUpdater(): AppUpdater {
 // Other modules can get it from here if needed.
 export const getMainWindow = (): BrowserWindow | null => mainWindow
 
+// Max time to wait for an update check before giving up
+const UPDATE_CHECK_TIMEOUT_MS = 10_000
+
 function setupAutoUpdaterListeners() {
   const autoUpdater = getAutoUpdater()
 
@@ -191,33 +219,29 @@ ipcMain.on('updater:quit-and-install', () => {
 // Manual update check from settings
 ipcMain.on('updater:check-for-updates', async (event) => {
   console.log('[AutoUpdater] Manual update check requested from settings')
+  // Reply to the window that requested the check (the settings window), not the main window.
+  const send = (channel: string, ...args: any[]) => {
+    if (!event.sender.isDestroyed()) {
+      event.sender.send(channel, ...args)
+    }
+  }
   try {
     const autoUpdater = getAutoUpdater()
-    const checkResult = await autoUpdater.checkForUpdates()
+    const checkResult = await withTimeout(autoUpdater.checkForUpdates(), UPDATE_CHECK_TIMEOUT_MS)
 
-    if (checkResult) {
-      console.log('[AutoUpdater] Manual check completed:', {
-        currentVersion: checkResult.currentVersion,
-        updateVersion: checkResult.updateInfo?.version,
-        hasDownloadedUpdate: !!checkResult.downloadedFile
-      })
+    console.log('[AutoUpdater] Manual check completed:', {
+      updateVersion: checkResult?.updateInfo?.version,
+      isUpdateAvailable: checkResult?.isUpdateAvailable
+    })
 
-      // If update is already downloaded, notify immediately
-      if (
-        checkResult.downloadedFile ||
-        (checkResult.updateInfo && checkResult.updateInfo.version !== checkResult.currentVersion)
-      ) {
-        if (mainWindow && !mainWindow.isDestroyed()) {
-          mainWindow.webContents.send('updater:update-downloaded', checkResult.updateInfo)
-        }
-      }
+    if (checkResult?.isUpdateAvailable) {
+      send('updater:update-downloaded', checkResult.updateInfo)
+    } else {
+      send('updater:update-not-available')
     }
   } catch (error) {
     console.error('[AutoUpdater] Error during manual update check:', error)
-    // Send error notification to renderer
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('updater:check-error', error.message)
-    }
+    send('updater:check-error', error instanceof Error ? error.message : String(error))
   }
 })
 
@@ -286,6 +310,7 @@ async function startSession() {
   try {
     const { id } = await dbService.createSession(newSession)
     currentSessionId = id
+    cancelAllCorrections()
 
     // Wire IntentionProcessor to the local session ID so auto-trigger works
     loadSettings()
@@ -313,6 +338,7 @@ async function endCurrentSession() {
   }
   const sessionIdToEnd = currentSessionId
   currentSessionId = null // Clear session ID immediately
+  cancelAllCorrections()
 
   // Clear IntentionProcessor session ID now that the local session has ended
   loadSettings()
@@ -734,7 +760,7 @@ app.on('ready', async () => {
     setTimeout(async () => {
       try {
         // Check for updates (this will also detect previously downloaded updates)
-        const checkResult = await autoUpdater.checkForUpdates()
+        const checkResult = await withTimeout(autoUpdater.checkForUpdates(), UPDATE_CHECK_TIMEOUT_MS)
 
         if (checkResult) {
           const currentVersion = checkResult.currentVersion
@@ -1259,6 +1285,11 @@ app.on('ready', async () => {
     })
   })
 
+  ipcMain.on('correction:cancel', () => {
+    console.log('[main/index.ts] correction:cancel received')
+    cancelAllCorrections()
+  })
+
   ipcMain.on('app:graceful-stop-and-execute', (event, { postAction }) => {
     console.log(`[main/index.ts] Received graceful stop request with postAction: ${postAction}`)
     if (mainWindow && !mainWindow.isDestroyed()) {
@@ -1371,120 +1402,109 @@ app.on('ready', async () => {
           })
         }
 
-        // 2. Attempt real-time enhancement before broadcasting
-        let displayContent = transcriptionData.text // Fallback: raw text
-        let enhancedData: any = null
+        // 2. Branch: stream correction when Ollama is ready, else broadcast raw.
         const ollamaSvc = getOllamaService()
+        const generationId = currentGenerationId
 
         const enhanceSettings = await loadSettings()
         const aiCorrectionOn = enhanceSettings.aiCorrection !== 'off'
 
-        if (aiCorrectionOn && ollamaSvc.getModelState().phase === 'ready') {
-          try {
-            const userLanguage = enhanceSettings.language
+        if (!aiCorrectionOn || ollamaSvc.getModelState().phase !== 'ready') {
+          // Fallback: broadcast raw text (correction disabled or Ollama not ready).
+          console.log(
+            `[main/index.ts] Skipping correction (aiCorrection=${
+              aiCorrectionOn ? 'on' : 'off'
+            }, phase=${ollamaSvc.getModelState().phase}), broadcasting raw text for ${transcriptId}`
+          )
+          broadcastToWindows('transcription:data', {
+            id: transcriptId,
+            session_id: currentSessionId,
+            timestamp,
+            content: transcriptionData.text,
+            sourceType: transcriptionData.sourceType,
+            role: 'assistant',
+            type: 'transcription',
+            isStreaming: false
+          })
+          event.sender.send('transcription:processed', { transcriptId })
+          return
+        }
 
-            const segment = {
+        // Ollama ready: register the AbortController BEFORE broadcasting the placeholder
+        // so any cancelAllCorrections() call that races in can abort this stream.
+        const settings = await loadSettings()
+        const userLanguage = settings.language
+        const controller = new AbortController()
+        activeCorrections.set(transcriptId, controller)
+
+        broadcastToWindows('transcription:data', {
+          id: transcriptId,
+          session_id: currentSessionId,
+          timestamp,
+          content: '',
+          sourceType: transcriptionData.sourceType,
+          role: 'assistant',
+          type: 'transcription',
+          isStreaming: true
+        })
+        broadcastToWindows('correction:start', { transcriptId, generationId })
+
+        try {
+          let full = await ollamaSvc.enhanceStream(
+            {
               id: transcriptId,
               rawText: transcriptionData.text,
               timestamp: Date.now(),
               sourceType: transcriptionData.sourceType
-            }
-
-            const sessionContext = {
-              sessionId: currentSessionId,
-              conversationHistory: [] as string[],
-              userLanguage
-            }
-
-            const enhanceResult = await ollamaSvc.enhance([segment], sessionContext)
-
-            if (enhanceResult.segments.length > 0) {
-              const enhanced = enhanceResult.segments[0]
-              // Ensure Traditional Chinese after enhancement (model may output Simplified)
-              if (userLanguage === 'zh-TW' && enhanced.corrected) {
-                enhanced.corrected = s2twConverter(enhanced.corrected)
+            },
+            { sessionId: currentSessionId, conversationHistory: [], userLanguage },
+            {
+              signal: controller.signal,
+              onToken: (chunk) => {
+                if (generationId !== currentGenerationId) return
+                broadcastToWindows('correction:token', { transcriptId, generationId, chunk })
               }
-              displayContent = enhanced.corrected
-              enhancedData = enhanced
-
-              // Update database with enhanced text
-              try {
-                await dbService.updateTranscriptEnhancement(transcriptId, {
-                  enhancedText: enhanced.corrected,
-                  enhancementMetadata: {
-                    intention: enhanced.intention,
-                    keywords: enhanced.keywords,
-                    confidence: enhanced.confidence,
-                    processingTime: enhanceResult.processingTime
-                  }
-                })
-              } catch (dbError) {
-                console.error(
-                  `[main/index.ts] Failed to update enhancement in DB for ${transcriptId}:`,
-                  dbError
-                )
-              }
-
-              // Process through IntentionProcessor for auto-trigger
-              const intentionProcessor = getIntentionProcessor()
-              intentionProcessor.processEnhancedSegment({
-                sessionId: sessionContext.sessionId,
-                original: segment,
-                enhanced,
-                processingTime: enhanceResult.processingTime
-              })
-
-              console.log(
-                `[main/index.ts] Real-time enhancement for ${transcriptId}: "${transcriptionData.text.substring(0, 40)}..." → "${displayContent.substring(0, 40)}..." (${enhanceResult.processingTime}ms)`
-              )
             }
-          } catch (enhanceError) {
-            console.warn(
-              `[main/index.ts] Enhancement failed for ${transcriptId}, using raw text:`,
-              enhanceError
-            )
-            // Fallback: displayContent remains as raw text
-          }
-        } else {
-          console.log(
-            `[main/index.ts] Skipping enhancement (aiCorrection=${aiCorrectionOn ? 'on' : 'off'}, phase=${ollamaSvc.getModelState().phase}), broadcasting raw text for ${transcriptId}`
           )
-        }
 
-        // 3. Broadcast enhanced (or raw fallback) text to all windows
-        const displayTranscript = {
-          id: transcriptId,
-          session_id: currentSessionId,
-          timestamp,
-          content: displayContent,
-          sourceType: transcriptionData.sourceType,
-          role: 'assistant',
-          type: 'transcription',
-          keywords: enhancedData?.keywords || []
-        }
-
-        const windows = BrowserWindow.getAllWindows()
-        const validWindows = windows.filter((win) => !win.isDestroyed())
-
-        let broadcastSuccessCount = 0
-        for (const win of validWindows) {
-          try {
-            win.webContents.send('transcription:data', displayTranscript)
-            broadcastSuccessCount++
-          } catch (sendError) {
-            console.error(`[main/index.ts] Error sending to window:`, sendError)
+          if (generationId !== currentGenerationId) {
+            // A newer generation (session start/stop) superseded this stream after it
+            // resolved. Settle the renderer bubble and mark the row so it isn't left
+            // stuck streaming / pending.
+            broadcastToWindows('correction:cancelled', { transcriptId, generationId })
+            await dbService
+              .updateTranscriptEnhancementStatus(transcriptId, 'cancelled')
+              .catch(() => {})
+            return
           }
+
+          if (userLanguage === 'zh-TW' && full) {
+            full = s2twConverter(full)
+          }
+
+          broadcastToWindows('correction:done', { transcriptId, generationId, fullText: full })
+          await dbService.updateTranscriptEnhancement(transcriptId, {
+            enhancedText: full,
+            enhancementMetadata: {}
+          })
+        } catch (err) {
+          const aborted = err instanceof Error && err.name === 'AbortError'
+          console.warn(
+            `[main/index.ts] Correction ${aborted ? 'cancelled' : 'error'} for ${transcriptId}:`,
+            err
+          )
+          broadcastToWindows(aborted ? 'correction:cancelled' : 'correction:error', {
+            transcriptId,
+            generationId
+          })
+          // Keep raw text; mark with appropriate status.
+          await dbService
+            .updateTranscriptEnhancementStatus(transcriptId, aborted ? 'cancelled' : 'failed')
+            .catch((e) => console.warn(`[main/index.ts] Failed to mark status for ${transcriptId}:`, e))
+        } finally {
+          activeCorrections.delete(transcriptId)
+          event.sender.send('transcription:processed', { transcriptId })
         }
-
-        console.log(
-          `[main/index.ts] Broadcast transcript ${transcriptId} to ${broadcastSuccessCount}/${validWindows.length} windows`
-        )
-
-        event.sender.send('transcription:processed', {
-          transcriptId,
-          broadcastCount: broadcastSuccessCount,
-          totalWindows: validWindows.length
-        })
       } catch (processingError) {
         console.error(`[main/index.ts] Error processing transcription:`, processingError)
         event.sender.send('transcription:error', {

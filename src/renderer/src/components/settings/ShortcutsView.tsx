@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react'
-import { motion } from 'motion'
 import { Info } from 'lucide-react'
 import { Card, CardHeader, CardContent } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -144,54 +143,41 @@ export function ShortcutsView() {
       </div>
 
       {/* Info Alert */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
-      >
-        <Alert variant="default">
-          <Info className="w-4 h-4" />
-          <AlertDescription>
-            Customizable keyboard shortcuts will be available in a future update.
-          </AlertDescription>
-        </Alert>
-      </motion.div>
+      <Alert variant="default">
+        <Info className="w-4 h-4" />
+        <AlertDescription>
+          Customizable keyboard shortcuts will be available in a future update.
+        </AlertDescription>
+      </Alert>
 
       {/* Shortcuts by Category */}
       <div className="space-y-6">
-        {shortcutCategories.map((category, categoryIndex) => (
-          <motion.div
-            key={category.categoryKey}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: 0.1 * (categoryIndex + 1) }}
-          >
-            <Card>
-              <CardHeader>
-                <h3 className="text-lg font-medium">{t(category.categoryKey)}</h3>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-[60%]">{t('shortcutAction')}</TableHead>
-                      <TableHead>{t('shortcutKey')}</TableHead>
+        {shortcutCategories.map((category) => (
+          <Card key={category.categoryKey}>
+            <CardHeader>
+              <h3 className="text-lg font-medium">{t(category.categoryKey)}</h3>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[60%]">{t('shortcutAction')}</TableHead>
+                    <TableHead>{t('shortcutKey')}</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {category.shortcuts.map((shortcut, index) => (
+                    <TableRow key={index}>
+                      <TableCell className="font-medium">{t(shortcut.actionKey)}</TableCell>
+                      <TableCell>
+                        <Kbd keys={shortcut.keys} />
+                      </TableCell>
                     </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {category.shortcuts.map((shortcut, index) => (
-                      <TableRow key={index}>
-                        <TableCell className="font-medium">{t(shortcut.actionKey)}</TableCell>
-                        <TableCell>
-                          <Kbd keys={shortcut.keys} />
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          </motion.div>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
         ))}
       </div>
 
