@@ -14,103 +14,27 @@ interface PromptResult {
   user: string
 }
 
-const enhancementPrompts: Record<string, (params: PromptParams) => PromptResult> = {
-  en: ({ rawText, conversationHistory, userLanguage }) => ({
+const correctionPrompts: Record<string, (params: PromptParams) => PromptResult> = {
+  en: ({ rawText, conversationHistory }) => ({
     system:
-      'You are a transcription correction assistant. Fix speech-to-text errors, detect intent, and extract keywords. Return only valid JSON.',
-    user: `Fix this transcription. Consider homophones and mishearings.
+      'You are a speech-to-text correction assistant. Output ONLY the corrected transcription text — no labels, no quotes, no explanations, no commentary.',
+    user: `Correct this speech-to-text transcription. Fix homophones, mishearings, grammar, and punctuation. Preserve the original meaning and language. Output only the corrected text.
 
-${conversationHistory.length > 0 ? `Recent context:\n${conversationHistory.join('\n')}\n` : ''}Raw text: "${rawText}"
-Language: ${userLanguage}
-
-Tasks:
-1. Correct transcription errors (homophones, mishearings, grammar, punctuation)
-2. Detect intention (question/command/statement/schedule/reminder/concern/request)
-3. Extract new relevant keywords only
-4. Set confidence 0.3-1.0 (lower if uncertain)
-
-Return JSON:
-{
-  "corrected": "fixed text in user language",
-  "translation": null,
-  "intention": {
-    "primary": "statement",
-    "confidence": 0.9,
-    "suggestedActions": []
-  },
-  "keywords": [],
-  "confidence": 0.9
-}`
+${conversationHistory.length > 0 ? `Recent context:\n${conversationHistory.join('\n')}\n\n` : ''}Transcription: ${rawText}`
   }),
 
-  'zh-TW': ({ rawText, conversationHistory, userLanguage }) => ({
+  'zh-TW': ({ rawText, conversationHistory }) => ({
     system:
-      '你是繁體中文逐字稿修正助理。所有輸出必須使用繁體中文（台灣正體）。修正語音轉文字錯誤，偵測意圖，萃取關鍵字。僅回傳有效 JSON。',
-    user: `修正此逐字稿。注意同音字和誤聽。
+      '你是語音轉文字修正助理。所有輸出必須使用繁體中文（台灣正體）。只輸出修正後的逐字稿文字，不要標籤、不要引號、不要說明、不要附加任何評論。',
+    user: `修正以下語音轉文字逐字稿。修正同音字、誤聽、語法與標點，保留原意。若包含簡體中文，請轉換為繁體中文。只輸出修正後的文字。
 
-${conversationHistory.length > 0 ? `最近對話：\n${conversationHistory.join('\n')}\n` : ''}原始文字：「${rawText}」
-語言：${userLanguage}
-
-任務：
-1. 所有輸出必須使用繁體中文（台灣正體）。輸入可能包含簡體中文，必須轉換為繁體中文。例如：「认为」→「認為」、「实现」→「實現」、「关系」→「關係」
-2. 修正逐字稿錯誤（同音字、誤聽、語法、標點）
-3. 偵測意圖（question/command/statement/schedule/reminder/concern/request）
-4. 僅萃取新的相關關鍵字（使用繁體中文）
-5. 設定信心度 0.3-1.0（不確定時較低）
-
-回傳 JSON：
-{
-  "corrected": "修正後的繁體中文文字",
-  "translation": null,
-  "intention": {
-    "primary": "statement",
-    "confidence": 0.9,
-    "suggestedActions": []
-  },
-  "keywords": [],
-  "confidence": 0.9
-}`
+${conversationHistory.length > 0 ? `最近對話：\n${conversationHistory.join('\n')}\n\n` : ''}逐字稿：${rawText}`
   })
 }
 
-export function getEnhancementPrompt(params: PromptParams): PromptResult {
+export function getCorrectionPrompt(params: PromptParams): PromptResult {
   const lang = params.userLanguage === 'zh-TW' ? 'zh-TW' : 'en'
-  return enhancementPrompts[lang](params)
-}
-
-/**
- * JSON schema for Ollama's `format` parameter.
- * Guarantees structured output matching EnhancedSegment interface.
- */
-export function getEnhancementJsonSchema(): object {
-  return {
-    type: 'object',
-    properties: {
-      corrected: { type: 'string' },
-      translation: { type: ['string', 'null'] },
-      intention: {
-        type: 'object',
-        properties: {
-          primary: {
-            type: 'string',
-            enum: ['question', 'command', 'statement', 'schedule', 'reminder', 'concern', 'request']
-          },
-          confidence: { type: 'number' },
-          suggestedActions: {
-            type: 'array',
-            items: { type: 'string' }
-          }
-        },
-        required: ['primary', 'confidence']
-      },
-      keywords: {
-        type: 'array',
-        items: { type: 'string' }
-      },
-      confidence: { type: 'number' }
-    },
-    required: ['corrected', 'intention', 'confidence']
-  }
+  return correctionPrompts[lang](params)
 }
 
 // ─── AI Action Prompt Types ───
