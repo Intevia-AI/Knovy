@@ -1,14 +1,5 @@
 import { motion } from 'motion'
-import {
-  Settings,
-  History,
-  Keyboard,
-  Info,
-  Power,
-  Zap,
-  MessageSquare,
-  Bot
-} from 'lucide-react'
+import { Settings, History, Keyboard, Info, Power, Zap, Bot } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useTranslation } from '@/context/TranslationContext'
 import type { SettingsSection } from '../SettingsPage'
@@ -36,21 +27,10 @@ interface SettingsSidebarProps {
 }
 
 export function SettingsSidebar({ activeSection, onSectionChange }: SettingsSidebarProps) {
-  const { t, language } = useTranslation()
+  const { t } = useTranslation()
 
   const handleQuit = () => {
     window.electronAPI.quitApp()
-  }
-
-  const handleFeedback = () => {
-    // Select feedback form based on user's display language
-    const feedbackUrl =
-      language === 'zh-TW'
-        ? 'https://forms.gle/oFzD1YEt47AQaZpU7' // Traditional Chinese form
-        : 'https://forms.gle/nA69EhHX9MwncoYb6' // English form
-
-    console.log('[SettingsSidebar] Opening feedback form:', { language, feedbackUrl })
-    window.electronAPI.openExternal(feedbackUrl)
   }
 
   return (
@@ -83,19 +63,6 @@ export function SettingsSidebar({ activeSection, onSectionChange }: SettingsSide
           )
         })}
       </nav>
-
-      {/* Feedback Button */}
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, delay: 0.25 }}
-        className="mb-2"
-      >
-        <Button variant="ghost" onClick={handleFeedback} className="w-full justify-start gap-3">
-          <MessageSquare className="w-4 h-4" />
-          <span className="text-sm">{t('sendFeedback')}</span>
-        </Button>
-      </motion.div>
 
       {/* Quit Button at the bottom */}
       <motion.div
