@@ -64,8 +64,11 @@ export function useAIInteraction() {
         hasElectronAPI: !!(window as any).electronAPI
       })
 
-      if ((window as any).electronAPI && text) {
-        ;(window as any).electronAPI.send('transcription:data', { text, sourceType })
+      // Strip legacy keyword backtick markup (from the removed KeywordHighlighter path)
+      // so the correction model receives truly raw transcription text.
+      const cleanText = text ? text.replace(/`/g, '') : text
+      if ((window as any).electronAPI && cleanText) {
+        ;(window as any).electronAPI.send('transcription:data', { text: cleanText, sourceType })
         console.log(`[useAIInteraction] Sent transcription data to main process via IPC`)
       } else {
         console.warn(
