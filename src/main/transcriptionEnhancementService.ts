@@ -56,11 +56,11 @@ export class TranscriptionEnhancementService extends EventEmitter {
     segment: TranscriptionSegment,
     sessionContext: SessionContext
   ): Promise<EnhanceResponse> {
-    if (this.ollamaService.getStatus() !== 'ready') {
-      console.log(
-        `[TranscriptionEnhancementService] Skipping enhancement - Ollama status: ${this.ollamaService.getStatus()}`
+    if (this.ollamaService.getModelState().phase !== 'ready') {
+      console.warn(
+        `[TranscriptionEnhancementService] Skipping enhancement - Ollama phase: ${this.ollamaService.getModelState().phase}`
       )
-      throw new Error(`Ollama not ready (status: ${this.ollamaService.getStatus()})`)
+      throw new Error(`Ollama not ready (phase: ${this.ollamaService.getModelState().phase})`)
     }
 
     return await this.ollamaService.enhance([segment], sessionContext)
