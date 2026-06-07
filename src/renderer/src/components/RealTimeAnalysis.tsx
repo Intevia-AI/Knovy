@@ -685,6 +685,24 @@ export default function RealTimeAnalysis({
 
     let cancelled = false
 
+    // Stop and disconnect any current mic connection. Shared by mute and by the
+    // pre-assignment cleanup on unmute so a rapid toggle can never leak a live
+    // stream or an orphan audio node.
+    const teardownMic = () => {
+      if (micAudioSourceRef.current) {
+        micAudioSourceRef.current.disconnect()
+        micAudioSourceRef.current = null
+      }
+      if (micAnalyserRef.current) {
+        micAnalyserRef.current.disconnect()
+        micAnalyserRef.current = null
+      }
+      if (micMediaStreamRef.current) {
+        micMediaStreamRef.current.getTracks().forEach((track) => track.stop())
+        micMediaStreamRef.current = null
+      }
+    }
+
     if (micEnabled) {
       const alreadyLive = micMediaStreamRef.current
         ?.getTracks()
@@ -698,6 +716,9 @@ export default function RealTimeAnalysis({
             stream.getTracks().forEach((track) => track.stop())
             return
           }
+          // Tear down any stale/partial connection before wiring the new one,
+          // guarding against an overlapping unmute that already set a stream.
+          teardownMic()
           micMediaStreamRef.current = stream
 
           const micAnalyser = audioContext.createAnalyser()
@@ -717,18 +738,7 @@ export default function RealTimeAnalysis({
         }
       })()
     } else {
-      if (micAudioSourceRef.current) {
-        micAudioSourceRef.current.disconnect()
-        micAudioSourceRef.current = null
-      }
-      if (micAnalyserRef.current) {
-        micAnalyserRef.current.disconnect()
-        micAnalyserRef.current = null
-      }
-      if (micMediaStreamRef.current) {
-        micMediaStreamRef.current.getTracks().forEach((track) => track.stop())
-        micMediaStreamRef.current = null
-      }
+      teardownMic()
       console.log('[RealTimeAnalysis] Microphone muted and torn down')
     }
 

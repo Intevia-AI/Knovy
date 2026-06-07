@@ -75,6 +75,7 @@ export function useScreenShare() {
 
   // Live mic mute/unmute during recording. Default ON; not persisted.
   const toggleMic = useCallback(() => {
+    if (!isScreenSharing) return
     const next = toggleMicEnabled(micEnabledRef.current)
     micEnabledRef.current = next
     setMicEnabled(next)
@@ -83,7 +84,7 @@ export function useScreenShare() {
     } else {
       stopMicRecording()
     }
-  }, [startMicRecording, stopMicRecording])
+  }, [isScreenSharing, startMicRecording, stopMicRecording])
 
   // --- System Audio Blob Creation and Dispatch ---
   const makeSystemAudioBlobAndDispatch = useCallback(() => {
