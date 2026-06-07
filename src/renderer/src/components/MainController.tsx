@@ -25,7 +25,9 @@ export function MainController() {
     toggleScreenShare,
     restartScreenShare,
     currentSystemAudioStream,
-    recordingDuration
+    recordingDuration,
+    micEnabled,
+    toggleMic
   } = useScreenShare()
 
   // AI Interaction Logic
@@ -397,6 +399,8 @@ export function MainController() {
         onTogglePanel={handleTogglePanel}
         openPanels={openPanels}
         isSettingsOpen={isSettingsOpen}
+        micEnabled={micEnabled}
+        onToggleMic={toggleMic}
       />
       <RealTimeAnalysis
         isScreenSharing={isScreenSharing}
@@ -404,6 +408,7 @@ export function MainController() {
         onTextResponse={handleTranscriptionResponse}
         customPrompt={customPrompt}
         language={language}
+        micEnabled={micEnabled}
       />
     </div>
   )
