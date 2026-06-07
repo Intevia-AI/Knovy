@@ -8,6 +8,7 @@ import {
   Loader2,
   AlertTriangle
 } from 'lucide-react'
+import { useState } from 'react'
 import { Card, CardHeader, CardContent } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
@@ -24,7 +25,7 @@ import {
 import { useI18n } from '@/hooks/useI18n'
 import { useOllamaModelState } from '@/hooks/useOllamaModelState'
 
-const RECOMMENDED_MODEL = 'gemma4:e4b'
+const RECOMMENDED_MODEL = 'gemma4:e2b'
 const PULLABLE_MODELS = [
   { name: 'qwen3.5:2b', label: 'Qwen 3.5 2B', description: 'Lightweight, fastest, lowest memory' },
   {
@@ -32,8 +33,8 @@ const PULLABLE_MODELS = [
     label: 'Qwen 3.5 4B',
     description: 'Balanced speed and quality (text + vision)'
   },
-  { name: 'gemma4:e2b', label: 'Gemma 4 E2B', description: 'Google, fast, low memory' },
-  { name: 'gemma4:e4b', label: 'Gemma 4 E4B', description: 'Recommended - vision + quality' }
+  { name: 'gemma4:e2b', label: 'Gemma 4 E2B', description: 'Recommended - fast, low memory' },
+  { name: 'gemma4:e4b', label: 'Gemma 4 E4B', description: 'Higher quality, more memory (vision)' }
 ]
 
 function formatBytes(bytes: number): string {
@@ -56,6 +57,7 @@ export function OllamaSettings() {
     checkConnection,
     setAiCorrection
   } = useOllamaModelState()
+  const [modelToDownload, setModelToDownload] = useState<string>(RECOMMENDED_MODEL)
 
   const isBusy = state.phase === 'downloading' || state.phase === 'verifying'
 
@@ -170,26 +172,67 @@ export function OllamaSettings() {
         </CardContent>
       </Card>
 
-      {/* Active model: unified select + download */}
+      {/* Active model: choose among INSTALLED models only (instant switch, never downloads) */}
+      {state.reachable && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Bot className="w-5 h-5 text-primary" />
+              <h3 className="text-lg font-medium">Active Model</h3>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {models.length > 0 ? (
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex-1">
+                  <Label className="text-sm font-medium">Select model for enhancement</Label>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Choose which installed model to use. Switching is instant.
+                  </p>
+                </div>
+                <Select value={state.model} onValueChange={selectModel} disabled={isBusy}>
+                  <SelectTrigger className="w-[240px] bg-background/50">
+                    <SelectValue placeholder="Select model" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {models.map((m) => (
+                      <SelectItem key={m.name} value={m.name}>
+                        <div className="flex items-center gap-2">
+                          <span>{m.name}</span>
+                          {m.name === RECOMMENDED_MODEL && (
+                            <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                              Recommended
+                            </Badge>
+                          )}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                No models installed. Download one below to enable AI correction.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Download model: explicit, separate from selection */}
       {state.reachable && (
         <Card>
           <CardHeader>
             <div className="flex items-center gap-2">
               <Download className="w-5 h-5 text-primary" />
-              <h3 className="text-lg font-medium">Active Model</h3>
+              <h3 className="text-lg font-medium">Download Model</h3>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex-1">
-                <Label className="text-sm font-medium">Select model for enhancement</Label>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Choosing a model downloads it automatically if needed.
-                </p>
-              </div>
-              <Select value={state.model} onValueChange={selectModel} disabled={isBusy}>
-                <SelectTrigger className="w-[240px] bg-background/50">
-                  <SelectValue placeholder="Select model" />
+            <div className="flex items-center gap-3">
+              <Select value={modelToDownload} onValueChange={setModelToDownload} disabled={isBusy}>
+                <SelectTrigger className="flex-1 bg-background/50">
+                  <SelectValue placeholder="Select a model to download" />
                 </SelectTrigger>
                 <SelectContent>
                   {PULLABLE_MODELS.map((m) => (
@@ -207,6 +250,18 @@ export function OllamaSettings() {
                   ))}
                 </SelectContent>
               </Select>
+              <Button
+                onClick={() => selectModel(modelToDownload)}
+                disabled={isBusy || !modelToDownload}
+                size="sm"
+              >
+                {isBusy ? (
+                  <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
+                ) : (
+                  <Download className="w-4 h-4 mr-1.5" />
+                )}
+                {isBusy ? phaseLabel() : 'Download'}
+              </Button>
             </div>
 
             {state.pendingModel && (
