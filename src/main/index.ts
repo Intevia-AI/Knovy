@@ -69,7 +69,7 @@ function cancelAllCorrections(): void {
   for (const controller of activeCorrections.values()) {
     controller.abort()
   }
-  activeCorrections.clear()
+  activeCorrections.clear() // in-flight finally blocks then no-op delete on the cleared map
 }
 
 function broadcastToWindows(channel: string, payload: unknown): void {
@@ -1397,8 +1397,13 @@ app.on('ready', async () => {
           return
         }
 
-        // Ollama ready: broadcast an empty streaming placeholder (no raw shown),
-        // then stream the correction into it.
+        // Ollama ready: register the AbortController BEFORE broadcasting the placeholder
+        // so any cancelAllCorrections() call that races in can abort this stream.
+        const settings = await loadSettings()
+        const userLanguage = settings.language
+        const controller = new AbortController()
+        activeCorrections.set(transcriptId, controller)
+
         broadcastToWindows('transcription:data', {
           id: transcriptId,
           session_id: currentSessionId,
@@ -1410,11 +1415,6 @@ app.on('ready', async () => {
           isStreaming: true
         })
         broadcastToWindows('correction:start', { transcriptId, generationId })
-
-        const settings = await loadSettings()
-        const userLanguage = settings.language
-        const controller = new AbortController()
-        activeCorrections.set(transcriptId, controller)
 
         try {
           let full = await ollamaSvc.enhanceStream(
@@ -1457,13 +1457,14 @@ app.on('ready', async () => {
             transcriptId,
             generationId
           })
-          // Keep raw text; mark uncorrected.
-          await dbService.updateTranscriptEnhancementStatus(transcriptId, 'cancelled').catch(() => {})
+          // Keep raw text; mark with appropriate status.
+          await dbService
+            .updateTranscriptEnhancementStatus(transcriptId, aborted ? 'cancelled' : 'failed')
+            .catch((e) => console.warn(`[main/index.ts] Failed to mark status for ${transcriptId}:`, e))
         } finally {
           activeCorrections.delete(transcriptId)
+          event.sender.send('transcription:processed', { transcriptId })
         }
-
-        event.sender.send('transcription:processed', { transcriptId })
       } catch (processingError) {
         console.error(`[main/index.ts] Error processing transcription:`, processingError)
         event.sender.send('transcription:error', {
