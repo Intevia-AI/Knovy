@@ -256,8 +256,12 @@ export class OllamaService extends EventEmitter {
   /**
    * Stream a plain-text correction for one segment.
    * Queued sequentially like chat(). Resolves with the full corrected text.
-   * onToken fires for each streamed chunk. Honors options.signal (cancel) and an
-   * internal inactivity timeout that resets on every token (detects stalls).
+   * onToken fires for each streamed chunk.
+   *
+   * Cancellation: honors options.signal and an internal inactivity timeout that
+   * resets on every token (detects connection AND inter-token stalls). On cancel
+   * or stall the returned promise REJECTS with an error whose `name` is
+   * 'AbortError' — callers should treat that as a cancellation, not a failure.
    */
   async enhanceStream(
     segment: TranscriptionSegment,
@@ -391,7 +395,7 @@ export class OllamaService extends EventEmitter {
     }
     // Already cancelled before our turn in the queue: stop immediately.
     if (options.signal.aborted) {
-      throw new DOMException('Aborted', 'AbortError')
+      throw Object.assign(new Error('Aborted'), { name: 'AbortError' })
     }
 
     const prompt = getCorrectionPrompt({
