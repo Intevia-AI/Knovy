@@ -255,7 +255,7 @@ export function MainController() {
     const bounds = await window.electronAPI.invoke('electronAPI:getMainWindowBounds')
     if (!bounds) return
     const width = 360
-    const height = 260
+    const height = 220
     const x = bounds.x + Math.round((bounds.width - width) / 2)
     const y = bounds.y - height - 8
     gateOpenRef.current = true

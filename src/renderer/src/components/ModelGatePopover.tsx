@@ -57,6 +57,24 @@ export function ModelGatePopover() {
               ? t('gateErrorNetwork')
               : t('gateErrorGeneric')
 
+  // Size the popover window to its content so it sits flush above the bar,
+  // consistent with the other popover windows (otherwise a fixed-height window
+  // leaves a transparent gap below the shorter content).
+  useEffect(() => {
+    const raf = requestAnimationFrame(async () => {
+      const card = document.querySelector('[data-gate-card]') as HTMLElement | null
+      const height = card?.offsetHeight ?? document.body.scrollHeight
+      if (!height) return
+      const bounds = await window.electronAPI.invoke('electronAPI:getMainWindowBounds')
+      if (!bounds) return
+      const width = 360
+      const x = bounds.x + Math.round((bounds.width - width) / 2)
+      const y = bounds.y - height - 8
+      await window.electronAPI.invoke('popover:resize', { id: POPOVER_ID, width, height, x, y })
+    })
+    return () => cancelAnimationFrame(raf)
+  }, [kind])
+
   const startRaw = () => {
     window.electronAPI.send('model-gate:start-recording')
     close()
@@ -86,7 +104,8 @@ export function ModelGatePopover() {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 20 }}
           transition={{ duration: 0.2 }}
-          className="flex flex-col gap-3 w-full h-full p-4 glass-popover rounded-lg overflow-hidden"
+          data-gate-card
+          className="flex flex-col gap-3 w-full p-4 glass-popover rounded-lg"
         >
           <div>
             <h3 className="text-sm font-semibold text-foreground">{title}</h3>
@@ -95,7 +114,7 @@ export function ModelGatePopover() {
 
           {kind === 'downloading' && <Progress value={state.progress} className="h-2" />}
 
-          <div className="mt-auto flex flex-col gap-2">
+          <div className="flex flex-col gap-2">
             {kind === 'no-model' && (
               <>
                 <Button size="sm" onClick={download}>
