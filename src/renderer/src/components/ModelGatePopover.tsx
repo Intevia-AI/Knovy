@@ -5,7 +5,7 @@ import { Progress } from '@/components/ui/progress'
 import { useI18n } from '@/hooks/useI18n'
 import { useOllamaModelState } from '@/hooks/useOllamaModelState'
 
-const RECOMMENDED_MODEL = 'gemma4:e4b'
+const RECOMMENDED_MODEL = 'gemma4:e2b'
 const POPOVER_ID = 'model-gate'
 
 type GateKind = 'no-model' | 'downloading' | 'error'
