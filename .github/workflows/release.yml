@@ -24,8 +24,8 @@ jobs:
       - name: Verify tag matches app version
         run: |
           TAG="${GITHUB_REF_NAME#v}"
-          PKG=$(node -p "require('./apps/app/package.json').version")
-          test "$TAG" = "$PKG" || { echo "::error::Tag v$TAG does not match apps/app/package.json version $PKG"; exit 1; }
+          PKG=$(node -p "require('./package.json').version")
+          test "$TAG" = "$PKG" || { echo "::error::Tag v$TAG does not match package.json version $PKG"; exit 1; }
 
       - name: Install pnpm
         uses: pnpm/action-setup@v2
@@ -64,4 +64,4 @@ jobs:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }} # Your Apple Developer Team ID
           CSC_LINK: ${{ secrets.CSC_LINK }} # Base64 encoded .p12 certificate
           CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }} # Password for the certificate
-        run: pnpm --filter Knovy run build:ci
+        run: pnpm run build:ci

@@ -12,7 +12,7 @@ function readYaml(relativePath: string): any {
 }
 
 describe('electron-builder publish target', () => {
-  const config = readYaml('apps/app/electron-builder.yml')
+  const config = readYaml('electron-builder.yml')
 
   it('publishes via GitHub provider', () => {
     expect(config.publish.provider).toBe('github')
@@ -106,7 +106,7 @@ describe('staging workflow', () => {
 })
 
 describe('staging build:staging script', () => {
-  const pkg = readYaml('apps/app/package.json')
+  const pkg = readYaml('package.json')
 
   it('builds the app without publishing (electron-builder --publish never)', () => {
     expect(pkg.scripts['build:staging']).toContain('--publish never')
@@ -114,7 +114,7 @@ describe('staging build:staging script', () => {
 })
 
 describe('no leftover references to the external release setup', () => {
-  const files = ['.github/workflows/release.yml', 'apps/app/electron-builder.yml']
+  const files = ['.github/workflows/release.yml', 'electron-builder.yml']
 
   for (const file of files) {
     const raw = readFileSync(resolve(repoRoot, file), 'utf8')
