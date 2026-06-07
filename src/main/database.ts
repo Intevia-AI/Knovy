@@ -63,7 +63,7 @@ async function initializeDatabase() {
     'whisper_language TEXT', // Language used for whisper.cpp Stage 2
     'user_language TEXT', // User's preferred language
     'used_two_stage_detection INTEGER DEFAULT 0', // Boolean: whether two-stage detection was used
-    'enhancement_status TEXT DEFAULT "pending"', // 'pending', 'processing', 'completed', 'failed'
+    'enhancement_status TEXT DEFAULT "pending"', // 'pending', 'processing', 'completed', 'failed', 'cancelled'
     'enhancement_metadata TEXT', // JSON string with intention, keywords, confidence, etc.
     'processing_time_ms INTEGER', // Total processing time in milliseconds
     'enhancement_updated_at TEXT' // When enhancement was last updated

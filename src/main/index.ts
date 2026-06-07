@@ -1435,7 +1435,14 @@ app.on('ready', async () => {
           )
 
           if (generationId !== currentGenerationId) {
-            return // a newer generation took over mid-stream; drop result
+            // A newer generation (session start/stop) superseded this stream after it
+            // resolved. Settle the renderer bubble and mark the row so it isn't left
+            // stuck streaming / pending.
+            broadcastToWindows('correction:cancelled', { transcriptId, generationId })
+            await dbService
+              .updateTranscriptEnhancementStatus(transcriptId, 'cancelled')
+              .catch(() => {})
+            return
           }
 
           if (userLanguage === 'zh-TW' && full) {
