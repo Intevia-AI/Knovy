@@ -30,6 +30,9 @@ export async function* parseNdjsonStream(
       }
     }
 
+    // Flush any bytes the decoder buffered for an incomplete multi-byte char.
+    buffer += decoder.decode()
+
     const tail = buffer.trim()
     if (tail) {
       try {

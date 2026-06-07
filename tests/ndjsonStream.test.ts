@@ -45,4 +45,32 @@ describe('parseNdjsonStream', () => {
     expect(objs).toHaveLength(1)
     expect(objs[0].done).toBe(true)
   })
+
+  it('handles a multi-byte UTF-8 char split across chunks', async () => {
+    // Scenario: Stream ends with an incomplete multi-byte char buffered in TextDecoder.
+    // This ONLY manifests when a single chunk ends with incomplete bytes and no follow-up.
+    // We create a stream that sends valid JSON on multiple lines, with the final line
+    // truncated mid-character.
+    const line1 = new TextEncoder().encode('{"done":true}\n')
+    // Final line starts with valid JSON but ends incomplete multi-byte char:
+    const line2Start = new TextEncoder().encode('{"msg":"')
+    const incompleteChar = Uint8Array.from([228]) // First byte of '中', no more bytes follow
+    // When stream ends, decoder still has [228] buffered (incomplete).
+
+    let i = 0
+    const parts = [line1, line2Start, incompleteChar]
+    const stream = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        if (i < parts.length) controller.enqueue(parts[i++])
+        else controller.close()
+      }
+    })
+    const out: any[] = []
+    for await (const obj of parseNdjsonStream(stream)) out.push(obj)
+    // Without decoder.decode() flush, the incomplete byte [228] would be lost.
+    // With flush, it becomes the replacement char '�', and the incomplete JSON is skipped.
+    // We should see only the first valid line.
+    expect(out).toHaveLength(1)
+    expect(out[0].done).toBe(true)
+  })
 })
