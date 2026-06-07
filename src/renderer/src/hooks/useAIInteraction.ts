@@ -22,7 +22,7 @@ interface TranscriptionMessage extends AIMessage {
   timestamp: number
   type: 'transcription'
   sourceType?: 'microphone' | 'system'
-  keywords?: string[] // Keywords from enhancement metadata
+  isStreaming?: boolean
 }
 
 interface AIContextData {
@@ -77,28 +77,89 @@ export function useAIInteraction() {
   )
 
   useEffect(() => {
-    if ((window as any).electronAPI) {
-      // Transcriptions arrive already enhanced from main process (real-time enhancement)
-      const unsubscribeData = (window as any).electronAPI.on(
-        'transcription:data',
-        (newTranscription: TranscriptionMessage) => {
-          if (!newTranscription || !newTranscription.content) return
+    const api = (window as any).electronAPI
+    if (!api) return () => {}
 
-          const formattedTranscription = {
-            ...newTranscription,
-            timestamp: new Date(newTranscription.timestamp as any).getTime(),
-            sourceType: newTranscription.sourceType || 'system'
-          }
+    // rAF-batched token buffers, keyed by transcriptId (backpressure safety).
+    const buffers = new Map<string, string>()
+    let rafId: number | null = null
 
-          setTranscriptions((prev) => [...prev, formattedTranscription])
-        }
+    const flush = () => {
+      rafId = null
+      if (buffers.size === 0) return
+      setTranscriptions((prev) =>
+        prev.map((m) => {
+          const pending = buffers.get(m.id)
+          return pending ? { ...m, content: m.content + pending } : m
+        })
       )
-
-      return () => {
-        unsubscribeData()
-      }
+      buffers.clear()
     }
-    return () => {}
+    const scheduleFlush = () => {
+      if (rafId == null) rafId = requestAnimationFrame(flush)
+    }
+
+    const unsubData = api.on(
+      'transcription:data',
+      (t: TranscriptionMessage & { isStreaming?: boolean }) => {
+        if (!t) return
+        // Allow empty content only for the streaming placeholder.
+        if (!t.content && !t.isStreaming) return
+        const formatted: TranscriptionMessage = {
+          ...t,
+          content: t.content || '',
+          timestamp: new Date(t.timestamp as any).getTime(),
+          sourceType: t.sourceType || 'system',
+          isStreaming: !!t.isStreaming
+        }
+        setTranscriptions((prev) => [...prev, formatted])
+      }
+    )
+
+    const unsubToken = api.on(
+      'correction:token',
+      ({ transcriptId, chunk }: { transcriptId: string; chunk: string }) => {
+        buffers.set(transcriptId, (buffers.get(transcriptId) || '') + chunk)
+        scheduleFlush()
+      }
+    )
+
+    const settle = (transcriptId: string, fullText?: string) => {
+      if (rafId != null) {
+        cancelAnimationFrame(rafId)
+        rafId = null
+      }
+      buffers.delete(transcriptId)
+      setTranscriptions((prev) =>
+        prev.map((m) =>
+          m.id === transcriptId
+            ? { ...m, content: fullText != null ? fullText : m.content, isStreaming: false }
+            : m
+        )
+      )
+    }
+
+    const unsubDone = api.on(
+      'correction:done',
+      ({ transcriptId, fullText }: { transcriptId: string; fullText: string }) =>
+        settle(transcriptId, fullText)
+    )
+    const unsubCancelled = api.on(
+      'correction:cancelled',
+      ({ transcriptId }: { transcriptId: string }) => settle(transcriptId)
+    )
+    const unsubError = api.on('correction:error', ({ transcriptId }: { transcriptId: string }) =>
+      settle(transcriptId)
+    )
+
+    return () => {
+      if (rafId != null) cancelAnimationFrame(rafId)
+      unsubData()
+      unsubToken()
+      unsubDone()
+      unsubCancelled()
+      unsubError()
+    }
   }, [])
 
   useEffect(() => {
@@ -120,8 +181,7 @@ export function useAIInteraction() {
                 role: 'assistant',
                 type: 'transcription',
                 timestamp: new Date(t.timestamp).getTime(),
-                sourceType: t.source_type || 'system',
-                keywords: t.enhancement_metadata_parsed?.keywords || []
+                sourceType: t.source_type || 'system'
               }))
               setTranscriptions(formattedTranscripts)
             }
@@ -414,6 +474,10 @@ export function useAIInteraction() {
     sendContextToAI(action, prompt)
   }
 
+  const cancelCorrections = useCallback(() => {
+    ;(window as any).electronAPI?.send('correction:cancel')
+  }, [])
+
   return {
     aiMessages,
     setAiMessages,
@@ -430,6 +494,7 @@ export function useAIInteraction() {
     toggleScreenShare,
     screenStreamRef,
     cancelScreenShare,
-    isSummarizing
+    isSummarizing,
+    cancelCorrections
   }
 }
