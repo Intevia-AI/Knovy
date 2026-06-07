@@ -1,11 +1,7 @@
 import { EventEmitter } from 'events'
-import type {
-  EnhancedSegment,
-  EnhanceResponse,
-  TranscriptionSegment,
-  SessionContext
-} from './transcriptionEnhancementService'
-import { getEnhancementPrompt, getEnhancementJsonSchema } from './localLLMPrompts'
+import type { TranscriptionSegment, SessionContext } from './transcriptionEnhancementService'
+import { getCorrectionPrompt } from './localLLMPrompts'
+import { parseNdjsonStream } from './ndjsonStream'
 
 export type OllamaStatus = 'disconnected' | 'connected' | 'pulling' | 'ready' | 'error'
 
@@ -41,12 +37,21 @@ export interface ChatResponse {
   processingTime: number
 }
 
+export interface EnhanceStreamOptions {
+  onToken: (chunk: string) => void
+  signal: AbortSignal
+}
+
 type QueueItem =
   | {
-      type: 'enhance'
-      resolve: (value: EnhanceResponse) => void
+      type: 'enhanceStream'
+      resolve: (value: string) => void
       reject: (error: Error) => void
-      request: { segments: TranscriptionSegment[]; sessionContext: SessionContext }
+      request: {
+        segment: TranscriptionSegment
+        sessionContext: SessionContext
+        options: EnhanceStreamOptions
+      }
     }
   | {
       type: 'chat'
@@ -249,23 +254,22 @@ export class OllamaService extends EventEmitter {
   }
 
   /**
-   * Enhance transcription segments using local LLM.
-   * Requests are queued and processed sequentially to avoid overwhelming the local model.
+   * Stream a plain-text correction for one segment.
+   * Queued sequentially like chat(). Resolves with the full corrected text.
+   * onToken fires for each streamed chunk. Honors options.signal (cancel) and an
+   * internal inactivity timeout that resets on every token (detects stalls).
    */
-  /**
-   * Enhance transcription segments using local LLM.
-   * Requests are queued and processed sequentially to avoid overwhelming the local model.
-   */
-  async enhance(
-    segments: TranscriptionSegment[],
-    sessionContext: SessionContext
-  ): Promise<EnhanceResponse> {
+  async enhanceStream(
+    segment: TranscriptionSegment,
+    sessionContext: SessionContext,
+    options: EnhanceStreamOptions
+  ): Promise<string> {
     return new Promise((resolve, reject) => {
       this.inferenceQueue.push({
-        type: 'enhance',
+        type: 'enhanceStream',
         resolve,
         reject,
-        request: { segments, sessionContext }
+        request: { segment, sessionContext, options }
       })
       this.processQueue()
     })
@@ -295,8 +299,12 @@ export class OllamaService extends EventEmitter {
     while (this.inferenceQueue.length > 0) {
       const item = this.inferenceQueue.shift()!
       try {
-        if (item.type === 'enhance') {
-          const result = await this.runInference(item.request.segments, item.request.sessionContext)
+        if (item.type === 'enhanceStream') {
+          const result = await this.runStreamingCorrection(
+            item.request.segment,
+            item.request.sessionContext,
+            item.request.options
+          )
           item.resolve(result)
         } else {
           const result = await this.runChat(item.request)
@@ -373,57 +381,30 @@ export class OllamaService extends EventEmitter {
     }
   }
 
-  private async runInference(
-    segments: TranscriptionSegment[],
-    sessionContext: SessionContext
-  ): Promise<EnhanceResponse> {
+  private async runStreamingCorrection(
+    segment: TranscriptionSegment,
+    sessionContext: SessionContext,
+    options: EnhanceStreamOptions
+  ): Promise<string> {
     if (this.status !== 'ready') {
       throw new Error(`Ollama not ready (status: ${this.status})`)
     }
-
-    console.log(
-      `[OllamaService] Running inference: ${segments.length} segment(s), model=${this.activeModel}, lang=${sessionContext.userLanguage}`
-    )
-    const startTime = Date.now()
-    const enhancedSegments: EnhancedSegment[] = []
-    const errors: Array<{ segmentId: string; error: string }> = []
-
-    for (const segment of segments) {
-      try {
-        const enhanced = await this.enhanceSingleSegment(segment, sessionContext)
-        enhancedSegments.push(enhanced)
-      } catch (error) {
-        console.error(`[OllamaService] Failed to enhance segment ${segment.id}:`, error)
-        errors.push({
-          segmentId: segment.id,
-          error: error instanceof Error ? error.message : String(error)
-        })
-      }
+    // Already cancelled before our turn in the queue: stop immediately.
+    if (options.signal.aborted) {
+      throw new DOMException('Aborted', 'AbortError')
     }
 
-    const elapsed = Date.now() - startTime
-    console.log(
-      `[OllamaService] Inference complete: ${enhancedSegments.length} enhanced, ${errors.length} errors, ${elapsed}ms`
-    )
-    return {
-      segments: enhancedSegments,
-      processingTime: elapsed,
-      errors: errors.length > 0 ? errors : undefined
-    }
-  }
-
-  private async enhanceSingleSegment(
-    segment: TranscriptionSegment,
-    sessionContext: SessionContext
-  ): Promise<EnhancedSegment> {
-    const prompt = getEnhancementPrompt({
+    const prompt = getCorrectionPrompt({
       rawText: segment.rawText,
       conversationHistory: sessionContext.conversationHistory.slice(-3),
       userLanguage: sessionContext.userLanguage
     })
 
+    // Inactivity timeout: abort if no token arrives within INFERENCE_TIMEOUT_MS.
     const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), INFERENCE_TIMEOUT_MS)
+    const onExternalAbort = () => controller.abort()
+    options.signal.addEventListener('abort', onExternalAbort)
+    let inactivity = setTimeout(() => controller.abort(), INFERENCE_TIMEOUT_MS)
 
     try {
       const response = await fetch(`${OLLAMA_BASE_URL}/api/chat`, {
@@ -435,135 +416,31 @@ export class OllamaService extends EventEmitter {
             { role: 'system', content: prompt.system },
             { role: 'user', content: prompt.user }
           ],
-          format: getEnhancementJsonSchema(),
-          stream: false,
-          options: {
-            temperature: 0.1,
-            num_predict: 512
-          }
+          stream: true,
+          options: { temperature: 0.1, num_predict: 512 }
         }),
         signal: controller.signal
       })
 
-      clearTimeout(timeout)
-
-      if (!response.ok) {
-        const errorText = await response.text()
-        throw new Error(`Ollama inference failed (${response.status}): ${errorText}`)
+      if (!response.ok || !response.body) {
+        throw new Error(`Ollama stream failed: ${response.status}`)
       }
 
-      const data = await response.json()
-      const content = data.message?.content
-
-      if (!content) {
-        throw new Error('Empty response from Ollama')
-      }
-
-      const parsed = JSON.parse(content)
-
-      console.log(
-        `[OllamaService] Segment ${segment.id}: "${segment.rawText.substring(0, 50)}..." → "${(parsed.corrected || segment.rawText).substring(0, 50)}..." (${parsed.intention?.primary}, conf=${parsed.confidence})`
-      )
-
-      return {
-        id: segment.id,
-        corrected: parsed.corrected || segment.rawText,
-        translation: parsed.translation || undefined,
-        intention: {
-          primary: parsed.intention?.primary || 'statement',
-          confidence: parsed.intention?.confidence ?? 0.5,
-          suggestedActions: parsed.intention?.suggestedActions
-        },
-        keywords: parsed.keywords,
-        confidence: parsed.confidence ?? 0.5
-      }
-    } catch (error) {
-      clearTimeout(timeout)
-
-      if (error instanceof Error && error.name === 'AbortError') {
-        console.warn(`[OllamaService] Inference timed out for segment ${segment.id}`)
-        // Return raw text as fallback on timeout
-        return {
-          id: segment.id,
-          corrected: segment.rawText,
-          intention: { primary: 'statement', confidence: 0.3 },
-          confidence: 0.3
+      let full = ''
+      for await (const obj of parseNdjsonStream(response.body)) {
+        clearTimeout(inactivity)
+        inactivity = setTimeout(() => controller.abort(), INFERENCE_TIMEOUT_MS)
+        const chunk: string = obj?.message?.content ?? ''
+        if (chunk) {
+          full += chunk
+          options.onToken(chunk)
         }
+        if (obj?.done) break
       }
-
-      // Retry once on non-timeout errors
-      try {
-        console.log(`[OllamaService] Retrying inference for segment ${segment.id}`)
-        return await this.retryInference(segment, sessionContext)
-      } catch {
-        // Return raw text as ultimate fallback
-        return {
-          id: segment.id,
-          corrected: segment.rawText,
-          intention: { primary: 'statement', confidence: 0.3 },
-          confidence: 0.3
-        }
-      }
-    }
-  }
-
-  private async retryInference(
-    segment: TranscriptionSegment,
-    sessionContext: SessionContext
-  ): Promise<EnhancedSegment> {
-    const prompt = getEnhancementPrompt({
-      rawText: segment.rawText,
-      conversationHistory: sessionContext.conversationHistory.slice(-3),
-      userLanguage: sessionContext.userLanguage
-    })
-
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), INFERENCE_TIMEOUT_MS)
-
-    try {
-      const response = await fetch(`${OLLAMA_BASE_URL}/api/chat`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: this.activeModel,
-          messages: [
-            { role: 'system', content: prompt.system },
-            { role: 'user', content: prompt.user }
-          ],
-          format: getEnhancementJsonSchema(),
-          stream: false,
-          options: {
-            temperature: 0.1,
-            num_predict: 512
-          }
-        }),
-        signal: controller.signal
-      })
-
-      clearTimeout(timeout)
-
-      if (!response.ok) {
-        throw new Error(`Retry failed: ${response.status}`)
-      }
-
-      const data = await response.json()
-      const parsed = JSON.parse(data.message?.content || '{}')
-
-      return {
-        id: segment.id,
-        corrected: parsed.corrected || segment.rawText,
-        translation: parsed.translation || undefined,
-        intention: {
-          primary: parsed.intention?.primary || 'statement',
-          confidence: parsed.intention?.confidence ?? 0.5,
-          suggestedActions: parsed.intention?.suggestedActions
-        },
-        keywords: parsed.keywords,
-        confidence: parsed.confidence ?? 0.5
-      }
-    } catch {
-      clearTimeout(timeout)
-      throw new Error('Retry inference failed')
+      return full
+    } finally {
+      clearTimeout(inactivity)
+      options.signal.removeEventListener('abort', onExternalAbort)
     }
   }
 
