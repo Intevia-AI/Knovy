@@ -57,20 +57,20 @@ We expect all contributors to adhere to the following principles:
 
 ### Development Process
 
-1. **Create a feature branch** from the `main` branch
+1. **Create a feature branch** from the `stg` branch
 2. **Implement your changes** with appropriate tests and documentation
 3. **Run tests** to ensure your changes don't break existing functionality
-4. **Submit a pull request** for review
+4. **Submit a pull request** targeting `stg` for review
 
 ## Git Workflow
 
-We follow a feature branch workflow:
+We use a two-tier branch flow: **feature branch → `stg` → `main`**.
 
-1. **Main Branch**: The `main` branch contains the stable, production-ready code
-2. **Feature Branches**: Create a branch for each new feature or bug fix
-3. **Pull Requests**: All changes must be submitted via pull requests
-4. **Reviews**: Pull requests require at least one review before merging
-5. **Continuous Integration**: All pull requests must pass CI checks
+1. **`main`**: Production branch. Holds released, production-ready code. Release tags (`v*.*.*`) are cut here and trigger the signed build + publish.
+2. **`stg`**: Staging/integration branch. Feature branches merge here via PR. Each push to `stg` runs a signed staging build (downloadable Actions artifact, not published).
+3. **Feature Branches**: Branch off `stg` for each new feature or bug fix; PR back into `stg`.
+4. **Promotion to release**: When `stg` is ready to ship, merge `stg` → `main`, bump the version, and tag `v*.*.*`.
+5. **Pull Requests**: All changes are submitted via pull requests and must pass CI checks.
 
 ### Branch Naming Convention
 
@@ -224,7 +224,7 @@ timeout 30 pnpm test:run
 
 ## Pull Request Process
 
-1. **Create a pull request** from your feature branch to the `main` branch
+1. **Create a pull request** from your feature branch to the `stg` branch
 2. **Fill out the pull request template** with:
    - Description of changes
    - Related issues
