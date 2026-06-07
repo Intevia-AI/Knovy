@@ -94,10 +94,7 @@ with **pnpm**.
 
 Documentation is available in the `/docs` directory:
 
-- **[Architecture Overview](docs/architecture/overview.md)**: System architecture and transcription flow
 - **[Development Setup](docs/setup/development.md)**: Detailed setup instructions
-- **[Whisper Integration](docs/architecture/whisper.md)**: Local transcription architecture
-- **[Message Threading](docs/architecture/Message-threading.md)**: Speaker identification
 
 ## Release Process
 
