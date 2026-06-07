@@ -142,6 +142,9 @@ export const translations = {
     visitWebsite: 'Visit Website',
     checkForUpdates: 'Check for Updates',
     checkingForUpdates: 'Checking for updates...',
+    updateUpToDate: "You're on the latest version",
+    updateCheckFailed: 'Update check failed. You can download the latest release manually.',
+    downloadFromGitHub: 'Download from GitHub',
     sendFeedback: 'Send Feedback',
     generalSettingsDescription: 'Manage your general application settings',
     languageChangeWarning: 'Changing language will restart your current recording session',
@@ -330,6 +333,9 @@ export const translations = {
     visitWebsite: '來去官網',
     checkForUpdates: '檢查更新',
     checkingForUpdates: '正在檢查更新...',
+    updateUpToDate: '您已是最新版本',
+    updateCheckFailed: '檢查更新失敗，您可以手動下載最新版本。',
+    downloadFromGitHub: '從 GitHub 下載',
     sendFeedback: '提供回饋',
     generalSettingsDescription: '管理您的一般設定',
     languageChangeWarning: '變更語言將會重新開始您目前的錄製對話紀錄',
@@ -520,6 +526,9 @@ export type TranslationKey =
   | 'visitWebsite'
   | 'checkForUpdates'
   | 'checkingForUpdates'
+  | 'updateUpToDate'
+  | 'updateCheckFailed'
+  | 'downloadFromGitHub'
   | 'sendFeedback'
   | 'generalSettingsDescription'
   | 'languageChangeWarning'

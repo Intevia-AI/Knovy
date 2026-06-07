@@ -29,6 +29,7 @@ import {
 } from './popoverManager'
 import { positionWindow, type PositionOptions } from './windowManager'
 import electronUpdater, { type AppUpdater } from 'electron-updater'
+import { withTimeout } from './utils/withTimeout'
 import { getWhisperBackend } from './whisperBackend'
 import { getOllamaService } from './ollamaService'
 import {
@@ -136,6 +137,9 @@ export function getAutoUpdater(): AppUpdater {
 // Other modules can get it from here if needed.
 export const getMainWindow = (): BrowserWindow | null => mainWindow
 
+// Max time to wait for an update check before giving up
+const UPDATE_CHECK_TIMEOUT_MS = 10_000
+
 function setupAutoUpdaterListeners() {
   const autoUpdater = getAutoUpdater()
 
@@ -191,30 +195,29 @@ ipcMain.on('updater:quit-and-install', () => {
 // Manual update check from settings
 ipcMain.on('updater:check-for-updates', async (event) => {
   console.log('[AutoUpdater] Manual update check requested from settings')
+  // Reply to the window that requested the check (the settings window), not the main window.
+  const send = (channel: string, ...args: any[]) => {
+    if (!event.sender.isDestroyed()) {
+      event.sender.send(channel, ...args)
+    }
+  }
   try {
     const autoUpdater = getAutoUpdater()
-    const checkResult = await autoUpdater.checkForUpdates()
+    const checkResult = await withTimeout(autoUpdater.checkForUpdates(), UPDATE_CHECK_TIMEOUT_MS)
 
-    if (checkResult) {
-      console.log('[AutoUpdater] Manual check completed:', {
-        currentVersion: checkResult.currentVersion,
-        updateVersion: checkResult.updateInfo?.version,
-        hasDownloadedUpdate: !!checkResult.downloadedFile
-      })
+    console.log('[AutoUpdater] Manual check completed:', {
+      updateVersion: checkResult?.updateInfo?.version,
+      isUpdateAvailable: checkResult?.isUpdateAvailable
+    })
 
-      // If update is already downloaded, notify immediately
-      if (checkResult.downloadedFile || (checkResult.updateInfo && checkResult.updateInfo.version !== checkResult.currentVersion)) {
-        if (mainWindow && !mainWindow.isDestroyed()) {
-          mainWindow.webContents.send('updater:update-downloaded', checkResult.updateInfo)
-        }
-      }
+    if (checkResult?.isUpdateAvailable) {
+      send('updater:update-downloaded', checkResult.updateInfo)
+    } else {
+      send('updater:update-not-available')
     }
   } catch (error) {
     console.error('[AutoUpdater] Error during manual update check:', error)
-    // Send error notification to renderer
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('updater:check-error', error.message)
-    }
+    send('updater:check-error', error instanceof Error ? error.message : String(error))
   }
 })
 
@@ -727,7 +730,7 @@ app.on('ready', async () => {
     setTimeout(async () => {
       try {
         // Check for updates (this will also detect previously downloaded updates)
-        const checkResult = await autoUpdater.checkForUpdates()
+        const checkResult = await withTimeout(autoUpdater.checkForUpdates(), UPDATE_CHECK_TIMEOUT_MS)
 
         if (checkResult) {
           const currentVersion = checkResult.currentVersion
