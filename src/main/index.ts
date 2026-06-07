@@ -1376,10 +1376,12 @@ app.on('ready', async () => {
         let enhancedData: any = null
         const ollamaSvc = getOllamaService()
 
-        if (ollamaSvc.getModelState().phase === 'ready') {
+        const enhanceSettings = await loadSettings()
+        const aiCorrectionOn = enhanceSettings.aiCorrection !== 'off'
+
+        if (aiCorrectionOn && ollamaSvc.getModelState().phase === 'ready') {
           try {
-            const settings = await loadSettings()
-            const userLanguage = settings.language
+            const userLanguage = enhanceSettings.language
 
             const segment = {
               id: transcriptId,
@@ -1445,7 +1447,7 @@ app.on('ready', async () => {
           }
         } else {
           console.log(
-            `[main/index.ts] Ollama not ready (${ollamaSvc.getModelState().phase}), broadcasting raw text for ${transcriptId}`
+            `[main/index.ts] Skipping enhancement (aiCorrection=${aiCorrectionOn ? 'on' : 'off'}, phase=${ollamaSvc.getModelState().phase}), broadcasting raw text for ${transcriptId}`
           )
         }
 

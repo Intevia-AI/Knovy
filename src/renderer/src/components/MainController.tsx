@@ -449,7 +449,10 @@ export function MainController() {
         kind={gateKind}
         state={ollama.state}
         onClose={() => setGateKind(null)}
-        onDownload={() => ollama.selectModel(RECOMMENDED_MODEL)}
+        onDownload={() => {
+          ollama.selectModel(RECOMMENDED_MODEL)
+          setGateKind('downloading')
+        }}
         onRecordRaw={startRecordingNow}
         onDontAskAgain={async () => {
           await ollama.setAiCorrection('off')
