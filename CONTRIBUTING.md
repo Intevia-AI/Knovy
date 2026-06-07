@@ -39,51 +39,38 @@ We expect all contributors to adhere to the following principles:
    pnpm install
    ```
 
-3. **Set up Supabase**
+3. **(Optional) Set up environment variables**
+
+   The app runs fully locally without cloud credentials. If you need to override defaults,
+   copy `.env.example` to `.env`.
+
+4. **(Optional) Start Ollama**
+
+   For AI actions, install and run [Ollama](https://ollama.com/) locally
+   (`http://localhost:11434`). The app works without it for plain transcription.
+
+5. **Start the development server**
 
    ```bash
-   supabase start
-   supabase status  # Get API keys
-   ```
-
-4. **Set up environment variables**
-
-   Copy `.env.example` to `.env` in each application directory:
-   - `apps/app/.env`
-   - `apps/web/.env`
-
-   Fill in required API keys (Supabase).
-
-5. **Start the development servers**
-
-   For the desktop application (recommended):
-
-   ```bash
-   pnpm --filter app dev
-   ```
-
-   For the web application:
-
-   ```bash
-   pnpm --filter web dev
+   pnpm dev
    ```
 
 ### Development Process
 
-1. **Create a feature branch** from the `main` branch
+1. **Create a feature branch** from the `stg` branch
 2. **Implement your changes** with appropriate tests and documentation
 3. **Run tests** to ensure your changes don't break existing functionality
-4. **Submit a pull request** for review
+4. **Submit a pull request** targeting `stg` for review
 
 ## Git Workflow
 
-We follow a feature branch workflow:
+We use a two-tier branch flow: **feature branch → `stg` → `main`**.
 
-1. **Main Branch**: The `main` branch contains the stable, production-ready code
-2. **Feature Branches**: Create a branch for each new feature or bug fix
-3. **Pull Requests**: All changes must be submitted via pull requests
-4. **Reviews**: Pull requests require at least one review before merging
-5. **Continuous Integration**: All pull requests must pass CI checks
+1. **`main`**: Production branch. Holds released, production-ready code. Release tags (`v*.*.*`) are cut here and trigger the signed build + publish.
+2. **`stg`**: Staging/integration branch. Feature branches merge here via PR. Each push to `stg` runs a signed staging build (downloadable Actions artifact, not published).
+3. **Feature Branches**: Branch off `stg` for each new feature or bug fix; PR back into `stg`.
+4. **Promotion to release**: When `stg` is ready to ship, merge `stg` → `main`, bump the version, and tag `v*.*.*`.
+5. **Pull Requests**: All changes are submitted via pull requests and must pass CI checks.
 
 ### Branch Naming Convention
 
@@ -117,9 +104,9 @@ Types include:
 Example:
 
 ```
-feat(web): add real-time transcription component
+feat(renderer): add real-time transcription component
 
-Implement real-time audio transcription using WebRTC and Web Audio API.
+Implement real-time audio transcription using the Web Audio API.
 Includes unit tests and documentation.
 
 Closes #123
@@ -161,15 +148,9 @@ Closes #123
 
 ### Code Formatting
 
-We use ESLint and Prettier for code formatting:
+We use Prettier for code formatting:
 
 ```bash
-# Run linting
-pnpm lint
-
-# Fix linting issues
-pnpm lint:fix
-
 # Format code
 pnpm format
 ```
@@ -223,37 +204,27 @@ function processSpeech(audioData: AudioBuffer, options: ProcessingOptions): Spee
 - Use meaningful test descriptions
 - Follow the AAA pattern (Arrange, Act, Assert)
 
-### Edge Function Testing
-
-- Write tests for all Supabase Edge Functions
-- Test files located in `supabase/functions/*/index.test.ts`
-- Test entitlement and quota enforcement
-- Mock Supabase client and external API calls
-
 ### Integration Testing
 
 - Write integration tests for component interactions
-- Test API endpoints with realistic scenarios
-- Mock external dependencies appropriately
-- Test RBAC entitlements and quota enforcement
+- Mock external dependencies (Ollama, whisper.cpp) appropriately
 
 ### Running Tests
 
 ```bash
-# Run all tests
+# Run the config/release tests once
+pnpm test:run
+
+# Watch mode
 pnpm test
 
-# Run Supabase Edge Function tests
-cd supabase/functions/<function-name>
-deno test --allow-all
-
 # Run tests with timeout (recommended for CI)
-timeout 30 pnpm test
+timeout 30 pnpm test:run
 ```
 
 ## Pull Request Process
 
-1. **Create a pull request** from your feature branch to the `main` branch
+1. **Create a pull request** from your feature branch to the `stg` branch
 2. **Fill out the pull request template** with:
    - Description of changes
    - Related issues
@@ -268,20 +239,19 @@ timeout 30 pnpm test
 
 Desktop app releases are automated via GitHub Actions:
 
-1. **Version Bump**: Update `version` in `apps/app/package.json` (follow [Semantic Versioning](https://semver.org/))
+1. **Version Bump**: Update `version` in `package.json` (follow [Semantic Versioning](https://semver.org/))
 2. **Release Notes**: Create release notes following the template in previous releases
 3. **Tag and Push**:
    ```bash
-   git tag v0.3.1
-   git push origin v0.3.1
+   git tag v0.3.9
+   git push origin v0.3.9
    ```
-4. **Automated Build**: GitHub Action builds, signs (macOS), and publishes to [Knovy-Release](https://github.com/Intevia-AI/Knovy-Release)
+4. **Automated Build**: The Release workflow builds, signs (macOS), and publishes to this
+   repository's [Releases](https://github.com/Intevia-AI/Knovy/releases)
 
 ### Deployment
 
-- **Desktop App**: Automated via GitHub Actions on tag push
-- **Edge Functions**: `supabase functions deploy`
-- **Secrets**: `supabase secrets set --env-file ./supabase/.env.production`
+- **Desktop App**: Automated via GitHub Actions on tag push (`v*.*.*`)
 
 ## Project-Specific Guidelines
 
@@ -289,23 +259,21 @@ Desktop app releases are automated via GitHub Actions:
 
 - **Frontend**: React 19, TypeScript, Tailwind CSS, Radix UI
 - **Desktop**: Electron, Vite, whisper.cpp
-- **Backend**: Supabase (PostgreSQL, Auth, Edge Functions)
-- **Edge Functions**: Deno, TypeScript
+- **AI**: Local Ollama (`http://localhost:11434`)
+- **Storage**: Local SQLite (no cloud backend)
 
 ### Key Architecture Patterns
 
-1. **RBAC System**: All AI actions protected by entitlements middleware
+1. **Local-First**: Fully local — whisper.cpp transcription, Ollama AI, SQLite storage
 2. **Progressive Enhancement**: Raw transcription → Enhanced transcription with ID-based updates
 3. **Dual-Stream Audio**: Separate microphone and system audio processing
-4. **Local-First**: Desktop app uses local whisper.cpp for privacy
 
 ### Important Files
 
 - `.claude/agents/`: Specialized AI agents for development tasks
-- `docs/architecture/`: Architecture documentation
-- `supabase/functions/_shared/`: Shared middleware and utilities
-- `apps/app/src/main/`: Electron main process
-- `apps/app/src/renderer/`: React renderer process
+- `docs/setup/`: Setup documentation
+- `src/main/`: Electron main process
+- `src/renderer/`: React renderer process
 
 ---
 

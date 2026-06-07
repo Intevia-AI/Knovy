@@ -46,7 +46,6 @@ jobs:
         run: pnpm test:run
 
       - name: Apply staging version suffix
-        working-directory: apps/app
         run: |
           BASE=$(node -p "require('./package.json').version")
           npm version "${BASE}-stg.${{ github.run_number }}" --no-git-tag-version --allow-same-version
@@ -59,14 +58,14 @@ jobs:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           CSC_LINK: ${{ secrets.CSC_LINK }}
           CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
-        run: pnpm --filter Knovy run build:staging
+        run: pnpm run build:staging
 
       - name: Upload staging build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: knovy-staging-${{ github.run_number }}
           path: |
-            apps/app/dist/*.dmg
-            apps/app/dist/*.zip
+            dist/*.dmg
+            dist/*.zip
           retention-days: 14
           if-no-files-found: error
