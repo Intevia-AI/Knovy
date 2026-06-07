@@ -81,7 +81,7 @@
     "@vitejs/plugin-react": "^4.3.1",
     "autoprefixer": "^10.4.19",
     "electron": "^35.2.0",
-    "electron-builder": "^26.0.12",
+    "electron-builder": "26.15.0",
     "electron-devtools-installer": "^4.0.0",
     "electron-vite": "^2.3.0",
     "js-yaml": "^4.1.0",

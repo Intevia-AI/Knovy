@@ -139,7 +139,7 @@ importers:
         specifier: ^35.2.0
         version: 35.7.5
       electron-builder:
-        specifier: ^26.0.12
+        specifier: 26.15.0
         version: 26.15.0(electron-builder-squirrel-windows@26.15.0)
       electron-devtools-installer:
         specifier: ^4.0.0
@@ -4084,7 +4084,7 @@ snapshots:
       node-gyp: 11.5.0
       ora: 5.4.1
       read-binary-file-arch: 1.0.6
-      semver: 7.7.4
+      semver: 7.8.2
       tar: 7.5.16
       yargs: 17.7.2
     transitivePeerDependencies:
@@ -4337,7 +4337,7 @@ snapshots:
 
   '@npmcli/fs@4.0.0':
     dependencies:
-      semver: 7.7.4
+      semver: 7.8.2
 
   '@npmcli/move-file@1.1.2':
     dependencies:
@@ -6867,13 +6867,13 @@ snapshots:
 
   node-abi@4.31.0:
     dependencies:
-      semver: 7.7.4
+      semver: 7.8.2
 
   node-addon-api@7.1.1: {}
 
   node-api-version@0.2.1:
     dependencies:
-      semver: 7.7.4
+      semver: 7.8.2
 
   node-gyp@11.5.0:
     dependencies:
@@ -6883,7 +6883,7 @@ snapshots:
       make-fetch-happen: 14.0.3
       nopt: 8.1.0
       proc-log: 5.0.0
-      semver: 7.7.4
+      semver: 7.8.2
       tar: 7.5.16
       tinyglobby: 0.2.17
       which: 5.0.0
