@@ -90,18 +90,18 @@ export function useAIInteraction() {
     const flush = () => {
       rafId = null
       if (buffers.size === 0) return
-      const applied = new Set<string>()
+      // Snapshot and clear synchronously: the setState updater runs asynchronously
+      // during render, so it must read an immutable snapshot (not the live, still-
+      // mutating buffers). Clearing here — not inside/after the updater — guarantees
+      // each token is appended exactly once (no cumulative re-application).
+      const snapshot = new Map(buffers)
+      buffers.clear()
       setTranscriptions((prev) =>
         prev.map((m) => {
-          const pending = buffers.get(m.id)
-          if (pending) {
-            applied.add(m.id)
-            return { ...m, content: m.content + pending }
-          }
-          return m
+          const pending = snapshot.get(m.id)
+          return pending ? { ...m, content: m.content + pending } : m
         })
       )
-      applied.forEach((id) => buffers.delete(id))
     }
     const scheduleFlush = () => {
       if (rafId == null) rafId = requestAnimationFrame(flush)
