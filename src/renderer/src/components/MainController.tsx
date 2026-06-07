@@ -10,6 +10,9 @@ import { useLanguage } from '@/hooks/useLanguage'
 // Components
 import { MainControlBar } from './MainControlBar'
 import RealTimeAnalysis from './RealTimeAnalysis'
+import { useOllamaModelState } from '@/hooks/useOllamaModelState'
+import { decideRecordAction } from '@/lib/recordGate'
+import { ModelGateDialog, type GateKind } from './ModelGateDialog'
 
 export function MainController() {
   const { language } = useLanguage()
@@ -31,6 +34,10 @@ export function MainController() {
   // AI Interaction Logic
   const { customPrompt, handleTranscriptionResponse, sendContextToAI, isSummarizing } =
     useAIInteraction()
+
+  const RECOMMENDED_MODEL = 'gemma4:e4b'
+  const ollama = useOllamaModelState()
+  const [gateKind, setGateKind] = useState<GateKind>(null)
 
   useEffect(() => {
     const newWidth = isScreenSharing ? 440 : 360
@@ -225,9 +232,8 @@ export function MainController() {
       )
       handleTogglePanel('actions', { ensureOpen: true })
     }
-    const unsubscribeActionTriggered = window.electronAPI.autoTrigger.onActionTriggered(
-      handleActionTriggered
-    )
+    const unsubscribeActionTriggered =
+      window.electronAPI.autoTrigger.onActionTriggered(handleActionTriggered)
 
     const handleSourceChanged = () => restartScreenShare()
     const unsubscribeSourceChanged = window.electronAPI.on(
@@ -242,17 +248,44 @@ export function MainController() {
     }
   }, [handleTogglePanel, restartScreenShare])
 
+  const startRecordingNow = useCallback(async () => {
+    setGateKind(null)
+    await toggleScreenShare()
+  }, [toggleScreenShare])
+
   const handleToggleScreenShare = useCallback(async () => {
-    if (isSummarizing) return // Prevent action while summarizing
+    if (isSummarizing) return
 
     if (isScreenSharing) {
-      // Delegate graceful stop to the centralized handler
       window.electronAPI.send('app:graceful-stop-and-execute', { postAction: 'stop' })
-    } else {
-      // Starting is simple
-      await toggleScreenShare()
+      return
     }
-  }, [isSummarizing, isScreenSharing, toggleScreenShare])
+
+    // Starting: consult the gate against a freshly refreshed model-state.
+    await ollama.refreshState()
+    const s = await window.electronAPI.invoke('ollama:get-model-state')
+    const action = decideRecordAction({
+      aiCorrection: ollama.aiCorrection,
+      phase: s?.phase ?? 'idle',
+      reachable: s?.reachable ?? false
+    })
+
+    switch (action.type) {
+      case 'start-enhanced':
+      case 'start-raw':
+        await startRecordingNow()
+        break
+      case 'prompt-no-model':
+        setGateKind('no-model')
+        break
+      case 'prompt-downloading':
+        setGateKind('downloading')
+        break
+      case 'prompt-error':
+        setGateKind('error')
+        break
+    }
+  }, [isSummarizing, isScreenSharing, ollama, toggleScreenShare, startRecordingNow])
 
   useEffect(() => {
     const handleGracefulStop = async ({ postAction }: { postAction: string }) => {
@@ -384,27 +417,47 @@ export function MainController() {
   }, [isScreenSharing, openPanels, handleTogglePanel, handleToggleScreenShare])
 
   return (
-    <div className="flex flex-col h-screen rounded-lg glass-popover">
-      <MainControlBar
-        isAlwaysOnTop={isAlwaysOnTop}
-        toggleAlwaysOnTop={toggleAlwaysOnTop}
-        minimizeWindow={minimizeWindow}
-        closeWindow={closeWindow}
-        isScreenSharing={isScreenSharing}
-        onToggleScreenShare={handleToggleScreenShare}
-        isSummarizing={isSummarizing}
-        recordingDuration={recordingDuration}
-        onTogglePanel={handleTogglePanel}
-        openPanels={openPanels}
-        isSettingsOpen={isSettingsOpen}
+    <>
+      <div className="flex flex-col h-screen rounded-lg glass-popover">
+        <MainControlBar
+          isAlwaysOnTop={isAlwaysOnTop}
+          toggleAlwaysOnTop={toggleAlwaysOnTop}
+          minimizeWindow={minimizeWindow}
+          closeWindow={closeWindow}
+          isScreenSharing={isScreenSharing}
+          onToggleScreenShare={handleToggleScreenShare}
+          isSummarizing={isSummarizing}
+          recordingDuration={recordingDuration}
+          onTogglePanel={handleTogglePanel}
+          openPanels={openPanels}
+          isSettingsOpen={isSettingsOpen}
+          preparingProgress={
+            ollama.state.phase === 'downloading' || ollama.state.phase === 'verifying'
+              ? ollama.state.progress
+              : null
+          }
+        />
+        <RealTimeAnalysis
+          isScreenSharing={isScreenSharing}
+          systemAudioStream={currentSystemAudioStream}
+          onTextResponse={handleTranscriptionResponse}
+          customPrompt={customPrompt}
+          language={language}
+        />
+      </div>
+      <ModelGateDialog
+        kind={gateKind}
+        state={ollama.state}
+        onClose={() => setGateKind(null)}
+        onDownload={() => ollama.selectModel(RECOMMENDED_MODEL)}
+        onRecordRaw={startRecordingNow}
+        onDontAskAgain={async () => {
+          await ollama.setAiCorrection('off')
+          await startRecordingNow()
+        }}
+        onRetry={() => ollama.selectModel(ollama.state.model)}
+        onStartOllama={() => window.electronAPI.openExternal('https://ollama.com/download')}
       />
-      <RealTimeAnalysis
-        isScreenSharing={isScreenSharing}
-        systemAudioStream={currentSystemAudioStream}
-        onTextResponse={handleTranscriptionResponse}
-        customPrompt={customPrompt}
-        language={language}
-      />
-    </div>
+    </>
   )
 }

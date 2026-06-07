@@ -23,6 +23,7 @@ interface MainControlBarProps {
   onTogglePanel: (panelId: string) => void
   openPanels: Set<string>
   isSettingsOpen: boolean
+  preparingProgress?: number | null
 }
 
 export function MainControlBar({
@@ -32,7 +33,8 @@ export function MainControlBar({
   recordingDuration,
   onTogglePanel,
   openPanels,
-  isSettingsOpen
+  isSettingsOpen,
+  preparingProgress
 }: MainControlBarProps) {
   const { t } = useI18n()
   const canShowActions = true
@@ -66,7 +68,11 @@ export function MainControlBar({
           ) : (
             <>
               <MicIcon className="h-8 w-8" />
-              {isScreenSharing ? formatTime(recordingDuration) : 'Listen'}
+              {isScreenSharing
+                ? formatTime(recordingDuration)
+                : preparingProgress != null
+                  ? `${t('preparingModel')} ${preparingProgress}%`
+                  : 'Listen'}
             </>
           )}
         </Button>
