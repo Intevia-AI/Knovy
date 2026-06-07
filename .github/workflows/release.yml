@@ -50,6 +50,20 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Pre-create GitHub release
+        # electron-builder publishes the dmg and zip concurrently. When the release does
+        # not yet exist, both tasks call "create release" and one fails with 422
+        # already_exists, aborting before latest-mac.yml uploads (breaking auto-update).
+        # Creating the release up front means both tasks only ever upload to it.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            echo "Release $GITHUB_REF_NAME already exists; skipping create."
+          else
+            gh release create "$GITHUB_REF_NAME" --verify-tag --title "$GITHUB_REF_NAME" --generate-notes
+          fi
+
       - name: Build and Publish
         env:
           # This token is used to create a release in this repository.
