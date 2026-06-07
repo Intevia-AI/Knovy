@@ -346,6 +346,7 @@ export default function RealTimeAnalysis({
             bufferSize: 8192
           }
         })
+        micAudioWorkletNodeRef.current = micAudioWorkletNode
 
         systemAudioWorkletNode = new AudioWorkletNode(audioContext, 'system-audio-processor', {
           processorOptions: {
