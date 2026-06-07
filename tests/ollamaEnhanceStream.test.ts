@@ -23,7 +23,7 @@ afterEach(() => {
 describe('enhanceStream', () => {
   it('accumulates streamed chunks and fires onToken per chunk', async () => {
     const svc = getOllamaService()
-    ;(svc as any).status = 'ready'
+    ;(svc as any).modelState.phase = 'ready'
     vi.spyOn(global, 'fetch').mockResolvedValue(
       ndjsonResponse([
         '{"message":{"content":"Hel"}}\n',
@@ -43,7 +43,7 @@ describe('enhanceStream', () => {
 
   it('rejects with an AbortError when the signal is already aborted', async () => {
     const svc = getOllamaService()
-    ;(svc as any).status = 'ready'
+    ;(svc as any).modelState.phase = 'ready'
     const fetchSpy = vi.spyOn(global, 'fetch')
     const controller = new AbortController()
     controller.abort()

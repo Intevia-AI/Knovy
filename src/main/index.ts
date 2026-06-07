@@ -313,13 +313,15 @@ async function startSession() {
     cancelAllCorrections()
 
     // Wire IntentionProcessor to the local session ID so auto-trigger works
-    loadSettings().then((s) => {
-      const intentionProcessor = getIntentionProcessor(s.autoTrigger)
-      intentionProcessor.setSessionId(id)
-      console.log('[main/index.ts] IntentionProcessor session ID set to local session:', id)
-    }).catch((err) => {
-      console.error('[main/index.ts] Failed to set IntentionProcessor session ID:', err)
-    })
+    loadSettings()
+      .then((s) => {
+        const intentionProcessor = getIntentionProcessor(s.autoTrigger)
+        intentionProcessor.setSessionId(id)
+        console.log('[main/index.ts] IntentionProcessor session ID set to local session:', id)
+      })
+      .catch((err) => {
+        console.error('[main/index.ts] Failed to set IntentionProcessor session ID:', err)
+      })
 
     console.log(`[main/index.ts] Started and set new session ID: ${id}`)
     return id
@@ -339,13 +341,15 @@ async function endCurrentSession() {
   cancelAllCorrections()
 
   // Clear IntentionProcessor session ID now that the local session has ended
-  loadSettings().then((s) => {
-    const intentionProcessor = getIntentionProcessor(s.autoTrigger)
-    intentionProcessor.setSessionId(null)
-    console.log('[main/index.ts] IntentionProcessor session ID cleared on session end')
-  }).catch((err) => {
-    console.error('[main/index.ts] Failed to clear IntentionProcessor session ID:', err)
-  })
+  loadSettings()
+    .then((s) => {
+      const intentionProcessor = getIntentionProcessor(s.autoTrigger)
+      intentionProcessor.setSessionId(null)
+      console.log('[main/index.ts] IntentionProcessor session ID cleared on session end')
+    })
+    .catch((err) => {
+      console.error('[main/index.ts] Failed to clear IntentionProcessor session ID:', err)
+    })
 
   try {
     const result = await dbService.endSession(sessionIdToEnd)
@@ -364,7 +368,6 @@ ipcMain.handle('session:end', endCurrentSession)
 ipcMain.handle('session:get-id', () => {
   return currentSessionId
 })
-
 
 ipcMain.handle('electronAPI:getActiveScreenSourceId', () => {
   return activeScreenSourceId
@@ -390,6 +393,7 @@ async function loadSettings() {
       language: 'zh-TW',
       customPrompt: '',
       contentProtection: false,
+      aiCorrection: 'on',
       ...parsed,
       autoTrigger
     }
@@ -399,6 +403,7 @@ async function loadSettings() {
       language: 'zh-TW',
       customPrompt: '',
       contentProtection: false,
+      aiCorrection: 'on',
       autoTrigger: DEFAULT_AUTO_TRIGGER_SETTINGS
     }
   }
@@ -551,7 +556,6 @@ const createWindow = async () => {
     )
     await saveSettings({ ...settings, displayId: actualDisplayId })
   }
-
 
   // mainWindow.on('blur', () => {
   //   closeAllPopovers();
@@ -774,7 +778,10 @@ app.on('ready', async () => {
             // There's a downloaded update ready to install AND it's a newer version
             if (mainWindow && !mainWindow.isDestroyed()) {
               mainWindow.webContents.send('updater:update-downloaded', checkResult.updateInfo)
-              console.log('[AutoUpdater] Notified user of previously downloaded update:', updateVersion)
+              console.log(
+                '[AutoUpdater] Notified user of previously downloaded update:',
+                updateVersion
+              )
             }
           } else if (updateVersion === currentVersion) {
             console.log('[AutoUpdater] Already on the latest version:', currentVersion)
@@ -930,73 +937,76 @@ app.on('ready', async () => {
     }
   })
 
-  ipcMain.handle('auto-trigger:execute-action', async (event, { actionId, actionType, context }) => {
-    try {
-      console.log(`[main/index.ts] Executing action ${actionId} of type ${actionType}`)
+  ipcMain.handle(
+    'auto-trigger:execute-action',
+    async (event, { actionId, actionType, context }) => {
+      try {
+        console.log(`[main/index.ts] Executing action ${actionId} of type ${actionType}`)
 
-      // Broadcast execution start to all windows
-      for (const win of BrowserWindow.getAllWindows()) {
-        if (!win.isDestroyed()) {
-          win.webContents.send('auto-trigger:action-executing', actionId)
-        }
-      }
-
-      // Execute the action based on type
-      let result
-      switch (actionType) {
-        case 'recommendResponse':
-          // Trigger the recommend response AI action
-          // Send ONLY to the actions popover (not all windows)
-          const actionsPopover = getPopover('actions')
-          if (actionsPopover && !actionsPopover.isDestroyed()) {
-            actionsPopover.webContents.send('ai-action:recommend-response', { actionId, context })
-            result = { success: true, message: 'Recommend response action triggered' }
-          } else {
-            console.warn('[main/index.ts] Actions popover not found or destroyed')
-            result = { success: false, error: 'Actions popover not available' }
-          }
-          break
-
-        case 'scheduleReminder':
-          // Future implementation
-          result = { success: false, error: 'Schedule reminder not yet implemented' }
-          break
-
-        case 'sendEmail':
-          // Future implementation
-          result = { success: false, error: 'Send email not yet implemented' }
-          break
-
-        default:
-          result = { success: false, error: `Unknown action type: ${actionType}` }
-      }
-
-      // Broadcast execution result to all windows
-      for (const win of BrowserWindow.getAllWindows()) {
-        if (!win.isDestroyed()) {
-          if (result.success) {
-            win.webContents.send('auto-trigger:action-completed', { actionId, result })
-          } else {
-            win.webContents.send('auto-trigger:action-failed', { actionId, error: result.error })
+        // Broadcast execution start to all windows
+        for (const win of BrowserWindow.getAllWindows()) {
+          if (!win.isDestroyed()) {
+            win.webContents.send('auto-trigger:action-executing', actionId)
           }
         }
-      }
 
-      console.log(`[main/index.ts] Action ${actionId} execution result:`, result)
-      return result
-    } catch (error) {
-      console.error(`[main/index.ts] Failed to execute action ${actionId}:`, error)
+        // Execute the action based on type
+        let result
+        switch (actionType) {
+          case 'recommendResponse':
+            // Trigger the recommend response AI action
+            // Send ONLY to the actions popover (not all windows)
+            const actionsPopover = getPopover('actions')
+            if (actionsPopover && !actionsPopover.isDestroyed()) {
+              actionsPopover.webContents.send('ai-action:recommend-response', { actionId, context })
+              result = { success: true, message: 'Recommend response action triggered' }
+            } else {
+              console.warn('[main/index.ts] Actions popover not found or destroyed')
+              result = { success: false, error: 'Actions popover not available' }
+            }
+            break
 
-      // Broadcast failure to all windows
-      for (const win of BrowserWindow.getAllWindows()) {
-        if (!win.isDestroyed()) {
-          win.webContents.send('auto-trigger:action-failed', { actionId, error: error.message })
+          case 'scheduleReminder':
+            // Future implementation
+            result = { success: false, error: 'Schedule reminder not yet implemented' }
+            break
+
+          case 'sendEmail':
+            // Future implementation
+            result = { success: false, error: 'Send email not yet implemented' }
+            break
+
+          default:
+            result = { success: false, error: `Unknown action type: ${actionType}` }
         }
-      }
 
-      return { success: false, error: error.message }
+        // Broadcast execution result to all windows
+        for (const win of BrowserWindow.getAllWindows()) {
+          if (!win.isDestroyed()) {
+            if (result.success) {
+              win.webContents.send('auto-trigger:action-completed', { actionId, result })
+            } else {
+              win.webContents.send('auto-trigger:action-failed', { actionId, error: result.error })
+            }
+          }
+        }
+
+        console.log(`[main/index.ts] Action ${actionId} execution result:`, result)
+        return result
+      } catch (error) {
+        console.error(`[main/index.ts] Failed to execute action ${actionId}:`, error)
+
+        // Broadcast failure to all windows
+        for (const win of BrowserWindow.getAllWindows()) {
+          if (!win.isDestroyed()) {
+            win.webContents.send('auto-trigger:action-failed', { actionId, error: error.message })
+          }
+        }
+
+        return { success: false, error: error.message }
+      }
     }
-  })
+  )
 
   session.defaultSession.setDisplayMediaRequestHandler((request, callback) => {
     desktopCapturer
@@ -1299,6 +1309,20 @@ app.on('ready', async () => {
     } else {
       await endCurrentSession()
       activeScreenSourceId = null // Clear the source ID when screen sharing ends
+
+      // Finish-then-switch: apply any model chosen during the recording.
+      const ollamaSvc = getOllamaService()
+      const pending = ollamaSvc.getModelState().pendingModel
+      if (pending) {
+        ollamaSvc.setPendingModel(null)
+        ollamaSvc.setActiveModel(pending)
+        const current = await loadSettings()
+        await saveSettings({ ...current, ollamaModel: pending })
+        // Fire-and-forget the download; UI tracks it via ollama:model-state.
+        ollamaSvc
+          .pullModel(pending)
+          .catch((e) => console.error('[main/index.ts] Pending model pull failed:', e))
+      }
     }
 
     // Broadcast to all windows (including the sender, which is simpler and harmless)
@@ -1365,9 +1389,7 @@ app.on('ready', async () => {
 
         try {
           await dbService.addEnhancedTranscript(enhancedDbTranscript)
-          console.log(
-            `[main/index.ts] Saved raw transcript ${transcriptId} to database`
-          )
+          console.log(`[main/index.ts] Saved raw transcript ${transcriptId} to database`)
         } catch (dbError) {
           console.error(
             `[main/index.ts] Failed to save transcript ${transcriptId} to database:`,
@@ -1384,8 +1406,16 @@ app.on('ready', async () => {
         const ollamaSvc = getOllamaService()
         const generationId = currentGenerationId
 
-        if (ollamaSvc.getStatus() !== 'ready') {
-          // Fallback: broadcast raw text (no correction available).
+        const enhanceSettings = await loadSettings()
+        const aiCorrectionOn = enhanceSettings.aiCorrection !== 'off'
+
+        if (!aiCorrectionOn || ollamaSvc.getModelState().phase !== 'ready') {
+          // Fallback: broadcast raw text (correction disabled or Ollama not ready).
+          console.log(
+            `[main/index.ts] Skipping correction (aiCorrection=${
+              aiCorrectionOn ? 'on' : 'off'
+            }, phase=${ollamaSvc.getModelState().phase}), broadcasting raw text for ${transcriptId}`
+          )
           broadcastToWindows('transcription:data', {
             id: transcriptId,
             session_id: currentSessionId,
@@ -1717,9 +1747,7 @@ app.on('ready', async () => {
   ipcMain.handle('db:get-sessions-with-transcripts', (event, { limit, offset }) =>
     dbService.getSessionsWithTranscripts(limit, offset)
   )
-  ipcMain.handle('db:get-total-session-count', () =>
-    dbService.getTotalSessionCount()
-  )
+  ipcMain.handle('db:get-total-session-count', () => dbService.getTotalSessionCount())
   ipcMain.handle('db:export-session', (event, { sessionId, locale, timezone }) =>
     dbService.exportSession(sessionId, locale, timezone)
   )
@@ -1921,324 +1949,371 @@ app.on('ready', async () => {
   // Transcription enhancement setup handler
   // Enhancement now happens inline in transcription:data handler (real-time, no batch)
   // This handler initializes Ollama connection + IntentionProcessor for auto-trigger
-  ipcMain.handle(
-    'transcription:setup-enhancement',
-    async () => {
-      try {
-        // Clean up old event listeners to prevent duplicates
+  ipcMain.handle('transcription:setup-enhancement', async () => {
+    try {
+      // Clean up old event listeners to prevent duplicates
+      console.log(
+        `[main/index.ts] Cleaning up ${enhancementEventCleanups.length} old enhancement event listeners`
+      )
+      enhancementEventCleanups.forEach((cleanup) => cleanup())
+      enhancementEventCleanups = []
+
+      // Initialize Ollama service, restore persisted model, and check connection
+      const ollamaService = getOllamaService()
+      const enhancementSettings = await loadSettings()
+      if (enhancementSettings.ollamaModel) {
+        ollamaService.setActiveModel(enhancementSettings.ollamaModel)
+      }
+      await ollamaService.checkConnection()
+      ollamaService.startConnectionMonitoring()
+
+      // Initialize IntentionProcessor with current settings for auto-trigger
+      const settings = await loadSettings()
+      const intentionProcessor = getIntentionProcessor(settings.autoTrigger)
+      intentionProcessor.setSessionId(currentSessionId)
+
+      // Clear existing listeners to prevent duplicates
+      intentionProcessor.removeAllListeners('actionTriggered')
+      console.log('[main/index.ts] Cleared all existing IntentionProcessor listeners')
+
+      // Listen for triggered actions from IntentionProcessor
+      const actionTriggeredHandler = (pendingAction) => {
         console.log(
-          `[main/index.ts] Cleaning up ${enhancementEventCleanups.length} old enhancement event listeners`
+          '[main/index.ts] Action triggered by IntentionProcessor:',
+          pendingAction.actionType
         )
-        enhancementEventCleanups.forEach((cleanup) => cleanup())
-        enhancementEventCleanups = []
 
-        // Initialize Ollama service, restore persisted model, and check connection
-        const ollamaService = getOllamaService()
-        const enhancementSettings = await loadSettings()
-        if (enhancementSettings.ollamaModel) {
-          ollamaService.setActiveModel(enhancementSettings.ollamaModel)
-        }
-        await ollamaService.checkConnection()
-        ollamaService.startConnectionMonitoring()
+        recentPendingActions.push({ ...pendingAction, timestamp: Date.now() })
+        const twoSecondsAgo = Date.now() - 2000
+        recentPendingActions = recentPendingActions.filter((a) => a.timestamp > twoSecondsAgo)
 
-        // Initialize IntentionProcessor with current settings for auto-trigger
-        const settings = await loadSettings()
-        const intentionProcessor = getIntentionProcessor(settings.autoTrigger)
-        intentionProcessor.setSessionId(currentSessionId)
-
-        // Clear existing listeners to prevent duplicates
-        intentionProcessor.removeAllListeners('actionTriggered')
-        console.log('[main/index.ts] Cleared all existing IntentionProcessor listeners')
-
-        // Listen for triggered actions from IntentionProcessor
-        const actionTriggeredHandler = (pendingAction) => {
-          console.log('[main/index.ts] Action triggered by IntentionProcessor:', pendingAction.actionType)
-
-          recentPendingActions.push({...pendingAction, timestamp: Date.now()})
-          const twoSecondsAgo = Date.now() - 2000
-          recentPendingActions = recentPendingActions.filter(a => a.timestamp > twoSecondsAgo)
-
-          for (const win of BrowserWindow.getAllWindows()) {
-            if (!win.isDestroyed()) {
-              win.webContents.send('auto-trigger:action-triggered', pendingAction)
-            }
+        for (const win of BrowserWindow.getAllWindows()) {
+          if (!win.isDestroyed()) {
+            win.webContents.send('auto-trigger:action-triggered', pendingAction)
           }
         }
-
-        intentionProcessor.on('actionTriggered', actionTriggeredHandler)
-        console.log('[main/index.ts] Added IntentionProcessor actionTriggered listener')
-
-        enhancementEventCleanups.push(() => {
-          intentionProcessor.off('actionTriggered', actionTriggeredHandler)
-          console.log('[main/index.ts] Removed IntentionProcessor actionTriggered listener')
-        })
-
-        console.log('[main/index.ts] Enhancement setup complete (real-time mode)')
-        return { success: true }
-      } catch (error) {
-        console.error('[main/index.ts] Failed to setup transcription enhancement:', error)
-        return { success: false, error: error.message }
       }
+
+      intentionProcessor.on('actionTriggered', actionTriggeredHandler)
+      console.log('[main/index.ts] Added IntentionProcessor actionTriggered listener')
+
+      enhancementEventCleanups.push(() => {
+        intentionProcessor.off('actionTriggered', actionTriggeredHandler)
+        console.log('[main/index.ts] Removed IntentionProcessor actionTriggered listener')
+      })
+
+      console.log('[main/index.ts] Enhancement setup complete (real-time mode)')
+      return { success: true }
+    } catch (error) {
+      console.error('[main/index.ts] Failed to setup transcription enhancement:', error)
+      return { success: false, error: error.message }
     }
-  )
+  })
 
   // Ollama management IPC handlers
-  ipcMain.handle('ollama:get-status', async () => {
-    const ollamaService = getOllamaService()
-    return {
-      status: ollamaService.getStatus(),
-      activeModel: ollamaService.getActiveModel()
+  const ollamaService = getOllamaService()
+
+  // Broadcast full model-state to all windows whenever it changes.
+  ollamaService.on('modelState', (state) => {
+    for (const win of BrowserWindow.getAllWindows()) {
+      if (!win.isDestroyed()) {
+        win.webContents.send('ollama:model-state', state)
+      }
     }
+  })
+
+  ipcMain.handle('ollama:get-model-state', async () => {
+    return ollamaService.getModelState()
   })
 
   ipcMain.handle('ollama:get-models', async () => {
-    const ollamaService = getOllamaService()
     return await ollamaService.getModels()
   })
 
-  ipcMain.handle('ollama:pull-model', async (event, modelName: string) => {
-    const ollamaService = getOllamaService()
+  // Unified select+download. If a model is installed -> instant swap.
+  // If a recording is active -> store as pending (finish-then-switch).
+  // Otherwise -> set active + download (lifecycle drives progress).
+  ipcMain.handle('ollama:select-model', async (_event, modelName: string) => {
+    const installed = await ollamaService.getModels()
+    const normalize = (n: string) => n.replace(/:latest$/, '')
+    const isInstalled = installed.some((m) => normalize(m.name) === normalize(modelName))
 
-    // Forward pull progress to renderer
-    const progressHandler = (data: any) => {
-      for (const win of BrowserWindow.getAllWindows()) {
-        if (!win.isDestroyed()) {
-          win.webContents.send('ollama:pull-progress', data)
-        }
-      }
+    if (isInstalled) {
+      ollamaService.setActiveModel(modelName)
+      ollamaService.setPendingModel(null)
+      const current = await loadSettings()
+      await saveSettings({ ...current, ollamaModel: modelName })
+      await ollamaService.checkConnection()
+      return { success: true }
     }
-    ollamaService.on('pullProgress', progressHandler)
 
-    try {
-      const success = await ollamaService.pullModel(modelName)
-      return { success }
-    } finally {
-      ollamaService.off('pullProgress', progressHandler)
+    if (isScreenSharing) {
+      // Defer the switch until recording stops.
+      ollamaService.setPendingModel(modelName)
+      return { success: true }
     }
+
+    ollamaService.setActiveModel(modelName)
+    ollamaService.setPendingModel(null)
+    const current = await loadSettings()
+    await saveSettings({ ...current, ollamaModel: modelName })
+    const success = await ollamaService.pullModel(modelName)
+    return { success }
   })
 
-  ipcMain.handle('ollama:set-model', async (event, modelName: string) => {
-    const ollamaService = getOllamaService()
-    ollamaService.setActiveModel(modelName)
+  ipcMain.handle('ollama:cancel-pull', async () => {
+    ollamaService.cancelPull()
     await ollamaService.checkConnection()
-    // Persist model selection to settings
-    const currentSettings = await loadSettings()
-    await saveSettings({ ...currentSettings, ollamaModel: modelName })
     return { success: true }
   })
 
-  ipcMain.handle('ollama:delete-model', async (event, modelName: string) => {
-    const ollamaService = getOllamaService()
+  ipcMain.handle('ollama:delete-model', async (_event, modelName: string) => {
     const success = await ollamaService.deleteModel(modelName)
     return { success }
   })
 
   ipcMain.handle('ollama:check-connection', async () => {
-    const ollamaService = getOllamaService()
-    const connected = await ollamaService.checkConnection()
-    return { connected, status: ollamaService.getStatus() }
+    const reachable = await ollamaService.checkConnection()
+    return { reachable }
   })
 
-  // Forward Ollama status changes to renderer
-  const ollamaService = getOllamaService()
-  ollamaService.on('statusChanged', (data) => {
-    for (const win of BrowserWindow.getAllWindows()) {
-      if (!win.isDestroyed()) {
-        win.webContents.send('ollama:status-changed', data)
-      }
-    }
+  ipcMain.handle('ollama:get-ai-correction', async () => {
+    const settings = await loadSettings()
+    return { mode: settings.aiCorrection === 'off' ? 'off' : 'on' }
+  })
+
+  ipcMain.handle('ollama:set-ai-correction', async (_event, mode: 'on' | 'off') => {
+    const current = await loadSettings()
+    await saveSettings({ ...current, aiCorrection: mode === 'off' ? 'off' : 'on' })
+    return { success: true }
   })
 
   // ─── AI Action IPC Handlers (Local Ollama) ───
 
-  ipcMain.handle('ai:chat', async (_event, payload: {
-    text_input: string
-    existing_summary?: string
-    recent_transcriptions?: string
-    language?: string
-  }) => {
-    const svc = getOllamaService()
-    if (svc.getStatus() !== 'ready') {
-      throw new Error('Ollama is not ready. Please check AI Models settings.')
-    }
-    const prompt = getChatPrompt({
-      textInput: payload.text_input,
-      existingSummary: payload.existing_summary,
-      recentTranscriptions: payload.recent_transcriptions,
-      language: payload.language || 'en'
-    })
-    const result = await svc.chat({
-      messages: [
-        { role: 'system', content: prompt.system },
-        { role: 'user', content: prompt.user }
-      ],
-      temperature: 0.7
-    })
-    return { response: result.content, processingTime: result.processingTime }
-  })
-
-  ipcMain.handle('ai:summarize', async (_event, payload: {
-    text_input: string
-    existing_summary?: string
-    language?: string
-  }) => {
-    const svc = getOllamaService()
-    if (svc.getStatus() !== 'ready') {
-      throw new Error('Ollama is not ready. Please check AI Models settings.')
-    }
-    const prompt = getSummarizePrompt({
-      textInput: payload.text_input,
-      existingSummary: payload.existing_summary,
-      language: payload.language || 'en'
-    })
-    const result = await svc.chat({
-      messages: [
-        { role: 'system', content: prompt.system },
-        { role: 'user', content: prompt.user }
-      ],
-      format: getSummarizeJsonSchema(),
-      temperature: 0.3
-    })
-    try {
-      const parsed = JSON.parse(result.content)
-      return {
-        summary: parsed.long_summary,
-        short_summary: parsed.short_summary,
-        long_summary: parsed.long_summary,
-        context: parsed.context,
-        processingTime: result.processingTime
+  ipcMain.handle(
+    'ai:chat',
+    async (
+      _event,
+      payload: {
+        text_input: string
+        existing_summary?: string
+        recent_transcriptions?: string
+        language?: string
       }
-    } catch {
-      // If JSON parsing fails, return raw content as summary
-      return {
-        summary: result.content,
-        short_summary: result.content.substring(0, 100),
-        long_summary: result.content,
-        context: {},
-        processingTime: result.processingTime
+    ) => {
+      const svc = getOllamaService()
+      if (svc.getModelState().phase !== 'ready') {
+        throw new Error('Ollama is not ready. Please check AI Models settings.')
       }
-    }
-  })
-
-  ipcMain.handle('ai:recommend-response', async (_event, payload: {
-    text_input: string
-    existing_summary?: string
-    recent_transcriptions?: string
-    language?: string
-  }) => {
-    const svc = getOllamaService()
-    if (svc.getStatus() !== 'ready') {
-      throw new Error('Ollama is not ready. Please check AI Models settings.')
-    }
-    const prompt = getRecommendResponsePrompt({
-      textInput: payload.text_input,
-      existingSummary: payload.existing_summary,
-      recentTranscriptions: payload.recent_transcriptions,
-      language: payload.language || 'en'
-    })
-    const result = await svc.chat({
-      messages: [
-        { role: 'system', content: prompt.system },
-        { role: 'user', content: prompt.user }
-      ],
-      temperature: 0.7
-    })
-    return { recommendation: result.content, processingTime: result.processingTime }
-  })
-
-  ipcMain.handle('ai:deep-response', async (_event, payload: {
-    text_input: string
-    existing_summary?: string
-    recent_transcriptions?: string
-    language?: string
-  }) => {
-    const svc = getOllamaService()
-    if (svc.getStatus() !== 'ready') {
-      throw new Error('Ollama is not ready. Please check AI Models settings.')
-    }
-    const prompt = getDeepResponsePrompt({
-      textInput: payload.text_input,
-      existingSummary: payload.existing_summary,
-      recentTranscriptions: payload.recent_transcriptions,
-      language: payload.language || 'en'
-    })
-    const result = await svc.chat({
-      messages: [
-        { role: 'system', content: prompt.system },
-        { role: 'user', content: prompt.user }
-      ],
-      temperature: 0.7
-    })
-    return { recommendation: result.content, processingTime: result.processingTime }
-  })
-
-  ipcMain.handle('ai:keyword-search', async (_event, payload: {
-    text_input: string
-    existing_summary?: string
-    recent_transcriptions?: string
-    language?: string
-  }) => {
-    const svc = getOllamaService()
-    if (svc.getStatus() !== 'ready') {
-      throw new Error('Ollama is not ready. Please check AI Models settings.')
-    }
-    const prompt = getKeywordSearchPrompt({
-      textInput: payload.text_input,
-      existingSummary: payload.existing_summary,
-      recentTranscriptions: payload.recent_transcriptions,
-      language: payload.language || 'en'
-    })
-    const result = await svc.chat({
-      messages: [
-        { role: 'system', content: prompt.system },
-        { role: 'user', content: prompt.user }
-      ],
-      temperature: 0.5
-    })
-    return { response: result.content, processingTime: result.processingTime }
-  })
-
-  ipcMain.handle('ai:screenshot-analysis', async (_event, payload: {
-    text_input: string
-    image_input?: string
-    existing_summary?: string
-    recent_transcriptions?: string
-    language?: string
-  }) => {
-    const svc = getOllamaService()
-    if (svc.getStatus() !== 'ready') {
-      throw new Error('Ollama is not ready. Please check AI Models settings.')
-    }
-    const prompt = getScreenshotAnalysisPrompt({
-      textInput: payload.text_input,
-      existingSummary: payload.existing_summary,
-      recentTranscriptions: payload.recent_transcriptions,
-      language: payload.language || 'en'
-    })
-
-    // Build messages with optional image for multimodal
-    const messages: Array<{ role: string; content: string; images?: string[] }> = [
-      { role: 'system', content: prompt.system }
-    ]
-
-    if (payload.image_input) {
-      // Ollama expects base64 image data without the data URL prefix
-      const base64Image = payload.image_input.replace(/^data:image\/\w+;base64,/, '')
-      messages.push({
-        role: 'user',
-        content: prompt.user,
-        images: [base64Image]
+      const prompt = getChatPrompt({
+        textInput: payload.text_input,
+        existingSummary: payload.existing_summary,
+        recentTranscriptions: payload.recent_transcriptions,
+        language: payload.language || 'en'
       })
-    } else {
-      messages.push({ role: 'user', content: prompt.user })
+      const result = await svc.chat({
+        messages: [
+          { role: 'system', content: prompt.system },
+          { role: 'user', content: prompt.user }
+        ],
+        temperature: 0.7
+      })
+      return { response: result.content, processingTime: result.processingTime }
     }
+  )
 
-    const result = await svc.chat({
-      messages,
-      temperature: 0.5
-    })
-    return { analysis: result.content, processingTime: result.processingTime }
-  })
+  ipcMain.handle(
+    'ai:summarize',
+    async (
+      _event,
+      payload: {
+        text_input: string
+        existing_summary?: string
+        language?: string
+      }
+    ) => {
+      const svc = getOllamaService()
+      if (svc.getModelState().phase !== 'ready') {
+        throw new Error('Ollama is not ready. Please check AI Models settings.')
+      }
+      const prompt = getSummarizePrompt({
+        textInput: payload.text_input,
+        existingSummary: payload.existing_summary,
+        language: payload.language || 'en'
+      })
+      const result = await svc.chat({
+        messages: [
+          { role: 'system', content: prompt.system },
+          { role: 'user', content: prompt.user }
+        ],
+        format: getSummarizeJsonSchema(),
+        temperature: 0.3
+      })
+      try {
+        const parsed = JSON.parse(result.content)
+        return {
+          summary: parsed.long_summary,
+          short_summary: parsed.short_summary,
+          long_summary: parsed.long_summary,
+          context: parsed.context,
+          processingTime: result.processingTime
+        }
+      } catch {
+        // If JSON parsing fails, return raw content as summary
+        return {
+          summary: result.content,
+          short_summary: result.content.substring(0, 100),
+          long_summary: result.content,
+          context: {},
+          processingTime: result.processingTime
+        }
+      }
+    }
+  )
+
+  ipcMain.handle(
+    'ai:recommend-response',
+    async (
+      _event,
+      payload: {
+        text_input: string
+        existing_summary?: string
+        recent_transcriptions?: string
+        language?: string
+      }
+    ) => {
+      const svc = getOllamaService()
+      if (svc.getModelState().phase !== 'ready') {
+        throw new Error('Ollama is not ready. Please check AI Models settings.')
+      }
+      const prompt = getRecommendResponsePrompt({
+        textInput: payload.text_input,
+        existingSummary: payload.existing_summary,
+        recentTranscriptions: payload.recent_transcriptions,
+        language: payload.language || 'en'
+      })
+      const result = await svc.chat({
+        messages: [
+          { role: 'system', content: prompt.system },
+          { role: 'user', content: prompt.user }
+        ],
+        temperature: 0.7
+      })
+      return { recommendation: result.content, processingTime: result.processingTime }
+    }
+  )
+
+  ipcMain.handle(
+    'ai:deep-response',
+    async (
+      _event,
+      payload: {
+        text_input: string
+        existing_summary?: string
+        recent_transcriptions?: string
+        language?: string
+      }
+    ) => {
+      const svc = getOllamaService()
+      if (svc.getModelState().phase !== 'ready') {
+        throw new Error('Ollama is not ready. Please check AI Models settings.')
+      }
+      const prompt = getDeepResponsePrompt({
+        textInput: payload.text_input,
+        existingSummary: payload.existing_summary,
+        recentTranscriptions: payload.recent_transcriptions,
+        language: payload.language || 'en'
+      })
+      const result = await svc.chat({
+        messages: [
+          { role: 'system', content: prompt.system },
+          { role: 'user', content: prompt.user }
+        ],
+        temperature: 0.7
+      })
+      return { recommendation: result.content, processingTime: result.processingTime }
+    }
+  )
+
+  ipcMain.handle(
+    'ai:keyword-search',
+    async (
+      _event,
+      payload: {
+        text_input: string
+        existing_summary?: string
+        recent_transcriptions?: string
+        language?: string
+      }
+    ) => {
+      const svc = getOllamaService()
+      if (svc.getModelState().phase !== 'ready') {
+        throw new Error('Ollama is not ready. Please check AI Models settings.')
+      }
+      const prompt = getKeywordSearchPrompt({
+        textInput: payload.text_input,
+        existingSummary: payload.existing_summary,
+        recentTranscriptions: payload.recent_transcriptions,
+        language: payload.language || 'en'
+      })
+      const result = await svc.chat({
+        messages: [
+          { role: 'system', content: prompt.system },
+          { role: 'user', content: prompt.user }
+        ],
+        temperature: 0.5
+      })
+      return { response: result.content, processingTime: result.processingTime }
+    }
+  )
+
+  ipcMain.handle(
+    'ai:screenshot-analysis',
+    async (
+      _event,
+      payload: {
+        text_input: string
+        image_input?: string
+        existing_summary?: string
+        recent_transcriptions?: string
+        language?: string
+      }
+    ) => {
+      const svc = getOllamaService()
+      if (svc.getModelState().phase !== 'ready') {
+        throw new Error('Ollama is not ready. Please check AI Models settings.')
+      }
+      const prompt = getScreenshotAnalysisPrompt({
+        textInput: payload.text_input,
+        existingSummary: payload.existing_summary,
+        recentTranscriptions: payload.recent_transcriptions,
+        language: payload.language || 'en'
+      })
+
+      // Build messages with optional image for multimodal
+      const messages: Array<{ role: string; content: string; images?: string[] }> = [
+        { role: 'system', content: prompt.system }
+      ]
+
+      if (payload.image_input) {
+        // Ollama expects base64 image data without the data URL prefix
+        const base64Image = payload.image_input.replace(/^data:image\/\w+;base64,/, '')
+        messages.push({
+          role: 'user',
+          content: prompt.user,
+          images: [base64Image]
+        })
+      } else {
+        messages.push({ role: 'user', content: prompt.user })
+      }
+
+      const result = await svc.chat({
+        messages,
+        temperature: 0.5
+      })
+      return { analysis: result.content, processingTime: result.processingTime }
+    }
+  )
 
   ipcMain.on('app:resize-window', (event, { width, height }) => {
     if (mainWindow) {
@@ -2280,8 +2355,10 @@ app.on('ready', async () => {
   ipcMain.handle('popover:consume-pending-actions', () => {
     // Return recent actions (within last 2 seconds) and clear the cache
     const now = Date.now()
-    const recentActions = recentPendingActions.filter(a => (now - a.timestamp) < 2000)
-    console.log(`[main/index.ts] Popover requested pending actions, returning ${recentActions.length} actions`)
+    const recentActions = recentPendingActions.filter((a) => now - a.timestamp < 2000)
+    console.log(
+      `[main/index.ts] Popover requested pending actions, returning ${recentActions.length} actions`
+    )
     // Clear the cache after consuming
     recentPendingActions = []
     return recentActions
@@ -2296,6 +2373,12 @@ app.on('ready', async () => {
   })
 
   // AI action triggers - broadcast to all windows
+  ipcMain.on('model-gate:start-recording', () => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('model-gate:start-recording')
+    }
+  })
+
   ipcMain.on('ai-action:trigger-recommend-response', () => {
     console.log('[main/index.ts] Broadcasting ai-action:recommend-response to all windows')
     for (const win of BrowserWindow.getAllWindows()) {

@@ -49,7 +49,8 @@ const api = {
       return () => ipcRenderer.removeListener('auto-trigger:settings-changed', subscription)
     },
     // Action management
-    approveAction: (actionId: string) => ipcRenderer.invoke('auto-trigger:approve-action', actionId),
+    approveAction: (actionId: string) =>
+      ipcRenderer.invoke('auto-trigger:approve-action', actionId),
     rejectAction: (actionId: string) => ipcRenderer.invoke('auto-trigger:reject-action', actionId),
     executeAction: (actionId: string, actionType: string, context: any) =>
       ipcRenderer.invoke('auto-trigger:execute-action', { actionId, actionType, context }),
@@ -96,10 +97,10 @@ const api = {
   transcriptionDeleteModel: (modelName: string) =>
     ipcRenderer.invoke('transcription:delete-model', modelName),
   transcriptionGetStorageUsage: () => ipcRenderer.invoke('transcription:get-storage-usage'),
-  transcriptionEnsureModelAvailable: () => ipcRenderer.invoke('transcription:ensure-model-available'),
+  transcriptionEnsureModelAvailable: () =>
+    ipcRenderer.invoke('transcription:ensure-model-available'),
   transcriptionGetDiagnostics: () => ipcRenderer.invoke('transcription:get-diagnostics'),
-  transcriptionSetupEnhancement: () =>
-    ipcRenderer.invoke('transcription:setup-enhancement'),
+  transcriptionSetupEnhancement: () => ipcRenderer.invoke('transcription:setup-enhancement'),
 
   createSession: (session) => ipcRenderer.invoke('db:create-session', session),
   addTranscript: (transcript) => ipcRenderer.invoke('db:add-transcript', transcript),
@@ -109,8 +110,7 @@ const api = {
   endSession: (sessionId) => ipcRenderer.invoke('db:end-session', sessionId),
   getSessionsWithTranscripts: (limit: number, offset: number) =>
     ipcRenderer.invoke('db:get-sessions-with-transcripts', { limit, offset }),
-  getTotalSessionCount: () =>
-    ipcRenderer.invoke('db:get-total-session-count'),
+  getTotalSessionCount: () => ipcRenderer.invoke('db:get-total-session-count'),
   exportSession: (sessionId: string, locale?: string, timezone?: string) =>
     ipcRenderer.invoke('db:export-session', { sessionId, locale, timezone }),
   deleteSession: (sessionId: string) => ipcRenderer.invoke('db:delete-session', sessionId),
@@ -196,8 +196,9 @@ const api = {
       'auto-trigger:action-completed',
       'auto-trigger:action-failed',
       // Ollama events
-      'ollama:status-changed',
-      'ollama:pull-progress'
+      'ollama:model-state',
+      // Model-gate relay
+      'model-gate:start-recording'
     ]
     if (validChannels.includes(channel)) {
       const subscription = (event, ...args) => callback(...args)
@@ -237,7 +238,8 @@ const api = {
       'electronAPI:captureArea',
       'electronAPI:cancelScreenshot',
       'settings:close',
-      'ai-action:trigger-recommend-response'
+      'ai-action:trigger-recommend-response',
+      'model-gate:start-recording'
     ]
     if (!validChannels.includes(channel)) {
       console.warn(`[Preload] Attempted to send on invalid channel: ${channel}`)
@@ -292,12 +294,14 @@ const api = {
       'auto-trigger:reject-action',
       'auto-trigger:execute-action',
       // Ollama invoke channels
-      'ollama:get-status',
+      'ollama:get-model-state',
       'ollama:get-models',
-      'ollama:pull-model',
-      'ollama:set-model',
+      'ollama:select-model',
+      'ollama:cancel-pull',
       'ollama:delete-model',
       'ollama:check-connection',
+      'ollama:get-ai-correction',
+      'ollama:set-ai-correction',
       // AI action channels (local Ollama)
       'ai:chat',
       'ai:summarize',

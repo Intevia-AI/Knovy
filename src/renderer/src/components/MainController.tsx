@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 
 // Hooks
 import { useElectron } from '@/hooks/useElectron'
@@ -10,6 +10,8 @@ import { useLanguage } from '@/hooks/useLanguage'
 // Components
 import { MainControlBar } from './MainControlBar'
 import RealTimeAnalysis from './RealTimeAnalysis'
+import { useOllamaModelState } from '@/hooks/useOllamaModelState'
+import { decideRecordAction } from '@/lib/recordGate'
 
 export function MainController() {
   const { language } = useLanguage()
@@ -33,6 +35,9 @@ export function MainController() {
   // AI Interaction Logic
   const { customPrompt, handleTranscriptionResponse, sendContextToAI, isSummarizing } =
     useAIInteraction()
+
+  const ollama = useOllamaModelState()
+  const gateOpenRef = useRef(false)
 
   useEffect(() => {
     const newWidth = isScreenSharing ? 440 : 360
@@ -227,9 +232,8 @@ export function MainController() {
       )
       handleTogglePanel('actions', { ensureOpen: true })
     }
-    const unsubscribeActionTriggered = window.electronAPI.autoTrigger.onActionTriggered(
-      handleActionTriggered
-    )
+    const unsubscribeActionTriggered =
+      window.electronAPI.autoTrigger.onActionTriggered(handleActionTriggered)
 
     const handleSourceChanged = () => restartScreenShare()
     const unsubscribeSourceChanged = window.electronAPI.on(
@@ -244,17 +248,81 @@ export function MainController() {
     }
   }, [handleTogglePanel, restartScreenShare])
 
+  const startRecordingNow = useCallback(async () => {
+    await toggleScreenShare()
+  }, [toggleScreenShare])
+
+  const openGatePopover = useCallback(async () => {
+    if (gateOpenRef.current) return
+    const bounds = await window.electronAPI.invoke('electronAPI:getMainWindowBounds')
+    if (!bounds) return
+    const width = 360
+    const height = 220
+    const x = bounds.x + Math.round((bounds.width - width) / 2)
+    const y = bounds.y - height - 8
+    gateOpenRef.current = true
+    await window.electronAPI.invoke('popover:create', {
+      id: 'model-gate',
+      hash: 'model-gate',
+      width,
+      height,
+      x,
+      y
+    })
+  }, [])
+
+  useEffect(() => {
+    const unsubStart = window.electronAPI.on('model-gate:start-recording', () => {
+      startRecordingNow()
+    })
+    const unsubClosed = window.electronAPI.on('popover:was-closed', (id: string) => {
+      if (id === 'model-gate') gateOpenRef.current = false
+    })
+    return () => {
+      unsubStart()
+      unsubClosed()
+    }
+  }, [startRecordingNow])
+
   const handleToggleScreenShare = useCallback(async () => {
-    if (isSummarizing) return // Prevent action while summarizing
+    if (isSummarizing) return
 
     if (isScreenSharing) {
-      // Delegate graceful stop to the centralized handler
       window.electronAPI.send('app:graceful-stop-and-execute', { postAction: 'stop' })
-    } else {
-      // Starting is simple
-      await toggleScreenShare()
+      return
     }
-  }, [isSummarizing, isScreenSharing, toggleScreenShare])
+
+    // Starting: consult the gate against a freshly refreshed model-state AND
+    // a freshly read aiCorrection setting. The setting can be toggled in the
+    // separate Settings window, so the hook's cached value may be stale here.
+    await ollama.refreshState()
+    const s = await window.electronAPI.invoke('ollama:get-model-state')
+    const ai = await window.electronAPI.invoke('ollama:get-ai-correction')
+    const action = decideRecordAction({
+      aiCorrection: ai?.mode === 'off' ? 'off' : 'on',
+      phase: s?.phase ?? 'idle',
+      reachable: s?.reachable ?? false
+    })
+
+    switch (action.type) {
+      case 'start-enhanced':
+      case 'start-raw':
+        await startRecordingNow()
+        break
+      case 'prompt-no-model':
+      case 'prompt-downloading':
+      case 'prompt-error':
+        await openGatePopover()
+        break
+    }
+  }, [
+    isSummarizing,
+    isScreenSharing,
+    ollama,
+    toggleScreenShare,
+    startRecordingNow,
+    openGatePopover
+  ])
 
   useEffect(() => {
     const handleGracefulStop = async ({ postAction }: { postAction: string }) => {
@@ -399,6 +467,11 @@ export function MainController() {
         onTogglePanel={handleTogglePanel}
         openPanels={openPanels}
         isSettingsOpen={isSettingsOpen}
+        preparingProgress={
+          ollama.state.phase === 'downloading' || ollama.state.phase === 'verifying'
+            ? ollama.state.progress
+            : null
+        }
         micEnabled={micEnabled}
         onToggleMic={toggleMic}
       />

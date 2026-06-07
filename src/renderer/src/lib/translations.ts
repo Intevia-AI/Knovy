@@ -104,6 +104,34 @@ export const translations = {
     generalTab: 'General',
     historyTab: 'History',
     aiModelsTab: 'AI Models',
+    aiCorrectionTitle: 'AI Auto-Correction',
+    aiCorrectionDescription:
+      'Use a local AI model to correct transcriptions. Turn off to record raw transcription only (no LLM, lower memory use).',
+    aiCorrectionOn: 'On',
+    aiCorrectionOff: 'Off',
+    modelDownloading: 'Downloading model',
+    modelVerifying: 'Verifying model',
+    modelReady: 'Ready',
+    modelError: 'Download error',
+    preparingModel: 'Preparing model',
+    pendingSwitchNotice: 'Will switch model after recording ends',
+    gateNoModelTitle: 'No AI model installed',
+    gateNoModelBody:
+      'Download a model to enable AI transcription correction, or record raw transcription without it.',
+    gateDownloadingTitle: 'Model is downloading',
+    gateDownloadingBody: 'The AI model is still downloading. You can wait, or record raw for now.',
+    gateErrorTitle: 'AI model unavailable',
+    gateErrorOllamaUnavailable:
+      'Ollama is not available. Install and start Ollama, or record raw transcription.',
+    gateErrorDiskFull: 'Not enough disk space to download the model. Free up space and retry.',
+    gateErrorNetwork: 'Network error while downloading the model. Check your connection and retry.',
+    gateErrorGeneric: 'The model download failed. Retry, or record raw transcription.',
+    btnDownloadModel: 'Download model',
+    btnRecordRaw: 'Record raw',
+    btnDontAskAgain: "Record raw & don't ask again",
+    btnRetry: 'Retry',
+    btnStartOllama: 'Install Ollama',
+    btnCancelDownload: 'Cancel download',
     displayTab: 'Display',
     shortcutsTab: 'Shortcuts',
     aboutTab: 'About',
@@ -298,6 +326,32 @@ export const translations = {
     generalTab: '設定',
     historyTab: '歷史紀錄',
     aiModelsTab: 'AI 模型',
+    aiCorrectionTitle: 'AI 自動校正',
+    aiCorrectionDescription:
+      '使用本機 AI 模型校正逐字稿。關閉後僅錄製原始逐字稿（不使用 LLM，記憶體用量較低）。',
+    aiCorrectionOn: '開啟',
+    aiCorrectionOff: '關閉',
+    modelDownloading: '正在下載模型',
+    modelVerifying: '正在驗證模型',
+    modelReady: '就緒',
+    modelError: '下載錯誤',
+    preparingModel: '正在準備模型',
+    pendingSwitchNotice: '錄製結束後將切換模型',
+    gateNoModelTitle: '尚未安裝 AI 模型',
+    gateNoModelBody: '下載模型以啟用 AI 逐字稿校正，或不使用模型直接錄製原始逐字稿。',
+    gateDownloadingTitle: '模型下載中',
+    gateDownloadingBody: 'AI 模型仍在下載中。您可以等待，或先錄製原始逐字稿。',
+    gateErrorTitle: 'AI 模型無法使用',
+    gateErrorOllamaUnavailable: 'Ollama 無法使用。請安裝並啟動 Ollama，或錄製原始逐字稿。',
+    gateErrorDiskFull: '磁碟空間不足，無法下載模型。請釋放空間後重試。',
+    gateErrorNetwork: '下載模型時發生網路錯誤。請檢查連線後重試。',
+    gateErrorGeneric: '模型下載失敗。請重試，或錄製原始逐字稿。',
+    btnDownloadModel: '下載模型',
+    btnRecordRaw: '錄製原始逐字稿',
+    btnDontAskAgain: '錄製原始逐字稿並不再詢問',
+    btnRetry: '重試',
+    btnStartOllama: '安裝 Ollama',
+    btnCancelDownload: '取消下載',
     displayTab: '顯示器',
     shortcutsTab: '快捷鍵',
     aboutTab: '關於',
@@ -494,6 +548,31 @@ export type TranslationKey =
   | 'generalTab'
   | 'historyTab'
   | 'aiModelsTab'
+  | 'aiCorrectionTitle'
+  | 'aiCorrectionDescription'
+  | 'aiCorrectionOn'
+  | 'aiCorrectionOff'
+  | 'modelDownloading'
+  | 'modelVerifying'
+  | 'modelReady'
+  | 'modelError'
+  | 'preparingModel'
+  | 'pendingSwitchNotice'
+  | 'gateNoModelTitle'
+  | 'gateNoModelBody'
+  | 'gateDownloadingTitle'
+  | 'gateDownloadingBody'
+  | 'gateErrorTitle'
+  | 'gateErrorOllamaUnavailable'
+  | 'gateErrorDiskFull'
+  | 'gateErrorNetwork'
+  | 'gateErrorGeneric'
+  | 'btnDownloadModel'
+  | 'btnRecordRaw'
+  | 'btnDontAskAgain'
+  | 'btnRetry'
+  | 'btnStartOllama'
+  | 'btnCancelDownload'
   | 'displayTab'
   | 'shortcutsTab'
   | 'aboutTab'

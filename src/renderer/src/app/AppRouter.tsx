@@ -8,6 +8,7 @@ import ChatPanel from '../components/ChatPanel'
 import ActionsPanel from '../components/ActionsPanel'
 import { PreviewPanel } from '../components/PreviewPanel'
 import { UpdaterPanel } from '../components/UpdaterPanel'
+import { ModelGatePopover } from '../components/ModelGatePopover'
 
 const getInitialView = () => {
   if (typeof window === 'undefined') return 'main'
@@ -17,6 +18,7 @@ const getInitialView = () => {
     case 'actions':
     case 'screen-preview':
     case 'updater':
+    case 'model-gate':
       return hash
     default:
       return 'main'
@@ -48,6 +50,8 @@ function AppContainer() {
       return <ActionsPanel />
     case 'updater':
       return <UpdaterPanel />
+    case 'model-gate':
+      return <ModelGatePopover />
     default:
       return null
   }
