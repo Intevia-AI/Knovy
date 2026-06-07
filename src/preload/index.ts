@@ -153,6 +153,7 @@ const api = {
       'popover:was-closed',
       'updater:log',
       'updater:update-downloaded',
+      'updater:update-not-available',
       'updater:check-error',
       'keyword:search',
       'screenshare:source-changed',
