@@ -290,11 +290,14 @@ export function MainController() {
       return
     }
 
-    // Starting: consult the gate against a freshly refreshed model-state.
+    // Starting: consult the gate against a freshly refreshed model-state AND
+    // a freshly read aiCorrection setting. The setting can be toggled in the
+    // separate Settings window, so the hook's cached value may be stale here.
     await ollama.refreshState()
     const s = await window.electronAPI.invoke('ollama:get-model-state')
+    const ai = await window.electronAPI.invoke('ollama:get-ai-correction')
     const action = decideRecordAction({
-      aiCorrection: ollama.aiCorrection,
+      aiCorrection: ai?.mode === 'off' ? 'off' : 'on',
       phase: s?.phase ?? 'idle',
       reachable: s?.reachable ?? false
     })
