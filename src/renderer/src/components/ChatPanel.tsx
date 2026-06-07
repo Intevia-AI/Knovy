@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Markdown } from '@/components/MarkdownRenderer'
-import { KeywordHighlighter } from '@/components/KeywordHighlighter'
+import { StreamingText } from '@/components/StreamingText'
 import { cn } from '@/lib/utils'
 import { useAIInteraction } from '@/hooks/useAIInteraction'
 import { Button } from '@/components/ui/button'
@@ -158,11 +158,7 @@ export default function ChatPanel({}: ChatPanelProps) {
                             : 'bg-black/5 mr-auto text-black'
                         )}
                       >
-                        <KeywordHighlighter
-                          text={m.content}
-                          keywords={m.keywords}
-                          onKeywordClick={handleKeywordClick}
-                        />
+                        <StreamingText text={m.content} isStreaming={m.isStreaming} />
                         <div className="text-xs text-gray-400 mt-1.5">
                           {new Date(m.timestamp).toLocaleTimeString([], {
                             hour: 'numeric',
