@@ -87,13 +87,18 @@ export function useAIInteraction() {
     const flush = () => {
       rafId = null
       if (buffers.size === 0) return
+      const applied = new Set<string>()
       setTranscriptions((prev) =>
         prev.map((m) => {
           const pending = buffers.get(m.id)
-          return pending ? { ...m, content: m.content + pending } : m
+          if (pending) {
+            applied.add(m.id)
+            return { ...m, content: m.content + pending }
+          }
+          return m
         })
       )
-      buffers.clear()
+      applied.forEach((id) => buffers.delete(id))
     }
     const scheduleFlush = () => {
       if (rafId == null) rafId = requestAnimationFrame(flush)
@@ -125,11 +130,11 @@ export function useAIInteraction() {
     )
 
     const settle = (transcriptId: string, fullText?: string) => {
-      if (rafId != null) {
+      buffers.delete(transcriptId)
+      if (buffers.size === 0 && rafId != null) {
         cancelAnimationFrame(rafId)
         rafId = null
       }
-      buffers.delete(transcriptId)
       setTranscriptions((prev) =>
         prev.map((m) =>
           m.id === transcriptId
