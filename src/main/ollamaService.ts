@@ -6,8 +6,23 @@ import type {
   SessionContext
 } from './transcriptionEnhancementService'
 import { getEnhancementPrompt, getEnhancementJsonSchema } from './localLLMPrompts'
+import { classifyPullError, mapOllamaPullStatus, type PullErrorKind } from './ollamaErrors'
 
-export type OllamaStatus = 'disconnected' | 'connected' | 'pulling' | 'ready' | 'error'
+export type ModelPhase = 'idle' | 'downloading' | 'verifying' | 'ready' | 'error'
+
+export interface ModelStateError {
+  kind: PullErrorKind
+  raw: string
+}
+
+export interface ModelState {
+  phase: ModelPhase
+  model: string
+  progress: number
+  reachable: boolean
+  error: ModelStateError | null
+  pendingModel: string | null
+}
 
 export interface OllamaModel {
   name: string
@@ -56,9 +71,16 @@ type QueueItem =
     }
 
 export class OllamaService extends EventEmitter {
-  private status: OllamaStatus = 'disconnected'
-  private activeModel: string = DEFAULT_MODEL
+  private modelState: ModelState = {
+    phase: 'idle',
+    model: DEFAULT_MODEL,
+    progress: 0,
+    reachable: false,
+    error: null,
+    pendingModel: null
+  }
   private connectionCheckInterval: NodeJS.Timeout | null = null
+  private currentPull: AbortController | null = null
   private inferenceQueue: QueueItem[] = []
   private isProcessingQueue = false
 
@@ -67,25 +89,31 @@ export class OllamaService extends EventEmitter {
     console.log('[OllamaService] Initialized')
   }
 
-  getStatus(): OllamaStatus {
-    return this.status
+  getModelState(): ModelState {
+    return { ...this.modelState }
   }
 
   getActiveModel(): string {
-    return this.activeModel
+    return this.modelState.model
   }
 
   setActiveModel(model: string): void {
-    this.activeModel = model
+    this.setModelState({ model })
     console.log(`[OllamaService] Active model set to: ${model}`)
   }
 
-  private setStatus(newStatus: OllamaStatus): void {
-    if (this.status !== newStatus) {
-      const oldStatus = this.status
-      this.status = newStatus
-      this.emit('statusChanged', { oldStatus, newStatus })
-      console.log(`[OllamaService] Status changed: ${oldStatus} -> ${newStatus}`)
+  setPendingModel(model: string | null): void {
+    this.setModelState({ pendingModel: model })
+  }
+
+  private setModelState(patch: Partial<ModelState>): void {
+    const next = { ...this.modelState, ...patch }
+    const changed = (Object.keys(patch) as (keyof ModelState)[]).some(
+      (k) => this.modelState[k] !== next[k]
+    )
+    this.modelState = next
+    if (changed) {
+      this.emit('modelState', this.getModelState())
     }
   }
 
@@ -98,33 +126,33 @@ export class OllamaService extends EventEmitter {
       clearTimeout(timeout)
 
       if (response.ok) {
-        // Check if the active model is available
         const models = await this.getModels()
-        const hasActiveModel = models.some((m) => {
-          if (m.name === this.activeModel) return true
-          const normalize = (name: string) => name.replace(/:latest$/, '')
-          return normalize(m.name) === normalize(this.activeModel)
-        })
-        const newStatus = hasActiveModel ? 'ready' : 'connected'
-        if (!hasActiveModel) {
-          const availableNames = models.map((m) => m.name).join(', ')
-          console.log(
-            `[OllamaService] Model "${this.activeModel}" not found. Available: [${availableNames}]`
-          )
-        }
-        console.log(
-          `[OllamaService] Connection check: server=OK, model=${this.activeModel}, available=${hasActiveModel}, status=${newStatus}`
+        const normalize = (name: string) => name.replace(/:latest$/, '')
+        const hasActiveModel = models.some(
+          (m) => normalize(m.name) === normalize(this.modelState.model)
         )
-        this.setStatus(newStatus)
+        // Don't clobber an in-flight download with a connection check.
+        if (this.modelState.phase === 'downloading' || this.modelState.phase === 'verifying') {
+          this.setModelState({ reachable: true })
+          return true
+        }
+        this.setModelState({
+          reachable: true,
+          phase: hasActiveModel ? 'ready' : 'idle',
+          progress: hasActiveModel ? 100 : 0,
+          error: null
+        })
+        console.log(
+          `[OllamaService] Connection check: server=OK, model=${this.modelState.model}, available=${hasActiveModel}`
+        )
         return true
       }
 
-      console.log('[OllamaService] Connection check: server responded but not OK')
-      this.setStatus('disconnected')
+      this.setModelState({ reachable: false })
       return false
     } catch {
       console.log('[OllamaService] Connection check: server not reachable')
-      this.setStatus('disconnected')
+      this.setModelState({ reachable: false })
       return false
     }
   }
@@ -133,7 +161,8 @@ export class OllamaService extends EventEmitter {
     this.stopConnectionMonitoring()
     this.checkConnection()
     this.connectionCheckInterval = setInterval(() => {
-      if (this.status !== 'ready' && this.status !== 'pulling') {
+      const phase = this.modelState.phase
+      if (phase !== 'downloading' && phase !== 'verifying') {
         this.checkConnection()
       }
     }, intervalMs)
@@ -166,14 +195,22 @@ export class OllamaService extends EventEmitter {
   }
 
   async pullModel(modelName: string): Promise<boolean> {
-    const previousStatus = this.status
-    this.setStatus('pulling')
+    // Supersede any in-flight pull (rapid toggling).
+    if (this.currentPull) {
+      this.currentPull.abort()
+      this.currentPull = null
+    }
+    const controller = new AbortController()
+    this.currentPull = controller
+
+    this.setModelState({ phase: 'downloading', model: modelName, progress: 0, error: null })
 
     try {
       const response = await fetch(`${OLLAMA_BASE_URL}/api/pull`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: modelName, stream: true })
+        body: JSON.stringify({ name: modelName, stream: true }),
+        signal: controller.signal
       })
 
       if (!response.ok || !response.body) {
@@ -186,42 +223,65 @@ export class OllamaService extends EventEmitter {
       while (true) {
         const { done, value } = await reader.read()
         if (done) break
+        // A newer selection superseded this pull — stop processing stale stream.
+        if (this.currentPull !== controller) {
+          return false
+        }
 
         const lines = decoder.decode(value, { stream: true }).split('\n').filter(Boolean)
         for (const line of lines) {
           try {
             const progress: OllamaPullProgress = JSON.parse(line)
+            const patch: Partial<ModelState> = {}
             if (progress.total && progress.completed) {
-              progress.percentage = Math.round((progress.completed / progress.total) * 100)
+              patch.progress = Math.round((progress.completed / progress.total) * 100)
             }
-            this.emit('pullProgress', { model: modelName, ...progress })
+            const mapped = progress.status ? mapOllamaPullStatus(progress.status) : null
+            if (mapped) patch.phase = mapped
+            if (Object.keys(patch).length > 0) this.setModelState(patch)
           } catch {
             // Skip malformed JSON lines
           }
         }
       }
 
-      // Verify model is now available
+      // Verify the model is now available.
+      this.setModelState({ phase: 'verifying' })
       const models = await this.getModels()
       const pulled = models.some((m) => m.name === modelName)
 
       if (pulled) {
-        if (modelName === this.activeModel) {
-          this.setStatus('ready')
-        } else {
-          this.setStatus(previousStatus === 'ready' ? 'ready' : 'connected')
-        }
+        this.setModelState({ phase: 'ready', progress: 100, error: null })
         console.log(`[OllamaService] Successfully pulled model: ${modelName}`)
       } else {
-        this.setStatus(previousStatus)
+        this.setModelState({
+          phase: 'error',
+          error: { kind: 'generic', raw: 'Model not found after pull' }
+        })
         console.error(`[OllamaService] Model not found after pull: ${modelName}`)
       }
-
       return pulled
     } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.log(`[OllamaService] Pull aborted: ${modelName}`)
+        // Re-derive state from server; don't leave a stuck "downloading".
+        await this.checkConnection()
+        return false
+      }
+      const raw = error instanceof Error ? error.message : String(error)
       console.error(`[OllamaService] Failed to pull model ${modelName}:`, error)
-      this.setStatus(previousStatus === 'disconnected' ? 'disconnected' : 'error')
+      this.setModelState({ phase: 'error', error: { kind: classifyPullError(raw), raw } })
       return false
+    } finally {
+      if (this.currentPull === controller) this.currentPull = null
+    }
+  }
+
+  cancelPull(): void {
+    if (this.currentPull) {
+      console.log('[OllamaService] Cancelling in-flight pull')
+      this.currentPull.abort()
+      this.currentPull = null
     }
   }
 
@@ -236,8 +296,8 @@ export class OllamaService extends EventEmitter {
       if (response.ok) {
         console.log(`[OllamaService] Deleted model: ${modelName}`)
         // Update status if we deleted the active model
-        if (modelName === this.activeModel) {
-          this.setStatus('connected')
+        if (modelName === this.modelState.model) {
+          this.setModelState({ phase: 'idle', progress: 0 })
         }
         return true
       }
@@ -311,13 +371,13 @@ export class OllamaService extends EventEmitter {
   }
 
   private async runChat(params: ChatParams): Promise<ChatResponse> {
-    if (this.status !== 'ready') {
-      throw new Error(`Ollama not ready (status: ${this.status})`)
+    if (this.modelState.phase !== 'ready') {
+      throw new Error(`Ollama not ready (phase: ${this.modelState.phase})`)
     }
 
     const startTime = Date.now()
     console.log(
-      `[OllamaService] Running chat: ${params.messages.length} message(s), model=${this.activeModel}`
+      `[OllamaService] Running chat: ${params.messages.length} message(s), model=${this.modelState.model}`
     )
 
     const controller = new AbortController()
@@ -325,7 +385,7 @@ export class OllamaService extends EventEmitter {
 
     try {
       const body: Record<string, any> = {
-        model: this.activeModel,
+        model: this.modelState.model,
         messages: params.messages,
         stream: false,
         options: {
@@ -377,12 +437,12 @@ export class OllamaService extends EventEmitter {
     segments: TranscriptionSegment[],
     sessionContext: SessionContext
   ): Promise<EnhanceResponse> {
-    if (this.status !== 'ready') {
-      throw new Error(`Ollama not ready (status: ${this.status})`)
+    if (this.modelState.phase !== 'ready') {
+      throw new Error(`Ollama not ready (phase: ${this.modelState.phase})`)
     }
 
     console.log(
-      `[OllamaService] Running inference: ${segments.length} segment(s), model=${this.activeModel}, lang=${sessionContext.userLanguage}`
+      `[OllamaService] Running inference: ${segments.length} segment(s), model=${this.modelState.model}, lang=${sessionContext.userLanguage}`
     )
     const startTime = Date.now()
     const enhancedSegments: EnhancedSegment[] = []
@@ -430,7 +490,7 @@ export class OllamaService extends EventEmitter {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: this.activeModel,
+          model: this.modelState.model,
           messages: [
             { role: 'system', content: prompt.system },
             { role: 'user', content: prompt.user }
@@ -525,7 +585,7 @@ export class OllamaService extends EventEmitter {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: this.activeModel,
+          model: this.modelState.model,
           messages: [
             { role: 'system', content: prompt.system },
             { role: 'user', content: prompt.user }
