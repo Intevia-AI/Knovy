@@ -282,6 +282,10 @@ export class OllamaService extends EventEmitter {
       console.log('[OllamaService] Cancelling in-flight pull')
       this.currentPull.abort()
       this.currentPull = null
+      // Clear the in-flight phase synchronously so checkConnection()'s
+      // "don't clobber a download" guard doesn't skip re-deriving the state
+      // (otherwise the phase stays stuck on 'downloading' after a cancel).
+      this.setModelState({ phase: 'idle', progress: 0 })
     }
   }
 
