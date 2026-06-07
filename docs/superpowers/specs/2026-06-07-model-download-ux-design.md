@@ -26,7 +26,6 @@ informed decision — never as a silent failure.
 
 ## Non-Goals (explicitly out of scope)
 
-- Changing the 4-model catalog (`qwen2.5:1.5b`, `qwen2.5:3b`, `gemma3:1b`, `gemma3:4b`).
 - Filesystem probing to distinguish "Ollama not installed" from "not running".
 
 ---
@@ -68,6 +67,22 @@ Evaluated at record-time, implemented as a pure, unit-testable function:
 
 "Record raw now" inside a block dialog is **per-attempt** and does **not** flip the
 persisted `aiCorrection` preference. Only the explicit "Don't ask again" affordance does.
+
+### 2a. Model catalog
+
+The selectable catalog is updated (replacing the old `qwen2.5`/`gemma3` set). All four
+tags verified against the live Ollama registry manifest API.
+
+| Tag | Label | Note |
+|---|---|---|
+| `qwen3.5:2b` | Qwen 3.5 2B | Lightweight, fastest, lowest memory |
+| `qwen3.5:4b` | Qwen 3.5 4B | Balanced speed + quality (text + vision) |
+| `gemma4:e2b` | Gemma 4 E2B | Google, fast, low memory |
+| `gemma4:e4b` | Gemma 4 E4B | **Recommended** — vision + quality |
+
+`RECOMMENDED_MODEL = 'gemma4:e4b'` — suggested in the fresh-install "Download a model"
+prompt and used as the default selected model. `DEFAULT_MODEL` in `ollamaService.ts`
+updates to match.
 
 ### 3. Settings (`OllamaSettings.tsx`) — unify select & download
 
@@ -145,4 +160,6 @@ persisted `aiCorrection` preference. Only the explicit "Don't ask again" afforda
 7. Fresh install defaults AI-correction ON with a one-time prompt; unreachable Ollama is
    treated uniformly as "unavailable" with install/start guidance.
 8. Downloads are cancellable; rapid switching supersedes the in-flight pull.
-9. Model catalog and Ollama-install detection are out of scope.
+9. Model catalog updated to `qwen3.5:2b`, `qwen3.5:4b`, `gemma4:e2b`, `gemma4:e4b`
+   (recommended default `gemma4:e4b`); tags verified against the live Ollama registry.
+   Ollama-install detection remains out of scope.
