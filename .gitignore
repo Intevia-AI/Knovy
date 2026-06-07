@@ -17,20 +17,19 @@ node_modules
 # Testing
 coverage
 
-# Turbo
-.turbo
-
-# Vercel
-.vercel
-
 # Build Outputs
-.next/
 out/
 build
 dist
+.eslintcache
 
+# Build caches
+.turbo
+.next/
+.vercel
 
 # Debug
+*.log*
 npm-debug.log*
 
 # Misc
@@ -41,22 +40,16 @@ npm-debug.log*
 .prompts_app.md
 .prompts_web.md
 .prompts_admin.md
-
 **/private_keys/
-
-# Misc
 .vscode/
 .claude/
 
-# We copy the built history viewer to the app public folder
-# but we don't need to commit it
-apps/app/public/history
-apps/app_old/public/history
+# Code signing
+certificate.p12
+build-mac-signed.sh
 
-# Supabase local development files
-supabase/.branches/
-supabase/.temp/
+# Built history viewer copied into the app public folder (not committed)
+src/renderer/public/history
 
 # Local transcription models (downloaded at runtime)
-apps/app/resources/whisper.cpp/models/
-apps/app_old/resources/whisper.cpp/models/
+resources/whisper.cpp/models/
