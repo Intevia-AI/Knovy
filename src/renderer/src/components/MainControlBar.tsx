@@ -84,7 +84,7 @@ export function MainControlBar({
               className={`h-8 w-8 rounded-full shadow hover:bg-white ${
                 micEnabled ? '' : 'bg-destructive/80 text-white hover:text-black'
               }`}
-              title={micEnabled ? 'Mute microphone' : 'Unmute microphone'}
+              title={micEnabled ? t('muteMicrophone') : t('unmuteMicrophone')}
               aria-pressed={!micEnabled}
             >
               {micEnabled ? (
