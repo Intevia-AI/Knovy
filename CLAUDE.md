@@ -4,43 +4,35 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Development Commands
 
-### Monorepo Management
+This repository is a **single-package** Electron desktop app (Knovy) at the repo root,
+using **pnpm** as the package manager.
 
-- `pnpm install` - Install all dependencies
-- `pnpm dev` - Start all development servers using Turbo
-- `pnpm build` - Build all applications using Turbo
-- `pnpm lint` - Run linting across all packages using Turbo
+- `pnpm install` - Install dependencies
+- `pnpm dev` - Start the desktop app in development (`electron-vite dev`)
+- `pnpm build:local` - Build the desktop app locally (unsigned)
+- `pnpm build` - Build the signed macOS app (requires code signing setup)
 - `pnpm format` - Format code with Prettier
-
-### Application-Specific Commands
-
-#### Desktop App (`apps/app`)
-
-- `pnpm --filter app dev` - Start desktop app development (includes history-viewer)
-- `pnpm --filter app build:local` - Build desktop app locally (unsigned)
-- `pnpm --filter app build` - Build signed macOS app (requires code signing setup)
-
-#### History Viewer (`apps/history-viewer`)
-
-- `pnpm --filter history-viewer dev:history` - Start on port 4001
-- `pnpm --filter history-viewer build` - Build static Next.js output
+- `pnpm test:run` - Run the config/release tests with Vitest
 
 ## Architecture Overview
 
 ### Project Structure
 
-This is a **monorepo** managed with **pnpm workspaces** and **Turborepo**.
+A single-package Electron + Vite desktop application rooted at the repository root.
 
 ```
 /
-├── apps/
-│   ├── app/                   # Electron + Vite desktop application (main app)
-│   └── history-viewer/        # Next.js app embedded in desktop app
-├── packages/
-│   ├── ui/                    # Shared React components (Radix + Tailwind)
-│   ├── eslint-config/         # Shared ESLint configurations
-│   └── typescript-config/     # Shared TypeScript configurations
-└── docs/                      # Architecture documentation
+├── src/                       # Electron app source (main / renderer / preload)
+│   ├── main/                  # Main process (window mgmt, IPC, SQLite)
+│   ├── renderer/              # React UI (renderer process)
+│   └── preload/               # Secure IPC bridge
+├── resources/                 # Bundled binaries (whisper.cpp, models)
+├── code-signing/              # macOS signing / notarization scripts
+├── tests/                     # Vitest tests
+├── docs/                      # Architecture documentation
+├── electron.vite.config.ts    # electron-vite build config
+├── electron-builder.yml       # Packaging / publish config
+└── package.json               # Single root manifest
 ```
 
 ### Technology Stack
@@ -51,11 +43,6 @@ This is a **monorepo** managed with **pnpm workspaces** and **Turborepo**.
 - **Tailwind CSS** + **Radix UI** for consistent styling
 - **SQLite** for local data storage
 - **Electron-vite** for build system
-
-**History Viewer:**
-
-- **Next.js 15** + **React 19** + **TypeScript**
-- Built as a static export and embedded inside the desktop app
 
 **Backend: None**
 
@@ -78,38 +65,38 @@ The desktop app implements a **dual-stream audio architecture**:
 
 **Key Files:**
 
-- `apps/app/src/renderer/public/worklets/mic-audio-processor.js`
-- `apps/app/src/renderer/public/worklets/system-audio-processor.js`
-- `apps/app/src/renderer/src/hooks/useAudioAnalysis.ts`
-- `apps/app/src/renderer/src/components/RealTimeAnalysis.tsx`
+- `src/renderer/public/worklets/mic-audio-processor.js`
+- `src/renderer/public/worklets/system-audio-processor.js`
+- `src/renderer/src/hooks/useAudioAnalysis.ts`
+- `src/renderer/src/components/RealTimeAnalysis.tsx`
 
 #### Electron Architecture
 
-- **Main Process**: `apps/app/src/main/index.ts` - Window management, IPC, database
-- **Renderer Process**: `apps/app/src/renderer/src/` - React UI components
-- **Preload Scripts**: `apps/app/src/preload/index.ts` - Secure IPC bridge
-- **Database**: SQLite with `apps/app/src/main/database-service.ts`
+- **Main Process**: `src/main/index.ts` - Window management, IPC, database
+- **Renderer Process**: `src/renderer/src/` - React UI components
+- **Preload Scripts**: `src/preload/index.ts` - Secure IPC bridge
+- **Database**: SQLite with `src/main/database-service.ts`
 
 ### Environment Setup
 
-The desktop app requires no cloud credentials. If needed, copy `apps/app/.env.example` to `apps/app/.env` — the app runs without any API keys (Ollama is local HTTP, whisper.cpp is bundled).
+The desktop app requires no cloud credentials. If needed, copy `.env.example` to `.env` — the app runs without any API keys (Ollama is local HTTP, whisper.cpp is bundled).
 
 ### Development Workflow
 
 1. **Setup**: Install dependencies with `pnpm install`
 2. **Ollama** (optional): Install and start Ollama for AI enhancement (`http://localhost:11434`)
-3. **Development**: Use `pnpm dev` or `pnpm --filter app dev` for the desktop app
-4. **Quality**: Run `pnpm lint` and `pnpm format` before commits
+3. **Development**: Use `pnpm dev` for the desktop app
+4. **Quality**: Run `pnpm format` before commits
 
 ### Testing
 
-- **Desktop App**: No formal test setup currently
+- **Config/release tests**: `pnpm test:run` (Vitest) — validates `electron-builder.yml` and the GitHub Actions release/staging workflows.
 
 ### Release Process
 
 Desktop app releases are automated via **GitHub Actions**:
 
-1. **Update version** in `apps/app/package.json`
+1. **Update version** in `package.json`
 2. **Create git tag** matching `v*.*.*` pattern
 3. **Push tag** to trigger automated build, signing, and release
 4. **Code signing** requires Apple Developer credentials in repository secrets
@@ -117,9 +104,6 @@ Desktop app releases are automated via **GitHub Actions**:
 ### Important Notes
 
 - **Message Threading**: Recent feature enabling speaker identification in transcription UI
-- **History Viewer**: Embedded Next.js app showing session history, built separately and copied into desktop app
-- **Shared Packages**: UI components and configs are shared across applications via workspace dependencies
-- **Local Development**: Desktop app runs history-viewer concurrently during development
 - **Database Schema**: Includes `source_type` field for distinguishing microphone vs system audio transcriptions
 
 ## Working with Agents

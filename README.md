@@ -1,35 +1,40 @@
 # Knovy
 
-Knovy is a powerful AI assistant platform with desktop and web applications for real-time audio analysis, transcription, and AI-powered interactions.
+Knovy is a local-first AI desktop assistant for real-time audio analysis, transcription, and AI-powered interactions. It runs **fully on your machine** — no cloud backend, no account, no API keys required.
 
 ## Project Overview
 
-Knovy combines Google's Generative AI (Gemini) with local transcription to provide intelligent assistance during meetings and conversations. The platform consists of four main applications:
+Knovy is a single cross-platform **Electron** desktop application that combines local
+**whisper.cpp** transcription with local **Ollama** AI actions to provide intelligent
+assistance during meetings and conversations:
 
-1. **Desktop App (Electron)**: Cross-platform desktop application with local whisper.cpp transcription, dual-stream audio capture (microphone + system audio), progressive enhancement, and AI-powered insights.
+- Dual-stream audio capture (microphone + system audio)
+- Offline speech-to-text via bundled whisper.cpp
+- AI actions (summarize, chat, keyword search, screenshot analysis, deep response,
+  recommendations) powered by a local Ollama server (`http://localhost:11434`)
+- All persistence in a local SQLite database
 
-2. **Web Application (Next.js)**: Marketing website with product information and waitlist/beta invitation system.
-
-3. **Admin Dashboard (Next.js)**: Internal platform for user administration, role assignment, usage analytics, and release management.
-
-4. **Backend Services (Supabase)**: Serverless backend with authentication, RBAC system, and Edge Functions for AI actions.
+There is **no cloud backend**. Earlier web, admin-dashboard, and Supabase components have
+been removed; the repository is now a single-package Electron app.
 
 ## Repository Structure
 
-This is a monorepo managed with pnpm workspaces and Turborepo.
+A single-package Electron + Vite desktop application rooted at the repository root, managed
+with **pnpm**.
 
 ```
 /
-├── apps/
-│   ├── app/                   # Electron + Vite desktop application (main app)
-│   ├── web/                   # Next.js marketing and demo website
-│   └── admin-dashboard/       # Admin management interface
-├── packages/
-│   ├── ui/                    # Shared React components (shadcn/ui + Radix + Tailwind)
-│   ├── eslint-config/         # Shared ESLint configurations
-│   └── typescript-config/     # Shared TypeScript configurations
-├── supabase/                  # Backend: Auth, DB, Edge Functions
-└── docs/                      # Architecture and API documentation
+├── src/                       # Electron app source
+│   ├── main/                  # Main process (window mgmt, IPC, SQLite)
+│   ├── renderer/              # React UI (renderer process)
+│   └── preload/               # Secure IPC bridge
+├── resources/                 # Bundled binaries (whisper.cpp, models)
+├── code-signing/              # macOS signing / notarization scripts
+├── tests/                     # Vitest tests
+├── docs/                      # Architecture documentation
+├── electron.vite.config.ts    # electron-vite build config
+├── electron-builder.yml       # Packaging / publish config
+└── package.json               # Single root manifest
 ```
 
 ## Quick Start
@@ -39,15 +44,15 @@ This is a monorepo managed with pnpm workspaces and Turborepo.
 - Node.js v20 or later
 - pnpm v10 or later
 - Git
-- Supabase CLI (for backend development)
+- (Optional) [Ollama](https://ollama.com/) running locally for AI actions
 
 ### Installation
 
 1. **Clone the repository**
 
    ```bash
-   git clone https://github.com/your-org/knovy.git
-   cd knovy
+   git clone https://github.com/Intevia-AI/Knovy.git
+   cd Knovy
    ```
 
 2. **Install dependencies**
@@ -56,139 +61,69 @@ This is a monorepo managed with pnpm workspaces and Turborepo.
    pnpm install
    ```
 
-3. **Set up Supabase**
+3. **(Optional) Set up environment variables**
+
+   The app runs without any cloud credentials. If you need to override defaults, copy
+   `.env.example` to `.env`.
+
+4. **Start development**
 
    ```bash
-   supabase start
-   supabase status  # Get local API keys
-   supabase functions serve --env-file supabase/.env.development
-   ```
-
-4. **Set up environment variables**
-
-   Copy `.env.example` to `.env` in each application directory and fill in required API keys:
-   - `apps/app/.env` - Desktop app configuration
-   - `apps/web/.env` - Web app configuration
-   - `apps/admin-dashboard/.env` - Admin dashboard configuration
-
-5. **Start development**
-
-   **Desktop Application** (recommended):
-   ```bash
-   cd apps/app
-   pnpm dev
-   ```
-   The app will automatically download the small whisper model (488MB) on first launch.
-
-   **Web Application**:
-   ```bash
-   cd apps/web
    pnpm dev
    ```
 
-   **Admin Dashboard**:
-   ```bash
-   cd apps/admin-dashboard
-   pnpm dev
-   ```
+   The app will automatically download the small whisper model (~488MB) on first launch.
 
 ## Key Features
-
-### Desktop Application
 
 - **Local Transcription**: Privacy-focused speech-to-text using whisper.cpp (runs offline)
 - **Dual-Stream Audio**: Simultaneous microphone and system audio capture
 - **Two-Stage Language Detection**: Improved accuracy for Traditional Chinese
 - **Progressive Enhancement**: Raw transcription displayed immediately, AI-enhanced version follows
-- **AI Actions**: Summarize, chat, keyword search, screenshot analysis, deep response, recommendations
-- **RBAC System**: Role-based feature access and usage quotas
+- **AI Actions**: Summarize, chat, keyword search, screenshot analysis, deep response, recommendations — all via local Ollama
 - **Chinese Language Support**: Automatic Traditional/Simplified conversion via OpenCC
-
-### Web Application
-
-- Marketing website with product showcase
-- Waitlist and beta invitation management
-- Responsive design with modern UI components
-
-### Admin Dashboard
-
-- User management and role assignment (free, pro, admin)
-- Usage analytics with Tremor charts
-- Release management and beta invitations
-- Audit logging
-
-### Backend Services
-
-- **Authentication**: JWT-based auth with OAuth support
-- **RBAC & Entitlements**: Granular feature control and quota management
-- **AI Actions**: `ai-action-summarize`, `ai-action-chat`, `ai-action-keyword`, `ai-action-deep-response`, `ai-action-recommend-response`, `ai-action-screenshot-response`
-- **User Management**: `get-session-profile`, `get-latest-release`, `send-beta-invitation`, `add-to-waitlist`
 
 ## Architecture Highlights
 
-- **Serverless Backend**: Supabase Edge Functions (Deno) with JWT authentication
-- **RBAC System**: Role-based access with feature entitlements and usage quotas
+- **Fully Local**: No backend; SQLite for storage, whisper.cpp for transcription, Ollama for AI
 - **Progressive Enhancement**: ID-based updates prevent duplicate transcriptions
 - **Chinese Language Support**: OpenCC integration for Traditional ↔ Simplified conversion
-- **Release Management**: Automated updates with GitHub Actions CI/CD
+- **Release Management**: Automated builds and updates via GitHub Actions CI/CD
 
 ## Documentation
 
-Comprehensive documentation is available in the `/docs` directory:
+Documentation is available in the `/docs` directory:
 
 - **[Architecture Overview](docs/architecture/overview.md)**: System architecture and transcription flow
 - **[Development Setup](docs/setup/development.md)**: Detailed setup instructions
-- **[RBAC & Entitlements](docs/architecture/RBAC.md)**: Role-based access control
-- **[Edge Functions API](docs/api/edge-functions.md)**: Complete API specification
 - **[Whisper Integration](docs/architecture/whisper.md)**: Local transcription architecture
 - **[Message Threading](docs/architecture/Message-threading.md)**: Speaker identification
-- **[Waitlist to Beta Conversion](docs/waitlist-to-beta-conversion-implementation.md)**: Beta workflow
 
 ## Release Process
 
-Desktop app releases are automated via GitHub Actions and published to [Knovy-Release](https://github.com/Intevia-AI/Knovy-Release).
+Desktop app releases are automated via GitHub Actions and published to this repository's
+[Releases](https://github.com/Intevia-AI/Knovy/releases).
 
-1. Update version in `apps/app/package.json`
-2. Create and push git tag:
+1. Update version in `package.json`
+2. Create and push a git tag matching `v*.*.*`:
    ```bash
-   git tag v0.3.7
-   git push origin v0.3.7
+   git tag v0.3.9
+   git push origin v0.3.9
    ```
-3. GitHub Action builds, signs (macOS), and publishes release
-4. Desktop app automatically notifies users of new versions
+3. The Release workflow builds, signs (macOS), and publishes the release.
+4. The desktop app automatically notifies users of new versions.
 
 **Code Signing**: Requires Apple Developer credentials in repository secrets (see `.github/workflows/release.yml`).
 
 ## Development Commands
 
 ```bash
-# Monorepo management
-pnpm install              # Install all dependencies
-pnpm dev                  # Start all development servers
-pnpm build                # Build all applications
-pnpm lint                 # Run linting
-pnpm format               # Format code
-
-# Desktop app
-cd apps/app
-pnpm dev                  # Start development
+pnpm install              # Install dependencies
+pnpm dev                  # Start the desktop app in development
 pnpm build:local          # Build locally (unsigned)
-
-# Web app
-cd apps/web
-pnpm dev                  # Start development
-pnpm build                # Build for production
-
-# Admin dashboard
-cd apps/admin-dashboard
-pnpm dev                  # Start development
-pnpm build                # Build for production
-
-# Supabase
-supabase start            # Start local services
-supabase status           # Get API keys
-supabase functions serve  # Start Edge Functions
-supabase db reset         # Reset local database
+pnpm build                # Build the signed macOS app
+pnpm format               # Format code with Prettier
+pnpm test:run             # Run config/release tests (Vitest)
 ```
 
 ## Contributing
