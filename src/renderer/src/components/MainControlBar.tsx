@@ -53,7 +53,10 @@ export function MainControlBar({
           variant={'ghost'}
           size="sm"
           onClick={onToggleScreenShare}
-          disabled={isSummarizing}
+          disabled={isSummarizing || preparingProgress != null}
+          title={
+            preparingProgress != null ? `${t('preparingModel')} ${preparingProgress}%` : undefined
+          }
           className={`h-8 rounded-full shadow text-sm w-28 ${
             isScreenSharing
               ? 'bg-destructive/80 text-white breathing-light'
@@ -65,14 +68,15 @@ export function MainControlBar({
               <Loader2 className="h-4 w-4 animate-spin" />
               {'Stopping'}
             </>
+          ) : preparingProgress != null ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              {`${preparingProgress}%`}
+            </>
           ) : (
             <>
               <MicIcon className="h-8 w-8" />
-              {isScreenSharing
-                ? formatTime(recordingDuration)
-                : preparingProgress != null
-                  ? `${t('preparingModel')} ${preparingProgress}%`
-                  : 'Listen'}
+              {isScreenSharing ? formatTime(recordingDuration) : 'Listen'}
             </>
           )}
         </Button>
