@@ -17,7 +17,7 @@ const NonMemoizedStreamingText: React.FC<StreamingTextProps> = ({ text, isStream
       {isStreaming && (
         <span
           aria-hidden="true"
-          className="ml-0.5 inline-block w-1.5 h-4 align-text-bottom bg-current animate-pulse"
+          className="ml-0.5 inline-block w-px h-4 align-text-bottom bg-current animate-pulse"
         />
       )}
     </span>
