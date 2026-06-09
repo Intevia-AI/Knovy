@@ -1,6 +1,13 @@
 # Knovy
 
+> Knovy started as an internal startup project in 2025. Over time, we stripped out all cloud infrastructure, removed the login gate, and made it **fully local and open source**. Everything runs on your machine — no accounts, no API keys, no telemetry. This will be a training ground project for the agentic tech stack.
+
 Knovy is a local-first AI desktop assistant for real-time audio analysis, transcription, and AI-powered interactions. It runs **fully on your machine** — no cloud backend, no account, no API keys required.
+
+<p align="center">
+  <img src="assets/Knovy_01.png" alt="Main app bar with update notification"/>
+  <br/>Compact floating bar with auto-update notification
+</p>
 
 ## Project Overview
 
@@ -115,6 +122,18 @@ pnpm build                # Build the signed macOS app
 pnpm format               # Format code with Prettier
 pnpm test:run             # Run config/release tests (Vitest)
 ```
+
+## Screenshots
+
+<p align="center">
+  <img src="assets/Knovy_02.png" alt="History sessions in Settings"/>
+  <br/>Session history — browse and manage past recordings
+</p>
+
+<p align="center">
+  <img src="assets/Knovy_03.png" alt="Live recording with transcription and AI actions"/>
+  <br/>Live recording view with real-time transcription and AI action panel
+</p>
 
 ## Contributing
 
