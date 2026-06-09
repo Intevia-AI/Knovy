@@ -1,7 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { cleanupStream, cleanupRecorder } from '@/lib/utils'
 
-
 export function useSegmentRecorder() {
   const [recording, setRecording] = useState(false)
   const [mimeType, setMimeType] = useState('audio/webm;codecs=opus')

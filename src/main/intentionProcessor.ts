@@ -208,28 +208,30 @@ export class IntentionProcessor extends EventEmitter {
         // Match by primary intention OR by suggested actions
         // This provides fallback if AI misclassifies primary but includes correct suggested action
         const matchesPrimary = ['question', 'concern', 'request'].includes(intention.primary)
-        const matchesSuggestedActions = intention.suggestedActions?.some(
-          (action) => action.toLowerCase().includes('answer') ||
-                      action.toLowerCase().includes('response')
-        ) || false
+        const matchesSuggestedActions =
+          intention.suggestedActions?.some(
+            (action) =>
+              action.toLowerCase().includes('answer') || action.toLowerCase().includes('response')
+          ) || false
         return matchesPrimary || matchesSuggestedActions
 
       case 'scheduleReminder':
         // Match by primary intention OR by suggested actions
         const matchesSchedulePrimary = ['schedule', 'reminder'].includes(intention.primary)
-        const matchesScheduleActions = intention.suggestedActions?.some(
-          (action) => action.toLowerCase().includes('schedule') ||
-                      action.toLowerCase().includes('reminder')
-        ) || false
+        const matchesScheduleActions =
+          intention.suggestedActions?.some(
+            (action) =>
+              action.toLowerCase().includes('schedule') || action.toLowerCase().includes('reminder')
+          ) || false
         return matchesSchedulePrimary || matchesScheduleActions
 
       case 'sendEmail':
         // Send email requires BOTH matching primary AND suggested action
         // This prevents false positives for email actions
         const matchesEmailPrimary = ['command', 'request'].includes(intention.primary)
-        const matchesEmailActions = intention.suggestedActions?.some(
-          (action) => action.toLowerCase().includes('email')
-        ) || false
+        const matchesEmailActions =
+          intention.suggestedActions?.some((action) => action.toLowerCase().includes('email')) ||
+          false
         return matchesEmailPrimary && matchesEmailActions
 
       default:

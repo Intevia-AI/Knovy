@@ -34,7 +34,7 @@ describe('electron-builder publish target', () => {
 describe('release workflow', () => {
   const workflow = readYaml('.github/workflows/release.yml')
   const buildStep = workflow.jobs.release.steps.find(
-    (step: any) => step.name === 'Build and Publish',
+    (step: any) => step.name === 'Build and Publish'
   )
 
   it('has a Build and Publish step', () => {
@@ -52,9 +52,7 @@ describe('release workflow', () => {
   it('verifies the pushed tag matches the app version before building', () => {
     const guard = workflow.jobs.release.steps.find(
       (step: any) =>
-        typeof step.name === 'string' &&
-        /tag/i.test(step.name) &&
-        /version/i.test(step.name),
+        typeof step.name === 'string' && /tag/i.test(step.name) && /version/i.test(step.name)
     )
     expect(guard).toBeDefined()
     expect(guard.run).toContain('package.json')
@@ -77,23 +75,21 @@ describe('staging workflow', () => {
   })
 
   it('stamps the build with a -stg.<run_number> prerelease suffix', () => {
-    const step = stagingSteps().find(
-      (s) => typeof s.run === 'string' && s.run.includes('-stg.'),
-    )
+    const step = stagingSteps().find((s) => typeof s.run === 'string' && s.run.includes('-stg.'))
     expect(step).toBeDefined()
     expect(step.run).toContain('github.run_number')
   })
 
   it('builds without publishing a release', () => {
     const step = stagingSteps().find(
-      (s) => typeof s.run === 'string' && s.run.includes('build:staging'),
+      (s) => typeof s.run === 'string' && s.run.includes('build:staging')
     )
     expect(step).toBeDefined()
   })
 
   it('uploads the build as a downloadable Actions artifact', () => {
     const step = stagingSteps().find(
-      (s) => typeof s.uses === 'string' && s.uses.includes('actions/upload-artifact'),
+      (s) => typeof s.uses === 'string' && s.uses.includes('actions/upload-artifact')
     )
     expect(step).toBeDefined()
   })

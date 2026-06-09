@@ -97,11 +97,7 @@ export function MainControlBar({
               title={micEnabled ? t('muteMicrophone') : t('unmuteMicrophone')}
               aria-pressed={!micEnabled}
             >
-              {micEnabled ? (
-                <MicIcon className="h-4 w-4" />
-              ) : (
-                <MicOffIcon className="h-4 w-4" />
-              )}
+              {micEnabled ? <MicIcon className="h-4 w-4" /> : <MicOffIcon className="h-4 w-4" />}
             </Button>
             <Button
               variant="ghost"

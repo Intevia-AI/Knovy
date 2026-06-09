@@ -26,11 +26,11 @@ export function getDateGroup(timestamp: string): DateGroup {
  */
 export function getDateGroupLabel(group: DateGroup): string {
   const labels: Record<DateGroup, string> = {
-    'today': 'Today',
-    'yesterday': 'Yesterday',
+    today: 'Today',
+    yesterday: 'Yesterday',
     'this-week': 'This Week',
     'this-month': 'This Month',
-    'older': 'Older'
+    older: 'Older'
   }
   return labels[group]
 }

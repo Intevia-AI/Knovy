@@ -80,10 +80,7 @@ export class WhisperClient {
   /**
    * Process audio data using whisper.cpp
    */
-  async transcribeAudio(
-    audioBuffer: ArrayBuffer,
-    options: WhisperOptions
-  ): Promise<WhisperResult> {
+  async transcribeAudio(audioBuffer: ArrayBuffer, options: WhisperOptions): Promise<WhisperResult> {
     if (!this.isInitialized) {
       throw new Error('WhisperClient not initialized. Call initialize() first.')
     }
@@ -101,16 +98,23 @@ export class WhisperClient {
         throw new Error('No whisper models available. Models may have been deleted.')
       }
 
-      const response = await (window as any).electronAPI.transcriptionProcessAudio(audioBuffer, options)
+      const response = await (window as any).electronAPI.transcriptionProcessAudio(
+        audioBuffer,
+        options
+      )
 
       if (!response.success) {
         // Provide more specific error messages based on the error type
         const error = response.error || 'Whisper transcription failed'
 
         if (error.includes('No whisper models available')) {
-          throw new Error('No whisper models available. Please restart the app to re-download models.')
+          throw new Error(
+            'No whisper models available. Please restart the app to re-download models.'
+          )
         } else if (error.includes('whisper.cpp binary')) {
-          throw new Error('whisper.cpp binary error. Whisper transcription is temporarily unavailable.')
+          throw new Error(
+            'whisper.cpp binary error. Whisper transcription is temporarily unavailable.'
+          )
         } else if (error.includes('timeout')) {
           throw new Error('Transcription timeout. The audio segment may be too long or corrupted.')
         } else {
@@ -213,7 +217,7 @@ export class WhisperClient {
     try {
       // Check if at least one model is downloaded
       const models = await this.getAvailableModels()
-      const hasModels = models.some(model => model.downloaded)
+      const hasModels = models.some((model) => model.downloaded)
 
       if (!hasModels) {
         console.warn('[WhisperClient] No models available for transcription')
@@ -232,7 +236,7 @@ export class WhisperClient {
   async getRecommendedModel(): Promise<ModelInfo | null> {
     try {
       const models = await this.getAvailableModels()
-      return models.find(model => model.recommended) || models[0] || null
+      return models.find((model) => model.recommended) || models[0] || null
     } catch {
       return null
     }
@@ -246,7 +250,7 @@ export class WhisperClient {
       console.log('[WhisperClient] Ensuring model availability...')
 
       // Add a small delay to ensure any progress callbacks are set up
-      await new Promise(resolve => setTimeout(resolve, 100))
+      await new Promise((resolve) => setTimeout(resolve, 100))
 
       const response = await (window as any).electronAPI.transcriptionEnsureModelAvailable()
       return response.success
@@ -260,10 +264,16 @@ export class WhisperClient {
    * Add callback for download progress updates
    */
   onDownloadProgress(callback: (progress: ModelDownloadProgress) => void): () => void {
-    console.log('[WhisperClient] Registering download progress callback. Total callbacks:', this.downloadProgressCallbacks.size + 1)
+    console.log(
+      '[WhisperClient] Registering download progress callback. Total callbacks:',
+      this.downloadProgressCallbacks.size + 1
+    )
     this.downloadProgressCallbacks.add(callback)
     return () => {
-      console.log('[WhisperClient] Unregistering download progress callback. Total callbacks:', this.downloadProgressCallbacks.size - 1)
+      console.log(
+        '[WhisperClient] Unregistering download progress callback. Total callbacks:',
+        this.downloadProgressCallbacks.size - 1
+      )
       this.downloadProgressCallbacks.delete(callback)
     }
   }
@@ -284,7 +294,7 @@ export class WhisperClient {
     if (bytes === 0) return '0 Bytes'
 
     const i = Math.floor(Math.log(bytes) / Math.log(1024))
-    return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i]
+    return Math.round((bytes / Math.pow(1024, i)) * 100) / 100 + ' ' + sizes[i]
   }
 
   /**
@@ -334,7 +344,9 @@ export class WhisperClient {
 
         // Get diagnostic information for debugging
         try {
-          const diagnosticsResponse = await (window as any).electronAPI.transcriptionGetDiagnostics()
+          const diagnosticsResponse = await (
+            window as any
+          ).electronAPI.transcriptionGetDiagnostics()
           if (diagnosticsResponse.success) {
             console.error('[WhisperClient] Diagnostics:', diagnosticsResponse.diagnostics)
           }
@@ -352,11 +364,22 @@ export class WhisperClient {
 
   private setupEventListeners(): void {
     // Listen for download progress events (from ensureModelAvailable)
-    const unsubscribeModelProgress = (window as any).electronAPI?.on('transcription:model-download-progress',
-      ({ modelName, progress }: { modelName: string; progress: { downloaded: number; total: number; percentage: number } }) => {
-        console.log('[WhisperClient] Received model download progress:', { modelName, progress, callbackCount: this.downloadProgressCallbacks.size })
+    const unsubscribeModelProgress = (window as any).electronAPI?.on(
+      'transcription:model-download-progress',
+      ({
+        modelName,
+        progress
+      }: {
+        modelName: string
+        progress: { downloaded: number; total: number; percentage: number }
+      }) => {
+        console.log('[WhisperClient] Received model download progress:', {
+          modelName,
+          progress,
+          callbackCount: this.downloadProgressCallbacks.size
+        })
 
-        this.downloadProgressCallbacks.forEach(callback => {
+        this.downloadProgressCallbacks.forEach((callback) => {
           try {
             callback({
               modelName,
@@ -372,9 +395,10 @@ export class WhisperClient {
     )
 
     // Listen for download progress events (general)
-    const unsubscribeProgress = (window as any).electronAPI?.on('model:download-progress',
+    const unsubscribeProgress = (window as any).electronAPI?.on(
+      'model:download-progress',
       (progress: ModelDownloadProgress) => {
-        this.downloadProgressCallbacks.forEach(callback => {
+        this.downloadProgressCallbacks.forEach((callback) => {
           try {
             callback(progress)
           } catch (error) {
@@ -385,9 +409,10 @@ export class WhisperClient {
     )
 
     // Listen for download complete events
-    const unsubscribeComplete = (window as any).electronAPI?.on('model:download-complete',
+    const unsubscribeComplete = (window as any).electronAPI?.on(
+      'model:download-complete',
       ({ modelName, success }: { modelName: string; success: boolean }) => {
-        this.downloadCompleteCallbacks.forEach(callback => {
+        this.downloadCompleteCallbacks.forEach((callback) => {
           try {
             callback(modelName, success)
           } catch (error) {

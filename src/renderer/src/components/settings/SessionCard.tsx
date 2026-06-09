@@ -43,7 +43,8 @@ export function SessionCard({ session, onExport, onDelete }: SessionCardProps) {
   const duration = formatDuration(session.duration)
 
   // Get display summary for collapsed state
-  const displaySummary = session.short_summary ||
+  const displaySummary =
+    session.short_summary ||
     (session.summary ? session.summary.slice(0, 100) + '...' : null) ||
     session.transcripts[0]?.text ||
     'No content available'
@@ -134,9 +135,7 @@ export function SessionCard({ session, onExport, onDelete }: SessionCardProps) {
               </div>
 
               {/* Short Summary or First Transcript */}
-              <div className="text-sm text-foreground/90 line-clamp-2">
-                {displaySummary}
-              </div>
+              <div className="text-sm text-foreground/90 line-clamp-2">{displaySummary}</div>
             </div>
 
             {/* Action Buttons */}
