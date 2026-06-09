@@ -1,10 +1,7 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
-import {
-  TranscriptionFactory,
-  TranscriptionProcessor
-} from '@/services/transcription'
+import { TranscriptionFactory, TranscriptionProcessor } from '@/services/transcription'
 import { useTranscriptionEnhancement } from '@/hooks/useTranscriptionEnhancement'
 import { useLanguage } from '@/hooks/useLanguage'
 // Configuration: Change this to set the real-time transcription model size
@@ -709,7 +706,6 @@ export default function RealTimeAnalysis({
         ?.getTracks()
         .some((track) => track.readyState === 'live')
       if (alreadyLive) return
-
       ;(async () => {
         try {
           const stream = await navigator.mediaDevices.getUserMedia({ audio: true })

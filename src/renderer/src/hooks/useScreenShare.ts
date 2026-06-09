@@ -185,7 +185,9 @@ export function useScreenShare() {
             console.log('[ScreenShare] Restarting system audio recorder due to unexpected stop...')
             recorder.start(SYSTEM_AUDIO_CHUNK_MS) // Restart the same recorder instance
           } else {
-            console.log('[ScreenShare] Not restarting system audio recorder (intentional stop or inactive stream).')
+            console.log(
+              '[ScreenShare] Not restarting system audio recorder (intentional stop or inactive stream).'
+            )
             systemAudioRecorderRef.current = null
           }
         }

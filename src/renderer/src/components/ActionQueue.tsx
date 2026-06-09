@@ -163,9 +163,7 @@ export function ActionQueue({
 
                   {/* Status message for automatic mode */}
                   {action.status === 'executing' && (
-                    <p className="text-xs text-amber-700 font-medium">
-                      {t('executingAction')}...
-                    </p>
+                    <p className="text-xs text-amber-700 font-medium">{t('executingAction')}...</p>
                   )}
                 </div>
               </div>

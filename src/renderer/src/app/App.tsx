@@ -58,11 +58,7 @@ function AppContent() {
       debouncedWindowResize(360, 50, 'bottom-left', true)
       setHasBeenPositioned(true)
     }
-  }, [
-    isPopover,
-    hasBeenPositioned,
-    isUnifiedLoading
-  ])
+  }, [isPopover, hasBeenPositioned, isUnifiedLoading])
 
   useEffect(() => {
     if (window.electronAPI && window.electronAPI.on) {

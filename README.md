@@ -1,6 +1,13 @@
 # Knovy
 
+> Knovy started as an internal startup project in 2025. Over time, we stripped out all cloud infrastructure, removed the login gate, and made it **fully local and open source**. Everything runs on your machine — no accounts, no API keys, no telemetry. This will be a training ground project for the agentic tech stack.
+
 Knovy is a local-first AI desktop assistant for real-time audio analysis, transcription, and AI-powered interactions. It runs **fully on your machine** — no cloud backend, no account, no API keys required.
+
+<p align="center">
+  <img src="assets/Knovy_01.png" alt="Main app bar with update notification"/>
+  <br/>Compact floating bar with auto-update notification
+</p>
 
 ## Project Overview
 
@@ -31,7 +38,6 @@ with **pnpm**.
 ├── resources/                 # Bundled binaries (whisper.cpp, models)
 ├── code-signing/              # macOS signing / notarization scripts
 ├── tests/                     # Vitest tests
-├── docs/                      # Architecture documentation
 ├── electron.vite.config.ts    # electron-vite build config
 ├── electron-builder.yml       # Packaging / publish config
 └── package.json               # Single root manifest
@@ -90,12 +96,6 @@ with **pnpm**.
 - **Chinese Language Support**: OpenCC integration for Traditional ↔ Simplified conversion
 - **Release Management**: Automated builds and updates via GitHub Actions CI/CD
 
-## Documentation
-
-Documentation is available in the `/docs` directory:
-
-- **[Development Setup](docs/setup/development.md)**: Detailed setup instructions
-
 ## Release Process
 
 Desktop app releases are automated via GitHub Actions and published to this repository's
@@ -122,6 +122,18 @@ pnpm build                # Build the signed macOS app
 pnpm format               # Format code with Prettier
 pnpm test:run             # Run config/release tests (Vitest)
 ```
+
+## Screenshots
+
+<p align="center">
+  <img src="assets/Knovy_02.png" alt="History sessions in Settings"/>
+  <br/>Session history — browse and manage past recordings
+</p>
+
+<p align="center">
+  <img src="assets/Knovy_03.png" alt="Live recording with transcription and AI actions"/>
+  <br/>Live recording view with real-time transcription and AI action panel
+</p>
 
 ## Contributing
 

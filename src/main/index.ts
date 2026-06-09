@@ -760,7 +760,10 @@ app.on('ready', async () => {
     setTimeout(async () => {
       try {
         // Check for updates (this will also detect previously downloaded updates)
-        const checkResult = await withTimeout(autoUpdater.checkForUpdates(), UPDATE_CHECK_TIMEOUT_MS)
+        const checkResult = await withTimeout(
+          autoUpdater.checkForUpdates(),
+          UPDATE_CHECK_TIMEOUT_MS
+        )
 
         if (checkResult) {
           const currentVersion = checkResult.currentVersion
@@ -1500,7 +1503,9 @@ app.on('ready', async () => {
           // Keep raw text; mark with appropriate status.
           await dbService
             .updateTranscriptEnhancementStatus(transcriptId, aborted ? 'cancelled' : 'failed')
-            .catch((e) => console.warn(`[main/index.ts] Failed to mark status for ${transcriptId}:`, e))
+            .catch((e) =>
+              console.warn(`[main/index.ts] Failed to mark status for ${transcriptId}:`, e)
+            )
         } finally {
           activeCorrections.delete(transcriptId)
           event.sender.send('transcription:processed', { transcriptId })

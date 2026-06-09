@@ -93,18 +93,18 @@ We follow the [Conventional Commits](https://www.conventionalcommits.org/) speci
 
 Types include:
 
-- `feat`: A new feature
-- `fix`: A bug fix
-- `docs`: Documentation changes
-- `style`: Code style changes (formatting, etc.)
-- `refactor`: Code refactoring
-- `test`: Adding or updating tests
-- `chore`: Maintenance tasks
+- `Feat`: A new feature
+- `Fix`: A bug fix
+- `Docs`: Documentation changes
+- `Style`: Code style changes (formatting, etc.)
+- `Refactor`: Code refactoring
+- `Test`: Adding or updating tests
+- `Chore`: Maintenance tasks
 
 Example:
 
 ```
-feat(renderer): add real-time transcription component
+Feat: Add real-time transcription component
 
 Implement real-time audio transcription using the Web Audio API.
 Includes unit tests and documentation.
@@ -128,6 +128,7 @@ Closes #123
 - Define explicit types for function parameters and return values
 - Use interfaces for object shapes
 - Avoid using `any` type when possible
+- Avoid using `as`
 - Use optional chaining and nullish coalescing when appropriate
 
 ### React Guidelines
@@ -270,8 +271,6 @@ Desktop app releases are automated via GitHub Actions:
 
 ### Important Files
 
-- `.claude/agents/`: Specialized AI agents for development tasks
-- `docs/setup/`: Setup documentation
 - `src/main/`: Electron main process
 - `src/renderer/`: React renderer process
 

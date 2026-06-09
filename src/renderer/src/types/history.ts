@@ -22,9 +22,9 @@ export interface Session {
   started_at: string
   ended_at: string | null
   duration: number | null
-  summary: string | null           // Long summary (backward compat)
-  short_summary?: string | null    // New field
-  context_data?: string | null     // JSON string
+  summary: string | null // Long summary (backward compat)
+  short_summary?: string | null // New field
+  context_data?: string | null // JSON string
   created_at: string
   transcripts?: Transcript[]
 }

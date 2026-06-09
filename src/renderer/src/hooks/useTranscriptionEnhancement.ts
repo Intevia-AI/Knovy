@@ -27,7 +27,10 @@ export function useTranscriptionEnhancement() {
           console.error('[useTranscriptionEnhancement] Failed to initialize enhancement service')
         }
       } catch (error) {
-        console.error('[useTranscriptionEnhancement] Error initializing enhancement service:', error)
+        console.error(
+          '[useTranscriptionEnhancement] Error initializing enhancement service:',
+          error
+        )
       }
     }
 
@@ -42,6 +45,6 @@ export function useTranscriptionEnhancement() {
   }, [])
 
   return {
-    isEnhancementReady: isInitialized.current,
+    isEnhancementReady: isInitialized.current
   }
 }

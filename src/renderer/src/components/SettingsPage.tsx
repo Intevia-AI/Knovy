@@ -9,7 +9,13 @@ import { AboutView } from './settings/AboutView'
 import { AutoTriggerSettings } from './settings/AutoTriggerSettings'
 import { OllamaSettings } from './settings/OllamaSettings'
 
-export type SettingsSection = 'history' | 'general' | 'aiModels' | 'shortcuts' | 'about' | 'autoTrigger'
+export type SettingsSection =
+  | 'history'
+  | 'general'
+  | 'aiModels'
+  | 'shortcuts'
+  | 'about'
+  | 'autoTrigger'
 
 export function SettingsWindow() {
   const [activeSection, setActiveSection] = useState<SettingsSection>('history')

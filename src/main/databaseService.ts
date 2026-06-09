@@ -177,23 +177,29 @@ export async function addEnhancedTranscript(transcript: EnhancedTranscriptData) 
   const sessionExists = await sessionCheckStmt.get(transcript.session_id)
 
   if (!sessionExists) {
-    console.warn(`[DB] Session ${transcript.session_id} not found, recreating it for orphaned transcript`)
+    console.warn(
+      `[DB] Session ${transcript.session_id} not found, recreating it for orphaned transcript`
+    )
     // Recreate the session with current timestamp and active status
     const recreateStmt = await db.prepare(
       'INSERT INTO sessions (id, started_at, status) VALUES (?, ?, ?)'
     )
-    await recreateStmt.run(
-      transcript.session_id,
-      new Date().toISOString(),
-      'active'
-    )
+    await recreateStmt.run(transcript.session_id, new Date().toISOString(), 'active')
     console.log(`[DB] Recreated session ${transcript.session_id}`)
   }
 
   const {
-    id, session_id, timestamp, content, sourceType = 'system',
-    rawText, detectedLanguage, whisperLanguage, userLanguage,
-    usedTwoStageDetection = false, processingTimeMs,
+    id,
+    session_id,
+    timestamp,
+    content,
+    sourceType = 'system',
+    rawText,
+    detectedLanguage,
+    whisperLanguage,
+    userLanguage,
+    usedTwoStageDetection = false,
+    processingTimeMs,
     enhancementStatus = 'pending'
   } = transcript
 
@@ -206,12 +212,24 @@ export async function addEnhancedTranscript(transcript: EnhancedTranscriptData) 
   `)
 
   const result = await stmt.run(
-    id, session_id, timestamp, content, sourceType,
-    rawText, detectedLanguage, whisperLanguage, userLanguage,
-    usedTwoStageDetection ? 1 : 0, processingTimeMs, enhancementStatus
+    id,
+    session_id,
+    timestamp,
+    content,
+    sourceType,
+    rawText,
+    detectedLanguage,
+    whisperLanguage,
+    userLanguage,
+    usedTwoStageDetection ? 1 : 0,
+    processingTimeMs,
+    enhancementStatus
   )
 
-  console.log('[DB] Enhanced transcript add result:', { changes: result.changes, lastID: result.lastID })
+  console.log('[DB] Enhanced transcript add result:', {
+    changes: result.changes,
+    lastID: result.lastID
+  })
   return { id }
 }
 
@@ -237,7 +255,9 @@ export async function updateTranscriptEnhancement(
   const db = await dbPromise
 
   // First check if the transcript exists
-  const checkStmt = await db.prepare('SELECT id, content, enhancement_status FROM transcripts WHERE id = ?')
+  const checkStmt = await db.prepare(
+    'SELECT id, content, enhancement_status FROM transcripts WHERE id = ?'
+  )
   const existingTranscript = await checkStmt.get(transcriptId)
 
   if (!existingTranscript) {
@@ -298,7 +318,11 @@ export async function getTranscriptById(transcriptId: string) {
   return stmt.get(transcriptId)
 }
 
-export async function getEnhancedTranscripts(sessionId: string, page: number = 1, limit: number = 50) {
+export async function getEnhancedTranscripts(
+  sessionId: string,
+  page: number = 1,
+  limit: number = 50
+) {
   const db = await dbPromise
   const offset = (page - 1) * limit
   const stmt = await db.prepare(`
@@ -336,10 +360,7 @@ export async function endSession(sessionId: string) {
 
 // History pagination functions
 
-export async function getSessionsWithTranscripts(
-  limit: number = 20,
-  offset: number = 0
-) {
+export async function getSessionsWithTranscripts(limit: number = 20, offset: number = 0) {
   console.log('[DB] getSessionsWithTranscripts called with limit:', limit, 'offset:', offset)
   const db = await dbPromise
 
@@ -401,14 +422,10 @@ export async function getAllSessionDates() {
   `)
   const results = await stmt.all()
   console.log('[DB] Found session dates:', results.length)
-  return results.map(r => r.date)
+  return results.map((r) => r.date)
 }
 
-export async function exportSession(
-  sessionId: string,
-  locale?: string,
-  timezone?: string
-) {
+export async function exportSession(sessionId: string, locale?: string, timezone?: string) {
   const db = await dbPromise
 
   // Get session with summary

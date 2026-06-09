@@ -18,8 +18,7 @@ export function AutoTriggerSettings() {
     // Load initial settings
     const loadSettings = async () => {
       try {
-        const autoTriggerSettings =
-          await window.electronAPI.autoTrigger.getSettings()
+        const autoTriggerSettings = await window.electronAPI.autoTrigger.getSettings()
         setSettings(autoTriggerSettings)
       } catch (error) {
         console.error('[AutoTriggerSettings] Error loading settings:', error)
@@ -85,7 +84,6 @@ export function AutoTriggerSettings() {
       })
     }
   }
-
 
   if (isLoading) {
     return (
@@ -158,9 +156,7 @@ export function AutoTriggerSettings() {
           <div className="flex items-center justify-between">
             <div className="flex-1">
               <Label className="text-sm font-medium">{t('enableAutoTrigger')}</Label>
-              <p className="text-xs text-muted-foreground mt-1">
-                {t('autoTriggerDescription')}
-              </p>
+              <p className="text-xs text-muted-foreground mt-1">{t('autoTriggerDescription')}</p>
             </div>
             <Switch checked={settings.enabled} onCheckedChange={handleEnabledToggle} />
           </div>
@@ -198,7 +194,10 @@ export function AutoTriggerSettings() {
                   <RadioGroup
                     value={settings.actions.recommendResponse.approvalMode}
                     onValueChange={(value) =>
-                      handleActionApprovalModeChange('recommendResponse', value as 'ask' | 'automatic')
+                      handleActionApprovalModeChange(
+                        'recommendResponse',
+                        value as 'ask' | 'automatic'
+                      )
                     }
                   >
                     <div className="flex items-center space-x-2">
