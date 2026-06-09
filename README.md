@@ -31,7 +31,6 @@ with **pnpm**.
 ├── resources/                 # Bundled binaries (whisper.cpp, models)
 ├── code-signing/              # macOS signing / notarization scripts
 ├── tests/                     # Vitest tests
-├── docs/                      # Architecture documentation
 ├── electron.vite.config.ts    # electron-vite build config
 ├── electron-builder.yml       # Packaging / publish config
 └── package.json               # Single root manifest
@@ -89,12 +88,6 @@ with **pnpm**.
 - **Progressive Enhancement**: ID-based updates prevent duplicate transcriptions
 - **Chinese Language Support**: OpenCC integration for Traditional ↔ Simplified conversion
 - **Release Management**: Automated builds and updates via GitHub Actions CI/CD
-
-## Documentation
-
-Documentation is available in the `/docs` directory:
-
-- **[Development Setup](docs/setup/development.md)**: Detailed setup instructions
 
 ## Release Process
 

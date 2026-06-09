@@ -270,8 +270,6 @@ Desktop app releases are automated via GitHub Actions:
 
 ### Important Files
 
-- `.claude/agents/`: Specialized AI agents for development tasks
-- `docs/setup/`: Setup documentation
 - `src/main/`: Electron main process
 - `src/renderer/`: React renderer process
 
