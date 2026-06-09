@@ -1,11 +1,6 @@
 import { screen, BrowserWindow, Display } from 'electron'
 
-export type WindowPosition =
-  | 'top-left'
-  | 'top-right'
-  | 'bottom-left'
-  | 'bottom-right'
-  | 'center'
+export type WindowPosition = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | 'center'
 
 export interface PositionOptions {
   position: WindowPosition

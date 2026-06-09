@@ -1218,21 +1218,33 @@ export class WhisperBackend {
     // These are common Whisper artifacts from subtitle training data
 
     // Chinese speaker labels (姓氏 + colon pattern)
-    const SPEAKER_LABEL_PATTERN = /^[姜王張李陳劉楊黃趙吳周徐孫馬朱胡郭林何高梁鄭羅宋謝唐韓曹許鄧蕭馮曾程蔡彭潘袁於董余蘇葉魏呂丁任沈姚盧姜崔鍾譚陸汪范金石廖賈夏韋付方白鄒孟熊秦邱江尹薛閻段雷黎史龍陶賀顧毛郝龔邵萬錢嚴覃武戴莫孔向湯][:：]/
+    const SPEAKER_LABEL_PATTERN =
+      /^[姜王張李陳劉楊黃趙吳周徐孫馬朱胡郭林何高梁鄭羅宋謝唐韓曹許鄧蕭馮曾程蔡彭潘袁於董余蘇葉魏呂丁任沈姚盧姜崔鍾譚陸汪范金石廖賈夏韋付方白鄒孟熊秦邱江尹薛閻段雷黎史龍陶賀顧毛郝龔邵萬錢嚴覃武戴莫孔向湯][:：]/
 
     // Content markers (Traditional & Simplified Chinese)
     const CONTENT_MARKERS = [
-      '歌詞:', '歌词:',
-      '字幕:', '字幕:',
-      '旁白:', '旁白:',
-      '音樂:', '音乐:',
-      '掌聲:', '掌声:',
-      '笑聲:', '笑声:',
-      '背景音:', '背景音:',
-      '音效:', '音效:',
-      '說:', '说:',
-      '講:', '讲:',
-      '談:', '谈:'
+      '歌詞:',
+      '歌词:',
+      '字幕:',
+      '字幕:',
+      '旁白:',
+      '旁白:',
+      '音樂:',
+      '音乐:',
+      '掌聲:',
+      '掌声:',
+      '笑聲:',
+      '笑声:',
+      '背景音:',
+      '背景音:',
+      '音效:',
+      '音效:',
+      '說:',
+      '说:',
+      '講:',
+      '讲:',
+      '談:',
+      '谈:'
     ]
 
     // Check for speaker labels at the beginning
@@ -1244,7 +1256,9 @@ export class WhisperBackend {
     // Check for content markers
     for (const marker of CONTENT_MARKERS) {
       if (originalText.startsWith(marker)) {
-        console.log(`[WhisperService] Filtered content marker: "${originalText}" (marker: "${marker}")`)
+        console.log(
+          `[WhisperService] Filtered content marker: "${originalText}" (marker: "${marker}")`
+        )
         return ''
       }
     }

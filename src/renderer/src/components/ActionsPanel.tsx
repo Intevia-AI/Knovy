@@ -204,9 +204,7 @@ export default function ActionsPanel() {
 
   const actions = baseActions
 
-  const handleActionClick = (
-    action: 'summary' | 'deep_response' | 'screenshot' | 'file'
-  ) => {
+  const handleActionClick = (action: 'summary' | 'deep_response' | 'screenshot' | 'file') => {
     if (action === 'screenshot') {
       window.electronAPI.startScreenshot()
       return

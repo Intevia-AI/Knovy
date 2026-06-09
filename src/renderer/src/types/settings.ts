@@ -66,7 +66,13 @@ export type ActionType = 'recommendResponse' | 'scheduleReminder' | 'sendEmail'
 /**
  * Status of a pending action in the approval queue
  */
-export type ActionStatus = 'pending' | 'approved' | 'rejected' | 'executing' | 'completed' | 'failed'
+export type ActionStatus =
+  | 'pending'
+  | 'approved'
+  | 'rejected'
+  | 'executing'
+  | 'completed'
+  | 'failed'
 
 /**
  * Intention detected from transcription enhancement
@@ -174,7 +180,10 @@ export const ACTION_TYPE_LABELS: Record<ActionType, { en: string; 'zh-TW': strin
 /**
  * Intention type labels for display
  */
-export const INTENTION_LABELS: Record<DetectedIntention['primary'], { en: string; 'zh-TW': string }> = {
+export const INTENTION_LABELS: Record<
+  DetectedIntention['primary'],
+  { en: string; 'zh-TW': string }
+> = {
   question: {
     en: 'Question',
     'zh-TW': '問題'

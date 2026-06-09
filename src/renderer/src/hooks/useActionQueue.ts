@@ -27,8 +27,12 @@ export function useActionQueue() {
       try {
         const cachedActions = await window.electronAPI.invoke('popover:consume-pending-actions')
         if (cachedActions && cachedActions.length > 0) {
-          console.log(`[useActionQueue] Consumed ${cachedActions.length} pending actions from cache`)
-          setPendingActions(cachedActions.map(a => ({...a, timestamp: a.timestamp || Date.now()})))
+          console.log(
+            `[useActionQueue] Consumed ${cachedActions.length} pending actions from cache`
+          )
+          setPendingActions(
+            cachedActions.map((a) => ({ ...a, timestamp: a.timestamp || Date.now() }))
+          )
         }
       } catch (error) {
         console.error('[useActionQueue] Error consuming pending actions:', error)
@@ -46,10 +50,12 @@ export function useActionQueue() {
 
   // Listen for new actions
   useEffect(() => {
-    const unsubscribe = window.electronAPI.autoTrigger.onActionTriggered((action: PendingAction) => {
-      console.log('[useActionQueue] New action triggered:', action)
-      setPendingActions((prev) => [...prev, action])
-    })
+    const unsubscribe = window.electronAPI.autoTrigger.onActionTriggered(
+      (action: PendingAction) => {
+        console.log('[useActionQueue] New action triggered:', action)
+        setPendingActions((prev) => [...prev, action])
+      }
+    )
 
     return () => unsubscribe()
   }, [])
@@ -86,9 +92,7 @@ export function useActionQueue() {
       ({ actionId, result }: { actionId: string; result?: string }) => {
         setPendingActions((prev) =>
           prev.map((action) =>
-            action.id === actionId
-              ? { ...action, status: 'completed' as const, result }
-              : action
+            action.id === actionId ? { ...action, status: 'completed' as const, result } : action
           )
         )
       }
@@ -138,23 +142,20 @@ export function useActionQueue() {
   }, [])
 
   // Execute an approved action
-  const executeAction = useCallback(
-    async (action: PendingAction) => {
-      try {
-        const result = await window.electronAPI.autoTrigger.executeAction(
-          action.id,
-          action.actionType,
-          action.context
-        )
-        if (!result.success) {
-          console.error('[useActionQueue] Failed to execute action:', result.error)
-        }
-      } catch (error) {
-        console.error('[useActionQueue] Error executing action:', error)
+  const executeAction = useCallback(async (action: PendingAction) => {
+    try {
+      const result = await window.electronAPI.autoTrigger.executeAction(
+        action.id,
+        action.actionType,
+        action.context
+      )
+      if (!result.success) {
+        console.error('[useActionQueue] Failed to execute action:', result.error)
       }
-    },
-    []
-  )
+    } catch (error) {
+      console.error('[useActionQueue] Error executing action:', error)
+    }
+  }, [])
 
   return {
     pendingActions,

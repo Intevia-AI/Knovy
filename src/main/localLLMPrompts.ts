@@ -66,7 +66,8 @@ export function getChatPrompt(params: AIActionParams): PromptResult {
   }
   let user = `You are a helpful AI assistant. Prioritize conversation context when answering.\n`
   if (params.existingSummary) user += `\nConversation Summary:\n${params.existingSummary}\n`
-  if (params.recentTranscriptions) user += `\nRecent Transcriptions:\n${params.recentTranscriptions}\n`
+  if (params.recentTranscriptions)
+    user += `\nRecent Transcriptions:\n${params.recentTranscriptions}\n`
   user += `\nUser Question: "${params.textInput}"\n\nProvide your answer:`
   return {
     system: 'You are a helpful AI chat assistant. Be conversational and helpful.',
@@ -121,7 +122,8 @@ export function getSummarizePrompt(params: AIActionParams): PromptResult {
 
 Return ONLY JSON.`
   return {
-    system: 'You are a summarization assistant. Analyze conversations and produce structured JSON summaries. Return only valid JSON.',
+    system:
+      'You are a summarization assistant. Analyze conversations and produce structured JSON summaries. Return only valid JSON.',
     user
   }
 }
@@ -173,7 +175,8 @@ export function getRecommendResponsePrompt(params: AIActionParams): PromptResult
   }
   let user = `Analyze the transcribed question/statement and provide a helpful response.\n`
   if (params.existingSummary) user += `\nConversation Summary:\n${params.existingSummary}\n`
-  if (params.recentTranscriptions) user += `\nRecent Transcriptions:\n${params.recentTranscriptions}\n`
+  if (params.recentTranscriptions)
+    user += `\nRecent Transcriptions:\n${params.recentTranscriptions}\n`
   user += `\nTranscribed Text: "${params.textInput}"\n\nResponse Guidelines:
 - Conclusion first (1 sentence)
 - Key points (2-3 bullets)
@@ -181,7 +184,8 @@ export function getRecommendResponsePrompt(params: AIActionParams): PromptResult
 
 Provide your response:`
   return {
-    system: 'You are an auto-response engine. Analyze transcribed text and provide concise, helpful responses.',
+    system:
+      'You are an auto-response engine. Analyze transcribed text and provide concise, helpful responses.',
     user
   }
 }
@@ -211,7 +215,8 @@ export function getDeepResponsePrompt(params: AIActionParams): PromptResult {
   }
   let user = `Generate exactly 3 concise recommended responses to: "${params.textInput}"\n`
   if (params.existingSummary) user += `\nConversation Summary:\n${params.existingSummary}\n`
-  if (params.recentTranscriptions) user += `\nRecent Transcriptions:\n${params.recentTranscriptions}\n`
+  if (params.recentTranscriptions)
+    user += `\nRecent Transcriptions:\n${params.recentTranscriptions}\n`
   user += `\nRequirements:
 - Exactly 3 response options, each 10-20 words
 - Option 1: Direct and informative
@@ -223,7 +228,8 @@ Format (one per line):
 2. [response]
 3. [response]`
   return {
-    system: 'You are a response suggestion assistant. Generate exactly 3 concise recommended responses.',
+    system:
+      'You are a response suggestion assistant. Generate exactly 3 concise recommended responses.',
     user
   }
 }
@@ -247,7 +253,8 @@ export function getKeywordSearchPrompt(params: AIActionParams): PromptResult {
   const hasContext = !!(params.existingSummary || params.recentTranscriptions)
   let user = `Provide a clear, helpful explanation for: "${params.textInput}"\n`
   if (params.existingSummary) user += `\nConversation Summary:\n${params.existingSummary}\n`
-  if (params.recentTranscriptions) user += `\nRecent Transcriptions:\n${params.recentTranscriptions}\n`
+  if (params.recentTranscriptions)
+    user += `\nRecent Transcriptions:\n${params.recentTranscriptions}\n`
   user += `\n${hasContext ? 'Tailor your response to the conversation context.' : 'Provide a general, informative explanation.'}
 Keep concise but comprehensive (2-4 sentences). Respond in English:`
   return {
@@ -276,7 +283,8 @@ export function getScreenshotAnalysisPrompt(params: ScreenshotAnalysisParams): P
   }
   let user = `Analyze the provided screenshot and answer: "${params.textInput}"\n`
   if (params.existingSummary) user += `\nConversation Summary:\n${params.existingSummary}\n`
-  if (params.recentTranscriptions) user += `\nRecent Transcriptions:\n${params.recentTranscriptions}\n`
+  if (params.recentTranscriptions)
+    user += `\nRecent Transcriptions:\n${params.recentTranscriptions}\n`
   user += `\nResponse Guidelines:
 - Answer the question directly
 - Describe key details visible in the image

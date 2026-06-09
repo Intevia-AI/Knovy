@@ -5,12 +5,14 @@ This directory contains comprehensive tests for the local transcription implemen
 ## Test Files
 
 ### Basic Testing
+
 - **`test-transcription.js`** - Basic functionality validation
   - Tests binary execution, model loading, and basic transcription
   - Quick smoke test to verify everything is working
   - Run with: `node test-transcription.js`
 
 ### Comprehensive Testing
+
 - **`test-comprehensive.js`** - Advanced test suite with 17 test cases
   - Basic setup validation (binary, model, architecture)
   - Binary execution tests (help, transcription, parameters)
@@ -22,6 +24,7 @@ This directory contains comprehensive tests for the local transcription implemen
   - Run with: `node test-comprehensive.js`
 
 ### Service Layer Testing
+
 - **`test-services.mjs`** - TypeScript service validation
   - ModelManager functionality tests
   - LocalTranscriptionService logic validation
@@ -30,6 +33,7 @@ This directory contains comprehensive tests for the local transcription implemen
   - Run with: `node test-services.mjs`
 
 ### Performance Testing
+
 - **`benchmark-performance.js`** - Comprehensive performance analysis
   - Cold start vs warm start benchmarking
   - Concurrent processing analysis
@@ -47,6 +51,7 @@ This directory contains comprehensive tests for the local transcription implemen
 Before running tests, ensure:
 
 1. **Test audio file exists:**
+
    ```bash
    curl -L -o /tmp/test.wav https://cdn.openai.com/whisper/draft-20220913a/micro-machines.wav
    ```
@@ -60,12 +65,14 @@ Before running tests, ensure:
 ## Running All Tests
 
 ### Quick Validation
+
 ```bash
 # Run basic functionality test
 node test-transcription.js
 ```
 
 ### Full Test Suite
+
 ```bash
 # Run comprehensive tests
 node test-comprehensive.js
@@ -80,6 +87,7 @@ node quick-benchmark.js
 ### Expected Results
 
 All tests should pass with 100% success rate:
+
 - **Basic validation:** ✅ Binary, model, and audio file checks
 - **Functionality:** ✅ Transcription working correctly
 - **Performance:** ⚠️ Average ~1200ms (target: <1000ms, acceptable for production)
@@ -90,11 +98,13 @@ All tests should pass with 100% success rate:
 ## Test Results Interpretation
 
 ### Performance Metrics
+
 - **Target latency:** <1000ms
 - **Acceptable latency:** <1500ms
 - **Current average:** ~1200ms (⚠️ above target, but acceptable)
 
 ### Success Criteria
+
 - All functional tests pass: ✅ Required
 - Memory usage <1GB: ✅ Required
 - Error handling works: ✅ Required
@@ -105,12 +115,14 @@ All tests should pass with 100% success rate:
 ### Common Issues
 
 1. **Binary not found**
+
    ```bash
    ls -la ../../resources/whisper.cpp/whisper-darwin-arm64
    chmod +x ../../resources/whisper.cpp/whisper-darwin-arm64
    ```
 
 2. **Model not found**
+
    ```bash
    # Download tiny model
    mkdir -p ../../resources/whisper.cpp/models
@@ -119,6 +131,7 @@ All tests should pass with 100% success rate:
    ```
 
 3. **Test audio not found**
+
    ```bash
    curl -L -o /tmp/test.wav https://cdn.openai.com/whisper/draft-20220913a/micro-machines.wav
    ```

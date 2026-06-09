@@ -6,11 +6,11 @@ import { getDateGroup, getDateGroupLabel } from './date-utils'
  */
 export function groupSessionsByDate(sessions: SessionWithTranscripts[]): GroupedSessions[] {
   const groups: Record<DateGroup, SessionWithTranscripts[]> = {
-    'today': [],
-    'yesterday': [],
+    today: [],
+    yesterday: [],
     'this-week': [],
     'this-month': [],
-    'older': []
+    older: []
   }
 
   // Group sessions by date
@@ -47,8 +47,6 @@ export function filterSessions(
     if (session.summary?.toLowerCase().includes(query)) return true
 
     // Search in transcripts
-    return session.transcripts.some((transcript) =>
-      transcript.text.toLowerCase().includes(query)
-    )
+    return session.transcripts.some((transcript) => transcript.text.toLowerCase().includes(query))
   })
 }
