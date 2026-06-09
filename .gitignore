@@ -33,6 +33,10 @@ dist
 *.log*
 npm-debug.log*
 
+# Local dev/planning docs (not published)
+plans/
+docs/superpowers/
+
 # Misc
 .DS_Store
 *.pem
