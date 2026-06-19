@@ -31,12 +31,14 @@ export interface Segment {
 }
 
 /**
- * Echo-cancelling audio processing adapter (Phase 2).
- * Phase 1 uses only `rmsVad`; this interface is defined now so the harness and
- * worklet depend on a stable contract, not on a specific WASM build.
+ * Acoustic-echo-cancelling adapter (Phase 2). AEC-only: takes a near-end frame
+ * plus the far-end reference (the OTHER stream) and returns the cleaned near-end.
+ * The underlying WebRTC AEC3 wasm exposes no VAD, so voice activity is decided
+ * downstream by `rmsVad` on the cleaned output. The far-end is analysed and the
+ * near-end processed for the same block; output may be resampled (e.g. 48k→16k).
  */
 export interface ApmAdapter {
-  /** Process one frame: near-end + far-end reference → cleaned near-end + VAD. */
-  processFrame(near: Float32Array, far: Float32Array): { out: Float32Array; voiced: boolean }
+  /** Cancel echo: near-end + far-end reference → cleaned (possibly resampled) near-end. */
+  process(near: Float32Array, far: Float32Array): Float32Array
   destroy(): void
 }

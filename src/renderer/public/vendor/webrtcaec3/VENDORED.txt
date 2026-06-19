@@ -1,0 +1,3 @@
+Vendored from npm package @ennuicastr/webrtcaec3.js v0.3.0
+Upstream: https://github.com/ennuicastr/webrtcaec3.js
+License: BSD-3-Clause (WebRTC) + 0BSD (glue) + Apache-2.0 (components). See README.md.
