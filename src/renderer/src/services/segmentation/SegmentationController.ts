@@ -76,8 +76,14 @@ export class SegmentationController {
     this.voicedFrameCount = 0
     this.silenceRun = 0
     this.frames = []
+    this.startFrame = 0
   }
 
+  /**
+   * endFrame is the index of the LAST BUFFERED frame. For a silence-terminated
+   * segment this is the hangover silence frame that triggered the flush — not
+   * the last voiced frame.
+   */
   private finish(endFrame: number, forced: boolean): Segment | null {
     const frames = this.frames
     const voicedFrameCount = this.voicedFrameCount

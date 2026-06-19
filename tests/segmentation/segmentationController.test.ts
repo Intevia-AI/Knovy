@@ -20,8 +20,10 @@ describe('SegmentationController', () => {
     const c = new SegmentationController(cfg)
     // 6 voiced frames (>= speechStartFrames), then 5 silent frames (= hangover)
     for (let i = 0; i < 6; i++) expect(c.pushFrame(frame(0.5), true)).toBeNull()
-    let seg = null
-    for (let i = 0; i < 5; i++) seg = c.pushFrame(frame(0), false) ?? seg
+    // First 4 silence frames must NOT emit
+    for (let i = 0; i < 4; i++) expect(c.pushFrame(frame(0), false)).toBeNull()
+    // Exactly the 5th silence frame triggers the segment
+    const seg = c.pushFrame(frame(0), false)
     expect(seg).not.toBeNull()
     expect(seg!.forced).toBe(false)
     // 6 voiced + part of silence; duration well over minSegmentMs
@@ -38,5 +40,51 @@ describe('SegmentationController', () => {
     let seg = null
     for (let i = 0; i < 5; i++) seg = c.pushFrame(frame(0), false) ?? seg
     expect(seg).toBeNull()
+  })
+
+  it('startFrame is not stale across back-to-back segments', () => {
+    const c = new SegmentationController(cfg)
+    // First segment: 6 voiced + 5 silence hangover
+    for (let i = 0; i < 6; i++) expect(c.pushFrame(frame(0.5), true)).toBeNull()
+    for (let i = 0; i < 4; i++) expect(c.pushFrame(frame(0), false)).toBeNull()
+    const seg1 = c.pushFrame(frame(0), false)
+    expect(seg1).not.toBeNull()
+
+    // Second segment: 6 voiced + 5 silence hangover
+    for (let i = 0; i < 6; i++) expect(c.pushFrame(frame(0.5), true)).toBeNull()
+    for (let i = 0; i < 4; i++) expect(c.pushFrame(frame(0), false)).toBeNull()
+    const seg2 = c.pushFrame(frame(0), false)
+    expect(seg2).not.toBeNull()
+
+    // Second segment must start after the first segment ended
+    expect(seg2!.startFrame).toBeGreaterThan(seg1!.endFrame)
+  })
+
+  it('discards a false-start voiced run interrupted before speechStartFrames', () => {
+    const localCfg: SegmentationConfig = {
+      ...cfg,
+      speechStartFrames: 3
+    }
+    const c = new SegmentationController(localCfg)
+
+    // False start: 2 voiced frames, then 1 silent (resets pre-speech run)
+    expect(c.pushFrame(frame(0.5), true)).toBeNull()  // voiced #1 (frameIdx 0)
+    expect(c.pushFrame(frame(0.5), true)).toBeNull()  // voiced #2 (frameIdx 1)
+    expect(c.pushFrame(frame(0), false)).toBeNull()   // silence  (frameIdx 2) — resets
+
+    // Real segment onset starts at frameIdx 3
+    const realOnset = 3
+    // 3 voiced frames to meet speechStartFrames
+    expect(c.pushFrame(frame(0.5), true)).toBeNull()  // frameIdx 3
+    expect(c.pushFrame(frame(0.5), true)).toBeNull()  // frameIdx 4
+    expect(c.pushFrame(frame(0.5), true)).toBeNull()  // frameIdx 5
+    // 5 silence hangover frames (silenceHangoverMs=50, frameMs=10 → 5 frames)
+    for (let i = 0; i < 4; i++) expect(c.pushFrame(frame(0), false)).toBeNull()
+    const seg = c.pushFrame(frame(0), false)
+
+    // Exactly ONE segment produced
+    expect(seg).not.toBeNull()
+    // startFrame must reflect the real onset (frameIdx 3), not the false start (0)
+    expect(seg!.startFrame).toBe(realOnset)
   })
 })
