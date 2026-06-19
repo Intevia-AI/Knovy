@@ -9,6 +9,7 @@ import ActionsPanel from '../components/ActionsPanel'
 import { PreviewPanel } from '../components/PreviewPanel'
 import { UpdaterPanel } from '../components/UpdaterPanel'
 import { ModelGatePopover } from '../components/ModelGatePopover'
+import { QuitHintPanel } from '../components/QuitHintPanel'
 
 const getInitialView = () => {
   if (typeof window === 'undefined') return 'main'
@@ -19,6 +20,7 @@ const getInitialView = () => {
     case 'screen-preview':
     case 'updater':
     case 'model-gate':
+    case 'quit-hint':
       return hash
     default:
       return 'main'
@@ -50,6 +52,8 @@ function AppContainer() {
       return <ActionsPanel />
     case 'updater':
       return <UpdaterPanel />
+    case 'quit-hint':
+      return <QuitHintPanel />
     case 'model-gate':
       return <ModelGatePopover />
     default:

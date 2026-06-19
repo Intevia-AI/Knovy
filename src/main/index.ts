@@ -10,7 +10,6 @@ import {
   shell,
   nativeTheme,
   Menu,
-  dialog,
   type MenuItemConstructorOptions
 } from 'electron'
 import path from 'path'
@@ -28,6 +27,7 @@ import {
   getPopover
 } from './popoverManager'
 import { positionWindow, type PositionOptions } from './windowManager'
+import { QuitFlow } from './quitFlow'
 import electronUpdater, { type AppUpdater } from 'electron-updater'
 import { withTimeout } from './utils/withTimeout'
 import { getWhisperBackend } from './whisperBackend'
@@ -89,7 +89,8 @@ let selectionWindow: BrowserWindow | null
 
 /**
  * Set the application menu.
- * cmd+Q shows a dialog directing the user to quit through the Settings panel.
+ * cmd+Q triggers the two-step quit flow: the first press shows a hint popover,
+ * a second press within a few seconds quits.
  */
 function updateApplicationMenu(): void {
   console.log('[main/index.ts] Updating application menu')
@@ -110,13 +111,7 @@ function updateApplicationMenu(): void {
           label: 'Quit',
           accelerator: 'Command+Q',
           click: () => {
-            dialog.showMessageBox({
-              type: 'info',
-              title: 'Quit Application',
-              message: 'Please quit the application through the Settings panel.',
-              detail: 'You can also right-click the dock icon and select Quit.',
-              buttons: ['OK']
-            })
+            quitFlow.request()
           }
         }
       ]
@@ -160,6 +155,91 @@ export function getAutoUpdater(): AppUpdater {
 // This is now the single source of truth for the main window.
 // Other modules can get it from here if needed.
 export const getMainWindow = (): BrowserWindow | null => mainWindow
+
+const QUIT_HINT_ID = 'quit-hint'
+const QUIT_ARM_WINDOW_MS = 3000
+
+/** Build the renderer URL for a popover hash route (dev server vs packaged file). */
+function buildPopoverUrl(hash: string): string {
+  const devServerUrl = import.meta.env['VITE_DEV_SERVER_URL']
+  if (is.dev) {
+    const baseUrl = devServerUrl || 'http://localhost:5173'
+    return `${baseUrl}#${hash}`
+  }
+  return `file://${path.join(__dirname, '../renderer/index.html')}#${hash}`
+}
+
+// Track webContents that already have the Ctrl+Q handler so re-attaching is a
+// no-op. createPopover reuses an existing popover window of the same id, so the
+// hint could otherwise accumulate duplicate listeners across re-arm cycles.
+const quitShortcutAttached = new WeakSet<Electron.WebContents>()
+
+/**
+ * Attach Ctrl+Q two-step quit interception to a window (non-macOS only).
+ * R1: ignores key auto-repeat so holding Ctrl+Q does not trip the second press.
+ * macOS uses the app-menu accelerator instead, so this is a no-op there.
+ * Idempotent: attaching to the same webContents more than once is a no-op.
+ */
+function attachQuitShortcut(win: BrowserWindow): void {
+  if (process.platform === 'darwin') return
+  if (quitShortcutAttached.has(win.webContents)) return
+  quitShortcutAttached.add(win.webContents)
+  win.webContents.on('before-input-event', (event, input) => {
+    if (
+      input.type === 'keyDown' &&
+      !input.isAutoRepeat &&
+      input.control &&
+      !input.alt &&
+      !input.meta &&
+      !input.shift &&
+      input.key.toLowerCase() === 'q'
+    ) {
+      event.preventDefault()
+      quitFlow.request()
+    }
+  })
+}
+
+/**
+ * Two-step quit. The first Cmd+Q (macOS) / Ctrl+Q (Windows/Linux) reveals the
+ * main window if hidden and shows a hint popover; a second press within
+ * QUIT_ARM_WINDOW_MS quits. The hint is created directly here so it does NOT
+ * disturb the user's other open popovers.
+ */
+const quitFlow = new QuitFlow({
+  armWindowMs: QUIT_ARM_WINDOW_MS,
+  onShowHint: () => {
+    const win = mainWindow
+    if (!win || win.isDestroyed()) {
+      // No window to anchor the hint to — surface one. The flow stays armed,
+      // so a second press still quits.
+      createWindow()
+      return
+    }
+    if (win.isMinimized()) win.restore()
+    if (!win.isVisible()) win.show()
+    win.focus()
+    // Match the updater popover's geometry exactly: width 360 (440 while
+    // screen-sharing), height 50, centered 8px above the main bar (the 8px gap
+    // is createPopover's default when x/y are omitted).
+    const hint = createPopover({
+      id: QUIT_HINT_ID,
+      parent: win,
+      url: buildPopoverUrl(QUIT_HINT_ID),
+      width: isScreenSharing ? 440 : 360,
+      height: 50
+    })
+    // R2: on Windows the hint can take keyboard focus, so the second Ctrl+Q
+    // could land here instead of the main window — intercept it on the hint too.
+    attachQuitShortcut(hint)
+  },
+  onHideHint: () => {
+    closePopover(QUIT_HINT_ID)
+  },
+  onQuit: () => {
+    app.quit()
+  }
+})
 
 // Max time to wait for an update check before giving up
 const UPDATE_CHECK_TIMEOUT_MS = 10_000
@@ -581,6 +661,12 @@ const createWindow = async () => {
   } else {
     mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'))
   }
+
+  // Non-macOS: there is no app menu, so intercept Ctrl+Q on the focused window
+  // to drive the same two-step quit flow. (Global shortcuts would fire even when
+  // unfocused, which is wrong for quit.) The hint popover receives the same
+  // handler in onShowHint (R2); attachQuitShortcut is a no-op on macOS.
+  attachQuitShortcut(mainWindow)
 
   // Center the window initially during loading
   mainWindow.center()
