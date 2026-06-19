@@ -6,7 +6,8 @@ import { useTranscriptionEnhancement } from '@/hooks/useTranscriptionEnhancement
 import { useLanguage } from '@/hooks/useLanguage'
 import { SegmentationController } from '../services/segmentation/SegmentationController'
 import { isVoiced } from '../services/segmentation/rmsVad'
-import type { SegmentationConfig } from '../services/segmentation/types'
+import { loadAec3Module, createAec3Adapter } from '../services/segmentation/apmWasmAdapter'
+import type { SegmentationConfig, ApmAdapter } from '../services/segmentation/types'
 // Configuration: Change this to set the real-time transcription model size
 // Options: 'tiny' (75MB, fastest), 'base' (142MB, better), 'small' (488MB, good+), 'medium' (1.5GB, best)
 // Note: For real-time use, 'tiny' or 'base' are recommended for performance
@@ -133,6 +134,8 @@ export default function RealTimeAnalysis({
     let shouldSendAudio = false
     let micController: SegmentationController | null = null
     let systemController: SegmentationController | null = null
+    let micAecRef: ApmAdapter | null = null
+    let systemAecRef: ApmAdapter | null = null
 
     const processTranscriptionResponse = (
       text: string,
@@ -344,8 +347,19 @@ export default function RealTimeAnalysis({
       // Connect both processors
       await Promise.all([micProcessor.connect(), systemProcessor.connect()])
 
+      // Decide the AEC path up front, before creating the AudioContext. AEC3 runs
+      // only when the vendored wasm loads AND a system stream is present (something
+      // to cancel against). Otherwise keep the exact Phase-1 16kHz path.
+      const aec3Module = systemAudioStream ? await loadAec3Module() : null
+      const aecEnabled = !!aec3Module
+      const contextRate = aecEnabled ? 48000 : 16000
+      console.log(
+        '[RealTimeAnalysis] AEC3 ' +
+          (aecEnabled ? 'enabled (48kHz)' : 'disabled, Phase-1 16kHz path')
+      )
+
       try {
-        audioContext = new AudioContext({ sampleRate: 16000 })
+        audioContext = new AudioContext({ sampleRate: contextRate })
         audioContextRef.current = audioContext
 
         await Promise.all([
@@ -371,39 +385,115 @@ export default function RealTimeAnalysis({
         const systemSegController = new SegmentationController(SEG_CFG)
         micController = micSegController
         systemController = systemSegController
-        const micCarry: number[] = []
-        const sysCarry: number[] = []
 
-        const feed = (
-          carry: number[],
-          controller: SegmentationController,
-          pcm: Float32Array,
-          processor: TranscriptionProcessor | null
-        ) => {
-          for (let i = 0; i < pcm.length; i++) carry.push(pcm[i])
-          while (carry.length >= SEG_FRAME) {
-            const frame = Float32Array.from(carry.splice(0, SEG_FRAME))
-            const seg = controller.pushFrame(frame, isVoiced(frame, 0.01))
-            if (seg && processor) processor.sendSegment(seg.pcm)
+        // Two cross-referenced AEC instances: each cancels the OTHER stream from
+        // its own near-end. Created only on the AEC path.
+        let micAec: ApmAdapter | null = null
+        let systemAec: ApmAdapter | null = null
+        if (aec3Module) {
+          micAec = createAec3Adapter(aec3Module, { inRate: 48000, outRate: 16000 }) // near=mic, far=system
+          systemAec = createAec3Adapter(aec3Module, { inRate: 48000, outRate: 16000 }) // near=system, far=mic
+        }
+        micAecRef = micAec
+        systemAecRef = systemAec
+
+        if (aecEnabled) {
+          const BLK48 = 480 // 10ms @ 48k
+          const micRaw: number[] = []
+          const sysRaw: number[] = []
+          const cleanMicCarry: number[] = []
+          const cleanSysCarry: number[] = []
+
+          // reframe cleaned 16k output into exact 160-sample (10ms@16k) frames → controller → segment
+          const drainClean = (
+            carry: number[],
+            controller: SegmentationController,
+            processor: TranscriptionProcessor | null
+          ) => {
+            while (carry.length >= SEG_FRAME) {
+              const frame = Float32Array.from(carry.splice(0, SEG_FRAME))
+              const seg = controller.pushFrame(frame, isVoiced(frame, 0.01))
+              if (seg && processor) processor.sendSegment(seg.pcm)
+            }
           }
-        }
 
-        micAudioWorkletNode.port.onmessage = (event) => {
-          const { pcmData, sourceType } = event.data
-          if (
-            !shouldSendAudio ||
-            !micEnabledRef.current ||
-            sourceType !== 'microphone' ||
-            !pcmData
-          )
-            return
-          feed(micCarry, micSegController, new Float32Array(pcmData), micProcessor)
-        }
+          const pump = () => {
+            // Drain while either side has a full 48k block; silence-pad a starved side so a
+            // one-sided stream (e.g. muted mic, or system briefly behind) never stalls/grows.
+            while (micRaw.length >= BLK48 || sysRaw.length >= BLK48) {
+              if (micRaw.length < BLK48 && sysRaw.length < BLK48) break
+              const m =
+                micRaw.length >= BLK48
+                  ? Float32Array.from(micRaw.splice(0, BLK48))
+                  : new Float32Array(BLK48)
+              const s =
+                sysRaw.length >= BLK48
+                  ? Float32Array.from(sysRaw.splice(0, BLK48))
+                  : new Float32Array(BLK48)
+              if (micAec) {
+                const cleanMic = micAec.process(m, s)
+                for (let i = 0; i < cleanMic.length; i++) cleanMicCarry.push(cleanMic[i])
+              }
+              if (systemAec) {
+                const cleanSys = systemAec.process(s, m)
+                for (let i = 0; i < cleanSys.length; i++) cleanSysCarry.push(cleanSys[i])
+              }
+              drainClean(cleanMicCarry, micSegController, micProcessor)
+              drainClean(cleanSysCarry, systemSegController, systemProcessor)
+            }
+          }
 
-        systemAudioWorkletNode.port.onmessage = (event) => {
-          const { pcmData, sourceType } = event.data
-          if (!shouldSendAudio || sourceType !== 'system' || !pcmData) return
-          feed(sysCarry, systemSegController, new Float32Array(pcmData), systemProcessor)
+          micAudioWorkletNode.port.onmessage = (event) => {
+            const { pcmData, sourceType } = event.data
+            if (!shouldSendAudio || sourceType !== 'microphone' || !pcmData) return
+            if (!micEnabledRef.current) return
+            const pcm = new Float32Array(pcmData)
+            for (let i = 0; i < pcm.length; i++) micRaw.push(pcm[i])
+            pump()
+          }
+
+          systemAudioWorkletNode.port.onmessage = (event) => {
+            const { pcmData, sourceType } = event.data
+            if (!shouldSendAudio || sourceType !== 'system' || !pcmData) return
+            const pcm = new Float32Array(pcmData)
+            for (let i = 0; i < pcm.length; i++) sysRaw.push(pcm[i])
+            pump()
+          }
+        } else {
+          const micCarry: number[] = []
+          const sysCarry: number[] = []
+
+          const feed = (
+            carry: number[],
+            controller: SegmentationController,
+            pcm: Float32Array,
+            processor: TranscriptionProcessor | null
+          ) => {
+            for (let i = 0; i < pcm.length; i++) carry.push(pcm[i])
+            while (carry.length >= SEG_FRAME) {
+              const frame = Float32Array.from(carry.splice(0, SEG_FRAME))
+              const seg = controller.pushFrame(frame, isVoiced(frame, 0.01))
+              if (seg && processor) processor.sendSegment(seg.pcm)
+            }
+          }
+
+          micAudioWorkletNode.port.onmessage = (event) => {
+            const { pcmData, sourceType } = event.data
+            if (
+              !shouldSendAudio ||
+              !micEnabledRef.current ||
+              sourceType !== 'microphone' ||
+              !pcmData
+            )
+              return
+            feed(micCarry, micSegController, new Float32Array(pcmData), micProcessor)
+          }
+
+          systemAudioWorkletNode.port.onmessage = (event) => {
+            const { pcmData, sourceType } = event.data
+            if (!shouldSendAudio || sourceType !== 'system' || !pcmData) return
+            feed(sysCarry, systemSegController, new Float32Array(pcmData), systemProcessor)
+          }
         }
 
         // Function to connect microphone stream
@@ -552,6 +642,10 @@ export default function RealTimeAnalysis({
         const sysTail = systemController.flush()
         if (sysTail && systemProcessor) systemProcessor.sendSegment(sysTail.pcm)
       }
+
+      // Free the AEC3 instances (no-op on the Phase-1 path where they were null)
+      micAecRef?.destroy()
+      systemAecRef?.destroy()
 
       // Log connection stats before disconnecting
       if (micProcessor) {
