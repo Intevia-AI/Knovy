@@ -4,10 +4,23 @@ import { useEffect, useRef } from 'react'
 import { TranscriptionFactory, TranscriptionProcessor } from '@/services/transcription'
 import { useTranscriptionEnhancement } from '@/hooks/useTranscriptionEnhancement'
 import { useLanguage } from '@/hooks/useLanguage'
+import { SegmentationController } from '../services/segmentation/SegmentationController'
+import { isVoiced } from '../services/segmentation/rmsVad'
+import type { SegmentationConfig } from '../services/segmentation/types'
 // Configuration: Change this to set the real-time transcription model size
 // Options: 'tiny' (75MB, fastest), 'base' (142MB, better), 'small' (488MB, good+), 'medium' (1.5GB, best)
 // Note: For real-time use, 'tiny' or 'base' are recommended for performance
 const REALTIME_MODEL_SIZE: 'tiny' | 'base' | 'small' | 'medium' = 'base'
+
+const SEG_CFG: SegmentationConfig = {
+  sampleRate: 16000,
+  frameMs: 10,
+  speechStartFrames: 3,
+  silenceHangoverMs: 800,
+  minSegmentMs: 600,
+  maxSegmentMs: 30000
+}
+const SEG_FRAME = 160 // 10ms @16kHz
 
 interface RealTimeAnalysisProps {
   onTextResponse?: (
@@ -118,6 +131,8 @@ export default function RealTimeAnalysis({
     let micAudioSource: MediaStreamAudioSourceNode | null = null
     let systemAudioSource: MediaStreamAudioSourceNode | null = null
     let shouldSendAudio = false
+    let micController: SegmentationController | null = null
+    let systemController: SegmentationController | null = null
 
     const processTranscriptionResponse = (
       text: string,
@@ -352,80 +367,43 @@ export default function RealTimeAnalysis({
         })
         systemAudioWorkletNodeRef.current = systemAudioWorkletNode
 
-        micAudioWorkletNode.port.onmessage = (event) => {
-          const { pcmData, sourceType, type, segmentDuration, forced } = event.data
+        const micSegController = new SegmentationController(SEG_CFG)
+        const systemSegController = new SegmentationController(SEG_CFG)
+        micController = micSegController
+        systemController = systemSegController
+        const micCarry: number[] = []
+        const sysCarry: number[] = []
 
-          // Handle speech end events for VAD-based segmentation
-          if (type === 'speechEnd' && sourceType === 'microphone') {
-            console.log(
-              `[RealTimeAnalysis] Microphone speech ended - duration: ${segmentDuration}ms, forced: ${forced || false}`
-            )
-
-            // Trigger segment processing in the current system
-            window.dispatchEvent(
-              new CustomEvent('mic_segment', {
-                detail: {
-                  vadTriggered: true,
-                  segmentDuration,
-                  forced: forced || false,
-                  timestamp: Date.now()
-                }
-              })
-            )
-            return
-          }
-
-          // Handle regular audio data
-          if (
-            micProcessor &&
-            shouldSendAudio &&
-            micEnabledRef.current &&
-            sourceType === 'microphone' &&
-            pcmData
-          ) {
-            try {
-              const pcmArray = new Uint8Array(pcmData)
-              const b64Data = btoa(String.fromCharCode.apply(null, Array.from(pcmArray)))
-              micProcessor.sendAudioChunk(b64Data, 'audio/pcm')
-            } catch (error) {
-              console.error('[RealTimeAnalysis] Error sending microphone audio chunk:', error)
-            }
+        const feed = (
+          carry: number[],
+          controller: SegmentationController,
+          pcm: Float32Array,
+          processor: TranscriptionProcessor | null
+        ) => {
+          for (let i = 0; i < pcm.length; i++) carry.push(pcm[i])
+          while (carry.length >= SEG_FRAME) {
+            const frame = Float32Array.from(carry.splice(0, SEG_FRAME))
+            const seg = controller.pushFrame(frame, isVoiced(frame, 0.01))
+            if (seg && processor) processor.sendSegment(seg.pcm)
           }
         }
 
-        systemAudioWorkletNode.port.onmessage = (event) => {
-          const { pcmData, sourceType, type, segmentDuration, forced } = event.data
-
-          // Handle speech end events for VAD-based segmentation
-          if (type === 'speechEnd' && sourceType === 'system') {
-            console.log(
-              `[RealTimeAnalysis] System audio speech ended - duration: ${segmentDuration}ms, forced: ${forced || false}`
-            )
-
-            // Trigger segment processing in the current system
-            window.dispatchEvent(
-              new CustomEvent('system_segment', {
-                detail: {
-                  vadTriggered: true,
-                  segmentDuration,
-                  forced: forced || false,
-                  timestamp: Date.now()
-                }
-              })
-            )
+        micAudioWorkletNode.port.onmessage = (event) => {
+          const { pcmData, sourceType } = event.data
+          if (
+            !shouldSendAudio ||
+            !micEnabledRef.current ||
+            sourceType !== 'microphone' ||
+            !pcmData
+          )
             return
-          }
+          feed(micCarry, micSegController, new Float32Array(pcmData), micProcessor)
+        }
 
-          // Handle regular audio data
-          if (systemProcessor && shouldSendAudio && sourceType === 'system' && pcmData) {
-            try {
-              const pcmArray = new Uint8Array(pcmData)
-              const b64Data = btoa(String.fromCharCode.apply(null, Array.from(pcmArray)))
-              systemProcessor.sendAudioChunk(b64Data, 'audio/pcm')
-            } catch (error) {
-              console.error('[RealTimeAnalysis] Error sending system audio chunk:', error)
-            }
-          }
+        systemAudioWorkletNode.port.onmessage = (event) => {
+          const { pcmData, sourceType } = event.data
+          if (!shouldSendAudio || sourceType !== 'system' || !pcmData) return
+          feed(sysCarry, systemSegController, new Float32Array(pcmData), systemProcessor)
         }
 
         // Function to connect microphone stream
@@ -564,6 +542,16 @@ export default function RealTimeAnalysis({
         cancelAnimationFrame(animationFrameId.current)
       }
       shouldSendAudio = false
+
+      // Flush any in-progress segment before tearing down the streams
+      if (micController) {
+        const micTail = micController.flush()
+        if (micTail && micProcessor) micProcessor.sendSegment(micTail.pcm)
+      }
+      if (systemController) {
+        const sysTail = systemController.flush()
+        if (sysTail && systemProcessor) systemProcessor.sendSegment(sysTail.pcm)
+      }
 
       // Log connection stats before disconnecting
       if (micProcessor) {
