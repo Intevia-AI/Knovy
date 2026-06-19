@@ -417,11 +417,17 @@ export default function RealTimeAnalysis({
             }
           }
 
+          // Only silence-pad a side once the OTHER side has backed up well beyond one
+          // worklet buffer (8192 samples) — i.e. that stream has really stopped, not
+          // just normal sequential-message arrival. Below this, wait for the pair.
+          const MAX_BACKLOG = 48000 // ~1s @48k
+
           const pump = () => {
-            // Drain while either side has a full 48k block; silence-pad a starved side so a
-            // one-sided stream (e.g. muted mic, or system briefly behind) never stalls/grows.
-            while (micRaw.length >= BLK48 || sysRaw.length >= BLK48) {
-              if (micRaw.length < BLK48 && sysRaw.length < BLK48) break
+            while (true) {
+              const paired = micRaw.length >= BLK48 && sysRaw.length >= BLK48
+              const micStalled = sysRaw.length > MAX_BACKLOG && micRaw.length < BLK48
+              const sysStalled = micRaw.length > MAX_BACKLOG && sysRaw.length < BLK48
+              if (!paired && !micStalled && !sysStalled) break
               const m =
                 micRaw.length >= BLK48
                   ? Float32Array.from(micRaw.splice(0, BLK48))
@@ -446,9 +452,11 @@ export default function RealTimeAnalysis({
           micAudioWorkletNode.port.onmessage = (event) => {
             const { pcmData, sourceType } = event.data
             if (!shouldSendAudio || sourceType !== 'microphone' || !pcmData) return
-            if (!micEnabledRef.current) return
             const pcm = new Float32Array(pcmData)
-            for (let i = 0; i < pcm.length; i++) micRaw.push(pcm[i])
+            // Muted mic: feed silence so the pump stays paired and the system side
+            // keeps flowing; silence yields no mic segments.
+            const samples = micEnabledRef.current ? pcm : new Float32Array(pcm.length)
+            for (let i = 0; i < samples.length; i++) micRaw.push(samples[i])
             pump()
           }
 
