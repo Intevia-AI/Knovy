@@ -3,6 +3,8 @@ import { contextBridge, ipcRenderer } from 'electron'
 console.log('[Preload] Script loaded.')
 
 const api = {
+  platform: process.platform,
+
   openExternal: (url: string) => ipcRenderer.send('electronAPI:openExternal', url),
 
   selectSource: (sourceId) => ipcRenderer.invoke('electronAPI:selectSource', sourceId),
