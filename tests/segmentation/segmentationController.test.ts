@@ -87,4 +87,22 @@ describe('SegmentationController', () => {
     // startFrame must reflect the real onset (frameIdx 3), not the false start (0)
     expect(seg!.startFrame).toBe(realOnset)
   })
+
+  it('force-flushes at maxSegmentMs while still speaking', () => {
+    const c = new SegmentationController(cfg) // maxSegmentMs=200 => 20 frames
+    let seg = null
+    for (let i = 0; i < 20; i++) seg = c.pushFrame(frame(0.5), true) ?? seg
+    expect(seg).not.toBeNull()
+    expect(seg!.forced).toBe(true)
+    expect(seg!.durationMs).toBe(200)
+  })
+
+  it('flush() returns the in-progress segment and resets', () => {
+    const c = new SegmentationController(cfg)
+    for (let i = 0; i < 6; i++) c.pushFrame(frame(0.5), true)
+    const seg = c.flush()
+    expect(seg).not.toBeNull()
+    expect(seg!.forced).toBe(true)
+    expect(c.flush()).toBeNull() // already reset
+  })
 })
