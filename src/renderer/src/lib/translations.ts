@@ -14,6 +14,7 @@ export const translations = {
   'en-US': {
     // Add English translations here
     greeting: 'Hello',
+    quitHint: 'Press {shortcut} again to quit',
     // ControlPanel Status
     PreviewPanelTitle: 'Screen Preview',
     systemAudioLabel: 'System Audio',
@@ -236,6 +237,7 @@ export const translations = {
   'zh-TW': {
     // Add Traditional Chinese translations here
     greeting: '您好',
+    quitHint: '再次按 {shortcut} 結束 Knovy',
     // ControlPanel Status
     PreviewPanelTitle: '螢幕預覽',
     systemAudioLabel: '系統音訊',
@@ -670,6 +672,7 @@ export type TranslationKey =
   | 'actionQueueTitle'
   | 'noActionsInQueue'
   | 'generatingResponse'
+  | 'quitHint'
 
 /**
  * Type definition for supported language codes in the application

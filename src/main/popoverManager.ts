@@ -51,7 +51,12 @@ export function createPopover(options: PopoverOptions): BrowserWindow {
       preload: path.join(__dirname, '../preload/index.cjs'),
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: false
+      sandbox: false,
+      // This popover (e.g. the transcription panel) is a transparent, usually-
+      // unfocused overlay. Without this, Chromium throttles/pauses its renderer
+      // while it's backgrounded/occluded, so live transcription:data broadcasts
+      // don't paint until the window is woken. Keep it rendering in real time.
+      backgroundThrottling: false
     }
   })
   console.log(`[PopoverManager] Created new BrowserWindow for id: ${id}`)
