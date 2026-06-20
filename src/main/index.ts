@@ -619,7 +619,12 @@ const createWindow = async () => {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: false,
-      devTools: true // DevTools available in dev mode
+      devTools: true, // DevTools available in dev mode
+      // The overlay is a transparent, usually-unfocused HUD. Without this,
+      // Chromium throttles/pauses the renderer when it's backgrounded/occluded,
+      // so incoming transcription:data broadcasts don't paint until something
+      // wakes the window. Keep rendering live so transcripts show in real time.
+      backgroundThrottling: false
     }
   })
 
