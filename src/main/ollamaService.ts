@@ -45,6 +45,7 @@ export interface ChatParams {
   format?: object
   temperature?: number
   maxTokens?: number
+  think?: boolean
 }
 
 export interface ChatResponse {
@@ -88,7 +89,7 @@ export class OllamaService extends EventEmitter {
   private currentPull: AbortController | null = null
   private inferenceQueue: QueueItem[] = []
   private isProcessingQueue = false
-  private thinkEnabled = true
+  private thinkEnabled = false
 
   constructor() {
     super()
@@ -418,7 +419,8 @@ export class OllamaService extends EventEmitter {
         }
       }
 
-      if (!this.thinkEnabled) {
+      const shouldThink = params.think !== undefined ? params.think : this.thinkEnabled
+      if (!shouldThink) {
         body.think = false
       }
 
@@ -498,7 +500,7 @@ export class OllamaService extends EventEmitter {
           ],
           stream: true,
           options: { temperature: 0.1, num_predict: 512 },
-          ...(this.thinkEnabled ? {} : { think: false })
+          think: false
         }),
         signal: controller.signal
       })

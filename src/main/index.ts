@@ -474,7 +474,7 @@ async function loadSettings() {
       customPrompt: '',
       contentProtection: false,
       aiCorrection: 'on',
-      ollamaThink: 'on',
+      ollamaThink: 'off',
       ...parsed,
       autoTrigger
     }
@@ -485,7 +485,7 @@ async function loadSettings() {
       customPrompt: '',
       contentProtection: false,
       aiCorrection: 'on',
-      ollamaThink: 'on',
+      ollamaThink: 'off',
       autoTrigger: DEFAULT_AUTO_TRIGGER_SETTINGS
     }
   }
@@ -2257,7 +2257,8 @@ app.on('ready', async () => {
           { role: 'user', content: prompt.user }
         ],
         format: getSummarizeJsonSchema(),
-        temperature: 0.3
+        temperature: 0.3,
+        think: true
       })
       try {
         const parsed = JSON.parse(result.content)

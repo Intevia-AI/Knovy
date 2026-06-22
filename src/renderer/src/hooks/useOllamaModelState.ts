@@ -35,7 +35,7 @@ export function useOllamaModelState() {
   const [state, setState] = useState<ModelState>(INITIAL)
   const [models, setModels] = useState<OllamaModel[]>([])
   const [aiCorrection, setAiCorrectionState] = useState<AiCorrectionMode>('on')
-  const [thinkEnabled, setThinkState] = useState(true)
+  const [thinkEnabled, setThinkState] = useState(false)
 
   const refreshState = useCallback(async () => {
     try {
