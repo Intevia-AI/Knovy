@@ -304,6 +304,8 @@ const api = {
       'ollama:check-connection',
       'ollama:get-ai-correction',
       'ollama:set-ai-correction',
+      'ollama:get-think',
+      'ollama:set-think',
       // AI action channels (local Ollama)
       'ai:chat',
       'ai:summarize',

@@ -474,6 +474,7 @@ async function loadSettings() {
       customPrompt: '',
       contentProtection: false,
       aiCorrection: 'on',
+      ollamaThink: 'off',
       ...parsed,
       autoTrigger
     }
@@ -484,6 +485,7 @@ async function loadSettings() {
       customPrompt: '',
       contentProtection: false,
       aiCorrection: 'on',
+      ollamaThink: 'off',
       autoTrigger: DEFAULT_AUTO_TRIGGER_SETTINGS
     }
   }
@@ -2060,6 +2062,7 @@ app.on('ready', async () => {
       if (enhancementSettings.ollamaModel) {
         ollamaService.setActiveModel(enhancementSettings.ollamaModel)
       }
+      ollamaService.setThinkEnabled(enhancementSettings.ollamaThink !== 'off')
       await ollamaService.checkConnection()
       ollamaService.startConnectionMonitoring()
 
@@ -2184,6 +2187,17 @@ app.on('ready', async () => {
     return { success: true }
   })
 
+  ipcMain.handle('ollama:get-think', async () => {
+    return { enabled: getOllamaService().getThinkEnabled() }
+  })
+
+  ipcMain.handle('ollama:set-think', async (_event, enabled: boolean) => {
+    getOllamaService().setThinkEnabled(enabled)
+    const current = await loadSettings()
+    await saveSettings({ ...current, ollamaThink: enabled ? 'on' : 'off' })
+    return { success: true }
+  })
+
   // ─── AI Action IPC Handlers (Local Ollama) ───
 
   ipcMain.handle(
@@ -2243,7 +2257,8 @@ app.on('ready', async () => {
           { role: 'user', content: prompt.user }
         ],
         format: getSummarizeJsonSchema(),
-        temperature: 0.3
+        temperature: 0.3,
+        think: true
       })
       try {
         const parsed = JSON.parse(result.content)

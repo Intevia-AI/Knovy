@@ -25,16 +25,12 @@ import {
 import { useI18n } from '@/hooks/useI18n'
 import { useOllamaModelState } from '@/hooks/useOllamaModelState'
 
-const RECOMMENDED_MODEL = 'gemma4:e2b'
+const RECOMMENDED_MODEL = 'qwen3.5:0.8b'
 const PULLABLE_MODELS = [
-  { name: 'qwen3.5:2b', label: 'Qwen 3.5 2B', description: 'Lightweight, fastest, lowest memory' },
-  {
-    name: 'qwen3.5:4b',
-    label: 'Qwen 3.5 4B',
-    description: 'Balanced speed and quality (text + vision)'
-  },
-  { name: 'gemma4:e2b', label: 'Gemma 4 E2B', description: 'Recommended - fast, low memory' },
-  { name: 'gemma4:e4b', label: 'Gemma 4 E4B', description: 'Higher quality, more memory (vision)' }
+  { name: 'qwen3.5:0.8b', label: 'Qwen 3.5 0.8B', description: 'Recommended — fastest, lowest memory' },
+  { name: 'qwen3.5:2b', label: 'Qwen 3.5 2B', description: 'Balanced speed and quality' },
+  { name: 'qwen3.5:4b', label: 'Qwen 3.5 4B', description: 'Higher quality, more memory' },
+  { name: 'qwen3.5:8b', label: 'Qwen 3.5 8B', description: 'Best quality, highest memory use' }
 ]
 
 function formatBytes(bytes: number): string {
@@ -51,11 +47,13 @@ export function OllamaSettings() {
     state,
     models,
     aiCorrection,
+    thinkEnabled,
     selectModel,
     cancelPull,
     deleteModel,
     checkConnection,
-    setAiCorrection
+    setAiCorrection,
+    setThink
   } = useOllamaModelState()
   const [modelToDownload, setModelToDownload] = useState<string>(RECOMMENDED_MODEL)
 
@@ -115,6 +113,30 @@ export function OllamaSettings() {
               <Switch
                 checked={aiCorrection === 'on'}
                 onCheckedChange={(checked) => setAiCorrection(checked ? 'on' : 'off')}
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Thinking mode toggle */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Bot className="w-5 h-5 text-primary" />
+            <h3 className="text-lg font-medium">{t('thinkModeTitle')}</h3>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between gap-4">
+            <p className="text-sm text-muted-foreground flex-1">{t('thinkModeDescription')}</p>
+            <div className="flex items-center gap-2">
+              <span className="text-sm">
+                {thinkEnabled ? t('thinkModeOn') : t('thinkModeOff')}
+              </span>
+              <Switch
+                checked={thinkEnabled}
+                onCheckedChange={(checked) => setThink(checked)}
               />
             </div>
           </div>

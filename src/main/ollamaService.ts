@@ -36,7 +36,7 @@ export interface OllamaPullProgress {
 }
 
 const OLLAMA_BASE_URL = 'http://localhost:11434'
-const DEFAULT_MODEL = 'gemma4:e2b'
+const DEFAULT_MODEL = 'qwen3.5:0.8b'
 const INFERENCE_TIMEOUT_MS = 30000
 const CHAT_TIMEOUT_MS = 60000
 
@@ -45,6 +45,7 @@ export interface ChatParams {
   format?: object
   temperature?: number
   maxTokens?: number
+  think?: boolean
 }
 
 export interface ChatResponse {
@@ -88,6 +89,7 @@ export class OllamaService extends EventEmitter {
   private currentPull: AbortController | null = null
   private inferenceQueue: QueueItem[] = []
   private isProcessingQueue = false
+  private thinkEnabled = false
 
   constructor() {
     super()
@@ -96,6 +98,15 @@ export class OllamaService extends EventEmitter {
 
   getModelState(): ModelState {
     return { ...this.modelState }
+  }
+
+  getThinkEnabled(): boolean {
+    return this.thinkEnabled
+  }
+
+  setThinkEnabled(enabled: boolean): void {
+    this.thinkEnabled = enabled
+    console.log(`[OllamaService] Think mode: ${enabled ? 'on' : 'off'}`)
   }
 
   getActiveModel(): string {
@@ -408,6 +419,11 @@ export class OllamaService extends EventEmitter {
         }
       }
 
+      const shouldThink = params.think !== undefined ? params.think : this.thinkEnabled
+      if (!shouldThink) {
+        body.think = false
+      }
+
       if (params.format) {
         body.format = params.format
       }
@@ -483,7 +499,8 @@ export class OllamaService extends EventEmitter {
             { role: 'user', content: prompt.user }
           ],
           stream: true,
-          options: { temperature: 0.1, num_predict: 512 }
+          options: { temperature: 0.1, num_predict: 512 },
+          think: false
         }),
         signal: controller.signal
       })

@@ -110,6 +110,10 @@ export const translations = {
       'Use a local AI model to correct transcriptions. Turn off to record raw transcription only (no LLM, lower memory use).',
     aiCorrectionOn: 'On',
     aiCorrectionOff: 'Off',
+    thinkModeTitle: 'Thinking Mode',
+    thinkModeDescription: 'Let models think before responding. Disable to reduce latency.',
+    thinkModeOn: 'On',
+    thinkModeOff: 'Off',
     modelDownloading: 'Downloading model',
     modelVerifying: 'Verifying model',
     modelReady: 'Ready',
@@ -333,6 +337,10 @@ export const translations = {
       '使用本機 AI 模型校正逐字稿。關閉後僅錄製原始逐字稿（不使用 LLM，記憶體用量較低）。',
     aiCorrectionOn: '開啟',
     aiCorrectionOff: '關閉',
+    thinkModeTitle: '思考模式',
+    thinkModeDescription: '讓模型在回覆前先思考。關閉可減少延遲。',
+    thinkModeOn: '開啟',
+    thinkModeOff: '關閉',
     modelDownloading: '正在下載模型',
     modelVerifying: '正在驗證模型',
     modelReady: '就緒',
@@ -554,6 +562,10 @@ export type TranslationKey =
   | 'aiCorrectionDescription'
   | 'aiCorrectionOn'
   | 'aiCorrectionOff'
+  | 'thinkModeTitle'
+  | 'thinkModeDescription'
+  | 'thinkModeOn'
+  | 'thinkModeOff'
   | 'modelDownloading'
   | 'modelVerifying'
   | 'modelReady'
