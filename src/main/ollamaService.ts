@@ -88,6 +88,7 @@ export class OllamaService extends EventEmitter {
   private currentPull: AbortController | null = null
   private inferenceQueue: QueueItem[] = []
   private isProcessingQueue = false
+  private thinkEnabled = true
 
   constructor() {
     super()
@@ -96,6 +97,15 @@ export class OllamaService extends EventEmitter {
 
   getModelState(): ModelState {
     return { ...this.modelState }
+  }
+
+  getThinkEnabled(): boolean {
+    return this.thinkEnabled
+  }
+
+  setThinkEnabled(enabled: boolean): void {
+    this.thinkEnabled = enabled
+    console.log(`[OllamaService] Think mode: ${enabled ? 'on' : 'off'}`)
   }
 
   getActiveModel(): string {
@@ -408,6 +418,10 @@ export class OllamaService extends EventEmitter {
         }
       }
 
+      if (!this.thinkEnabled) {
+        body.think = false
+      }
+
       if (params.format) {
         body.format = params.format
       }
@@ -483,7 +497,8 @@ export class OllamaService extends EventEmitter {
             { role: 'user', content: prompt.user }
           ],
           stream: true,
-          options: { temperature: 0.1, num_predict: 512 }
+          options: { temperature: 0.1, num_predict: 512 },
+          ...(this.thinkEnabled ? {} : { think: false })
         }),
         signal: controller.signal
       })

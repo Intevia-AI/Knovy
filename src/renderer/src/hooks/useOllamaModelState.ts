@@ -35,6 +35,7 @@ export function useOllamaModelState() {
   const [state, setState] = useState<ModelState>(INITIAL)
   const [models, setModels] = useState<OllamaModel[]>([])
   const [aiCorrection, setAiCorrectionState] = useState<AiCorrectionMode>('on')
+  const [thinkEnabled, setThinkState] = useState(true)
 
   const refreshState = useCallback(async () => {
     try {
@@ -63,17 +64,27 @@ export function useOllamaModelState() {
     }
   }, [])
 
+  const refreshThink = useCallback(async () => {
+    try {
+      const r = await window.electronAPI.invoke('ollama:get-think')
+      setThinkState(r?.enabled !== false)
+    } catch {
+      setThinkState(true)
+    }
+  }, [])
+
   useEffect(() => {
     refreshState()
     refreshModels()
     refreshAiCorrection()
+    refreshThink()
     const unsub = window.electronAPI.on('ollama:model-state', (s: ModelState) => {
       setState(s)
       // Installed set may have changed when a pull reaches "ready".
       if (s.phase === 'ready' || s.phase === 'idle') refreshModels()
     })
     return () => unsub()
-  }, [refreshState, refreshModels, refreshAiCorrection])
+  }, [refreshState, refreshModels, refreshAiCorrection, refreshThink])
 
   const selectModel = useCallback(async (name: string) => {
     await window.electronAPI.invoke('ollama:select-model', name)
@@ -106,16 +117,23 @@ export function useOllamaModelState() {
     setAiCorrectionState(mode)
   }, [])
 
+  const setThink = useCallback(async (enabled: boolean) => {
+    await window.electronAPI.invoke('ollama:set-think', enabled)
+    setThinkState(enabled)
+  }, [])
+
   return {
     state,
     models,
     aiCorrection,
+    thinkEnabled,
     selectModel,
     cancelPull,
     retry,
     deleteModel,
     checkConnection,
     setAiCorrection,
+    setThink,
     refreshState
   }
 }

@@ -474,6 +474,7 @@ async function loadSettings() {
       customPrompt: '',
       contentProtection: false,
       aiCorrection: 'on',
+      ollamaThink: 'on',
       ...parsed,
       autoTrigger
     }
@@ -484,6 +485,7 @@ async function loadSettings() {
       customPrompt: '',
       contentProtection: false,
       aiCorrection: 'on',
+      ollamaThink: 'on',
       autoTrigger: DEFAULT_AUTO_TRIGGER_SETTINGS
     }
   }
@@ -2060,6 +2062,7 @@ app.on('ready', async () => {
       if (enhancementSettings.ollamaModel) {
         ollamaService.setActiveModel(enhancementSettings.ollamaModel)
       }
+      ollamaService.setThinkEnabled(enhancementSettings.ollamaThink !== 'off')
       await ollamaService.checkConnection()
       ollamaService.startConnectionMonitoring()
 
@@ -2181,6 +2184,17 @@ app.on('ready', async () => {
   ipcMain.handle('ollama:set-ai-correction', async (_event, mode: 'on' | 'off') => {
     const current = await loadSettings()
     await saveSettings({ ...current, aiCorrection: mode === 'off' ? 'off' : 'on' })
+    return { success: true }
+  })
+
+  ipcMain.handle('ollama:get-think', async () => {
+    return { enabled: getOllamaService().getThinkEnabled() }
+  })
+
+  ipcMain.handle('ollama:set-think', async (_event, enabled: boolean) => {
+    getOllamaService().setThinkEnabled(enabled)
+    const current = await loadSettings()
+    await saveSettings({ ...current, ollamaThink: enabled ? 'on' : 'off' })
     return { success: true }
   })
 
