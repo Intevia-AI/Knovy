@@ -25,16 +25,12 @@ import {
 import { useI18n } from '@/hooks/useI18n'
 import { useOllamaModelState } from '@/hooks/useOllamaModelState'
 
-const RECOMMENDED_MODEL = 'gemma4:e2b'
+const RECOMMENDED_MODEL = 'qwen3.5:0.8b'
 const PULLABLE_MODELS = [
-  { name: 'qwen3.5:2b', label: 'Qwen 3.5 2B', description: 'Lightweight, fastest, lowest memory' },
-  {
-    name: 'qwen3.5:4b',
-    label: 'Qwen 3.5 4B',
-    description: 'Balanced speed and quality (text + vision)'
-  },
-  { name: 'gemma4:e2b', label: 'Gemma 4 E2B', description: 'Recommended - fast, low memory' },
-  { name: 'gemma4:e4b', label: 'Gemma 4 E4B', description: 'Higher quality, more memory (vision)' }
+  { name: 'qwen3.5:0.8b', label: 'Qwen 3.5 0.8B', description: 'Recommended — fastest, lowest memory' },
+  { name: 'qwen3.5:2b', label: 'Qwen 3.5 2B', description: 'Balanced speed and quality' },
+  { name: 'qwen3.5:4b', label: 'Qwen 3.5 4B', description: 'Higher quality, more memory' },
+  { name: 'qwen3.5:8b', label: 'Qwen 3.5 8B', description: 'Best quality, highest memory use' }
 ]
 
 function formatBytes(bytes: number): string {
