@@ -64,6 +64,14 @@ let activeScreenSourceId: string | null = null
 // Streaming correction state
 let currentGenerationId = 0
 const activeCorrections = new Map<string, AbortController>()
+// Last few corrected texts, given to the correction prompt as context
+// (homophone/mishearing fixes need surrounding conversation).
+const recentCorrections: string[] = []
+const RECENT_CORRECTIONS_MAX = 3
+function pushRecentCorrection(text: string): void {
+  recentCorrections.push(text)
+  if (recentCorrections.length > RECENT_CORRECTIONS_MAX) recentCorrections.shift()
+}
 
 function cancelAllCorrections(): void {
   currentGenerationId++ // invalidate in-flight + queued work for the old generation
@@ -71,6 +79,7 @@ function cancelAllCorrections(): void {
     controller.abort()
   }
   activeCorrections.clear() // in-flight finally blocks then no-op delete on the cleared map
+  recentCorrections.length = 0 // context must not bleed across sessions
 }
 
 function broadcastToWindows(channel: string, payload: unknown): void {
@@ -1556,7 +1565,7 @@ app.on('ready', async () => {
               timestamp: Date.now(),
               sourceType: transcriptionData.sourceType
             },
-            { sessionId: currentSessionId, conversationHistory: [], userLanguage },
+            { sessionId: currentSessionId, conversationHistory: [...recentCorrections], userLanguage },
             {
               signal: controller.signal,
               onToken: (chunk) => {
@@ -1587,6 +1596,7 @@ app.on('ready', async () => {
 
           broadcastToWindows('correction:done', { transcriptId, generationId, fullText: full })
           if (full.trim()) {
+            pushRecentCorrection(full)
             await dbService.updateTranscriptEnhancement(transcriptId, {
               enhancedText: full,
               enhancementMetadata: {}

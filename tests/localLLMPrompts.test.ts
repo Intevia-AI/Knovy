@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { getCorrectionPrompt } from '../src/main/localLLMPrompts'
+import { getCorrectionPrompt, getChatPrompt } from '../src/main/localLLMPrompts'
 
 describe('getCorrectionPrompt', () => {
   it('embeds the raw text and asks for plain output (en)', () => {
@@ -30,5 +30,21 @@ describe('getCorrectionPrompt', () => {
       userLanguage: 'en'
     })
     expect(p.user).toContain('prior sentence')
+  })
+})
+
+describe('getChatPrompt', () => {
+  it('states the assistant role once, in the system message only (en)', () => {
+    const p = getChatPrompt({ textInput: 'hi', language: 'en' })
+    expect(p.system).toContain('You are a helpful AI chat assistant')
+    expect(p.user).not.toMatch(/you are a helpful ai/i)
+    expect(p.user).toContain('hi')
+  })
+
+  it('states the assistant role once, in the system message only (zh-TW)', () => {
+    const p = getChatPrompt({ textInput: '你好', language: 'zh-TW' })
+    expect(p.system).toContain('AI 對話助理')
+    expect(p.user).not.toContain('你是服務台灣使用者的 AI 助理')
+    expect(p.user).toContain('你好')
   })
 })

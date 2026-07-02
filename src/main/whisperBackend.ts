@@ -9,13 +9,9 @@ import { Converter, ConverterFactory, Locale } from 'opencc-js'
 // Options: 'tiny' (75MB, fastest), 'base' (142MB, better), 'small' (488MB, good+), 'medium' (1.5GB, best)
 const DEFAULT_MODEL_SIZE: 'tiny' | 'base' | 'small' | 'medium' = 'small'
 
-// Domain-specific prompts for better transcription context
-const DOMAIN_PROMPTS = {
-  technical: 'Technical discussion about software development, programming, and technology.',
-  meeting: 'Business meeting with multiple speakers discussing projects and decisions.',
-  casual: 'Casual conversation with natural speech patterns.',
-  default: 'Clear conversation with proper punctuation and grammar.'
-}
+// Default priming prompt. whisper's --prompt is token priming (style/vocabulary
+// biasing), not instruction-following — keep it declarative, never imperative.
+const DEFAULT_PRIMING_PROMPT = 'Clear conversation with proper punctuation and grammar.'
 
 export interface TranscriptionOptions {
   language?: string
@@ -654,14 +650,10 @@ export class WhisperBackend {
    * Build context prompt from previous segments
    */
   private buildContextPrompt(sessionId: string, sourceType: 'microphone' | 'system'): string {
+    // Raw tail of the previous transcript, verbatim: --prompt primes the decoder
+    // with tokens, so instruction text ("Continue naturally") leaks into output.
     const contextKey = `${sessionId}-${sourceType}`
-    const previousContext = this.segmentContext.get(contextKey) || ''
-
-    if (previousContext) {
-      return `Previous context: "${previousContext}". Continue naturally.`
-    }
-
-    return ''
+    return this.segmentContext.get(contextKey) || ''
   }
 
   /**
@@ -1023,7 +1015,9 @@ export class WhisperBackend {
     options: TranscriptionOptions
   ): Promise<string> {
     return new Promise((resolve, reject) => {
-      const sessionId = path.basename(audioFilePath, '.wav')
+      // Temp files are named audio-<sessionId>.wav; strip the prefix so the key
+      // matches what updateContext() writes (bare sessionId).
+      const sessionId = path.basename(audioFilePath, '.wav').replace(/^audio-/, '')
       const contextPrompt = this.buildContextPrompt(sessionId, options.sourceType)
 
       const args = [
@@ -1041,15 +1035,14 @@ export class WhisperBackend {
         '2',
         '--beam-size',
         '5',
-        // Transcription quality prompt
+        // Priming prompt: previous-transcript tail when we have one, else the
+        // default. whisper-cli only honors the last --prompt, so pass exactly one.
         '--prompt',
-        DOMAIN_PROMPTS.default
+        contextPrompt || DEFAULT_PRIMING_PROMPT
       ]
 
-      // Add context prompt if available
       if (contextPrompt) {
-        args.push('--prompt', contextPrompt)
-        console.log(`[WhisperService] Using context prompt: "${contextPrompt}"`)
+        console.log(`[WhisperService] Priming with previous context: "${contextPrompt}"`)
       }
 
       // Add word-level features

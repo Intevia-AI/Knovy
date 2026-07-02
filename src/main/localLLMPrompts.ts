@@ -55,7 +55,7 @@ interface ScreenshotAnalysisParams extends AIActionParams {
 export function getChatPrompt(params: AIActionParams): PromptResult {
   const lang = params.language === 'zh-TW' ? 'zh-TW' : 'en'
   if (lang === 'zh-TW') {
-    let user = `你是服務台灣使用者的 AI 助理。優先使用對話前後文回答問題。\n`
+    let user = `優先使用對話前後文回答問題。\n`
     if (params.existingSummary) user += `\n對話摘要：\n${params.existingSummary}\n`
     if (params.recentTranscriptions) user += `\n最近逐字稿：\n${params.recentTranscriptions}\n`
     user += `\n使用者問題：「${params.textInput}」\n\n請用繁體中文直接回答：`
@@ -64,7 +64,7 @@ export function getChatPrompt(params: AIActionParams): PromptResult {
       user
     }
   }
-  let user = `You are a helpful AI assistant. Prioritize conversation context when answering.\n`
+  let user = `Prioritize conversation context when answering.\n`
   if (params.existingSummary) user += `\nConversation Summary:\n${params.existingSummary}\n`
   if (params.recentTranscriptions)
     user += `\nRecent Transcriptions:\n${params.recentTranscriptions}\n`
