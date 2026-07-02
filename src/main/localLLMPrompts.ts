@@ -77,80 +77,92 @@ export function getChatPrompt(params: AIActionParams): PromptResult {
 
 // ─── Summarize Prompt ───
 
+export interface StructuredSummary {
+  short_summary: string
+  key_points: string[]
+  decisions: string[]
+  action_items: string[]
+  open_questions: string[]
+  topics: string[]
+}
+
 export function getSummarizePrompt(params: AIActionParams): PromptResult {
   const lang = params.language === 'zh-TW' ? 'zh-TW' : 'en'
   if (lang === 'zh-TW') {
     let user = params.existingSummary
-      ? `先前的摘要：\n${params.existingSummary}\n\n新的對話記錄：\n${params.textInput}`
+      ? `先前的摘要（JSON）：\n${params.existingSummary}\n\n新的對話記錄：\n${params.textInput}`
       : `要摘要的對話記錄：\n${params.textInput}`
-    user += `\n\n分析對話並回傳 JSON：
-{
-  "short_summary": "一句話摘要（80-100字元）",
-  "long_summary": "Markdown 格式詳細摘要",
-  "context": {
-    "participants": [],
-    "topics": [],
-    "keywords": [],
-    "time_context": null,
-    "scenario": null,
-    "key_points": []
-  }
-}
-
-只回傳 JSON。`
+    user += `\n\n分析對話並填寫每個欄位：
+- short_summary：一句話摘要（100 字元以內）
+- key_points：主要重點
+- decisions：已做出的決定
+- action_items：待辦事項
+- open_questions：尚未解決的問題
+- topics：討論的主題`
     return {
-      system: '你是摘要助理。分析對話並產生結構化 JSON 摘要。僅回傳有效 JSON。',
+      system:
+        '你是摘要助理。分析對話並產生結構化 JSON 摘要。只記錄對話中實際出現的內容；若某欄位沒有內容，回傳空陣列。以繁體中文填寫所有欄位。',
       user
     }
   }
   let user = params.existingSummary
-    ? `Previous Summary:\n${params.existingSummary}\n\nNew Transcripts:\n${params.textInput}`
+    ? `Previous Summary (JSON):\n${params.existingSummary}\n\nNew Transcripts:\n${params.textInput}`
     : `Transcripts to Summarize:\n${params.textInput}`
-  user += `\n\nAnalyze and return JSON:
-{
-  "short_summary": "One-line summary (80-100 chars)",
-  "long_summary": "Detailed Markdown summary",
-  "context": {
-    "participants": [],
-    "topics": [],
-    "keywords": [],
-    "time_context": null,
-    "scenario": null,
-    "key_points": []
-  }
-}
-
-Return ONLY JSON.`
+  user += `\n\nAnalyze the conversation and fill each field:
+- short_summary: one line (max 100 chars)
+- key_points: the main points
+- decisions: decisions that were made
+- action_items: tasks someone committed to
+- open_questions: unresolved questions
+- topics: subjects discussed`
   return {
     system:
-      'You are a summarization assistant. Analyze conversations and produce structured JSON summaries. Return only valid JSON.',
+      'You are a summarization assistant. Produce a structured JSON summary. Only record what actually appears in the conversation; if a section has no content, return an empty array.',
     user
   }
 }
 
 /**
- * JSON schema for summarize structured output.
+ * JSON schema for summarize structured output (enforced via Ollama's format param —
+ * the single source of truth for the response shape).
  */
 export function getSummarizeJsonSchema(): object {
   return {
     type: 'object',
     properties: {
       short_summary: { type: 'string' },
-      long_summary: { type: 'string' },
-      context: {
-        type: 'object',
-        properties: {
-          participants: { type: 'array', items: { type: 'string' } },
-          topics: { type: 'array', items: { type: 'string' } },
-          keywords: { type: 'array', items: { type: 'string' } },
-          time_context: { type: ['string', 'null'] },
-          scenario: { type: ['string', 'null'] },
-          key_points: { type: 'array', items: { type: 'string' } }
-        },
-        required: ['participants', 'topics', 'keywords', 'key_points']
-      }
+      key_points: { type: 'array', items: { type: 'string' } },
+      decisions: { type: 'array', items: { type: 'string' } },
+      action_items: { type: 'array', items: { type: 'string' } },
+      open_questions: { type: 'array', items: { type: 'string' } },
+      topics: { type: 'array', items: { type: 'string' } }
     },
-    required: ['short_summary', 'long_summary', 'context']
+    required: [
+      'short_summary',
+      'key_points',
+      'decisions',
+      'action_items',
+      'open_questions',
+      'topics'
+    ]
+  }
+}
+
+/**
+ * Parse and validate a summarize response. Returns null when the content is not
+ * a structurally valid summary (caller decides whether to retry or fall back).
+ */
+export function parseSummarizeResponse(content: string): StructuredSummary | null {
+  try {
+    const parsed = JSON.parse(content)
+    if (typeof parsed?.short_summary !== 'string' || !parsed.short_summary.trim()) return null
+    const arrays = ['key_points', 'decisions', 'action_items', 'open_questions', 'topics'] as const
+    for (const key of arrays) {
+      if (!Array.isArray(parsed[key])) return null
+    }
+    return parsed as StructuredSummary
+  } catch {
+    return null
   }
 }
 

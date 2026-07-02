@@ -36,6 +36,7 @@ import {
   getChatPrompt,
   getSummarizePrompt,
   getSummarizeJsonSchema,
+  parseSummarizeResponse,
   getRecommendResponsePrompt,
   getDeepResponsePrompt,
   getKeywordSearchPrompt,
@@ -1565,7 +1566,11 @@ app.on('ready', async () => {
               timestamp: Date.now(),
               sourceType: transcriptionData.sourceType
             },
-            { sessionId: currentSessionId, conversationHistory: [...recentCorrections], userLanguage },
+            {
+              sessionId: currentSessionId,
+              conversationHistory: [...recentCorrections],
+              userLanguage
+            },
             {
               signal: controller.signal,
               onToken: (chunk) => {
@@ -1605,7 +1610,9 @@ app.on('ready', async () => {
             // Empty correction (e.g. thinking ate the token budget): keep the raw
             // text as source of truth; the renderer falls back to rawText.
             console.warn(`[main/index.ts] Empty correction for ${transcriptId}, keeping raw text`)
-            await dbService.updateTranscriptEnhancementStatus(transcriptId, 'failed').catch(() => {})
+            await dbService
+              .updateTranscriptEnhancementStatus(transcriptId, 'failed')
+              .catch(() => {})
           }
         } catch (err) {
           const aborted = err instanceof Error && err.name === 'AbortError'
@@ -2275,33 +2282,53 @@ app.on('ready', async () => {
         existingSummary: payload.existing_summary,
         language: payload.language || 'en'
       })
-      const result = await svc.chat({
-        messages: [
-          { role: 'system', content: prompt.system },
-          { role: 'user', content: prompt.user }
-        ],
-        format: getSummarizeJsonSchema(),
-        temperature: 0.3,
-        think: true
-      })
+      const messages = [
+        { role: 'system' as const, content: prompt.system },
+        { role: 'user' as const, content: prompt.user }
+      ]
+      // think + forced JSON grammar can yield empty/invalid content on small
+      // models (runChat throws on empty) — retry once without thinking before
+      // giving up on structure.
+      let result: Awaited<ReturnType<typeof svc.chat>> | null = null
       try {
-        const parsed = JSON.parse(result.content)
+        result = await svc.chat({
+          messages,
+          format: getSummarizeJsonSchema(),
+          temperature: 0.3,
+          think: true
+        })
+      } catch (err) {
+        console.warn('[main/index.ts] Summarize with think failed:', err)
+      }
+      let structured = result ? parseSummarizeResponse(result.content) : null
+      if (!structured) {
+        console.warn('[main/index.ts] Summarize structure invalid/empty, retrying without think')
+        result = await svc.chat({
+          messages,
+          format: getSummarizeJsonSchema(),
+          temperature: 0.3,
+          think: false
+        })
+        structured = parseSummarizeResponse(result.content)
+      }
+      if (!result) throw new Error('Summarize failed') // unreachable: retry assigned or threw
+      if (structured) {
+        const json = JSON.stringify(structured)
         return {
-          summary: parsed.long_summary,
-          short_summary: parsed.short_summary,
-          long_summary: parsed.long_summary,
-          context: parsed.context,
-          processingTime: result.processingTime
-        }
-      } catch {
-        // If JSON parsing fails, return raw content as summary
-        return {
-          summary: result.content,
-          short_summary: result.content.substring(0, 100),
-          long_summary: result.content,
+          summary: json, // canonical form persisted to DB and parsed by the summary tab
+          short_summary: structured.short_summary,
+          long_summary: json,
           context: {},
           processingTime: result.processingTime
         }
+      }
+      // Last resort: raw content as an unstructured summary (legacy behavior)
+      return {
+        summary: result.content,
+        short_summary: result.content.substring(0, 100),
+        long_summary: result.content,
+        context: {},
+        processingTime: result.processingTime
       }
     }
   )

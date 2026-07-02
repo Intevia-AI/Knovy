@@ -20,6 +20,27 @@ import { useTranslation } from '@/context/TranslationContext'
 
 interface ChatPanelProps {}
 
+interface StructuredSummary {
+  short_summary: string
+  key_points: string[]
+  decisions: string[]
+  action_items: string[]
+  open_questions: string[]
+  topics: string[]
+}
+
+// Summaries are persisted as a JSON string of StructuredSummary; older sessions
+// may still hold free-form markdown, which falls back to the Markdown renderer.
+function parseStructuredSummary(content: string): StructuredSummary | null {
+  try {
+    const parsed = JSON.parse(content)
+    if (typeof parsed?.short_summary !== 'string') return null
+    return parsed as StructuredSummary
+  } catch {
+    return null
+  }
+}
+
 export default function ChatPanel({}: ChatPanelProps) {
   const { t } = useTranslation()
   const [activeTab, setActiveTab] = useState('transcription')
@@ -197,13 +218,50 @@ export default function ChatPanel({}: ChatPanelProps) {
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-black/50"></div>
                     </div>
                   ) : summary ? (
-                    <div className="p-2 rounded-md text-sm whitespace-pre-wrap break-words text-pretty bg-black/5 border border-black/10 text-black">
+                    <div className="p-2 rounded-md text-sm break-words text-pretty bg-black/5 border border-black/10 text-black">
                       {isSummarizing && (
                         <div className="absolute top-2 right-2">
                           <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-black/50"></div>
                         </div>
                       )}
-                      <Markdown onKeywordClick={handleKeywordClick}>{summary}</Markdown>
+                      {(() => {
+                        const structured = parseStructuredSummary(summary)
+                        if (!structured) {
+                          return (
+                            <div className="whitespace-pre-wrap">
+                              <Markdown onKeywordClick={handleKeywordClick}>{summary}</Markdown>
+                            </div>
+                          )
+                        }
+                        const sections = [
+                          { title: t('summaryKeyPoints'), items: structured.key_points },
+                          { title: t('summaryDecisions'), items: structured.decisions },
+                          { title: t('summaryActionItems'), items: structured.action_items },
+                          { title: t('summaryOpenQuestions'), items: structured.open_questions }
+                        ].filter((s) => s.items?.length > 0)
+                        return (
+                          <div className="space-y-3">
+                            <p className="font-medium">{structured.short_summary}</p>
+                            {sections.map((section) => (
+                              <div key={section.title}>
+                                <div className="text-xs font-medium text-gray-500 mb-1">
+                                  {section.title}
+                                </div>
+                                <ul className="list-disc pl-4 space-y-0.5">
+                                  {section.items.map((item, i) => (
+                                    <li key={i}>{item}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            ))}
+                            {structured.topics?.length > 0 && (
+                              <div className="text-xs text-gray-500">
+                                {t('summaryTopics')}: {structured.topics.join(' · ')}
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })()}
                     </div>
                   ) : (
                     <div className="text-center text-sm text-gray-500">No summary available.</div>
