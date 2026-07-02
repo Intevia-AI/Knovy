@@ -98,6 +98,10 @@ export const translations = {
     aiActionSummaryDisplay: 'Generate summary from transcription',
     aiActionKeywordSearchDisplay: 'Keyword search',
     aiActionScreenshotDisplay: 'Screenshot analysis',
+    // Screenshot Attachment
+    screenshotAttachmentTitle: 'Screenshot',
+    screenshotAttachmentProcessing: 'Analyzing…',
+    screenshotAttachmentError: 'Analysis failed',
     // ChatPanel Tabs
     transcriptionTab: 'Transcription',
     thinkingIndicator: 'Thinking…',
@@ -326,6 +330,10 @@ export const translations = {
     aiActionSummaryDisplay: '請根據前後文產生摘要',
     aiActionKeywordSearchDisplay: '關鍵字搜尋',
     aiActionScreenshotDisplay: '請分析這張截圖',
+    // Screenshot Attachment
+    screenshotAttachmentTitle: '截圖',
+    screenshotAttachmentProcessing: '分析中…',
+    screenshotAttachmentError: '分析失敗',
     // ChatPanel Tabs
     transcriptionTab: '逐字稿',
     thinkingIndicator: '思考中…',
@@ -553,6 +561,10 @@ export type TranslationKey =
   | 'aiActionSummaryDisplay'
   | 'aiActionKeywordSearchDisplay'
   | 'aiActionScreenshotDisplay'
+  // Screenshot Attachment
+  | 'screenshotAttachmentTitle'
+  | 'screenshotAttachmentProcessing'
+  | 'screenshotAttachmentError'
   // ChatPanel Tabs
   | 'transcriptionTab'
   | 'thinkingIndicator'

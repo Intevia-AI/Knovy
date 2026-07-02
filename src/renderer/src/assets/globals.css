@@ -46,6 +46,32 @@ body {
   @apply bg-muted/80 backdrop-blur-md border border-black/5 rounded-3xl;
 }
 
+/* Tailwind v3 stand-in for the shadcn v4 `shimmer` utility used by the
+   vendored attachment component: the title shimmers while processing/uploading. */
+@keyframes attachment-shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+[data-slot='attachment'][data-state='processing'] [data-slot='attachment-title'],
+[data-slot='attachment'][data-state='uploading'] [data-slot='attachment-title'] {
+  background-image: linear-gradient(
+    90deg,
+    hsl(var(--muted-foreground)) 40%,
+    hsl(var(--foreground)) 50%,
+    hsl(var(--muted-foreground)) 60%
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: attachment-shimmer 2s linear infinite;
+}
+
 @keyframes breathing {
   0%, 100% {
     box-shadow: 0 0 5px 2px rgba(0, 0, 0, 0.05);

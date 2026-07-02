@@ -18,6 +18,13 @@ import { useAIInteraction } from '@/hooks/useAIInteraction'
 import { motion, AnimatePresence } from 'motion'
 import { cn } from '@/lib/utils'
 import { Markdown } from '@/components/MarkdownRenderer'
+import {
+  Attachment,
+  AttachmentMedia,
+  AttachmentContent,
+  AttachmentTitle,
+  AttachmentDescription
+} from '@/components/ui/attachment'
 import { useActionQueue } from '@/hooks/useActionQueue'
 import type { PendingAction } from '@/types/settings'
 import { ACTION_TYPE_LABELS, INTENTION_LABELS } from '@/types/settings'
@@ -164,7 +171,8 @@ export default function ActionsPanel() {
             id: `screenshot-${Date.now()}`,
             role: 'user' as const,
             content: t('aiActionScreenshotDisplay'), // "Please analyze this screenshot"
-            screenshot: base64Data // Add screenshot data to the message
+            screenshot: base64Data, // Add screenshot data to the message
+            attachmentState: 'processing' // Attachment lifecycle: processing → done | error
           }
 
           // Add the screenshot message to the conversation
@@ -523,13 +531,31 @@ export default function ActionsPanel() {
                         ) : (
                           <div className="space-y-2">
                             {item.data.content}
-                            {/* Show screenshot if this user message contains one */}
+                            {/* Show screenshot as an attachment chip if this user message contains one */}
                             {(item.data as any).screenshot && (
-                              <img
-                                src={(item.data as any).screenshot}
-                                alt="Screenshot"
-                                className="max-w-full max-h-48 object-contain rounded border mt-2"
-                              />
+                              <Attachment
+                                state={(item.data as any).attachmentState || 'done'}
+                                className="ml-auto border-black/10 bg-white/60 text-left"
+                              >
+                                <AttachmentMedia variant="image">
+                                  <img
+                                    src={(item.data as any).screenshot}
+                                    alt={t('screenshotAttachmentTitle')}
+                                  />
+                                </AttachmentMedia>
+                                <AttachmentContent>
+                                  <AttachmentTitle>
+                                    {t('screenshotAttachmentTitle')}
+                                  </AttachmentTitle>
+                                  <AttachmentDescription>
+                                    {(item.data as any).attachmentState === 'processing'
+                                      ? t('screenshotAttachmentProcessing')
+                                      : (item.data as any).attachmentState === 'error'
+                                        ? t('screenshotAttachmentError')
+                                        : new Date(item.timestamp).toLocaleTimeString()}
+                                  </AttachmentDescription>
+                                </AttachmentContent>
+                              </Attachment>
                             )}
                           </div>
                         )}

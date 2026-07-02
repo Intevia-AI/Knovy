@@ -283,6 +283,19 @@ export function useAIInteraction() {
         setAiMessages((prev) => [...prev, displayMsg])
       }
 
+      // Settle any screenshot attachment chips (added by the calling component
+      // with attachmentState: 'processing') once the analysis finishes.
+      const settleScreenshotAttachments = (state: 'done' | 'error') => {
+        if (action !== 'screenshot') return
+        setAiMessages((prev) =>
+          prev.map((m) =>
+            (m as any).screenshot && (m as any).attachmentState === 'processing'
+              ? ({ ...m, attachmentState: state } as AIMessage)
+              : m
+          )
+        )
+      }
+
       try {
         // Map actions to IPC channels
         const actionToChannel: Record<string, string> = {
@@ -451,6 +464,8 @@ export function useAIInteraction() {
         const content =
           responseMapping[action as keyof typeof responseMapping]?.(data) || JSON.stringify(data)
 
+        settleScreenshotAttachments('done')
+
         if (action === 'summary') {
           const sessionId = await (window as any).electronAPI.invoke('session:get-id')
           if (sessionId && content) {
@@ -478,6 +493,7 @@ export function useAIInteraction() {
         }
       } catch (e: unknown) {
         console.error('[AIInteraction] Error in sendContextToAI:', e)
+        settleScreenshotAttachments('error')
         setAiMessages((prev) => [
           ...prev,
           {
