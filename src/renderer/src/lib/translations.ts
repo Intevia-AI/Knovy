@@ -100,6 +100,7 @@ export const translations = {
     aiActionScreenshotDisplay: 'Screenshot analysis',
     // ChatPanel Tabs
     transcriptionTab: 'Transcription',
+    thinkingIndicator: 'Thinking…',
     summaryTab: 'Summary',
     // Settings Sidebar
     generalTab: 'General',
@@ -327,6 +328,7 @@ export const translations = {
     aiActionScreenshotDisplay: '請分析這張截圖',
     // ChatPanel Tabs
     transcriptionTab: '逐字稿',
+    thinkingIndicator: '思考中…',
     summaryTab: '摘要',
     // Settings Sidebar
     generalTab: '設定',
@@ -553,6 +555,7 @@ export type TranslationKey =
   | 'aiActionScreenshotDisplay'
   // ChatPanel Tabs
   | 'transcriptionTab'
+  | 'thinkingIndicator'
   | 'summaryTab'
   // Settings Sidebar
   | 'generalTab'
