@@ -1538,6 +1538,9 @@ app.on('ready', async () => {
           session_id: currentSessionId,
           timestamp,
           content: '',
+          // Raw whisper text rides along so the renderer can fall back to it if the
+          // correction ends empty, errors, or is cancelled before any token arrived.
+          rawText: transcriptionData.text,
           sourceType: transcriptionData.sourceType,
           role: 'assistant',
           type: 'transcription',
@@ -1559,6 +1562,10 @@ app.on('ready', async () => {
               onToken: (chunk) => {
                 if (generationId !== currentGenerationId) return
                 broadcastToWindows('correction:token', { transcriptId, generationId, chunk })
+              },
+              onThinking: () => {
+                if (generationId !== currentGenerationId) return
+                broadcastToWindows('correction:thinking', { transcriptId, generationId })
               }
             }
           )
@@ -1579,10 +1586,17 @@ app.on('ready', async () => {
           }
 
           broadcastToWindows('correction:done', { transcriptId, generationId, fullText: full })
-          await dbService.updateTranscriptEnhancement(transcriptId, {
-            enhancedText: full,
-            enhancementMetadata: {}
-          })
+          if (full.trim()) {
+            await dbService.updateTranscriptEnhancement(transcriptId, {
+              enhancedText: full,
+              enhancementMetadata: {}
+            })
+          } else {
+            // Empty correction (e.g. thinking ate the token budget): keep the raw
+            // text as source of truth; the renderer falls back to rawText.
+            console.warn(`[main/index.ts] Empty correction for ${transcriptId}, keeping raw text`)
+            await dbService.updateTranscriptEnhancementStatus(transcriptId, 'failed').catch(() => {})
+          }
         } catch (err) {
           const aborted = err instanceof Error && err.name === 'AbortError'
           console.warn(

@@ -55,6 +55,7 @@ export interface ChatResponse {
 
 export interface EnhanceStreamOptions {
   onToken: (chunk: string) => void
+  onThinking?: () => void
   signal: AbortSignal
 }
 
@@ -489,6 +490,9 @@ export class OllamaService extends EventEmitter {
     let inactivity = setTimeout(() => controller.abort(), INFERENCE_TIMEOUT_MS)
 
     try {
+      // Correction never thinks, regardless of the user's think toggle: it runs
+      // per-utterance on a sequential queue, and thinking inflates a one-sentence
+      // fix to minutes. The toggle only governs runChat (chat/recommend/deep/etc.).
       const response = await fetch(`${OLLAMA_BASE_URL}/api/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -510,9 +514,14 @@ export class OllamaService extends EventEmitter {
       }
 
       let full = ''
+      let notifiedThinking = false
       for await (const obj of parseNdjsonStream(response.body)) {
         clearTimeout(inactivity)
         inactivity = setTimeout(() => controller.abort(), INFERENCE_TIMEOUT_MS)
+        if (obj?.message?.thinking && !notifiedThinking) {
+          notifiedThinking = true
+          options.onThinking?.()
+        }
         const chunk: string = obj?.message?.content ?? ''
         if (chunk) {
           full += chunk

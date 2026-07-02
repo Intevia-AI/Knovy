@@ -23,6 +23,8 @@ interface TranscriptionMessage extends AIMessage {
   type: 'transcription'
   sourceType?: 'microphone' | 'system'
   isStreaming?: boolean
+  isThinking?: boolean
+  rawText?: string
 }
 
 interface AIContextData {
@@ -99,7 +101,7 @@ export function useAIInteraction() {
       setTranscriptions((prev) =>
         prev.map((m) => {
           const pending = snapshot.get(m.id)
-          return pending ? { ...m, content: m.content + pending } : m
+          return pending ? { ...m, content: m.content + pending, isThinking: false } : m
         })
       )
     }
@@ -132,6 +134,15 @@ export function useAIInteraction() {
       }
     )
 
+    const unsubThinking = api.on(
+      'correction:thinking',
+      ({ transcriptId }: { transcriptId: string }) => {
+        setTranscriptions((prev) =>
+          prev.map((m) => (m.id === transcriptId ? { ...m, isThinking: true } : m))
+        )
+      }
+    )
+
     const settle = (transcriptId: string, fullText?: string) => {
       buffers.delete(transcriptId)
       if (buffers.size === 0 && rafId != null) {
@@ -141,7 +152,14 @@ export function useAIInteraction() {
       setTranscriptions((prev) =>
         prev.map((m) =>
           m.id === transcriptId
-            ? { ...m, content: fullText != null ? fullText : m.content, isStreaming: false }
+            ? {
+                ...m,
+                // Never settle to an empty bubble: prefer the final corrected text,
+                // then whatever streamed, then the raw whisper text.
+                content: fullText || m.content || m.rawText || '',
+                isStreaming: false,
+                isThinking: false
+              }
             : m
         )
       )
@@ -164,6 +182,7 @@ export function useAIInteraction() {
       if (rafId != null) cancelAnimationFrame(rafId)
       unsubData()
       unsubToken()
+      unsubThinking()
       unsubDone()
       unsubCancelled()
       unsubError()
