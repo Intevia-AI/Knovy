@@ -15,6 +15,9 @@
     "paths": {
       "@/*": [
         "./src/renderer/src/*"
+      ],
+      "@shadcn/react/message-scroller": [
+        "./node_modules/@shadcn/react/dist/message-scroller/index.d.ts"
       ]
     }
   }
