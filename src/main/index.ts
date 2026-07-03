@@ -1603,6 +1603,16 @@ app.on('ready', async () => {
             full = s2twConverter(full)
           }
 
+          // Safety net: a weak model can echo prompt scaffolding instead of
+          // correcting. Never let it reach the UI or the correction context —
+          // emptying `full` routes through the existing raw-text fallback.
+          if (/Recent context:|最近對話：|^\s*(?:Transcription:|逐字稿：)/.test(full)) {
+            console.warn(
+              `[main/index.ts] Correction for ${transcriptId} echoed prompt scaffolding, keeping raw text`
+            )
+            full = ''
+          }
+
           broadcastToWindows('correction:done', { transcriptId, generationId, fullText: full })
           if (full.trim()) {
             pushRecentCorrection(transcriptionData.sourceType, full)

@@ -8,34 +8,42 @@ import {
 } from '../src/main/localLLMPrompts'
 
 describe('getCorrectionPrompt', () => {
-  it('embeds the raw text and asks for plain output (en)', () => {
-    const p = getCorrectionPrompt({
+  it('puts only the raw text in the user message, with no scaffold labels (en)', () => {
+    const messages = getCorrectionPrompt({
       rawText: 'helo wrld',
       conversationHistory: [],
       userLanguage: 'en'
     })
-    expect(p.user).toContain('helo wrld')
-    expect(p.system.toLowerCase()).not.toContain('json')
-    expect(p.user.toLowerCase()).not.toContain('json')
+    expect(messages[0].role).toBe('system')
+    const user = messages[messages.length - 1]
+    expect(user.role).toBe('user')
+    expect(user.content).toBe('helo wrld')
+    for (const m of messages) {
+      expect(m.content.toLowerCase()).not.toContain('json')
+      expect(m.content).not.toContain('Recent context:')
+      expect(m.content).not.toContain('Transcription:')
+    }
   })
 
   it('uses Traditional Chinese instructions for zh-TW', () => {
-    const p = getCorrectionPrompt({
+    const messages = getCorrectionPrompt({
       rawText: '你好',
       conversationHistory: [],
       userLanguage: 'zh-TW'
     })
-    expect(p.system).toContain('繁體中文')
-    expect(p.user).toContain('你好')
+    expect(messages[0].content).toContain('繁體中文')
+    expect(messages[messages.length - 1].content).toBe('你好')
   })
 
-  it('includes recent context when provided', () => {
-    const p = getCorrectionPrompt({
+  it('passes context as prior assistant turns, not inside the user message', () => {
+    const messages = getCorrectionPrompt({
       rawText: 'next line',
       conversationHistory: ['prior sentence'],
       userLanguage: 'en'
     })
-    expect(p.user).toContain('prior sentence')
+    expect(messages).toHaveLength(3)
+    expect(messages[1]).toEqual({ role: 'assistant', content: 'prior sentence' })
+    expect(messages[2]).toEqual({ role: 'user', content: 'next line' })
   })
 })
 

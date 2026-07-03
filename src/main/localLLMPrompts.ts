@@ -14,27 +14,31 @@ interface PromptResult {
   user: string
 }
 
-const correctionPrompts: Record<string, (params: PromptParams) => PromptResult> = {
-  en: ({ rawText, conversationHistory }) => ({
-    system:
-      'You are a speech-to-text correction assistant. Output ONLY the corrected transcription text — no labels, no quotes, no explanations, no commentary.',
-    user: `Correct this speech-to-text transcription. Fix homophones, mishearings, grammar, and punctuation. Preserve the original meaning and language. Output only the corrected text.
-
-${conversationHistory.length > 0 ? `Recent context:\n${conversationHistory.join('\n')}\n\n` : ''}Transcription: ${rawText}`
-  }),
-
-  'zh-TW': ({ rawText, conversationHistory }) => ({
-    system:
-      '你是語音轉文字修正助理。所有輸出必須使用繁體中文（台灣正體）。只輸出修正後的逐字稿文字，不要標籤、不要引號、不要說明、不要附加任何評論。',
-    user: `修正以下語音轉文字逐字稿。修正同音字、誤聽、語法與標點，保留原意。若包含簡體中文，請轉換為繁體中文。只輸出修正後的文字。
-
-${conversationHistory.length > 0 ? `最近對話：\n${conversationHistory.join('\n')}\n\n` : ''}逐字稿：${rawText}`
-  })
+export interface ChatMessage {
+  role: 'system' | 'user' | 'assistant'
+  content: string
 }
 
-export function getCorrectionPrompt(params: PromptParams): PromptResult {
+const correctionSystemPrompts: Record<string, string> = {
+  en: 'You are a speech-to-text correction assistant. Each user message is one raw transcription; earlier assistant messages are your previous corrections, given only as conversation context. Correct the latest user message: fix homophones, mishearings, grammar, and punctuation. Preserve the original meaning and language. Output ONLY the corrected transcription text — no labels, no quotes, no explanations, no commentary.',
+  'zh-TW':
+    '你是語音轉文字修正助理。每則使用者訊息是一段原始逐字稿；先前的 assistant 訊息是你之前的修正結果，僅作為對話前後文參考。請修正最新一則使用者訊息：修正同音字、誤聽、語法與標點，保留原意。所有輸出必須使用繁體中文（台灣正體）；若包含簡體中文，請轉換為繁體中文。只輸出修正後的逐字稿文字，不要標籤、不要引號、不要說明、不要附加任何評論。'
+}
+
+/**
+ * Context rides as prior chat turns, never as labelled text inside the user
+ * message: small models echo labels like "Recent context:" verbatim, and the
+ * echo then feeds back into the next call's context and compounds.
+ */
+export function getCorrectionPrompt(params: PromptParams): ChatMessage[] {
   const lang = params.userLanguage === 'zh-TW' ? 'zh-TW' : 'en'
-  return correctionPrompts[lang](params)
+  return [
+    { role: 'system', content: correctionSystemPrompts[lang] },
+    ...params.conversationHistory.map(
+      (text): ChatMessage => ({ role: 'assistant', content: text })
+    ),
+    { role: 'user', content: params.rawText }
+  ]
 }
 
 // ─── AI Action Prompt Types ───

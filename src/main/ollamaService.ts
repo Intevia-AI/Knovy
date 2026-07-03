@@ -477,7 +477,7 @@ export class OllamaService extends EventEmitter {
       throw Object.assign(new Error('Aborted'), { name: 'AbortError' })
     }
 
-    const prompt = getCorrectionPrompt({
+    const messages = getCorrectionPrompt({
       rawText: segment.rawText,
       conversationHistory: sessionContext.conversationHistory.slice(-3),
       userLanguage: sessionContext.userLanguage
@@ -498,10 +498,7 @@ export class OllamaService extends EventEmitter {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           model: this.modelState.model,
-          messages: [
-            { role: 'system', content: prompt.system },
-            { role: 'user', content: prompt.user }
-          ],
+          messages,
           stream: true,
           options: { temperature: 0.1, num_predict: 512 },
           think: false
