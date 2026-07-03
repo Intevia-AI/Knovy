@@ -1068,9 +1068,9 @@ export class WhisperBackend {
         '--temperature',
         '0.0',
         '--best-of',
-        '2',
+        '1',
         '--beam-size',
-        '5',
+        '3',
         // Priming prompt: previous-transcript tail when we have one, else the
         // default. whisper-cli only honors the last --prompt, so pass exactly one.
         '--prompt',
