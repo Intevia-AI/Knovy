@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, afterAll } from 'vitest'
 import fs from 'fs'
 import os from 'os'
 import path from 'path'
@@ -62,6 +62,13 @@ function wavPcm(file: string): ArrayBuffer {
 }
 
 describe.skipIf(!canRun)('mic/system source separation (real whisper.cpp)', () => {
+  // Tests never fire Electron's will-quit, so the persistent whisper-server
+  // must be torn down here or every test run leaks a resident model process.
+  afterAll(async () => {
+    const { getWhisperBackend } = await import('../src/main/whisperBackend')
+    getWhisperBackend().destroy()
+  })
+
   it(
     'concurrent mic and system chunks keep their own content and sourceType',
     async () => {
