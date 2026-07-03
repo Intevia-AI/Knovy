@@ -6,7 +6,8 @@ This directory contains the whisper.cpp binaries and dynamic libraries used for 
 
 ```
 whisper.cpp/
-├── whisper-darwin-arm64     # macOS Apple Silicon binary (patched rpath)
+├── whisper-darwin-arm64        # macOS Apple Silicon CLI binary (patched rpath)
+├── whisper-server-darwin-arm64 # macOS Apple Silicon HTTP server (patched rpath)
 ├── libwhisper.1.dylib       # Whisper library
 ├── libwhisper.1.7.6.dylib   # Whisper library (versioned)
 ├── libggml.dylib            # GGML core library
@@ -108,6 +109,37 @@ otool -L whisper-darwin-arm64
 ```
 
 Should show `@executable_path/` for all whisper/ggml libraries.
+
+## whisper-server (persistent HTTP server)
+
+`whisper-server-darwin-arm64` is whisper.cpp's bundled `examples/server` built at
+tag **v1.7.6** (same source as the CLI binary and dylibs). It loads the model **once**
+and serves `POST /inference` over localhost, eliminating the ~0.5–1s model reload that
+the CLI pays on every audio segment. `WhisperBackend` spawns it lazily and falls back to
+the CLI binary automatically if it fails.
+
+Build + rpath patch (mirrors the CLI binary — `@executable_path` for the bundled dylibs):
+
+```bash
+git clone --depth 1 --branch v1.7.6 https://github.com/ggml-org/whisper.cpp
+cd whisper.cpp
+cmake -B build -DBUILD_SHARED_LIBS=ON -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j --target whisper-server
+
+DEST=whisper-server-darwin-arm64
+cp build/bin/whisper-server "$DEST"
+install_name_tool -add_rpath "@executable_path" "$DEST"
+for lib in libwhisper.1.dylib libggml.dylib libggml-cpu.dylib \
+           libggml-blas.dylib libggml-metal.dylib libggml-base.dylib; do
+  install_name_tool -change "@rpath/$lib" "@executable_path/$lib" "$DEST"
+done
+```
+
+It reuses the dylibs already in this directory (identical v1.7.6 ABI). Started with
+`--model <ggml>.bin --host 127.0.0.1 --port <free> --vad-model <silero>.bin`; the VAD
+model and the transcription model are bound at startup, everything else (language,
+prompt, temperature, beam size, per-request VAD toggle/thresholds, `response_format`)
+is sent per request.
 
 ## Code Signing (Production Builds)
 
