@@ -66,12 +66,16 @@ let activeScreenSourceId: string | null = null
 let currentGenerationId = 0
 const activeCorrections = new Map<string, AbortController>()
 // Last few corrected texts, given to the correction prompt as context
-// (homophone/mishearing fixes need surrounding conversation).
-const recentCorrections: string[] = []
+// (homophone/mishearing fixes need surrounding conversation). Partitioned by
+// sourceType: mic and system are different speakers, and shared context lets
+// the LLM blend one side's content into the other's "correction".
+const recentCorrections = new Map<string, string[]>()
 const RECENT_CORRECTIONS_MAX = 3
-function pushRecentCorrection(text: string): void {
-  recentCorrections.push(text)
-  if (recentCorrections.length > RECENT_CORRECTIONS_MAX) recentCorrections.shift()
+function pushRecentCorrection(sourceType: string, text: string): void {
+  const list = recentCorrections.get(sourceType) ?? []
+  list.push(text)
+  if (list.length > RECENT_CORRECTIONS_MAX) list.shift()
+  recentCorrections.set(sourceType, list)
 }
 
 function cancelAllCorrections(): void {
@@ -80,7 +84,7 @@ function cancelAllCorrections(): void {
     controller.abort()
   }
   activeCorrections.clear() // in-flight finally blocks then no-op delete on the cleared map
-  recentCorrections.length = 0 // context must not bleed across sessions
+  recentCorrections.clear() // context must not bleed across sessions
 }
 
 function broadcastToWindows(channel: string, payload: unknown): void {
@@ -1568,7 +1572,7 @@ app.on('ready', async () => {
             },
             {
               sessionId: currentSessionId,
-              conversationHistory: [...recentCorrections],
+              conversationHistory: [...(recentCorrections.get(transcriptionData.sourceType) ?? [])],
               userLanguage
             },
             {
@@ -1601,7 +1605,7 @@ app.on('ready', async () => {
 
           broadcastToWindows('correction:done', { transcriptId, generationId, fullText: full })
           if (full.trim()) {
-            pushRecentCorrection(full)
+            pushRecentCorrection(transcriptionData.sourceType, full)
             await dbService.updateTranscriptEnhancement(transcriptId, {
               enhancedText: full,
               enhancementMetadata: {}

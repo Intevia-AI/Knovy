@@ -168,6 +168,7 @@ export class WhisperBackend {
 
     const startTime = Date.now()
     const transcriptionSessionId = sessionId || randomUUID()
+    let tempAudioFile: string | undefined
 
     try {
       console.log(`[WhisperService] Starting transcription ${transcriptionSessionId}`, {
@@ -224,8 +225,13 @@ export class WhisperBackend {
         }
       }
 
-      // Write audio to temporary file
-      const tempAudioFile = await this.writeAudioToTempFile(audioBuffer, transcriptionSessionId)
+      // Write audio to a per-chunk temp file: mic and system transcribe
+      // concurrently, and a shared filename lets one stream overwrite the
+      // other's audio before whisper reads it (identical text on both sides).
+      tempAudioFile = await this.writeAudioToTempFile(
+        audioBuffer,
+        `${transcriptionSessionId}-${options.sourceType}-${randomUUID()}`
+      )
 
       // Get model path
       const modelPath = await this.getModelPath(options.modelSize || 'tiny')
@@ -234,7 +240,8 @@ export class WhisperBackend {
       const transcriptionResult = await this.transcribeWithLanguageAwareness(
         tempAudioFile,
         modelPath,
-        options
+        options,
+        transcriptionSessionId
       )
 
       // Post-process transcription result for noise filtering
@@ -288,6 +295,8 @@ export class WhisperBackend {
     } catch (error) {
       console.error(`[WhisperService] Failed transcription ${transcriptionSessionId}:`, error)
       throw error
+    } finally {
+      if (tempAudioFile) await fs.unlink(tempAudioFile).catch(() => {})
     }
   }
 
@@ -742,8 +751,8 @@ export class WhisperBackend {
     }
   }
 
-  private async writeAudioToTempFile(audioBuffer: ArrayBuffer, sessionId: string): Promise<string> {
-    const tempFileName = `audio-${sessionId}.wav`
+  private async writeAudioToTempFile(audioBuffer: ArrayBuffer, fileKey: string): Promise<string> {
+    const tempFileName = `audio-${fileKey}.wav`
     const tempFilePath = path.join(this.tempPath, tempFileName)
 
     // Convert ArrayBuffer to proper WAV file
@@ -947,7 +956,8 @@ export class WhisperBackend {
   private async transcribeWithLanguageAwareness(
     audioFilePath: string,
     modelPath: string,
-    options: TranscriptionOptions
+    options: TranscriptionOptions,
+    sessionId: string
   ): Promise<{
     text: string
     detectedLanguage?: string
@@ -990,7 +1000,12 @@ export class WhisperBackend {
           autoDetectLanguage: !targetLanguage // Use auto if no target language
         }
 
-        const text = await this.executeWhisper(audioFilePath, modelPath, transcriptionOptions)
+        const text = await this.executeWhisper(
+          audioFilePath,
+          modelPath,
+          transcriptionOptions,
+          sessionId
+        )
         return {
           text,
           detectedLanguage: detectedLang,
@@ -1002,7 +1017,7 @@ export class WhisperBackend {
 
     // Fallback to standard single-stage transcription
     console.log(`[WhisperService] Using standard single-stage transcription`)
-    const text = await this.executeWhisper(audioFilePath, modelPath, options)
+    const text = await this.executeWhisper(audioFilePath, modelPath, options, sessionId)
     return {
       text,
       usedTwoStageDetection: false
@@ -1012,13 +1027,14 @@ export class WhisperBackend {
   private async executeWhisper(
     audioFilePath: string,
     modelPath: string,
-    options: TranscriptionOptions
+    options: TranscriptionOptions,
+    sessionId: string
   ): Promise<string> {
     return new Promise((resolve, reject) => {
-      // Temp files are named audio-<sessionId>.wav; strip the prefix so the key
-      // matches what updateContext() writes (bare sessionId).
-      const sessionId = path.basename(audioFilePath, '.wav').replace(/^audio-/, '')
       const contextPrompt = this.buildContextPrompt(sessionId, options.sourceType)
+      // Per-call key: mic and system run concurrently in the same session, and a
+      // shared key makes the timeout/cleanup target the wrong process.
+      const processKey = audioFilePath
 
       const args = [
         audioFilePath,
@@ -1092,7 +1108,7 @@ export class WhisperBackend {
       })
 
       const process = spawn(this.whisperBinaryPath, args)
-      this.activeProcesses.set(sessionId, process)
+      this.activeProcesses.set(processKey, process)
 
       let stdout = ''
       let stderr = ''
@@ -1106,7 +1122,7 @@ export class WhisperBackend {
       })
 
       process.on('close', (code) => {
-        this.activeProcesses.delete(sessionId)
+        this.activeProcesses.delete(processKey)
 
         console.log(`[WhisperService] whisper.cpp finished with code ${code}`, {
           stdout: stdout ? `"${stdout.trim()}"` : '(empty)',
@@ -1126,17 +1142,17 @@ export class WhisperBackend {
       })
 
       process.on('error', (error) => {
-        this.activeProcesses.delete(sessionId)
+        this.activeProcesses.delete(processKey)
         console.error(`[WhisperService] Process error:`, error)
         reject(error)
       })
 
       // Set timeout for long-running processes
       setTimeout(() => {
-        if (this.activeProcesses.has(sessionId)) {
-          console.warn(`[WhisperService] Process timeout, killing: ${sessionId}`)
+        if (this.activeProcesses.has(processKey)) {
+          console.warn(`[WhisperService] Process timeout, killing: ${processKey}`)
           process.kill('SIGTERM')
-          this.activeProcesses.delete(sessionId)
+          this.activeProcesses.delete(processKey)
           reject(new Error('Transcription process timeout'))
         }
       }, 30000) // 30 second timeout
