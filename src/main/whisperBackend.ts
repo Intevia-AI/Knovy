@@ -75,11 +75,6 @@ export class WhisperBackend {
   private segmentContext = new Map<string, string>() // sessionId -> last sentence
   private sessionHistory = new Map<string, string[]>() // sessionId -> conversation history
 
-  // Cached Stage-1 language detection, keyed `${sessionId}-${sourceType}`.
-  // ponytail: a mid-session language switch won't re-trigger detection — deliberate
-  // ceiling; it saves a full whisper.cpp spawn + model load per segment.
-  private languageCache = new Map<string, string>()
-
   // VAD (Voice Activity Detection) model path
   private vadModelPath: string | null = null
 
@@ -723,9 +718,6 @@ export class WhisperBackend {
       this.segmentContext.delete(key)
       this.sessionHistory.delete(key)
     })
-    Array.from(this.languageCache.keys())
-      .filter((key) => key.startsWith(sessionId))
-      .forEach((key) => this.languageCache.delete(key))
     console.log(`[WhisperService] Cleared context for session: ${sessionId}`)
   }
 
@@ -1312,20 +1304,10 @@ export class WhisperBackend {
         `[WhisperService] Using two-stage detection for user language: ${options.userLanguage}`
       )
 
-      // Stage 1: Language Detection (cached per session+source to avoid a full
-      // extra whisper.cpp spawn + model load on every segment)
-      const cacheKey = `${sessionId}-${options.sourceType}`
-      let detectedLang = this.languageCache.get(cacheKey) ?? null
-      if (detectedLang) {
-        console.log(
-          `[WhisperService] Using cached detected language '${detectedLang}' for ${cacheKey}`
-        )
-      } else {
-        detectedLang = await this.detectLanguageFirst(audioFilePath, modelPath)
-        if (detectedLang) {
-          this.languageCache.set(cacheKey, detectedLang)
-        }
-      }
+      // Stage 1: Language Detection. Runs per segment — bilingual users switch
+      // languages mid-session, and with the persistent server this is a cheap
+      // warm request, not a model load.
+      const detectedLang = await this.detectLanguageFirst(audioFilePath, modelPath)
 
       if (detectedLang) {
         // Stage 2: Targeted transcription based on detection
