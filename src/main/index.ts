@@ -51,10 +51,10 @@ import {
 } from './settingsWindowManager'
 import { DEFAULT_AUTO_TRIGGER_SETTINGS } from '../renderer/src/types/settings'
 import { getIntentionProcessor } from './intentionProcessor'
-import { ConverterFactory, Locale } from 'opencc-js'
+import { Converter } from 'opencc-js'
 
 // Simplified → Traditional Chinese converter for post-processing enhanced text
-const s2twConverter = ConverterFactory(Locale.from.cn, Locale.to.tw)
+const s2twConverter = Converter({ from: 'cn', to: 'tw' })
 
 console.log('[Debug] Imported dbService module:', dbService)
 

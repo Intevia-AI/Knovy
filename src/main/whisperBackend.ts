@@ -4,7 +4,7 @@ import path from 'path'
 import fs from 'fs/promises'
 import { app } from 'electron'
 import { randomUUID } from 'crypto'
-import { Converter, ConverterFactory, Locale } from 'opencc-js'
+import { Converter, type ConverterFunction } from 'opencc-js'
 
 // Configuration: Change this to set the default model size
 // Options: 'tiny' (75MB, fastest), 'base' (142MB, better), 'small' (488MB, good+), 'medium' (1.5GB, best)
@@ -79,7 +79,7 @@ export class WhisperBackend {
   private vadModelPath: string | null = null
 
   // OpenCC converter for Simplified to Traditional Chinese (Taiwan)
-  private chineseConverter: Converter | null = null
+  private chineseConverter: ConverterFunction | null = null
 
   constructor() {
     // Platform-specific binary paths
@@ -121,7 +121,7 @@ export class WhisperBackend {
 
     // Initialize OpenCC converter for Simplified to Traditional Chinese (Taiwan)
     try {
-      this.chineseConverter = ConverterFactory(Locale.from.cn, Locale.to.tw)
+      this.chineseConverter = Converter({ from: 'cn', to: 'tw' })
       console.log('[WhisperService] OpenCC converter initialized (CN → TW)')
     } catch (error) {
       console.error('[WhisperService] Failed to initialize OpenCC converter:', error)
