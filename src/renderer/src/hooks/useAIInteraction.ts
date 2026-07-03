@@ -89,6 +89,13 @@ export function useAIInteraction() {
     const buffers = new Map<string, string>()
     let rafId: number | null = null
 
+    // Watchdog per streaming bubble: if the main process never settles a
+    // correction (crash, dev restart, lost IPC), fall back to the raw text
+    // instead of leaving the bubble empty forever. A late correction:done
+    // still overwrites with the corrected text.
+    const watchdogs = new Map<string, ReturnType<typeof setTimeout>>()
+    const WATCHDOG_MS = 60_000
+
     const flush = () => {
       rafId = null
       if (buffers.size === 0) return
@@ -123,6 +130,12 @@ export function useAIInteraction() {
           isStreaming: !!t.isStreaming
         }
         setTranscriptions((prev) => [...prev, formatted])
+        if (formatted.isStreaming) {
+          watchdogs.set(
+            formatted.id,
+            setTimeout(() => settle(formatted.id), WATCHDOG_MS)
+          )
+        }
       }
     )
 
@@ -144,6 +157,11 @@ export function useAIInteraction() {
     )
 
     const settle = (transcriptId: string, fullText?: string) => {
+      const watchdog = watchdogs.get(transcriptId)
+      if (watchdog) {
+        clearTimeout(watchdog)
+        watchdogs.delete(transcriptId)
+      }
       buffers.delete(transcriptId)
       if (buffers.size === 0 && rafId != null) {
         cancelAnimationFrame(rafId)
@@ -180,6 +198,8 @@ export function useAIInteraction() {
 
     return () => {
       if (rafId != null) cancelAnimationFrame(rafId)
+      for (const t of watchdogs.values()) clearTimeout(t)
+      watchdogs.clear()
       unsubData()
       unsubToken()
       unsubThinking()
