@@ -1,4 +1,5 @@
 import { spawn, ChildProcess } from 'child_process'
+import net from 'net'
 import path from 'path'
 import fs from 'fs/promises'
 import { app } from 'electron'
@@ -55,11 +56,20 @@ export interface ModelInfo {
  */
 export class WhisperBackend {
   private whisperBinaryPath: string
+  private serverBinaryPath: string
   private modelsPath: string
   private tempPath: string
   private isInitialized = false
   private activeProcesses = new Map<string, ChildProcess>()
   private downloadPromises = new Map<string, Promise<boolean>>()
+
+  // Persistent whisper-server: loads the model once (vs the CLI reloading it per
+  // segment). Requests route through it; any failure falls back to the CLI path
+  // for that request and the server is respawned on the next one.
+  private serverProcess: ChildProcess | null = null
+  private serverPort: number | null = null
+  private serverModelPath: string | null = null // model currently loaded by the server
+  private serverStarting: Promise<number | null> | null = null // in-flight startup guard
 
   // Context preservation system
   private segmentContext = new Map<string, string>() // sessionId -> last sentence
@@ -96,6 +106,12 @@ export class WhisperBackend {
       resourcesPath,
       'whisper.cpp',
       `${binaryName}-${platform}-${arch}`
+    )
+    const serverBinaryName = platform === 'win32' ? 'whisper-server.exe' : 'whisper-server'
+    this.serverBinaryPath = path.join(
+      resourcesPath,
+      'whisper.cpp',
+      `${serverBinaryName}-${platform}-${arch}`
     )
     this.modelsPath = path.join(app.getPath('userData'), 'whisper-models')
     this.tempPath = path.join(app.getPath('temp'), 'knovy-transcription')
@@ -859,7 +875,321 @@ export class WhisperBackend {
   /**
    * Stage 1: Fast language detection using whisper.cpp --detect-language
    */
+  // ==========================================================================
+  // whisper-server (persistent HTTP backend)
+  // ==========================================================================
+
+  /** Grab a free localhost TCP port from the OS. */
+  private getFreePort(): Promise<number> {
+    return new Promise((resolve, reject) => {
+      const srv = net.createServer()
+      srv.on('error', reject)
+      srv.listen(0, '127.0.0.1', () => {
+        const addr = srv.address()
+        const port = typeof addr === 'object' && addr ? addr.port : 0
+        srv.close(() => resolve(port))
+      })
+    })
+  }
+
+  /** Kill the running server (if any) and clear its state. */
+  private stopServer(): void {
+    if (this.serverProcess) {
+      console.log('[WhisperService] Stopping whisper-server')
+      try {
+        this.serverProcess.kill('SIGTERM')
+      } catch {
+        // already gone
+      }
+    }
+    this.serverProcess = null
+    this.serverPort = null
+    this.serverModelPath = null
+  }
+
+  /**
+   * Ensure a whisper-server is running for `modelPath` and return its port, or
+   * null if it can't be started (caller then falls back to the CLI). The server
+   * is bound to one model at startup; a different model triggers a restart.
+   */
+  private async ensureServer(modelPath: string): Promise<number | null> {
+    // Serialize concurrent callers (mic + system start together).
+    while (this.serverStarting) {
+      await this.serverStarting.catch(() => {})
+    }
+
+    if (this.serverProcess && this.serverModelPath === modelPath && this.serverPort) {
+      return this.serverPort
+    }
+
+    // Model changed (or no server) — (re)start.
+    if (this.serverProcess) {
+      console.log(
+        `[WhisperService] Model changed (${this.serverModelPath} -> ${modelPath}), restarting server`
+      )
+      this.stopServer()
+    }
+
+    this.serverStarting = this.startServer(modelPath)
+    try {
+      return await this.serverStarting
+    } finally {
+      this.serverStarting = null
+    }
+  }
+
+  private async startServer(modelPath: string): Promise<number | null> {
+    try {
+      // Binary present?
+      await fs.access(this.serverBinaryPath, fs.constants.X_OK)
+
+      const port = await this.getFreePort()
+      const args = [
+        '--model',
+        modelPath,
+        '--host',
+        '127.0.0.1',
+        '--port',
+        String(port),
+        '--threads',
+        '4'
+      ]
+      // VAD model is bound at startup (not a per-request field); the per-request
+      // `vad` flag toggles it. Only add if the model is available.
+      if (this.vadModelPath) {
+        args.push('--vad-model', this.vadModelPath)
+      }
+
+      console.log(`[WhisperService] Starting whisper-server on port ${port} for model ${modelPath}`)
+      const proc = spawn(this.serverBinaryPath, args)
+      this.serverProcess = proc
+
+      proc.stderr?.on('data', (d) => {
+        const line = d.toString().trim()
+        if (line) console.log(`[whisper-server] ${line.split('\n').slice(-1)[0]}`)
+      })
+      proc.on('exit', (code, signal) => {
+        console.log(`[WhisperService] whisper-server exited (code=${code}, signal=${signal})`)
+        // Only clear if this is still the tracked process.
+        if (this.serverProcess === proc) {
+          this.serverProcess = null
+          this.serverPort = null
+          this.serverModelPath = null
+        }
+      })
+
+      // The socket only accepts connections once the model is loaded, so a
+      // successful GET / means the server is ready.
+      const ready = await this.waitForServerReady(port, proc)
+      if (!ready) {
+        this.stopServer()
+        return null
+      }
+
+      this.serverPort = port
+      this.serverModelPath = modelPath
+      console.log(`[WhisperService] whisper-server ready on port ${port}`)
+      return port
+    } catch (error) {
+      console.warn(
+        `[WhisperService] Failed to start whisper-server (${(error as Error).message}); using CLI`
+      )
+      this.stopServer()
+      return null
+    }
+  }
+
+  private async waitForServerReady(port: number, proc: ChildProcess): Promise<boolean> {
+    const deadline = Date.now() + 30000
+    while (Date.now() < deadline) {
+      if (proc.exitCode !== null || proc.signalCode) return false
+      try {
+        const res = await fetch(`http://127.0.0.1:${port}/`, {
+          signal: AbortSignal.timeout(1000)
+        })
+        if (res.ok) return true
+      } catch {
+        // not up yet
+      }
+      await new Promise((r) => setTimeout(r, 250))
+    }
+    return false
+  }
+
+  /**
+   * POST a WAV to the server's /inference endpoint. Returns the transcription
+   * text and detected language, or null to signal a fallback to the CLI.
+   */
+  private async transcribeViaServer(
+    audioFilePath: string,
+    modelPath: string,
+    options: TranscriptionOptions,
+    sessionId: string
+  ): Promise<{ text: string; language: string | null } | null> {
+    const port = await this.ensureServer(modelPath)
+    if (!port) return null
+
+    try {
+      const contextPrompt = this.buildContextPrompt(sessionId, options.sourceType)
+      const shouldAutoDetect = options.autoDetectLanguage !== false
+      const language =
+        !shouldAutoDetect && options.language
+          ? options.language.split('-')[0].toLowerCase()
+          : 'auto'
+
+      const form = new FormData()
+      const bytes = await fs.readFile(audioFilePath)
+      form.append('file', new Blob([bytes]), 'audio.wav')
+      form.append('response_format', 'verbose_json')
+      form.append('no_timestamps', 'true')
+      form.append('temperature', '0.0')
+      form.append('best_of', '1')
+      form.append('beam_size', '3')
+      form.append('word_thold', '0.01')
+      form.append('language', language)
+      // Priming prompt: previous-transcript tail when we have one, else the
+      // default (mirrors the CLI's single --prompt).
+      form.append('prompt', contextPrompt || DEFAULT_PRIMING_PROMPT)
+
+      const enableVAD = options.enableVAD !== false
+      if (enableVAD && this.vadModelPath) {
+        form.append('vad', 'true')
+        form.append('vad_threshold', String(options.vadThreshold ?? 0.6))
+        form.append('vad_min_speech_duration_ms', String(options.vadMinSpeechDuration ?? 250))
+        form.append('vad_min_silence_duration_ms', String(options.vadMinSilenceDuration ?? 100))
+        form.append('vad_speech_pad_ms', String(options.vadSpeechPadding ?? 30))
+      }
+
+      if (contextPrompt) {
+        console.log(`[WhisperService] (server) Priming with previous context: "${contextPrompt}"`)
+      }
+
+      const res = await fetch(`http://127.0.0.1:${port}/inference`, {
+        method: 'POST',
+        body: form,
+        signal: AbortSignal.timeout(30000)
+      })
+      if (!res.ok) {
+        throw new Error(`server responded ${res.status}`)
+      }
+      const json = (await res.json()) as {
+        text?: string
+        language_probabilities?: Record<string, number>
+      }
+      return {
+        text: (json.text || '').trim(),
+        language: this.topLanguageCode(json.language_probabilities)
+      }
+    } catch (error) {
+      console.warn(
+        `[WhisperService] whisper-server request failed (${(error as Error).message}); falling back to CLI`
+      )
+      // Tear down so the next request respawns a fresh server.
+      this.stopServer()
+      return null
+    }
+  }
+
+  /**
+   * Server-side language detection. Returns a short code (e.g. 'zh', 'en') from
+   * the verbose_json language probabilities, or null to fall back to the CLI.
+   */
+  private async detectLanguageViaServer(
+    audioFilePath: string,
+    modelPath: string
+  ): Promise<string | null> {
+    const port = await this.ensureServer(modelPath)
+    if (!port) return null
+
+    try {
+      const form = new FormData()
+      const bytes = await fs.readFile(audioFilePath)
+      form.append('file', new Blob([bytes]), 'audio.wav')
+      form.append('response_format', 'verbose_json')
+      form.append('no_timestamps', 'true')
+      form.append('detect_language', 'true')
+
+      const res = await fetch(`http://127.0.0.1:${port}/inference`, {
+        method: 'POST',
+        body: form,
+        signal: AbortSignal.timeout(30000)
+      })
+      if (!res.ok) throw new Error(`server responded ${res.status}`)
+      const json = (await res.json()) as {
+        language_probabilities?: Record<string, number>
+      }
+      const code = this.topLanguageCode(json.language_probabilities)
+      console.log(`[WhisperService] (server) Detected language: ${code}`)
+      return code
+    } catch (error) {
+      console.warn(
+        `[WhisperService] whisper-server detect failed (${(error as Error).message}); falling back to CLI`
+      )
+      this.stopServer()
+      return null
+    }
+  }
+
+  /** Pick the highest-probability short language code from the server response. */
+  private topLanguageCode(probs?: Record<string, number>): string | null {
+    if (!probs) return null
+    let best: string | null = null
+    let bestP = -1
+    for (const [code, p] of Object.entries(probs)) {
+      if (p > bestP) {
+        bestP = p
+        best = code
+      }
+    }
+    return best ? best.toLowerCase() : null
+  }
+
+  /** Shut everything down (server + any in-flight CLI processes). */
+  destroy(): void {
+    this.stopServer()
+    for (const proc of this.activeProcesses.values()) {
+      try {
+        proc.kill('SIGTERM')
+      } catch {
+        // already gone
+      }
+    }
+    this.activeProcesses.clear()
+  }
+
+  // ==========================================================================
+  // Transcription dispatchers: server first, CLI fallback
+  // ==========================================================================
+
+  /**
+   * Stage 1: language detection. Tries the persistent server, falls back to the
+   * CLI (--detect-language) if the server is unavailable.
+   */
   private async detectLanguageFirst(
+    audioFilePath: string,
+    modelPath: string
+  ): Promise<string | null> {
+    const viaServer = await this.detectLanguageViaServer(audioFilePath, modelPath)
+    if (viaServer !== null) return viaServer
+    return this.detectLanguageCli(audioFilePath, modelPath)
+  }
+
+  /**
+   * Transcribe one chunk. Tries the persistent server, falls back to the CLI
+   * spawn if the server is unavailable or errors.
+   */
+  private async executeWhisper(
+    audioFilePath: string,
+    modelPath: string,
+    options: TranscriptionOptions,
+    sessionId: string
+  ): Promise<string> {
+    const viaServer = await this.transcribeViaServer(audioFilePath, modelPath, options, sessionId)
+    if (viaServer !== null) return viaServer.text
+    return this.executeWhisperCli(audioFilePath, modelPath, options, sessionId)
+  }
+
+  private async detectLanguageCli(
     audioFilePath: string,
     modelPath: string
   ): Promise<string | null> {
@@ -1044,7 +1374,7 @@ export class WhisperBackend {
     }
   }
 
-  private async executeWhisper(
+  private async executeWhisperCli(
     audioFilePath: string,
     modelPath: string,
     options: TranscriptionOptions,

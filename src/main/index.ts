@@ -2593,6 +2593,12 @@ process.on('uncaughtException', (error) => {
 
 app.on('will-quit', async () => {
   globalShortcut.unregisterAll()
+  // Stop the persistent whisper-server and any in-flight transcription processes.
+  try {
+    getWhisperBackend().destroy()
+  } catch (error) {
+    console.error('[main/index.ts] Error stopping whisper backend on quit:', error)
+  }
 })
 
 app.on('activate', () => {
