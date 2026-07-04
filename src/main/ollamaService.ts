@@ -1,4 +1,5 @@
 import { EventEmitter } from 'events'
+import { Converter } from 'opencc-js'
 import type { TranscriptionSegment, SessionContext } from './transcriptionEnhancementService'
 import { getCorrectionPrompt } from './localLLMPrompts'
 import { parseNdjsonStream } from './ndjsonStream'
@@ -34,6 +35,10 @@ export interface OllamaPullProgress {
   completed?: number
   percentage?: number
 }
+
+// Any Chinese the model emits must reach the UI as Traditional. s2tw is a
+// no-op on English/already-Traditional text, so it runs unconditionally.
+const s2twConverter = Converter({ from: 'cn', to: 'tw' })
 
 const OLLAMA_BASE_URL = 'http://localhost:11434'
 const DEFAULT_MODEL = 'qwen3.5:0.8b'
@@ -456,7 +461,7 @@ export class OllamaService extends EventEmitter {
       const elapsed = Date.now() - startTime
       console.log(`[OllamaService] Chat complete: ${elapsed}ms, ${content.length} chars`)
 
-      return { content, processingTime: elapsed }
+      return { content: s2twConverter(content), processingTime: elapsed }
     } catch (error) {
       clearTimeout(timeout)
 
