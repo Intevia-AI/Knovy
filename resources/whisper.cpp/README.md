@@ -4,58 +4,38 @@ This directory contains the whisper.cpp binaries and dynamic libraries used for 
 
 ## Directory Structure
 
+Current version: **v1.9.1** (ggml 0.15.1).
+
 ```
 whisper.cpp/
 ├── whisper-darwin-arm64        # macOS Apple Silicon CLI binary (patched rpath)
 ├── whisper-server-darwin-arm64 # macOS Apple Silicon HTTP server (patched rpath)
 ├── libwhisper.1.dylib       # Whisper library
-├── libwhisper.1.7.6.dylib   # Whisper library (versioned)
-├── libggml.dylib            # GGML core library
-├── libggml-base.dylib       # GGML base library
-├── libggml-cpu.dylib        # GGML CPU backend
-├── libggml-blas.dylib       # GGML BLAS backend
-├── libggml-metal.dylib      # GGML Metal backend (GPU)
+├── libggml.0.dylib          # GGML core library
+├── libggml-base.0.dylib     # GGML base library
+├── libggml-cpu.0.dylib      # GGML CPU backend
+├── libggml-blas.0.dylib     # GGML BLAS backend
+├── libggml-metal.0.dylib    # GGML Metal backend (GPU)
 ├── models/                  # Downloaded models (created at runtime)
 └── README.md                # This file
 ```
 
+All dylibs are **real files, not symlinks** (the release zip flattens symlinks, which
+breaks Squirrel auto-updates). Each is the real library copied under the exact name the
+binaries reference via `@rpath` (e.g. `libggml.0.15.1.dylib` → `libggml.0.dylib`).
+
 ## Binary Requirements
 
-The binaries should be compiled from [whisper.cpp](https://github.com/ggerganov/whisper.cpp) with the following configuration:
+The binaries are compiled from [whisper.cpp](https://github.com/ggml-org/whisper.cpp)
+at the tag noted above:
 
-### Build Commands
-
-**macOS (Universal Binary):**
+### Build Commands (macOS arm64)
 
 ```bash
-git clone https://github.com/ggerganov/whisper.cpp.git
+git clone --depth 1 --branch v1.9.1 https://github.com/ggml-org/whisper.cpp
 cd whisper.cpp
-make clean
-make -j4
-
-# For ARM64 specifically:
-arch -arm64 make clean
-arch -arm64 make -j4
-
-# For x64 specifically:
-arch -x86_64 make clean
-arch -x86_64 make -j4
-```
-
-**Windows:**
-
-```bash
-mkdir build
-cd build
-cmake ..
-cmake --build . --config Release
-```
-
-**Linux:**
-
-```bash
-make clean
-make -j4
+cmake -B build -DBUILD_SHARED_LIBS=ON -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j --target whisper-cli whisper-server
 ```
 
 ## Model Downloads
@@ -88,54 +68,31 @@ The binaries are executed by the LocalTranscriptionService with these parameters
 
 ## Important: Dynamic Library Loading (macOS)
 
-The whisper binary has been **patched** to load libraries from `@executable_path` (same directory).
-
-**DO NOT** replace `whisper-darwin-arm64` without updating its rpath:
-
-```bash
-install_name_tool -add_rpath "@executable_path" whisper-darwin-arm64
-install_name_tool -change "@rpath/libwhisper.1.dylib" "@executable_path/libwhisper.1.dylib" whisper-darwin-arm64
-install_name_tool -change "@rpath/libggml.dylib" "@executable_path/libggml.dylib" whisper-darwin-arm64
-install_name_tool -change "@rpath/libggml-cpu.dylib" "@executable_path/libggml-cpu.dylib" whisper-darwin-arm64
-install_name_tool -change "@rpath/libggml-blas.dylib" "@executable_path/libggml-blas.dylib" whisper-darwin-arm64
-install_name_tool -change "@rpath/libggml-metal.dylib" "@executable_path/libggml-metal.dylib" whisper-darwin-arm64
-install_name_tool -change "@rpath/libggml-base.dylib" "@executable_path/libggml-base.dylib" whisper-darwin-arm64
-```
-
-Verify the binary's library dependencies:
+Both binaries are **patched** to resolve their `@rpath` libraries from the same
+directory. After building, strip the build-tree rpaths and add `@executable_path`:
 
 ```bash
-otool -L whisper-darwin-arm64
-```
-
-Should show `@executable_path/` for all whisper/ggml libraries.
-
-## whisper-server (persistent HTTP server)
-
-`whisper-server-darwin-arm64` is whisper.cpp's bundled `examples/server` built at
-tag **v1.7.6** (same source as the CLI binary and dylibs). It loads the model **once**
-and serves `POST /inference` over localhost, eliminating the ~0.5–1s model reload that
-the CLI pays on every audio segment. `WhisperBackend` spawns it lazily and falls back to
-the CLI binary automatically if it fails.
-
-Build + rpath patch (mirrors the CLI binary — `@executable_path` for the bundled dylibs):
-
-```bash
-git clone --depth 1 --branch v1.7.6 https://github.com/ggml-org/whisper.cpp
-cd whisper.cpp
-cmake -B build -DBUILD_SHARED_LIBS=ON -DCMAKE_BUILD_TYPE=Release
-cmake --build build -j --target whisper-server
-
-DEST=whisper-server-darwin-arm64
-cp build/bin/whisper-server "$DEST"
-install_name_tool -add_rpath "@executable_path" "$DEST"
-for lib in libwhisper.1.dylib libggml.dylib libggml-cpu.dylib \
-           libggml-blas.dylib libggml-metal.dylib libggml-base.dylib; do
-  install_name_tool -change "@rpath/$lib" "@executable_path/$lib" "$DEST"
+for b in whisper-darwin-arm64 whisper-server-darwin-arm64; do
+  otool -l "$b" | grep -A2 LC_RPATH | grep ' path ' | awk '{print $2}' |
+    while read rp; do install_name_tool -delete_rpath "$rp" "$b"; done
+  install_name_tool -add_rpath "@executable_path" "$b"
+  codesign --force --sign - "$b"   # ad-hoc re-sign after patching
 done
 ```
 
-It reuses the dylibs already in this directory (identical v1.7.6 ABI). Started with
+Verify with `otool -L whisper-darwin-arm64` — all whisper/ggml entries stay
+`@rpath/...` and resolve via the `@executable_path` rpath. Copy the dylibs as real
+files named exactly as referenced (see the note in Directory Structure).
+
+## whisper-server (persistent HTTP server)
+
+`whisper-server-darwin-arm64` is whisper.cpp's bundled `examples/server` built from the
+same tag as the CLI binary and dylibs. It loads the model **once** and serves
+`POST /inference` over localhost, eliminating the ~0.5–1s model reload that the CLI pays
+on every audio segment. `WhisperBackend` spawns it lazily and falls back to the CLI
+binary automatically if it fails.
+
+Started with
 `--model <ggml>.bin --host 127.0.0.1 --port <free> --vad-model <silero>.bin`; the VAD
 model and the transcription model are bound at startup, everything else (language,
 prompt, temperature, beam size, per-request VAD toggle/thresholds, `response_format`)
