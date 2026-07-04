@@ -156,7 +156,7 @@ export function useAIInteraction() {
       }
     )
 
-    const settle = (transcriptId: string, fullText?: string) => {
+    const settle = (transcriptId: string, fullText?: string, discardStreamed = false) => {
       const watchdog = watchdogs.get(transcriptId)
       if (watchdog) {
         clearTimeout(watchdog)
@@ -172,9 +172,15 @@ export function useAIInteraction() {
           m.id === transcriptId
             ? {
                 ...m,
-                // Never settle to an empty bubble: prefer the final corrected text,
-                // then whatever streamed, then the raw whisper text.
-                content: fullText || m.content || m.rawText || '',
+                // Never settle to an empty bubble: prefer the final corrected text.
+                // When the main process rejected the correction (done with empty
+                // fullText), the streamed tokens are known garbage — settle to the
+                // raw whisper text. Otherwise (cancel/error/watchdog) a partial
+                // stream is the best content we have.
+                content:
+                  fullText ||
+                  (discardStreamed ? m.rawText || m.content : m.content || m.rawText) ||
+                  '',
                 isStreaming: false,
                 isThinking: false
               }
@@ -186,7 +192,7 @@ export function useAIInteraction() {
     const unsubDone = api.on(
       'correction:done',
       ({ transcriptId, fullText }: { transcriptId: string; fullText: string }) =>
-        settle(transcriptId, fullText)
+        settle(transcriptId, fullText, true)
     )
     const unsubCancelled = api.on(
       'correction:cancelled',
