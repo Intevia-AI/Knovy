@@ -41,6 +41,33 @@ export function getCorrectionPrompt(params: PromptParams): ChatMessage[] {
   ]
 }
 
+/**
+ * Guard against known small-model failure modes on the correction prompt.
+ * Returns the text when it looks like a real correction, '' to reject —
+ * the caller's empty-text path falls back to the raw transcription and
+ * keeps the output out of the correction history.
+ */
+export function sanitizeCorrection(full: string, rawText: string, history: string[]): string {
+  const trimmed = full.trim()
+  if (!trimmed) return ''
+
+  // Echo of a previous correction instead of correcting the new input.
+  if (history.some((entry) => entry.trim() === trimmed)) return ''
+
+  // Prompt scaffolding / meta-commentary vocabulary observed in failures.
+  if (/Recent context:|最近對話：|^Transcription:|逐字稿|請翻譯|修正說明|修正後|（註：|以下為/.test(trimmed))
+    return ''
+
+  // Runaway output: a correction (even zh output of an English utterance,
+  // which is denser per char) stays near the raw length.
+  if (trimmed.length > 3 * Math.max(rawText.length, 20)) return ''
+
+  // A single utterance's correction is one paragraph; meta blobs are many.
+  if (/\n\s*\n/.test(trimmed)) return ''
+
+  return full
+}
+
 // ─── AI Action Prompt Types ───
 
 interface AIActionParams {

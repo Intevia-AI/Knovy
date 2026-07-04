@@ -4,7 +4,8 @@ import {
   getChatPrompt,
   getSummarizePrompt,
   getSummarizeJsonSchema,
-  parseSummarizeResponse
+  parseSummarizeResponse,
+  sanitizeCorrection
 } from '../src/main/localLLMPrompts'
 
 describe('getCorrectionPrompt', () => {
@@ -44,6 +45,58 @@ describe('getCorrectionPrompt', () => {
     expect(messages).toHaveLength(3)
     expect(messages[1]).toEqual({ role: 'assistant', content: 'prior sentence' })
     expect(messages[2]).toEqual({ role: 'user', content: 'next line' })
+  })
+})
+
+describe('sanitizeCorrection', () => {
+  it('passes a normal correction through unchanged', () => {
+    const full = 'How fast is it? It is really fast, sir.'
+    expect(sanitizeCorrection(full, 'How fast is it? Its really fast, sir.', [])).toBe(full)
+  })
+
+  it('accepts a Chinese translation shorter than its English raw text', () => {
+    const raw = 'There is a funny term in the defense industry called competimates.'
+    const full = '國防產業中有個有趣的用語叫「competimates」。'
+    expect(sanitizeCorrection(full, raw, ['先前的修正'])).toBe(full)
+  })
+
+  it('rejects an echo of a previous correction', () => {
+    const prev = '然後看我想 Xbat 是那種遠程戰略系統。'
+    const raw = 'targets having strategic effects that is why you have X-bat.'
+    expect(sanitizeCorrection(prev, raw, [prev])).toBe('')
+    expect(sanitizeCorrection(` ${prev} `, raw, [prev])).toBe('')
+  })
+
+  it('rejects meta-commentary blobs (observed failure)', () => {
+    const raw = 'voice is English and I set the language of the app to traditional Chinese'
+    const blob =
+      '語音轉文字修正助理：\n\n您沒有要使用這個。\n\n（註：原句「voice is English」在中文語境中通常指「語音是英語的」…）\n\n修正後的逐字稿：\n\n您沒有要使用這個。'
+    expect(sanitizeCorrection(blob, raw, [])).toBe('')
+    expect(sanitizeCorrection('請翻譯以下文字：\n\n您沒有要使用這個。', 'translate the', [])).toBe('')
+  })
+
+  it('rejects prompt scaffolding echoes', () => {
+    expect(sanitizeCorrection('Recent context: hello', 'hello', [])).toBe('')
+    expect(sanitizeCorrection('Transcription: hello', 'hello', [])).toBe('')
+    expect(sanitizeCorrection('最近對話：你好', '你好', [])).toBe('')
+  })
+
+  it('rejects runaway output more than 3x the raw length', () => {
+    const raw = 'an input longer than the twenty char floor'
+    expect(sanitizeCorrection('好'.repeat(raw.length * 3 + 1), raw, [])).toBe('')
+  })
+
+  it('keeps corrections of tiny fragments within the 20-char floor', () => {
+    expect(sanitizeCorrection('我沒有要使用這個。', 'Or.', [])).toBe('我沒有要使用這個。')
+  })
+
+  it('rejects multi-paragraph output', () => {
+    expect(sanitizeCorrection('第一段。\n\n第二段。', 'one utterance of speech', [])).toBe('')
+  })
+
+  it('rejects empty or whitespace-only output', () => {
+    expect(sanitizeCorrection('', 'raw', [])).toBe('')
+    expect(sanitizeCorrection('   \n ', 'raw', [])).toBe('')
   })
 })
 

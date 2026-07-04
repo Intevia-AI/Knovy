@@ -40,7 +40,8 @@ import {
   getRecommendResponsePrompt,
   getDeepResponsePrompt,
   getKeywordSearchPrompt,
-  getScreenshotAnalysisPrompt
+  getScreenshotAnalysisPrompt,
+  sanitizeCorrection
 } from './localLLMPrompts'
 import {
   createSettingsWindow,
@@ -1563,6 +1564,9 @@ app.on('ready', async () => {
         broadcastToWindows('correction:start', { transcriptId, generationId })
 
         try {
+          const correctionHistory = [
+            ...(recentCorrections.get(transcriptionData.sourceType) ?? [])
+          ]
           let full = await ollamaSvc.enhanceStream(
             {
               id: transcriptId,
@@ -1572,7 +1576,7 @@ app.on('ready', async () => {
             },
             {
               sessionId: currentSessionId,
-              conversationHistory: [...(recentCorrections.get(transcriptionData.sourceType) ?? [])],
+              conversationHistory: correctionHistory,
               userLanguage
             },
             {
@@ -1603,15 +1607,17 @@ app.on('ready', async () => {
             full = s2twConverter(full)
           }
 
-          // Safety net: a weak model can echo prompt scaffolding instead of
-          // correcting. Never let it reach the UI or the correction context —
-          // emptying `full` routes through the existing raw-text fallback.
-          if (/Recent context:|最近對話：|^\s*(?:Transcription:|逐字稿：)/.test(full)) {
+          // Safety net: a weak model can echo prompt scaffolding, repeat a
+          // previous correction, or emit meta-commentary instead of correcting.
+          // Never let that reach the UI or the correction context — emptying
+          // `full` routes through the existing raw-text fallback.
+          const sanitized = sanitizeCorrection(full, transcriptionData.text, correctionHistory)
+          if (full && !sanitized) {
             console.warn(
-              `[main/index.ts] Correction for ${transcriptId} echoed prompt scaffolding, keeping raw text`
+              `[main/index.ts] Correction for ${transcriptId} rejected by sanitizer, keeping raw text`
             )
-            full = ''
           }
+          full = sanitized
 
           broadcastToWindows('correction:done', { transcriptId, generationId, fullText: full })
           if (full.trim()) {
