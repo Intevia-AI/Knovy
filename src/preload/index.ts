@@ -151,6 +151,7 @@ const api = {
       'transcription:data',
       'correction:start',
       'correction:token',
+      'correction:thinking',
       'correction:done',
       'correction:error',
       'correction:cancelled',

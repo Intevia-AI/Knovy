@@ -98,8 +98,18 @@ export const translations = {
     aiActionSummaryDisplay: 'Generate summary from transcription',
     aiActionKeywordSearchDisplay: 'Keyword search',
     aiActionScreenshotDisplay: 'Screenshot analysis',
+    // Screenshot Attachment
+    screenshotAttachmentTitle: 'Screenshot',
+    screenshotAttachmentProcessing: 'Analyzing…',
+    screenshotAttachmentError: 'Analysis failed',
     // ChatPanel Tabs
     transcriptionTab: 'Transcription',
+    thinkingIndicator: 'Thinking…',
+    summaryKeyPoints: 'Key points',
+    summaryDecisions: 'Decisions',
+    summaryActionItems: 'Action items',
+    summaryOpenQuestions: 'Open questions',
+    summaryTopics: 'Topics',
     summaryTab: 'Summary',
     // Settings Sidebar
     generalTab: 'General',
@@ -111,7 +121,8 @@ export const translations = {
     aiCorrectionOn: 'On',
     aiCorrectionOff: 'Off',
     thinkModeTitle: 'Thinking Mode',
-    thinkModeDescription: 'Let models think before responding. Disable to reduce latency.',
+    thinkModeDescription:
+      'Let models think before responding to AI actions (chat, recommendations). Thinking noticeably increases latency. Transcription correction never uses thinking; session summaries always do.',
     thinkModeOn: 'On',
     thinkModeOff: 'Off',
     modelDownloading: 'Downloading model',
@@ -325,8 +336,18 @@ export const translations = {
     aiActionSummaryDisplay: '請根據前後文產生摘要',
     aiActionKeywordSearchDisplay: '關鍵字搜尋',
     aiActionScreenshotDisplay: '請分析這張截圖',
+    // Screenshot Attachment
+    screenshotAttachmentTitle: '截圖',
+    screenshotAttachmentProcessing: '分析中…',
+    screenshotAttachmentError: '分析失敗',
     // ChatPanel Tabs
     transcriptionTab: '逐字稿',
+    thinkingIndicator: '思考中…',
+    summaryKeyPoints: '重點',
+    summaryDecisions: '決議',
+    summaryActionItems: '待辦事項',
+    summaryOpenQuestions: '待釐清問題',
+    summaryTopics: '主題',
     summaryTab: '摘要',
     // Settings Sidebar
     generalTab: '設定',
@@ -338,7 +359,8 @@ export const translations = {
     aiCorrectionOn: '開啟',
     aiCorrectionOff: '關閉',
     thinkModeTitle: '思考模式',
-    thinkModeDescription: '讓模型在回覆前先思考。關閉可減少延遲。',
+    thinkModeDescription:
+      '讓模型在回應 AI 操作(聊天、建議)前先思考。思考模式會明顯增加延遲。逐字稿修正一律不使用思考模式;會議摘要則一律使用。',
     thinkModeOn: '開啟',
     thinkModeOff: '關閉',
     modelDownloading: '正在下載模型',
@@ -551,8 +573,18 @@ export type TranslationKey =
   | 'aiActionSummaryDisplay'
   | 'aiActionKeywordSearchDisplay'
   | 'aiActionScreenshotDisplay'
+  // Screenshot Attachment
+  | 'screenshotAttachmentTitle'
+  | 'screenshotAttachmentProcessing'
+  | 'screenshotAttachmentError'
   // ChatPanel Tabs
   | 'transcriptionTab'
+  | 'thinkingIndicator'
+  | 'summaryKeyPoints'
+  | 'summaryDecisions'
+  | 'summaryActionItems'
+  | 'summaryOpenQuestions'
+  | 'summaryTopics'
   | 'summaryTab'
   // Settings Sidebar
   | 'generalTab'

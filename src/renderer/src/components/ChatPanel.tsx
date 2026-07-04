@@ -1,11 +1,23 @@
 import { useEffect, useRef, useState } from 'react'
 import { Markdown } from '@/components/MarkdownRenderer'
 import { StreamingText } from '@/components/StreamingText'
-import { cn } from '@/lib/utils'
 import { useAIInteraction } from '@/hooks/useAIInteraction'
 import { Button } from '@/components/ui/button'
+import { Message, MessageContent, MessageFooter } from '@/components/ui/message'
+import { Bubble, BubbleContent } from '@/components/ui/bubble'
+import {
+  MessageScrollerProvider,
+  MessageScroller,
+  MessageScrollerViewport,
+  MessageScrollerContent,
+  MessageScrollerItem,
+  MessageScrollerButton
+} from '@/components/ui/message-scroller'
+import { Marker, MarkerIcon, MarkerContent } from '@/components/ui/marker'
+import { Loader2 } from 'lucide-react'
 import { motion, AnimatePresence } from 'motion'
 import { useTranslation } from '@/context/TranslationContext'
+import { parseStructuredSummary } from '@/lib/summary-utils'
 
 interface ChatPanelProps {}
 
@@ -14,8 +26,6 @@ export default function ChatPanel({}: ChatPanelProps) {
   const [activeTab, setActiveTab] = useState('transcription')
   const { transcriptions, aiMessages, sendContextToAI, isLoading, isSummarizing } =
     useAIInteraction()
-  const messagesContainerRef = useRef<HTMLDivElement>(null)
-  const messagesEndRef = useRef<HTMLDivElement>(null)
   const [isOpen, setIsOpen] = useState(true)
   const popoverId = 'transcriptions'
 
@@ -30,12 +40,6 @@ export default function ChatPanel({}: ChatPanelProps) {
       ;(window as any).electronAPI.send('keyword:click', keyword)
     }
   }
-
-  useEffect(() => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' })
-    }
-  }, [transcriptions, isLoading])
 
   useEffect(() => {
     const unsubscribe = (window as any).electronAPI.on('popover:prepare-to-close', (id) => {
@@ -83,19 +87,6 @@ export default function ChatPanel({}: ChatPanelProps) {
 
   const summary = aiMessages.find((m) => m.id === 'ai-summary')?.content || ''
 
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: { staggerChildren: 0.1 }
-    }
-  }
-
-  const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: { opacity: 1, y: 0 }
-  }
-
   const handleAnimationComplete = () => {
     if (!isOpen) {
       ;(window as any).electronAPI.send('popover:ready-to-close', popoverId)
@@ -132,43 +123,66 @@ export default function ChatPanel({}: ChatPanelProps) {
               </Button>
             </div>
           </div>
-          <div
-            ref={messagesContainerRef}
-            className="flex-1 rounded-lg overflow-y-auto p-2 space-y-2 relative [mask-image:linear-gradient(to_bottom,black_95%,transparent_100%)]"
-          >
+          <div className="flex-1 min-h-0 rounded-lg relative [mask-image:linear-gradient(to_bottom,black_95%,transparent_100%)]">
             <AnimatePresence mode="wait">
               {activeTab === 'transcription' && (
                 <motion.div
                   key="transcription"
-                  variants={containerVariants}
-                  initial="hidden"
-                  animate="visible"
-                  className="space-y-2"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="h-full"
                 >
-                  {transcriptions.map((m) => {
-                    const isUserMessage = m.sourceType === 'microphone'
-                    return (
-                      <motion.div
-                        key={m.id}
-                        variants={itemVariants}
-                        className={cn(
-                          'p-2 rounded-md text-sm w-fit max-w-[95%] whitespace-pre-wrap break-words text-pretty',
-                          isUserMessage
-                            ? 'bg-blue-500/10 ml-auto text-black'
-                            : 'bg-black/5 mr-auto text-black'
-                        )}
-                      >
-                        <StreamingText text={m.content} isStreaming={m.isStreaming} />
-                        <div className="text-xs text-gray-400 mt-1.5">
-                          {new Date(m.timestamp).toLocaleTimeString([], {
-                            hour: 'numeric',
-                            minute: '2-digit'
+                  <MessageScrollerProvider autoScroll defaultScrollPosition="end">
+                    <MessageScroller>
+                      <MessageScrollerViewport className="p-2">
+                        <MessageScrollerContent className="gap-2">
+                          {transcriptions.map((m) => {
+                            const isUserMessage = m.sourceType === 'microphone'
+                            const align = isUserMessage ? 'end' : 'start'
+                            return (
+                              <MessageScrollerItem key={m.id} messageId={m.id}>
+                                <Message align={align}>
+                                  <MessageContent className="gap-1">
+                                    <Bubble
+                                      variant={isUserMessage ? 'tinted' : 'muted'}
+                                      align={align}
+                                      className="max-w-[95%]"
+                                    >
+                                      <BubbleContent className="whitespace-pre-wrap text-pretty text-black">
+                                        {m.isThinking && !m.content ? (
+                                          <Marker>
+                                            <MarkerIcon>
+                                              <Loader2 className="animate-spin" />
+                                            </MarkerIcon>
+                                            <MarkerContent className="animate-pulse">
+                                              {t('thinkingIndicator')}
+                                            </MarkerContent>
+                                          </Marker>
+                                        ) : (
+                                          <StreamingText
+                                            text={m.content}
+                                            isStreaming={m.isStreaming}
+                                          />
+                                        )}
+                                      </BubbleContent>
+                                    </Bubble>
+                                    <MessageFooter className="text-gray-400">
+                                      {new Date(m.timestamp).toLocaleTimeString([], {
+                                        hour: 'numeric',
+                                        minute: '2-digit'
+                                      })}
+                                    </MessageFooter>
+                                  </MessageContent>
+                                </Message>
+                              </MessageScrollerItem>
+                            )
                           })}
-                        </div>
-                      </motion.div>
-                    )
-                  })}
-                  <div ref={messagesEndRef} />
+                        </MessageScrollerContent>
+                      </MessageScrollerViewport>
+                      <MessageScrollerButton />
+                    </MessageScroller>
+                  </MessageScrollerProvider>
                 </motion.div>
               )}
               {activeTab === 'summary' && (
@@ -177,19 +191,57 @@ export default function ChatPanel({}: ChatPanelProps) {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
+                  className="h-full overflow-y-auto p-2"
                 >
                   {isLoading || (isSummarizing && !summary) ? (
                     <div className="flex justify-center py-2">
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-black/50"></div>
                     </div>
                   ) : summary ? (
-                    <div className="p-2 rounded-md text-sm whitespace-pre-wrap break-words text-pretty bg-black/5 border border-black/10 text-black">
+                    <div className="p-2 rounded-md text-sm break-words text-pretty bg-black/5 border border-black/10 text-black">
                       {isSummarizing && (
                         <div className="absolute top-2 right-2">
                           <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-black/50"></div>
                         </div>
                       )}
-                      <Markdown onKeywordClick={handleKeywordClick}>{summary}</Markdown>
+                      {(() => {
+                        const structured = parseStructuredSummary(summary)
+                        if (!structured) {
+                          return (
+                            <div className="whitespace-pre-wrap">
+                              <Markdown onKeywordClick={handleKeywordClick}>{summary}</Markdown>
+                            </div>
+                          )
+                        }
+                        const sections = [
+                          { title: t('summaryKeyPoints'), items: structured.key_points },
+                          { title: t('summaryDecisions'), items: structured.decisions },
+                          { title: t('summaryActionItems'), items: structured.action_items },
+                          { title: t('summaryOpenQuestions'), items: structured.open_questions }
+                        ].filter((s) => s.items?.length > 0)
+                        return (
+                          <div className="space-y-3">
+                            <p className="font-medium">{structured.short_summary}</p>
+                            {sections.map((section) => (
+                              <div key={section.title}>
+                                <div className="text-xs font-medium text-gray-500 mb-1">
+                                  {section.title}
+                                </div>
+                                <ul className="list-disc pl-4 space-y-0.5">
+                                  {section.items.map((item, i) => (
+                                    <li key={i}>{item}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            ))}
+                            {structured.topics?.length > 0 && (
+                              <div className="text-xs text-gray-500">
+                                {t('summaryTopics')}: {structured.topics.join(' · ')}
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })()}
                     </div>
                   ) : (
                     <div className="text-center text-sm text-gray-500">No summary available.</div>

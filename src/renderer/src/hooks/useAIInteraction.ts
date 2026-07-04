@@ -23,6 +23,8 @@ interface TranscriptionMessage extends AIMessage {
   type: 'transcription'
   sourceType?: 'microphone' | 'system'
   isStreaming?: boolean
+  isThinking?: boolean
+  rawText?: string
 }
 
 interface AIContextData {
@@ -87,6 +89,13 @@ export function useAIInteraction() {
     const buffers = new Map<string, string>()
     let rafId: number | null = null
 
+    // Watchdog per streaming bubble: if the main process never settles a
+    // correction (crash, dev restart, lost IPC), fall back to the raw text
+    // instead of leaving the bubble empty forever. A late correction:done
+    // still overwrites with the corrected text.
+    const watchdogs = new Map<string, ReturnType<typeof setTimeout>>()
+    const WATCHDOG_MS = 60_000
+
     const flush = () => {
       rafId = null
       if (buffers.size === 0) return
@@ -99,7 +108,7 @@ export function useAIInteraction() {
       setTranscriptions((prev) =>
         prev.map((m) => {
           const pending = snapshot.get(m.id)
-          return pending ? { ...m, content: m.content + pending } : m
+          return pending ? { ...m, content: m.content + pending, isThinking: false } : m
         })
       )
     }
@@ -121,6 +130,12 @@ export function useAIInteraction() {
           isStreaming: !!t.isStreaming
         }
         setTranscriptions((prev) => [...prev, formatted])
+        if (formatted.isStreaming) {
+          watchdogs.set(
+            formatted.id,
+            setTimeout(() => settle(formatted.id), WATCHDOG_MS)
+          )
+        }
       }
     )
 
@@ -132,7 +147,21 @@ export function useAIInteraction() {
       }
     )
 
-    const settle = (transcriptId: string, fullText?: string) => {
+    const unsubThinking = api.on(
+      'correction:thinking',
+      ({ transcriptId }: { transcriptId: string }) => {
+        setTranscriptions((prev) =>
+          prev.map((m) => (m.id === transcriptId ? { ...m, isThinking: true } : m))
+        )
+      }
+    )
+
+    const settle = (transcriptId: string, fullText?: string, discardStreamed = false) => {
+      const watchdog = watchdogs.get(transcriptId)
+      if (watchdog) {
+        clearTimeout(watchdog)
+        watchdogs.delete(transcriptId)
+      }
       buffers.delete(transcriptId)
       if (buffers.size === 0 && rafId != null) {
         cancelAnimationFrame(rafId)
@@ -141,7 +170,20 @@ export function useAIInteraction() {
       setTranscriptions((prev) =>
         prev.map((m) =>
           m.id === transcriptId
-            ? { ...m, content: fullText != null ? fullText : m.content, isStreaming: false }
+            ? {
+                ...m,
+                // Never settle to an empty bubble: prefer the final corrected text.
+                // When the main process rejected the correction (done with empty
+                // fullText), the streamed tokens are known garbage — settle to the
+                // raw whisper text. Otherwise (cancel/error/watchdog) a partial
+                // stream is the best content we have.
+                content:
+                  fullText ||
+                  (discardStreamed ? m.rawText || m.content : m.content || m.rawText) ||
+                  '',
+                isStreaming: false,
+                isThinking: false
+              }
             : m
         )
       )
@@ -150,7 +192,7 @@ export function useAIInteraction() {
     const unsubDone = api.on(
       'correction:done',
       ({ transcriptId, fullText }: { transcriptId: string; fullText: string }) =>
-        settle(transcriptId, fullText)
+        settle(transcriptId, fullText, true)
     )
     const unsubCancelled = api.on(
       'correction:cancelled',
@@ -162,8 +204,11 @@ export function useAIInteraction() {
 
     return () => {
       if (rafId != null) cancelAnimationFrame(rafId)
+      for (const t of watchdogs.values()) clearTimeout(t)
+      watchdogs.clear()
       unsubData()
       unsubToken()
+      unsubThinking()
       unsubDone()
       unsubCancelled()
       unsubError()
@@ -262,6 +307,19 @@ export function useAIInteraction() {
           content: displayMsgContent
         }
         setAiMessages((prev) => [...prev, displayMsg])
+      }
+
+      // Settle any screenshot attachment chips (added by the calling component
+      // with attachmentState: 'processing') once the analysis finishes.
+      const settleScreenshotAttachments = (state: 'done' | 'error') => {
+        if (action !== 'screenshot') return
+        setAiMessages((prev) =>
+          prev.map((m) =>
+            (m as any).screenshot && (m as any).attachmentState === 'processing'
+              ? ({ ...m, attachmentState: state } as AIMessage)
+              : m
+          )
+        )
       }
 
       try {
@@ -432,6 +490,8 @@ export function useAIInteraction() {
         const content =
           responseMapping[action as keyof typeof responseMapping]?.(data) || JSON.stringify(data)
 
+        settleScreenshotAttachments('done')
+
         if (action === 'summary') {
           const sessionId = await (window as any).electronAPI.invoke('session:get-id')
           if (sessionId && content) {
@@ -459,6 +519,7 @@ export function useAIInteraction() {
         }
       } catch (e: unknown) {
         console.error('[AIInteraction] Error in sendContextToAI:', e)
+        settleScreenshotAttachments('error')
         setAiMessages((prev) => [
           ...prev,
           {

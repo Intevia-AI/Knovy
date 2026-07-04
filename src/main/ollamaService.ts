@@ -1,4 +1,5 @@
 import { EventEmitter } from 'events'
+import { Converter } from 'opencc-js'
 import type { TranscriptionSegment, SessionContext } from './transcriptionEnhancementService'
 import { getCorrectionPrompt } from './localLLMPrompts'
 import { parseNdjsonStream } from './ndjsonStream'
@@ -35,6 +36,10 @@ export interface OllamaPullProgress {
   percentage?: number
 }
 
+// Any Chinese the model emits must reach the UI as Traditional. s2tw is a
+// no-op on English/already-Traditional text, so it runs unconditionally.
+const s2twConverter = Converter({ from: 'cn', to: 'tw' })
+
 const OLLAMA_BASE_URL = 'http://localhost:11434'
 const DEFAULT_MODEL = 'qwen3.5:0.8b'
 const INFERENCE_TIMEOUT_MS = 30000
@@ -55,26 +60,30 @@ export interface ChatResponse {
 
 export interface EnhanceStreamOptions {
   onToken: (chunk: string) => void
+  onThinking?: () => void
   signal: AbortSignal
 }
 
-type QueueItem =
-  | {
-      type: 'enhanceStream'
-      resolve: (value: string) => void
-      reject: (error: Error) => void
-      request: {
-        segment: TranscriptionSegment
-        sessionContext: SessionContext
-        options: EnhanceStreamOptions
-      }
-    }
-  | {
-      type: 'chat'
-      resolve: (value: ChatResponse) => void
-      reject: (error: Error) => void
-      request: ChatParams
-    }
+interface CorrectionItem {
+  resolve: (value: string) => void
+  reject: (error: Error) => void
+  request: {
+    segment: TranscriptionSegment
+    sessionContext: SessionContext
+    options: EnhanceStreamOptions
+  }
+}
+
+interface ChatItem {
+  resolve: (value: ChatResponse) => void
+  reject: (error: Error) => void
+  request: ChatParams
+}
+
+// ponytail: two lanes, fixed concurrency — corrections run up to
+// CORRECTION_CONCURRENCY at once; chat stays serial. Bump if profiling
+// shows GPU headroom on the local model.
+const CORRECTION_CONCURRENCY = 2
 
 export class OllamaService extends EventEmitter {
   private modelState: ModelState = {
@@ -87,8 +96,13 @@ export class OllamaService extends EventEmitter {
   }
   private connectionCheckInterval: NodeJS.Timeout | null = null
   private currentPull: AbortController | null = null
-  private inferenceQueue: QueueItem[] = []
-  private isProcessingQueue = false
+  // Corrections lane: FIFO starts, up to CORRECTION_CONCURRENCY in flight.
+  private correctionQueue: CorrectionItem[] = []
+  private activeCorrections = 0
+  // Chat lane: FIFO, one at a time. Independent of the corrections lane so
+  // neither blocks the other.
+  private chatQueue: ChatItem[] = []
+  private chatBusy = false
   private thinkEnabled = false
 
   constructor() {
@@ -330,11 +344,9 @@ export class OllamaService extends EventEmitter {
 
   /**
    * Enhance transcription segments using local LLM.
-   * Requests are queued and processed sequentially to avoid overwhelming the local model.
-   */
-  /**
-   * Enhance transcription segments using local LLM.
-   * Requests are queued and processed sequentially to avoid overwhelming the local model.
+   * Queued on the corrections lane, which runs up to CORRECTION_CONCURRENCY
+   * at a time. Corrections may complete out of order — callers track results
+   * per transcriptId, so start order (FIFO) is all that's preserved here.
    */
   async enhanceStream(
     segment: TranscriptionSegment,
@@ -342,57 +354,54 @@ export class OllamaService extends EventEmitter {
     options: EnhanceStreamOptions
   ): Promise<string> {
     return new Promise((resolve, reject) => {
-      this.inferenceQueue.push({
-        type: 'enhanceStream',
-        resolve,
-        reject,
-        request: { segment, sessionContext, options }
-      })
-      this.processQueue()
+      this.correctionQueue.push({ resolve, reject, request: { segment, sessionContext, options } })
+      this.pumpCorrections()
     })
   }
 
   /**
    * General-purpose chat with local LLM.
    * Supports multimodal (images), structured output (format), configurable temperature.
-   * Queued sequentially like enhance() to avoid overwhelming the local model.
+   * Runs on its own serial lane so chat and corrections never block each other.
    */
   async chat(params: ChatParams): Promise<ChatResponse> {
     return new Promise((resolve, reject) => {
-      this.inferenceQueue.push({
-        type: 'chat',
-        resolve,
-        reject,
-        request: params
-      })
-      this.processQueue()
+      this.chatQueue.push({ resolve, reject, request: params })
+      this.pumpChat()
     })
   }
 
-  private async processQueue(): Promise<void> {
-    if (this.isProcessingQueue || this.inferenceQueue.length === 0) return
-    this.isProcessingQueue = true
-
-    while (this.inferenceQueue.length > 0) {
-      const item = this.inferenceQueue.shift()!
-      try {
-        if (item.type === 'enhanceStream') {
-          const result = await this.runStreamingCorrection(
-            item.request.segment,
-            item.request.sessionContext,
-            item.request.options
-          )
-          item.resolve(result)
-        } else {
-          const result = await this.runChat(item.request)
-          item.resolve(result)
-        }
-      } catch (error) {
-        item.reject(error instanceof Error ? error : new Error(String(error)))
-      }
+  private pumpCorrections(): void {
+    while (this.activeCorrections < CORRECTION_CONCURRENCY && this.correctionQueue.length > 0) {
+      const item = this.correctionQueue.shift()!
+      this.activeCorrections++
+      this.runStreamingCorrection(
+        item.request.segment,
+        item.request.sessionContext,
+        item.request.options
+      )
+        .then(item.resolve, (error) =>
+          item.reject(error instanceof Error ? error : new Error(String(error)))
+        )
+        .finally(() => {
+          this.activeCorrections--
+          this.pumpCorrections()
+        })
     }
+  }
 
-    this.isProcessingQueue = false
+  private pumpChat(): void {
+    if (this.chatBusy || this.chatQueue.length === 0) return
+    this.chatBusy = true
+    const item = this.chatQueue.shift()!
+    this.runChat(item.request)
+      .then(item.resolve, (error) =>
+        item.reject(error instanceof Error ? error : new Error(String(error)))
+      )
+      .finally(() => {
+        this.chatBusy = false
+        this.pumpChat()
+      })
   }
 
   private async runChat(params: ChatParams): Promise<ChatResponse> {
@@ -452,7 +461,7 @@ export class OllamaService extends EventEmitter {
       const elapsed = Date.now() - startTime
       console.log(`[OllamaService] Chat complete: ${elapsed}ms, ${content.length} chars`)
 
-      return { content, processingTime: elapsed }
+      return { content: s2twConverter(content), processingTime: elapsed }
     } catch (error) {
       clearTimeout(timeout)
 
@@ -476,7 +485,7 @@ export class OllamaService extends EventEmitter {
       throw Object.assign(new Error('Aborted'), { name: 'AbortError' })
     }
 
-    const prompt = getCorrectionPrompt({
+    const messages = getCorrectionPrompt({
       rawText: segment.rawText,
       conversationHistory: sessionContext.conversationHistory.slice(-3),
       userLanguage: sessionContext.userLanguage
@@ -489,15 +498,15 @@ export class OllamaService extends EventEmitter {
     let inactivity = setTimeout(() => controller.abort(), INFERENCE_TIMEOUT_MS)
 
     try {
+      // Correction never thinks, regardless of the user's think toggle: it runs
+      // per-utterance on a sequential queue, and thinking inflates a one-sentence
+      // fix to minutes. The toggle only governs runChat (chat/recommend/deep/etc.).
       const response = await fetch(`${OLLAMA_BASE_URL}/api/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           model: this.modelState.model,
-          messages: [
-            { role: 'system', content: prompt.system },
-            { role: 'user', content: prompt.user }
-          ],
+          messages,
           stream: true,
           options: { temperature: 0.1, num_predict: 512 },
           think: false
@@ -510,9 +519,14 @@ export class OllamaService extends EventEmitter {
       }
 
       let full = ''
+      let notifiedThinking = false
       for await (const obj of parseNdjsonStream(response.body)) {
         clearTimeout(inactivity)
         inactivity = setTimeout(() => controller.abort(), INFERENCE_TIMEOUT_MS)
+        if (obj?.message?.thinking && !notifiedThinking) {
+          notifiedThinking = true
+          options.onThinking?.()
+        }
         const chunk: string = obj?.message?.content ?? ''
         if (chunk) {
           full += chunk
@@ -529,12 +543,15 @@ export class OllamaService extends EventEmitter {
 
   destroy(): void {
     this.stopConnectionMonitoring()
-    // Reject all pending queue items
-    for (const item of this.inferenceQueue) {
+    // Reject all pending queued items in both lanes (in-flight ones settle
+    // on their own).
+    for (const item of [...this.correctionQueue, ...this.chatQueue]) {
       item.reject(new Error('OllamaService destroyed'))
     }
-    this.inferenceQueue = []
-    this.isProcessingQueue = false
+    this.correctionQueue = []
+    this.chatQueue = []
+    this.activeCorrections = 0
+    this.chatBusy = false
     this.removeAllListeners()
     console.log('[OllamaService] Service destroyed')
   }

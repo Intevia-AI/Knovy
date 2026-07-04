@@ -74,14 +74,16 @@ export default async function (context) {
       }
     }
 
-    // Also sign the whisper binary
-    const whisperBinary = join(whisperPath, 'whisper-darwin-arm64')
-    console.log('Signing whisper-darwin-arm64...')
-    execSync(`codesign --force --sign "${identity}" --timestamp "${whisperBinary}"`, {
-      stdio: 'inherit'
-    })
+    // Also sign the whisper binaries (CLI + persistent server)
+    for (const bin of ['whisper-darwin-arm64', 'whisper-server-darwin-arm64']) {
+      const whisperBinary = join(whisperPath, bin)
+      console.log(`Signing ${bin}...`)
+      execSync(`codesign --force --sign "${identity}" --timestamp "${whisperBinary}"`, {
+        stdio: 'inherit'
+      })
+    }
 
-    console.log('All dylibs and whisper binary signed successfully!')
+    console.log('All dylibs and whisper binaries signed successfully!')
   } catch (error) {
     console.error('Signing failed:', error)
     throw error

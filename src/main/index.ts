@@ -36,10 +36,12 @@ import {
   getChatPrompt,
   getSummarizePrompt,
   getSummarizeJsonSchema,
+  parseSummarizeResponse,
   getRecommendResponsePrompt,
   getDeepResponsePrompt,
   getKeywordSearchPrompt,
-  getScreenshotAnalysisPrompt
+  getScreenshotAnalysisPrompt,
+  sanitizeCorrection
 } from './localLLMPrompts'
 import {
   createSettingsWindow,
@@ -50,10 +52,10 @@ import {
 } from './settingsWindowManager'
 import { DEFAULT_AUTO_TRIGGER_SETTINGS } from '../renderer/src/types/settings'
 import { getIntentionProcessor } from './intentionProcessor'
-import { ConverterFactory, Locale } from 'opencc-js'
+import { Converter } from 'opencc-js'
 
 // Simplified → Traditional Chinese converter for post-processing enhanced text
-const s2twConverter = ConverterFactory(Locale.from.cn, Locale.to.tw)
+const s2twConverter = Converter({ from: 'cn', to: 'tw' })
 
 console.log('[Debug] Imported dbService module:', dbService)
 
@@ -64,6 +66,18 @@ let activeScreenSourceId: string | null = null
 // Streaming correction state
 let currentGenerationId = 0
 const activeCorrections = new Map<string, AbortController>()
+// Last few corrected texts, given to the correction prompt as context
+// (homophone/mishearing fixes need surrounding conversation). Partitioned by
+// sourceType: mic and system are different speakers, and shared context lets
+// the LLM blend one side's content into the other's "correction".
+const recentCorrections = new Map<string, string[]>()
+const RECENT_CORRECTIONS_MAX = 3
+function pushRecentCorrection(sourceType: string, text: string): void {
+  const list = recentCorrections.get(sourceType) ?? []
+  list.push(text)
+  if (list.length > RECENT_CORRECTIONS_MAX) list.shift()
+  recentCorrections.set(sourceType, list)
+}
 
 function cancelAllCorrections(): void {
   currentGenerationId++ // invalidate in-flight + queued work for the old generation
@@ -71,6 +85,7 @@ function cancelAllCorrections(): void {
     controller.abort()
   }
   activeCorrections.clear() // in-flight finally blocks then no-op delete on the cleared map
+  recentCorrections.clear() // context must not bleed across sessions
 }
 
 function broadcastToWindows(channel: string, payload: unknown): void {
@@ -1538,6 +1553,9 @@ app.on('ready', async () => {
           session_id: currentSessionId,
           timestamp,
           content: '',
+          // Raw whisper text rides along so the renderer can fall back to it if the
+          // correction ends empty, errors, or is cancelled before any token arrived.
+          rawText: transcriptionData.text,
           sourceType: transcriptionData.sourceType,
           role: 'assistant',
           type: 'transcription',
@@ -1546,6 +1564,9 @@ app.on('ready', async () => {
         broadcastToWindows('correction:start', { transcriptId, generationId })
 
         try {
+          const correctionHistory = [
+            ...(recentCorrections.get(transcriptionData.sourceType) ?? [])
+          ]
           let full = await ollamaSvc.enhanceStream(
             {
               id: transcriptId,
@@ -1553,12 +1574,20 @@ app.on('ready', async () => {
               timestamp: Date.now(),
               sourceType: transcriptionData.sourceType
             },
-            { sessionId: currentSessionId, conversationHistory: [], userLanguage },
+            {
+              sessionId: currentSessionId,
+              conversationHistory: correctionHistory,
+              userLanguage
+            },
             {
               signal: controller.signal,
               onToken: (chunk) => {
                 if (generationId !== currentGenerationId) return
                 broadcastToWindows('correction:token', { transcriptId, generationId, chunk })
+              },
+              onThinking: () => {
+                if (generationId !== currentGenerationId) return
+                broadcastToWindows('correction:thinking', { transcriptId, generationId })
               }
             }
           )
@@ -1578,11 +1607,33 @@ app.on('ready', async () => {
             full = s2twConverter(full)
           }
 
+          // Safety net: a weak model can echo prompt scaffolding, repeat a
+          // previous correction, or emit meta-commentary instead of correcting.
+          // Never let that reach the UI or the correction context — emptying
+          // `full` routes through the existing raw-text fallback.
+          const sanitized = sanitizeCorrection(full, transcriptionData.text, correctionHistory)
+          if (full && !sanitized) {
+            console.warn(
+              `[main/index.ts] Correction for ${transcriptId} rejected by sanitizer, keeping raw text`
+            )
+          }
+          full = sanitized
+
           broadcastToWindows('correction:done', { transcriptId, generationId, fullText: full })
-          await dbService.updateTranscriptEnhancement(transcriptId, {
-            enhancedText: full,
-            enhancementMetadata: {}
-          })
+          if (full.trim()) {
+            pushRecentCorrection(transcriptionData.sourceType, full)
+            await dbService.updateTranscriptEnhancement(transcriptId, {
+              enhancedText: full,
+              enhancementMetadata: {}
+            })
+          } else {
+            // Empty correction (e.g. thinking ate the token budget): keep the raw
+            // text as source of truth; the renderer falls back to rawText.
+            console.warn(`[main/index.ts] Empty correction for ${transcriptId}, keeping raw text`)
+            await dbService
+              .updateTranscriptEnhancementStatus(transcriptId, 'failed')
+              .catch(() => {})
+          }
         } catch (err) {
           const aborted = err instanceof Error && err.name === 'AbortError'
           console.warn(
@@ -2251,33 +2302,37 @@ app.on('ready', async () => {
         existingSummary: payload.existing_summary,
         language: payload.language || 'en'
       })
+      const messages = [
+        { role: 'system' as const, content: prompt.system },
+        { role: 'user' as const, content: prompt.user }
+      ]
+      // Summarize never thinks, regardless of the user's think toggle: it runs on
+      // session stop, and thinking makes the stop take too long. Thinking + forced
+      // JSON grammar also yields empty/invalid content on small models.
       const result = await svc.chat({
-        messages: [
-          { role: 'system', content: prompt.system },
-          { role: 'user', content: prompt.user }
-        ],
+        messages,
         format: getSummarizeJsonSchema(),
         temperature: 0.3,
-        think: true
+        think: false
       })
-      try {
-        const parsed = JSON.parse(result.content)
+      const structured = parseSummarizeResponse(result.content)
+      if (structured) {
+        const json = JSON.stringify(structured)
         return {
-          summary: parsed.long_summary,
-          short_summary: parsed.short_summary,
-          long_summary: parsed.long_summary,
-          context: parsed.context,
-          processingTime: result.processingTime
-        }
-      } catch {
-        // If JSON parsing fails, return raw content as summary
-        return {
-          summary: result.content,
-          short_summary: result.content.substring(0, 100),
-          long_summary: result.content,
+          summary: json, // canonical form persisted to DB and parsed by the summary tab
+          short_summary: structured.short_summary,
+          long_summary: json,
           context: {},
           processingTime: result.processingTime
         }
+      }
+      // Last resort: raw content as an unstructured summary (legacy behavior)
+      return {
+        summary: result.content,
+        short_summary: result.content.substring(0, 100),
+        long_summary: result.content,
+        context: {},
+        processingTime: result.processingTime
       }
     }
   )
@@ -2528,6 +2583,12 @@ process.on('uncaughtException', (error) => {
 
 app.on('will-quit', async () => {
   globalShortcut.unregisterAll()
+  // Stop the persistent whisper-server and any in-flight transcription processes.
+  try {
+    getWhisperBackend().destroy()
+  } catch (error) {
+    console.error('[main/index.ts] Error stopping whisper backend on quit:', error)
+  }
 })
 
 app.on('activate', () => {

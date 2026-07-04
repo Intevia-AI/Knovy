@@ -21,6 +21,7 @@ import { Button } from '@/components/ui/button'
 import { useTranslation } from '@/context/TranslationContext'
 import { toast } from 'sonner'
 import { Markdown } from '@/components/MarkdownRenderer'
+import { parseStructuredSummary } from '@/lib/summary-utils'
 
 interface SessionCardProps {
   session: SessionWithTranscripts
@@ -42,8 +43,12 @@ export function SessionCard({ session, onExport, onDelete }: SessionCardProps) {
   const sessionTime = formatTime(session.started_at)
   const duration = formatDuration(session.duration)
 
+  const structuredSummary = session.summary ? parseStructuredSummary(session.summary) : null
+
   // Get display summary for collapsed state
+  // Parsed value first: old fenced rows stored a raw-JSON substring as short_summary
   const displaySummary =
+    structuredSummary?.short_summary ||
     session.short_summary ||
     (session.summary ? session.summary.slice(0, 100) + '...' : null) ||
     session.transcripts[0]?.text ||
@@ -284,7 +289,41 @@ export function SessionCard({ session, onExport, onDelete }: SessionCardProps) {
                       transition={{ duration: 0.15 }}
                       className="space-y-3"
                     >
-                      {session.summary ? (
+                      {structuredSummary ? (
+                        <div className="space-y-3 text-sm break-words">
+                          <p className="font-medium">{structuredSummary.short_summary}</p>
+                          {[
+                            { title: t('summaryKeyPoints'), items: structuredSummary.key_points },
+                            { title: t('summaryDecisions'), items: structuredSummary.decisions },
+                            {
+                              title: t('summaryActionItems'),
+                              items: structuredSummary.action_items
+                            },
+                            {
+                              title: t('summaryOpenQuestions'),
+                              items: structuredSummary.open_questions
+                            }
+                          ]
+                            .filter((s) => s.items?.length > 0)
+                            .map((section) => (
+                              <div key={section.title}>
+                                <div className="text-xs font-medium text-muted-foreground mb-1">
+                                  {section.title}
+                                </div>
+                                <ul className="list-disc pl-4 space-y-0.5">
+                                  {section.items.map((item, i) => (
+                                    <li key={i}>{item}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            ))}
+                          {structuredSummary.topics?.length > 0 && (
+                            <div className="text-xs text-muted-foreground">
+                              {t('summaryTopics')}: {structuredSummary.topics.join(' · ')}
+                            </div>
+                          )}
+                        </div>
+                      ) : session.summary ? (
                         <div className="prose prose-sm dark:prose-invert max-w-none overflow-x-hidden break-words">
                           <Markdown>{session.summary}</Markdown>
                         </div>

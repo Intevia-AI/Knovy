@@ -1,21 +1,18 @@
 import { spawn, ChildProcess } from 'child_process'
+import net from 'net'
 import path from 'path'
 import fs from 'fs/promises'
 import { app } from 'electron'
 import { randomUUID } from 'crypto'
-import { Converter, ConverterFactory, Locale } from 'opencc-js'
+import { Converter, type ConverterFunction } from 'opencc-js'
 
 // Configuration: Change this to set the default model size
 // Options: 'tiny' (75MB, fastest), 'base' (142MB, better), 'small' (488MB, good+), 'medium' (1.5GB, best)
 const DEFAULT_MODEL_SIZE: 'tiny' | 'base' | 'small' | 'medium' = 'small'
 
-// Domain-specific prompts for better transcription context
-const DOMAIN_PROMPTS = {
-  technical: 'Technical discussion about software development, programming, and technology.',
-  meeting: 'Business meeting with multiple speakers discussing projects and decisions.',
-  casual: 'Casual conversation with natural speech patterns.',
-  default: 'Clear conversation with proper punctuation and grammar.'
-}
+// Default priming prompt. whisper's --prompt is token priming (style/vocabulary
+// biasing), not instruction-following — keep it declarative, never imperative.
+const DEFAULT_PRIMING_PROMPT = 'Clear conversation with proper punctuation and grammar.'
 
 export interface TranscriptionOptions {
   language?: string
@@ -59,11 +56,20 @@ export interface ModelInfo {
  */
 export class WhisperBackend {
   private whisperBinaryPath: string
+  private serverBinaryPath: string
   private modelsPath: string
   private tempPath: string
   private isInitialized = false
   private activeProcesses = new Map<string, ChildProcess>()
   private downloadPromises = new Map<string, Promise<boolean>>()
+
+  // Persistent whisper-server: loads the model once (vs the CLI reloading it per
+  // segment). Requests route through it; any failure falls back to the CLI path
+  // for that request and the server is respawned on the next one.
+  private serverProcess: ChildProcess | null = null
+  private serverPort: number | null = null
+  private serverModelPath: string | null = null // model currently loaded by the server
+  private serverStarting: Promise<number | null> | null = null // in-flight startup guard
 
   // Context preservation system
   private segmentContext = new Map<string, string>() // sessionId -> last sentence
@@ -73,7 +79,7 @@ export class WhisperBackend {
   private vadModelPath: string | null = null
 
   // OpenCC converter for Simplified to Traditional Chinese (Taiwan)
-  private chineseConverter: Converter | null = null
+  private chineseConverter: ConverterFunction | null = null
 
   constructor() {
     // Platform-specific binary paths
@@ -96,6 +102,12 @@ export class WhisperBackend {
       'whisper.cpp',
       `${binaryName}-${platform}-${arch}`
     )
+    const serverBinaryName = platform === 'win32' ? 'whisper-server.exe' : 'whisper-server'
+    this.serverBinaryPath = path.join(
+      resourcesPath,
+      'whisper.cpp',
+      `${serverBinaryName}-${platform}-${arch}`
+    )
     this.modelsPath = path.join(app.getPath('userData'), 'whisper-models')
     this.tempPath = path.join(app.getPath('temp'), 'knovy-transcription')
 
@@ -109,7 +121,7 @@ export class WhisperBackend {
 
     // Initialize OpenCC converter for Simplified to Traditional Chinese (Taiwan)
     try {
-      this.chineseConverter = ConverterFactory(Locale.from.cn, Locale.to.tw)
+      this.chineseConverter = Converter({ from: 'cn', to: 'tw' })
       console.log('[WhisperService] OpenCC converter initialized (CN → TW)')
     } catch (error) {
       console.error('[WhisperService] Failed to initialize OpenCC converter:', error)
@@ -172,6 +184,7 @@ export class WhisperBackend {
 
     const startTime = Date.now()
     const transcriptionSessionId = sessionId || randomUUID()
+    let tempAudioFile: string | undefined
 
     try {
       console.log(`[WhisperService] Starting transcription ${transcriptionSessionId}`, {
@@ -228,8 +241,13 @@ export class WhisperBackend {
         }
       }
 
-      // Write audio to temporary file
-      const tempAudioFile = await this.writeAudioToTempFile(audioBuffer, transcriptionSessionId)
+      // Write audio to a per-chunk temp file: mic and system transcribe
+      // concurrently, and a shared filename lets one stream overwrite the
+      // other's audio before whisper reads it (identical text on both sides).
+      tempAudioFile = await this.writeAudioToTempFile(
+        audioBuffer,
+        `${transcriptionSessionId}-${options.sourceType}-${randomUUID()}`
+      )
 
       // Get model path
       const modelPath = await this.getModelPath(options.modelSize || 'tiny')
@@ -238,7 +256,8 @@ export class WhisperBackend {
       const transcriptionResult = await this.transcribeWithLanguageAwareness(
         tempAudioFile,
         modelPath,
-        options
+        options,
+        transcriptionSessionId
       )
 
       // Post-process transcription result for noise filtering
@@ -292,6 +311,8 @@ export class WhisperBackend {
     } catch (error) {
       console.error(`[WhisperService] Failed transcription ${transcriptionSessionId}:`, error)
       throw error
+    } finally {
+      if (tempAudioFile) await fs.unlink(tempAudioFile).catch(() => {})
     }
   }
 
@@ -654,14 +675,10 @@ export class WhisperBackend {
    * Build context prompt from previous segments
    */
   private buildContextPrompt(sessionId: string, sourceType: 'microphone' | 'system'): string {
+    // Raw tail of the previous transcript, verbatim: --prompt primes the decoder
+    // with tokens, so instruction text ("Continue naturally") leaks into output.
     const contextKey = `${sessionId}-${sourceType}`
-    const previousContext = this.segmentContext.get(contextKey) || ''
-
-    if (previousContext) {
-      return `Previous context: "${previousContext}". Continue naturally.`
-    }
-
-    return ''
+    return this.segmentContext.get(contextKey) || ''
   }
 
   /**
@@ -750,8 +767,8 @@ export class WhisperBackend {
     }
   }
 
-  private async writeAudioToTempFile(audioBuffer: ArrayBuffer, sessionId: string): Promise<string> {
-    const tempFileName = `audio-${sessionId}.wav`
+  private async writeAudioToTempFile(audioBuffer: ArrayBuffer, fileKey: string): Promise<string> {
+    const tempFileName = `audio-${fileKey}.wav`
     const tempFilePath = path.join(this.tempPath, tempFileName)
 
     // Convert ArrayBuffer to proper WAV file
@@ -850,7 +867,321 @@ export class WhisperBackend {
   /**
    * Stage 1: Fast language detection using whisper.cpp --detect-language
    */
+  // ==========================================================================
+  // whisper-server (persistent HTTP backend)
+  // ==========================================================================
+
+  /** Grab a free localhost TCP port from the OS. */
+  private getFreePort(): Promise<number> {
+    return new Promise((resolve, reject) => {
+      const srv = net.createServer()
+      srv.on('error', reject)
+      srv.listen(0, '127.0.0.1', () => {
+        const addr = srv.address()
+        const port = typeof addr === 'object' && addr ? addr.port : 0
+        srv.close(() => resolve(port))
+      })
+    })
+  }
+
+  /** Kill the running server (if any) and clear its state. */
+  private stopServer(): void {
+    if (this.serverProcess) {
+      console.log('[WhisperService] Stopping whisper-server')
+      try {
+        this.serverProcess.kill('SIGTERM')
+      } catch {
+        // already gone
+      }
+    }
+    this.serverProcess = null
+    this.serverPort = null
+    this.serverModelPath = null
+  }
+
+  /**
+   * Ensure a whisper-server is running for `modelPath` and return its port, or
+   * null if it can't be started (caller then falls back to the CLI). The server
+   * is bound to one model at startup; a different model triggers a restart.
+   */
+  private async ensureServer(modelPath: string): Promise<number | null> {
+    // Serialize concurrent callers (mic + system start together).
+    while (this.serverStarting) {
+      await this.serverStarting.catch(() => {})
+    }
+
+    if (this.serverProcess && this.serverModelPath === modelPath && this.serverPort) {
+      return this.serverPort
+    }
+
+    // Model changed (or no server) — (re)start.
+    if (this.serverProcess) {
+      console.log(
+        `[WhisperService] Model changed (${this.serverModelPath} -> ${modelPath}), restarting server`
+      )
+      this.stopServer()
+    }
+
+    this.serverStarting = this.startServer(modelPath)
+    try {
+      return await this.serverStarting
+    } finally {
+      this.serverStarting = null
+    }
+  }
+
+  private async startServer(modelPath: string): Promise<number | null> {
+    try {
+      // Binary present?
+      await fs.access(this.serverBinaryPath, fs.constants.X_OK)
+
+      const port = await this.getFreePort()
+      const args = [
+        '--model',
+        modelPath,
+        '--host',
+        '127.0.0.1',
+        '--port',
+        String(port),
+        '--threads',
+        '4'
+      ]
+      // VAD model is bound at startup (not a per-request field); the per-request
+      // `vad` flag toggles it. Only add if the model is available.
+      if (this.vadModelPath) {
+        args.push('--vad-model', this.vadModelPath)
+      }
+
+      console.log(`[WhisperService] Starting whisper-server on port ${port} for model ${modelPath}`)
+      const proc = spawn(this.serverBinaryPath, args)
+      this.serverProcess = proc
+
+      proc.stderr?.on('data', (d) => {
+        const line = d.toString().trim()
+        if (line) console.log(`[whisper-server] ${line.split('\n').slice(-1)[0]}`)
+      })
+      proc.on('exit', (code, signal) => {
+        console.log(`[WhisperService] whisper-server exited (code=${code}, signal=${signal})`)
+        // Only clear if this is still the tracked process.
+        if (this.serverProcess === proc) {
+          this.serverProcess = null
+          this.serverPort = null
+          this.serverModelPath = null
+        }
+      })
+
+      // The socket only accepts connections once the model is loaded, so a
+      // successful GET / means the server is ready.
+      const ready = await this.waitForServerReady(port, proc)
+      if (!ready) {
+        this.stopServer()
+        return null
+      }
+
+      this.serverPort = port
+      this.serverModelPath = modelPath
+      console.log(`[WhisperService] whisper-server ready on port ${port}`)
+      return port
+    } catch (error) {
+      console.warn(
+        `[WhisperService] Failed to start whisper-server (${(error as Error).message}); using CLI`
+      )
+      this.stopServer()
+      return null
+    }
+  }
+
+  private async waitForServerReady(port: number, proc: ChildProcess): Promise<boolean> {
+    const deadline = Date.now() + 30000
+    while (Date.now() < deadline) {
+      if (proc.exitCode !== null || proc.signalCode) return false
+      try {
+        const res = await fetch(`http://127.0.0.1:${port}/`, {
+          signal: AbortSignal.timeout(1000)
+        })
+        if (res.ok) return true
+      } catch {
+        // not up yet
+      }
+      await new Promise((r) => setTimeout(r, 250))
+    }
+    return false
+  }
+
+  /**
+   * POST a WAV to the server's /inference endpoint. Returns the transcription
+   * text and detected language, or null to signal a fallback to the CLI.
+   */
+  private async transcribeViaServer(
+    audioFilePath: string,
+    modelPath: string,
+    options: TranscriptionOptions,
+    sessionId: string
+  ): Promise<{ text: string; language: string | null } | null> {
+    const port = await this.ensureServer(modelPath)
+    if (!port) return null
+
+    try {
+      const contextPrompt = this.buildContextPrompt(sessionId, options.sourceType)
+      const shouldAutoDetect = options.autoDetectLanguage !== false
+      const language =
+        !shouldAutoDetect && options.language
+          ? options.language.split('-')[0].toLowerCase()
+          : 'auto'
+
+      const form = new FormData()
+      const bytes = await fs.readFile(audioFilePath)
+      form.append('file', new Blob([bytes]), 'audio.wav')
+      form.append('response_format', 'verbose_json')
+      form.append('no_timestamps', 'true')
+      form.append('temperature', '0.0')
+      form.append('best_of', '1')
+      form.append('beam_size', '3')
+      form.append('word_thold', '0.01')
+      form.append('language', language)
+      // Priming prompt: previous-transcript tail when we have one, else the
+      // default (mirrors the CLI's single --prompt).
+      form.append('prompt', contextPrompt || DEFAULT_PRIMING_PROMPT)
+
+      const enableVAD = options.enableVAD !== false
+      if (enableVAD && this.vadModelPath) {
+        form.append('vad', 'true')
+        form.append('vad_threshold', String(options.vadThreshold ?? 0.6))
+        form.append('vad_min_speech_duration_ms', String(options.vadMinSpeechDuration ?? 250))
+        form.append('vad_min_silence_duration_ms', String(options.vadMinSilenceDuration ?? 100))
+        form.append('vad_speech_pad_ms', String(options.vadSpeechPadding ?? 30))
+      }
+
+      if (contextPrompt) {
+        console.log(`[WhisperService] (server) Priming with previous context: "${contextPrompt}"`)
+      }
+
+      const res = await fetch(`http://127.0.0.1:${port}/inference`, {
+        method: 'POST',
+        body: form,
+        signal: AbortSignal.timeout(30000)
+      })
+      if (!res.ok) {
+        throw new Error(`server responded ${res.status}`)
+      }
+      const json = (await res.json()) as {
+        text?: string
+        language_probabilities?: Record<string, number>
+      }
+      return {
+        text: (json.text || '').trim(),
+        language: this.topLanguageCode(json.language_probabilities)
+      }
+    } catch (error) {
+      console.warn(
+        `[WhisperService] whisper-server request failed (${(error as Error).message}); falling back to CLI`
+      )
+      // Tear down so the next request respawns a fresh server.
+      this.stopServer()
+      return null
+    }
+  }
+
+  /**
+   * Server-side language detection. Returns a short code (e.g. 'zh', 'en') from
+   * the verbose_json language probabilities, or null to fall back to the CLI.
+   */
+  private async detectLanguageViaServer(
+    audioFilePath: string,
+    modelPath: string
+  ): Promise<string | null> {
+    const port = await this.ensureServer(modelPath)
+    if (!port) return null
+
+    try {
+      const form = new FormData()
+      const bytes = await fs.readFile(audioFilePath)
+      form.append('file', new Blob([bytes]), 'audio.wav')
+      form.append('response_format', 'verbose_json')
+      form.append('no_timestamps', 'true')
+      form.append('detect_language', 'true')
+
+      const res = await fetch(`http://127.0.0.1:${port}/inference`, {
+        method: 'POST',
+        body: form,
+        signal: AbortSignal.timeout(30000)
+      })
+      if (!res.ok) throw new Error(`server responded ${res.status}`)
+      const json = (await res.json()) as {
+        language_probabilities?: Record<string, number>
+      }
+      const code = this.topLanguageCode(json.language_probabilities)
+      console.log(`[WhisperService] (server) Detected language: ${code}`)
+      return code
+    } catch (error) {
+      console.warn(
+        `[WhisperService] whisper-server detect failed (${(error as Error).message}); falling back to CLI`
+      )
+      this.stopServer()
+      return null
+    }
+  }
+
+  /** Pick the highest-probability short language code from the server response. */
+  private topLanguageCode(probs?: Record<string, number>): string | null {
+    if (!probs) return null
+    let best: string | null = null
+    let bestP = -1
+    for (const [code, p] of Object.entries(probs)) {
+      if (p > bestP) {
+        bestP = p
+        best = code
+      }
+    }
+    return best ? best.toLowerCase() : null
+  }
+
+  /** Shut everything down (server + any in-flight CLI processes). */
+  destroy(): void {
+    this.stopServer()
+    for (const proc of this.activeProcesses.values()) {
+      try {
+        proc.kill('SIGTERM')
+      } catch {
+        // already gone
+      }
+    }
+    this.activeProcesses.clear()
+  }
+
+  // ==========================================================================
+  // Transcription dispatchers: server first, CLI fallback
+  // ==========================================================================
+
+  /**
+   * Stage 1: language detection. Tries the persistent server, falls back to the
+   * CLI (--detect-language) if the server is unavailable.
+   */
   private async detectLanguageFirst(
+    audioFilePath: string,
+    modelPath: string
+  ): Promise<string | null> {
+    const viaServer = await this.detectLanguageViaServer(audioFilePath, modelPath)
+    if (viaServer !== null) return viaServer
+    return this.detectLanguageCli(audioFilePath, modelPath)
+  }
+
+  /**
+   * Transcribe one chunk. Tries the persistent server, falls back to the CLI
+   * spawn if the server is unavailable or errors.
+   */
+  private async executeWhisper(
+    audioFilePath: string,
+    modelPath: string,
+    options: TranscriptionOptions,
+    sessionId: string
+  ): Promise<string> {
+    const viaServer = await this.transcribeViaServer(audioFilePath, modelPath, options, sessionId)
+    if (viaServer !== null) return viaServer.text
+    return this.executeWhisperCli(audioFilePath, modelPath, options, sessionId)
+  }
+
+  private async detectLanguageCli(
     audioFilePath: string,
     modelPath: string
   ): Promise<string | null> {
@@ -955,7 +1286,8 @@ export class WhisperBackend {
   private async transcribeWithLanguageAwareness(
     audioFilePath: string,
     modelPath: string,
-    options: TranscriptionOptions
+    options: TranscriptionOptions,
+    sessionId: string
   ): Promise<{
     text: string
     detectedLanguage?: string
@@ -972,7 +1304,9 @@ export class WhisperBackend {
         `[WhisperService] Using two-stage detection for user language: ${options.userLanguage}`
       )
 
-      // Stage 1: Language Detection
+      // Stage 1: Language Detection. Runs per segment — bilingual users switch
+      // languages mid-session, and with the persistent server this is a cheap
+      // warm request, not a model load.
       const detectedLang = await this.detectLanguageFirst(audioFilePath, modelPath)
 
       if (detectedLang) {
@@ -998,7 +1332,12 @@ export class WhisperBackend {
           autoDetectLanguage: !targetLanguage // Use auto if no target language
         }
 
-        const text = await this.executeWhisper(audioFilePath, modelPath, transcriptionOptions)
+        const text = await this.executeWhisper(
+          audioFilePath,
+          modelPath,
+          transcriptionOptions,
+          sessionId
+        )
         return {
           text,
           detectedLanguage: detectedLang,
@@ -1010,21 +1349,24 @@ export class WhisperBackend {
 
     // Fallback to standard single-stage transcription
     console.log(`[WhisperService] Using standard single-stage transcription`)
-    const text = await this.executeWhisper(audioFilePath, modelPath, options)
+    const text = await this.executeWhisper(audioFilePath, modelPath, options, sessionId)
     return {
       text,
       usedTwoStageDetection: false
     }
   }
 
-  private async executeWhisper(
+  private async executeWhisperCli(
     audioFilePath: string,
     modelPath: string,
-    options: TranscriptionOptions
+    options: TranscriptionOptions,
+    sessionId: string
   ): Promise<string> {
     return new Promise((resolve, reject) => {
-      const sessionId = path.basename(audioFilePath, '.wav')
       const contextPrompt = this.buildContextPrompt(sessionId, options.sourceType)
+      // Per-call key: mic and system run concurrently in the same session, and a
+      // shared key makes the timeout/cleanup target the wrong process.
+      const processKey = audioFilePath
 
       const args = [
         audioFilePath,
@@ -1038,18 +1380,17 @@ export class WhisperBackend {
         '--temperature',
         '0.0',
         '--best-of',
-        '2',
+        '1',
         '--beam-size',
-        '5',
-        // Transcription quality prompt
+        '3',
+        // Priming prompt: previous-transcript tail when we have one, else the
+        // default. whisper-cli only honors the last --prompt, so pass exactly one.
         '--prompt',
-        DOMAIN_PROMPTS.default
+        contextPrompt || DEFAULT_PRIMING_PROMPT
       ]
 
-      // Add context prompt if available
       if (contextPrompt) {
-        args.push('--prompt', contextPrompt)
-        console.log(`[WhisperService] Using context prompt: "${contextPrompt}"`)
+        console.log(`[WhisperService] Priming with previous context: "${contextPrompt}"`)
       }
 
       // Add word-level features
@@ -1099,7 +1440,7 @@ export class WhisperBackend {
       })
 
       const process = spawn(this.whisperBinaryPath, args)
-      this.activeProcesses.set(sessionId, process)
+      this.activeProcesses.set(processKey, process)
 
       let stdout = ''
       let stderr = ''
@@ -1113,7 +1454,7 @@ export class WhisperBackend {
       })
 
       process.on('close', (code) => {
-        this.activeProcesses.delete(sessionId)
+        this.activeProcesses.delete(processKey)
 
         console.log(`[WhisperService] whisper.cpp finished with code ${code}`, {
           stdout: stdout ? `"${stdout.trim()}"` : '(empty)',
@@ -1133,17 +1474,17 @@ export class WhisperBackend {
       })
 
       process.on('error', (error) => {
-        this.activeProcesses.delete(sessionId)
+        this.activeProcesses.delete(processKey)
         console.error(`[WhisperService] Process error:`, error)
         reject(error)
       })
 
       // Set timeout for long-running processes
       setTimeout(() => {
-        if (this.activeProcesses.has(sessionId)) {
-          console.warn(`[WhisperService] Process timeout, killing: ${sessionId}`)
+        if (this.activeProcesses.has(processKey)) {
+          console.warn(`[WhisperService] Process timeout, killing: ${processKey}`)
           process.kill('SIGTERM')
-          this.activeProcesses.delete(sessionId)
+          this.activeProcesses.delete(processKey)
           reject(new Error('Transcription process timeout'))
         }
       }, 30000) // 30 second timeout

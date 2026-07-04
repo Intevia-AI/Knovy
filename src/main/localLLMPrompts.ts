@@ -14,27 +14,82 @@ interface PromptResult {
   user: string
 }
 
-const correctionPrompts: Record<string, (params: PromptParams) => PromptResult> = {
-  en: ({ rawText, conversationHistory }) => ({
-    system:
-      'You are a speech-to-text correction assistant. Output ONLY the corrected transcription text — no labels, no quotes, no explanations, no commentary.',
-    user: `Correct this speech-to-text transcription. Fix homophones, mishearings, grammar, and punctuation. Preserve the original meaning and language. Output only the corrected text.
-
-${conversationHistory.length > 0 ? `Recent context:\n${conversationHistory.join('\n')}\n\n` : ''}Transcription: ${rawText}`
-  }),
-
-  'zh-TW': ({ rawText, conversationHistory }) => ({
-    system:
-      '你是語音轉文字修正助理。所有輸出必須使用繁體中文（台灣正體）。只輸出修正後的逐字稿文字，不要標籤、不要引號、不要說明、不要附加任何評論。',
-    user: `修正以下語音轉文字逐字稿。修正同音字、誤聽、語法與標點，保留原意。若包含簡體中文，請轉換為繁體中文。只輸出修正後的文字。
-
-${conversationHistory.length > 0 ? `最近對話：\n${conversationHistory.join('\n')}\n\n` : ''}逐字稿：${rawText}`
-  })
+export interface ChatMessage {
+  role: 'system' | 'user' | 'assistant'
+  content: string
 }
 
-export function getCorrectionPrompt(params: PromptParams): PromptResult {
+const correctionSystemPrompts: Record<string, string> = {
+  en: 'You are a speech-to-text correction assistant. Each user message is one raw transcription; earlier assistant messages are your previous corrections, given only as conversation context. Correct the latest user message: fix homophones, mishearings, grammar, and punctuation. Preserve the original meaning and language. Output ONLY the corrected transcription text — no labels, no quotes, no explanations, no commentary.',
+  'zh-TW':
+    '你是語音轉文字修正助理。每則使用者訊息是一段原始逐字稿；先前的 assistant 訊息是你之前的修正結果，僅作為對話前後文參考。請修正最新一則使用者訊息：修正同音字、誤聽、語法與標點，保留原意。若原始逐字稿不是中文，請將其翻譯成繁體中文。所有輸出必須使用繁體中文（台灣正體）；若包含簡體中文，請轉換為繁體中文。只輸出修正後的逐字稿文字，不要標籤、不要引號、不要說明、不要附加任何評論。'
+}
+
+/**
+ * Context rides as prior chat turns, never as labelled text inside the user
+ * message: small models echo labels like "Recent context:" verbatim, and the
+ * echo then feeds back into the next call's context and compounds.
+ */
+export function getCorrectionPrompt(params: PromptParams): ChatMessage[] {
   const lang = params.userLanguage === 'zh-TW' ? 'zh-TW' : 'en'
-  return correctionPrompts[lang](params)
+  return [
+    { role: 'system', content: correctionSystemPrompts[lang] },
+    ...params.conversationHistory.map(
+      (text): ChatMessage => ({ role: 'assistant', content: text })
+    ),
+    { role: 'user', content: params.rawText }
+  ]
+}
+
+function editDistance(a: string, b: string): number {
+  const dp = Array.from({ length: b.length + 1 }, (_, j) => j)
+  for (let i = 1; i <= a.length; i++) {
+    let prev = dp[0]
+    dp[0] = i
+    for (let j = 1; j <= b.length; j++) {
+      const tmp = dp[j]
+      dp[j] = Math.min(dp[j] + 1, dp[j - 1] + 1, prev + (a[i - 1] === b[j - 1] ? 0 : 1))
+      prev = tmp
+    }
+  }
+  return dp[b.length]
+}
+
+function isNearDuplicate(a: string, b: string): boolean {
+  if (a === b) return true
+  const maxLen = Math.max(a.length, b.length)
+  // Tiny strings: exact match only (fuzzy would reject legit short corrections).
+  // Big length gap: cheap early out, cannot be a near-duplicate.
+  if (maxLen < 6 || Math.abs(a.length - b.length) / maxLen > 0.3) return false
+  return 1 - editDistance(a, b) / maxLen >= 0.85
+}
+
+/**
+ * Guard against known small-model failure modes on the correction prompt.
+ * Returns the text when it looks like a real correction, '' to reject —
+ * the caller's empty-text path falls back to the raw transcription and
+ * keeps the output out of the correction history.
+ */
+export function sanitizeCorrection(full: string, rawText: string, history: string[]): string {
+  const trimmed = full.trim()
+  if (!trimmed) return ''
+
+  // Echo of a previous correction instead of correcting the new input.
+  // Fuzzy: the model paraphrase-echoes (你→您), so exact match is not enough.
+  if (history.some((entry) => isNearDuplicate(entry.trim(), trimmed))) return ''
+
+  // Prompt scaffolding / meta-commentary vocabulary observed in failures.
+  if (/Recent context:|最近對話：|^Transcription:|逐字稿|請翻譯|修正說明|修正後|（註：|以下為/.test(trimmed))
+    return ''
+
+  // Runaway output: a correction (even zh output of an English utterance,
+  // which is denser per char) stays near the raw length.
+  if (trimmed.length > 3 * Math.max(rawText.length, 20)) return ''
+
+  // A single utterance's correction is one paragraph; meta blobs are many.
+  if (/\n\s*\n/.test(trimmed)) return ''
+
+  return full
 }
 
 // ─── AI Action Prompt Types ───
@@ -55,7 +110,7 @@ interface ScreenshotAnalysisParams extends AIActionParams {
 export function getChatPrompt(params: AIActionParams): PromptResult {
   const lang = params.language === 'zh-TW' ? 'zh-TW' : 'en'
   if (lang === 'zh-TW') {
-    let user = `你是服務台灣使用者的 AI 助理。優先使用對話前後文回答問題。\n`
+    let user = `優先使用對話前後文回答問題。\n`
     if (params.existingSummary) user += `\n對話摘要：\n${params.existingSummary}\n`
     if (params.recentTranscriptions) user += `\n最近逐字稿：\n${params.recentTranscriptions}\n`
     user += `\n使用者問題：「${params.textInput}」\n\n請用繁體中文直接回答：`
@@ -64,7 +119,7 @@ export function getChatPrompt(params: AIActionParams): PromptResult {
       user
     }
   }
-  let user = `You are a helpful AI assistant. Prioritize conversation context when answering.\n`
+  let user = `Prioritize conversation context when answering.\n`
   if (params.existingSummary) user += `\nConversation Summary:\n${params.existingSummary}\n`
   if (params.recentTranscriptions)
     user += `\nRecent Transcriptions:\n${params.recentTranscriptions}\n`
@@ -77,80 +132,97 @@ export function getChatPrompt(params: AIActionParams): PromptResult {
 
 // ─── Summarize Prompt ───
 
+export interface StructuredSummary {
+  short_summary: string
+  key_points: string[]
+  decisions: string[]
+  action_items: string[]
+  open_questions: string[]
+  topics: string[]
+}
+
 export function getSummarizePrompt(params: AIActionParams): PromptResult {
   const lang = params.language === 'zh-TW' ? 'zh-TW' : 'en'
   if (lang === 'zh-TW') {
     let user = params.existingSummary
-      ? `先前的摘要：\n${params.existingSummary}\n\n新的對話記錄：\n${params.textInput}`
+      ? `先前的摘要（JSON）：\n${params.existingSummary}\n\n新的對話記錄：\n${params.textInput}`
       : `要摘要的對話記錄：\n${params.textInput}`
-    user += `\n\n分析對話並回傳 JSON：
-{
-  "short_summary": "一句話摘要（80-100字元）",
-  "long_summary": "Markdown 格式詳細摘要",
-  "context": {
-    "participants": [],
-    "topics": [],
-    "keywords": [],
-    "time_context": null,
-    "scenario": null,
-    "key_points": []
-  }
-}
-
-只回傳 JSON。`
+    user += `\n\n分析對話並填寫每個欄位：
+- short_summary：一句話摘要（100 字元以內）
+- key_points：主要重點
+- decisions：已做出的決定
+- action_items：待辦事項
+- open_questions：尚未解決的問題
+- topics：討論的主題`
     return {
-      system: '你是摘要助理。分析對話並產生結構化 JSON 摘要。僅回傳有效 JSON。',
+      system:
+        '你是摘要助理。分析對話並產生結構化 JSON 摘要。只記錄對話中實際出現的內容；若某欄位沒有內容，回傳空陣列。以繁體中文填寫所有欄位。',
       user
     }
   }
   let user = params.existingSummary
-    ? `Previous Summary:\n${params.existingSummary}\n\nNew Transcripts:\n${params.textInput}`
+    ? `Previous Summary (JSON):\n${params.existingSummary}\n\nNew Transcripts:\n${params.textInput}`
     : `Transcripts to Summarize:\n${params.textInput}`
-  user += `\n\nAnalyze and return JSON:
-{
-  "short_summary": "One-line summary (80-100 chars)",
-  "long_summary": "Detailed Markdown summary",
-  "context": {
-    "participants": [],
-    "topics": [],
-    "keywords": [],
-    "time_context": null,
-    "scenario": null,
-    "key_points": []
-  }
-}
-
-Return ONLY JSON.`
+  user += `\n\nAnalyze the conversation and fill each field:
+- short_summary: one line (max 100 chars)
+- key_points: the main points
+- decisions: decisions that were made
+- action_items: tasks someone committed to
+- open_questions: unresolved questions
+- topics: subjects discussed`
   return {
     system:
-      'You are a summarization assistant. Analyze conversations and produce structured JSON summaries. Return only valid JSON.',
+      'You are a summarization assistant. Produce a structured JSON summary. Only record what actually appears in the conversation; if a section has no content, return an empty array.',
     user
   }
 }
 
 /**
- * JSON schema for summarize structured output.
+ * JSON schema for summarize structured output (enforced via Ollama's format param —
+ * the single source of truth for the response shape).
  */
 export function getSummarizeJsonSchema(): object {
   return {
     type: 'object',
     properties: {
       short_summary: { type: 'string' },
-      long_summary: { type: 'string' },
-      context: {
-        type: 'object',
-        properties: {
-          participants: { type: 'array', items: { type: 'string' } },
-          topics: { type: 'array', items: { type: 'string' } },
-          keywords: { type: 'array', items: { type: 'string' } },
-          time_context: { type: ['string', 'null'] },
-          scenario: { type: ['string', 'null'] },
-          key_points: { type: 'array', items: { type: 'string' } }
-        },
-        required: ['participants', 'topics', 'keywords', 'key_points']
-      }
+      key_points: { type: 'array', items: { type: 'string' } },
+      decisions: { type: 'array', items: { type: 'string' } },
+      action_items: { type: 'array', items: { type: 'string' } },
+      open_questions: { type: 'array', items: { type: 'string' } },
+      topics: { type: 'array', items: { type: 'string' } }
     },
-    required: ['short_summary', 'long_summary', 'context']
+    required: [
+      'short_summary',
+      'key_points',
+      'decisions',
+      'action_items',
+      'open_questions',
+      'topics'
+    ]
+  }
+}
+
+/**
+ * Parse and validate a summarize response. Returns null when the content is not
+ * a structurally valid summary (caller decides whether to retry or fall back).
+ */
+export function parseSummarizeResponse(content: string): StructuredSummary | null {
+  // Small models sometimes fence the JSON in ```json blocks despite the format param.
+  const stripped = content
+    .trim()
+    .replace(/^```(?:json)?\s*/i, '')
+    .replace(/\s*```$/, '')
+  try {
+    const parsed = JSON.parse(stripped)
+    if (typeof parsed?.short_summary !== 'string' || !parsed.short_summary.trim()) return null
+    const arrays = ['key_points', 'decisions', 'action_items', 'open_questions', 'topics'] as const
+    for (const key of arrays) {
+      if (!Array.isArray(parsed[key])) return null
+    }
+    return parsed as StructuredSummary
+  } catch {
+    return null
   }
 }
 
