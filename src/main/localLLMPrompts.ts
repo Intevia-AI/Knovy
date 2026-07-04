@@ -208,8 +208,13 @@ export function getSummarizeJsonSchema(): object {
  * a structurally valid summary (caller decides whether to retry or fall back).
  */
 export function parseSummarizeResponse(content: string): StructuredSummary | null {
+  // Small models sometimes fence the JSON in ```json blocks despite the format param.
+  const stripped = content
+    .trim()
+    .replace(/^```(?:json)?\s*/i, '')
+    .replace(/\s*```$/, '')
   try {
-    const parsed = JSON.parse(content)
+    const parsed = JSON.parse(stripped)
     if (typeof parsed?.short_summary !== 'string' || !parsed.short_summary.trim()) return null
     const arrays = ['key_points', 'decisions', 'action_items', 'open_questions', 'topics'] as const
     for (const key of arrays) {
