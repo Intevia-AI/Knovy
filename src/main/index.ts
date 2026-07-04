@@ -2306,32 +2306,16 @@ app.on('ready', async () => {
         { role: 'system' as const, content: prompt.system },
         { role: 'user' as const, content: prompt.user }
       ]
-      // think + forced JSON grammar can yield empty/invalid content on small
-      // models (runChat throws on empty) — retry once without thinking before
-      // giving up on structure.
-      let result: Awaited<ReturnType<typeof svc.chat>> | null = null
-      try {
-        result = await svc.chat({
-          messages,
-          format: getSummarizeJsonSchema(),
-          temperature: 0.3,
-          think: true
-        })
-      } catch (err) {
-        console.warn('[main/index.ts] Summarize with think failed:', err)
-      }
-      let structured = result ? parseSummarizeResponse(result.content) : null
-      if (!structured) {
-        console.warn('[main/index.ts] Summarize structure invalid/empty, retrying without think')
-        result = await svc.chat({
-          messages,
-          format: getSummarizeJsonSchema(),
-          temperature: 0.3,
-          think: false
-        })
-        structured = parseSummarizeResponse(result.content)
-      }
-      if (!result) throw new Error('Summarize failed') // unreachable: retry assigned or threw
+      // Summarize never thinks, regardless of the user's think toggle: it runs on
+      // session stop, and thinking makes the stop take too long. Thinking + forced
+      // JSON grammar also yields empty/invalid content on small models.
+      const result = await svc.chat({
+        messages,
+        format: getSummarizeJsonSchema(),
+        temperature: 0.3,
+        think: false
+      })
+      const structured = parseSummarizeResponse(result.content)
       if (structured) {
         const json = JSON.stringify(structured)
         return {
