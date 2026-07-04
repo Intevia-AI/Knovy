@@ -17,29 +17,9 @@ import { Marker, MarkerIcon, MarkerContent } from '@/components/ui/marker'
 import { Loader2 } from 'lucide-react'
 import { motion, AnimatePresence } from 'motion'
 import { useTranslation } from '@/context/TranslationContext'
+import { parseStructuredSummary } from '@/lib/summary-utils'
 
 interface ChatPanelProps {}
-
-interface StructuredSummary {
-  short_summary: string
-  key_points: string[]
-  decisions: string[]
-  action_items: string[]
-  open_questions: string[]
-  topics: string[]
-}
-
-// Summaries are persisted as a JSON string of StructuredSummary; older sessions
-// may still hold free-form markdown, which falls back to the Markdown renderer.
-function parseStructuredSummary(content: string): StructuredSummary | null {
-  try {
-    const parsed = JSON.parse(content)
-    if (typeof parsed?.short_summary !== 'string') return null
-    return parsed as StructuredSummary
-  } catch {
-    return null
-  }
-}
 
 export default function ChatPanel({}: ChatPanelProps) {
   const { t } = useTranslation()

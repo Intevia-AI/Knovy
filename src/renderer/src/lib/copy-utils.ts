@@ -5,6 +5,7 @@
 
 import { SessionWithTranscripts, Transcript } from '@/types/history'
 import { formatDate, formatTime, formatDuration } from './date-utils'
+import { parseStructuredSummary } from './summary-utils'
 
 /**
  * Copy text to clipboard
@@ -36,9 +37,35 @@ function formatSessionHeader(session: SessionWithTranscripts): string {
  */
 export function formatSummaryForCopy(session: SessionWithTranscripts): string {
   const header = formatSessionHeader(session)
-  const summary = session.summary || 'No summary available'
+  const summary = session.summary ? formatSummaryText(session.summary) : 'No summary available'
 
   return `${header}\nSummary:\n${summary}`
+}
+
+/**
+ * Render a persisted summary as plain text (structured JSON → sections,
+ * legacy free-form text passes through unchanged)
+ */
+function formatSummaryText(summary: string): string {
+  const structured = parseStructuredSummary(summary)
+  if (!structured) return summary
+
+  const parts = [structured.short_summary]
+  const sections: [string, string[]][] = [
+    ['Key Points', structured.key_points],
+    ['Decisions', structured.decisions],
+    ['Action Items', structured.action_items],
+    ['Open Questions', structured.open_questions]
+  ]
+  for (const [title, items] of sections) {
+    if (items?.length) {
+      parts.push(`${title}:\n${items.map((item) => `- ${item}`).join('\n')}`)
+    }
+  }
+  if (structured.topics?.length) {
+    parts.push(`Topics: ${structured.topics.join(' · ')}`)
+  }
+  return parts.join('\n\n')
 }
 
 /**
