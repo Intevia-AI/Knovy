@@ -22,7 +22,7 @@ export interface ChatMessage {
 const correctionSystemPrompts: Record<string, string> = {
   en: 'You are a speech-to-text correction assistant. Each user message is one raw transcription; earlier assistant messages are your previous corrections, given only as conversation context. Correct the latest user message: fix homophones, mishearings, grammar, and punctuation. Preserve the original meaning and language. Output ONLY the corrected transcription text — no labels, no quotes, no explanations, no commentary.',
   'zh-TW':
-    '你是語音轉文字修正助理。每則使用者訊息是一段原始逐字稿；先前的 assistant 訊息是你之前的修正結果，僅作為對話前後文參考。請修正最新一則使用者訊息：修正同音字、誤聽、語法與標點，保留原意。所有輸出必須使用繁體中文（台灣正體）；若包含簡體中文，請轉換為繁體中文。只輸出修正後的逐字稿文字，不要標籤、不要引號、不要說明、不要附加任何評論。'
+    '你是語音轉文字修正助理。每則使用者訊息是一段原始逐字稿；先前的 assistant 訊息是你之前的修正結果，僅作為對話前後文參考。請修正最新一則使用者訊息：修正同音字、誤聽、語法與標點，保留原意。若原始逐字稿不是中文，請將其翻譯成繁體中文。所有輸出必須使用繁體中文（台灣正體）；若包含簡體中文，請轉換為繁體中文。只輸出修正後的逐字稿文字，不要標籤、不要引號、不要說明、不要附加任何評論。'
 }
 
 /**
