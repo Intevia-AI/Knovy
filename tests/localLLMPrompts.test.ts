@@ -67,6 +67,23 @@ describe('sanitizeCorrection', () => {
     expect(sanitizeCorrection(` ${prev} `, raw, [prev])).toBe('')
   })
 
+  it('rejects a paraphrase-echo of a previous correction (observed 你→您)', () => {
+    const prev = '你看到的結果是通過 Q 和...'
+    const raw = 'exactly what it is recording and'
+    expect(sanitizeCorrection('您看到的結果是通過 Q 和...', raw, [prev])).toBe('')
+  })
+
+  it('accepts a different sentence of similar length to a history entry', () => {
+    const prev = '它似乎是我無法確定生成轉錄的速度。'
+    const full = '它不是座右銘，而是重複了「motto」一詞。'
+    expect(sanitizeCorrection(full, 'it is not the motto is motto and why', [prev])).toBe(full)
+  })
+
+  it('keeps exact-match-only semantics for tiny strings', () => {
+    expect(sanitizeCorrection('好的。', 'okay', ['對的。'])).toBe('好的。')
+    expect(sanitizeCorrection('好的。', 'okay', ['好的。'])).toBe('')
+  })
+
   it('rejects meta-commentary blobs (observed failure)', () => {
     const raw = 'voice is English and I set the language of the app to traditional Chinese'
     const blob =

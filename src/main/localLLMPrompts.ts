@@ -41,6 +41,29 @@ export function getCorrectionPrompt(params: PromptParams): ChatMessage[] {
   ]
 }
 
+function editDistance(a: string, b: string): number {
+  const dp = Array.from({ length: b.length + 1 }, (_, j) => j)
+  for (let i = 1; i <= a.length; i++) {
+    let prev = dp[0]
+    dp[0] = i
+    for (let j = 1; j <= b.length; j++) {
+      const tmp = dp[j]
+      dp[j] = Math.min(dp[j] + 1, dp[j - 1] + 1, prev + (a[i - 1] === b[j - 1] ? 0 : 1))
+      prev = tmp
+    }
+  }
+  return dp[b.length]
+}
+
+function isNearDuplicate(a: string, b: string): boolean {
+  if (a === b) return true
+  const maxLen = Math.max(a.length, b.length)
+  // Tiny strings: exact match only (fuzzy would reject legit short corrections).
+  // Big length gap: cheap early out, cannot be a near-duplicate.
+  if (maxLen < 6 || Math.abs(a.length - b.length) / maxLen > 0.3) return false
+  return 1 - editDistance(a, b) / maxLen >= 0.85
+}
+
 /**
  * Guard against known small-model failure modes on the correction prompt.
  * Returns the text when it looks like a real correction, '' to reject —
@@ -52,7 +75,8 @@ export function sanitizeCorrection(full: string, rawText: string, history: strin
   if (!trimmed) return ''
 
   // Echo of a previous correction instead of correcting the new input.
-  if (history.some((entry) => entry.trim() === trimmed)) return ''
+  // Fuzzy: the model paraphrase-echoes (你→您), so exact match is not enough.
+  if (history.some((entry) => isNearDuplicate(entry.trim(), trimmed))) return ''
 
   // Prompt scaffolding / meta-commentary vocabulary observed in failures.
   if (/Recent context:|最近對話：|^Transcription:|逐字稿|請翻譯|修正說明|修正後|（註：|以下為/.test(trimmed))
