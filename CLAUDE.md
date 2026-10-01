@@ -8,8 +8,10 @@ Knovy is a **local-first AI desktop assistant** for real-time audio analysis, tr
 and AI-powered interactions. It runs **fully on the user's machine** — no cloud backend, no
 account, no API keys required.
 
-This repository is a **single-package** Electron desktop app at the repo root, using **pnpm**
-as the package manager.
+The Electron desktop app lives at the repo root and uses **pnpm**.
+The independent marketing website lives in `website/` and uses **npm**.
+Do not install website dependencies at the root or move desktop persistence to Firebase.
+See `website/README.md` for its Vercel and Firebase workflow.
 
 ## Development Commands
 
