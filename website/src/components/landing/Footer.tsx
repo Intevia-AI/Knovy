@@ -6,7 +6,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import inteviaLogo from '@/assets/intevia_logo.svg';
 import inteviaLogoWhite from '@/assets/intevia_logo_white.svg';
 const termsContent = `Terms of Service
-Last Updated: September 8, 2025
+Last Updated: October 1, 2026
 
 1. Acceptance of Terms
 Welcome to Knovy (hereinafter referred to as "the Service"). These Terms of Service (hereinafter referred to as "the Terms") constitute a legally binding agreement between you and us. By using the Service or accessing our website, you agree to be bound by these Terms.
@@ -19,11 +19,11 @@ The Service provides real-time screen and audio analysis tools, including:
 • AI-powered insights and response suggestions.
 
 3. User Obligations and Conduct
-To use the Service, you must register an account. You agree to:
-• Provide accurate and complete information during registration.
-• Protect your account credentials and be fully responsible for all activities under your account.
-• Be responsible for all content you process using the Service.
-• Notify us immediately if you discover any unauthorized use of your account or security breaches.
+The current desktop application does not require registration or a Knovy account. You agree to:
+• Use the application and website in accordance with applicable laws.
+• Obtain any permissions or consent required to capture or process other people's audio, screens, or content.
+• Be responsible for the content you process and for your local data, exports, and backups.
+• Use care when sharing content with third-party services or contacting support.
 
 4. Usage Restrictions
 You agree not to:
@@ -40,7 +40,7 @@ You retain full ownership of the content you create. By using the Service, you g
 We are committed to protecting your privacy. For details on how we collect, use, and protect your personal data, please refer to our Privacy Policy.
 
 7. Service Modifications and Termination
-We reserve the right to modify, suspend, or terminate the Service at any time, with or without notice. We may also terminate your access if you violate these Terms. Upon termination, your right to use the Service will immediately cease.
+We may modify or discontinue website availability or future software releases. You may stop using the application and website at any time. The current desktop application has no Knovy account to terminate; locally stored data remains under your control.
 
 8. Disclaimer
 The Service is provided on an "as is" and "as available" basis without any express or implied warranties. We do not guarantee the accuracy, reliability, or suitability of the Service. Your use of the Service is at your own risk.
@@ -58,58 +58,32 @@ We may update these Terms from time to time. If there are significant changes, w
 If you have any questions about these Terms of Service, please contact us at: inteviaai@gmail.com`;
 
 const privacyContent = `Privacy Policy
-Last Updated: September 8, 2025
+Last Updated: October 1, 2026
 
-1. Privacy Policy Overview
-We value your privacy. This Privacy Policy explains how we collect, use, store, and protect your personal data when you use the Knovy application. By using our services, you agree to the practices described in this Privacy Policy.
+1. Scope
+This policy describes the current Knovy local desktop application, the Knovy marketing website, and historical waitlist records managed by INTEVIA AI.
 
-2. Data We Collect
+2. Desktop Processing and Local Storage
+The current desktop application does not require a Knovy account or cloud API keys. Microphone and system audio transcription runs locally through whisper.cpp. AI requests, including text and screenshots you choose to process, are sent to the Ollama service on your computer at localhost:11434. The application does not send this processing content to a Knovy cloud backend, Supabase, or Google Gemini.
+Session history, transcripts, summaries, and related metadata are stored in a local SQLite database. Settings and screenshots may also be stored locally in the application's data directory. The current desktop application does not include Knovy usage telemetry.
 
-2.1. Data You Provide
-Account Information: When you register, we collect your email address and name.
-User Settings: We store your preferences such as language and interface settings.
-This information is securely stored on our servers and is necessary to provide and personalize services.
+3. Network Requests
+Local processing does not mean the application never connects to the internet. It checks for and downloads application updates from GitHub, downloads transcription models from Hugging Face, and can request model downloads through your local Ollama service. These providers receive the network information needed to handle those requests. Links you choose to open, including support forms, open third-party services in your browser.
 
-2.2. Automatically Collected Data
-We may collect anonymous usage data to improve our services, such as feature usage frequency and performance metrics.
+4. Website Services and Browser Storage
+The marketing website is hosted on Vercel. Hosting providers process request information, such as IP addresses, to deliver and operate the website. The website loads Google Fonts, requests release information from GitHub, and loads YouTube video thumbnails. Playing the demo loads a YouTube privacy-enhanced embedded player. Those requests disclose normal connection information to the respective providers and are subject to their privacy policies.
+The website saves your light or dark theme preference in browser local storage. The current website has no Knovy account registration, active waitlist signup form, or application analytics integration. This does not imply that hosting providers or embedded third-party services perform no logging or use no browser storage.
 
-2.3. Data Processed for You
-When you use the Service, we process screen and audio content to provide real-time analysis. This content is sent to our secure backend and Google Gemini API for processing. We may store transcripts and session metadata associated with your account to provide your session history.
+5. Historical Waitlist and Voluntary Contact
+Contact records supplied through the earlier waitlist contain an ID, email address, and creation time. They are held separately from desktop session data in a restricted Firebase Firestore database in Taiwan. Original migration copies remain in the prior private backend and private local backups while the migration is verified. They are not published in the source repository, and website visitors cannot read or write the Firestore collection.
+If you contact us by email or submit an external support form, we receive the information you choose to provide. Do not include recordings, screenshots, or other sensitive content unless you intend to share it for support.
 
-3. Purpose of Data Use
-We use your data for the following purposes:
-• Provide, maintain, and improve our services.
-• Provide your session history, including transcripts and summaries.
-• Generate AI summaries and insights through Google Gemini API.
-• Personalize your experience based on your settings.
-• Provide customer support and troubleshooting.
-• Conduct security monitoring and fraud prevention.
+6. Your Controls
+You control the desktop application's operating-system permissions and local data. You can delete sessions through the application's history interface and manage your own exports and backups. Deleting a session does not automatically erase exported files, other local files, or backups you created. You can clear the website's theme preference through your browser settings.
+For questions or requests concerning historical waitlist or support information held by INTEVIA AI, contact inteviaai@gmail.com.
 
-4. Data Sharing and Disclosure
-We commit not to sell your personal data. We only share your data in the following circumstances:
-• Sharing with third-party services: We send processed content to Google's generative AI services to provide analysis. Google's use of your data is governed by their respective privacy policies.
-• Legal compliance: If required by law or court order.
-• Protecting our rights: To protect our and users' rights, property, or safety.
-
-5. Data Security
-We employ industry-standard security measures to protect your data. All communications with our servers are encrypted. However, no electronic storage method is 100% secure, and we cannot guarantee absolute security.
-
-6. Your Rights
-You have full control over your data:
-• Access and Correction Rights: You can access and update your account information directly within the application.
-• Deletion Rights: You can manage and delete your session history within the application. To delete your entire account, please contact us.
-
-7. Cookie Usage
-Our website does not use cookies for tracking. The application uses secure tokens for authentication.
-
-8. Third-Party Services
-Our service relies on integration with Supabase for authentication and Google Gemini for AI functionality. These third parties have their own privacy policies, and we are not responsible for their privacy practices. We recommend reviewing their policies.
-
-9. Policy Changes
-We may update this Privacy Policy from time to time. If there are significant changes, we will notify you through in-app notifications or on our website. We recommend reviewing this policy periodically.
-
-10. Contact Us
-If you have any questions about this Privacy Policy, please contact us at: inteviaai@gmail.com`;
+7. Changes and Contact
+We may update this policy when the application's or website's data practices change. The date above identifies the current policy version. Contact: inteviaai@gmail.com.`;
 export function Footer() {
   return <footer id="contact" className="py-16 px-4 border-t border-border">
       <div className="container mx-auto max-w-6xl">
