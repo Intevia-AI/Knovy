@@ -138,3 +138,7 @@ pnpm test:run             # Run config/release tests (Vitest)
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development workflow, coding standards, and pull request process.
+
+## Marketing website
+
+The website source and assets live in [`website/`](website/README.md). It builds independently with npm and deploys to Vercel with `website` as the Root Directory. Historical website waitlist data is managed in the separate `knovy-website` Firebase project; desktop data remains local in SQLite.
