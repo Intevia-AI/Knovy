@@ -18,13 +18,15 @@ The website uses React, Vite, TypeScript, Tailwind CSS, and shadcn/ui. It requir
 
 ## Vercel
 
-Import `Intevia-AI/Knovy` into the intended Vercel account and set **Root Directory** to `website`. Use the Vite framework, `npm ci`, `npm run build`, and `dist` output. `vercel.json` includes the SPA fallback.
+Vercel project: `paul-s-personal/knovy-website`, connected to `Intevia-AI/Knovy` with **Root Directory** set to `website`. Use the Vite framework, `npm ci`, `npm run build`, and `dist` output. `vercel.json` includes the SPA fallback.
 
 Preview and verify the website before pointing `knovy.app` and `www.knovy.app` at this Vercel project. Keep the old deployment available for rollback until the domains and routes have been verified. Vercel's Git integration should use `main` for production.
 
 ## Firebase
 
-Project: `knovy-website` (`Knovy Website`). Cloud Firestore is the destination for the historical waitlist collection. The browser never connects to Firestore; management uses authorized project IAM access or the Firebase console.
+Project: `knovy-website` (`Knovy Website`), Standard edition, default database in `asia-east1` (Taiwan). Cloud Firestore is the destination for the historical waitlist collection. The browser never connects to Firestore; management uses authorized project IAM access or the Firebase console.
+
+The 27 historical records were imported on 2026-10-01 and verified against every original field. No contact data is stored in Git.
 
 The checked-in security rules deny every client read and write. Deploy them with:
 

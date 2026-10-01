@@ -58,3 +58,4 @@ src/renderer/public/history
 
 # Local transcription models (downloaded at runtime)
 resources/whisper.cpp/models/
+.env*
